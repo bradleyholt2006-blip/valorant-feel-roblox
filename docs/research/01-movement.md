@@ -249,6 +249,13 @@ Source use the full wish speed there, as ours now does.
   stayed about 100 ms behind the player for the rest of the session, and every shot rewound at the
   cap. A backlog that stands for 0.25 s now drains at one extra input a frame, from an allowance
   that refills at only 1 tick a second, so a client can't use it to run faster than real time.
+  A client frame longer than the bank simulates only 125 ms and loses the rest, as Unreal's
+  servers cut a move to
+  [`MaxMoveDeltaTime`](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/FNetworkPredictionData_Server_Ch-/MaxMoveDeltaTime?application_version=4.27)
+  ("Max delta time for a given move, in real seconds"), 0.125 s in its default `BaseGame.ini`.
+  With the old 0.25 s cap, a frame over 187 ms sent more inputs at once than the queue keeps, and
+  the server dropped the oldest. In Studio that showed as two corrections while running at
+  5.40 m/s, of 126.6 and 210.9 mm: exactly 3 and 5 ticks of movement.
 - **Reconciliation.** The client stores its predicted state per input. When an ack disagrees by more
   than 2 mm or 1 cm/s, it rewinds to the server state, replays unacknowledged inputs, and blends the
   visual error out over about 100 ms so the camera doesn't snap.

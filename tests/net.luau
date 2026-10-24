@@ -169,18 +169,30 @@ do
 		delay: ((number) -> number)?, -- network delay of a packet sent at this time
 		stall: { number }?, -- the server runs no frames between these times
 		hold: { number }?, -- packets sent between these times arrive at the second
+		freeze: { number }?, -- the client runs no frames between these times
+		frameCap: number?, -- the most seconds the client simulates in one frame
 	}
 	type Frame = { time: number, ran: number, waiting: number }
 	type Result = { sent: number, ran: number, dropped: number, frames: { Frame }, queue: InputQueue.Queue<{ seq: number }> }
 
+	-- The most the client simulates in one frame: the server's bank, as in
+	-- PlayerController (MAX_FRAME_TIME). The rest of a longer frame is lost.
+	local FRAME_CAP = InputQueue.MAX_BURST / MovementConfig.TickRate.value
+
 	local function serve(seconds: number, opts: Options): Result
 		local rate = opts.rate or MovementConfig.TickRate.value
+		local cap = opts.frameCap or FRAME_CAP
 		local packets: { { at: number, inputs: { { seq: number } } } } = {}
-		local sent, lastArrival = 0, 0
+		local sent, lastArrival, lastFrame, lost = 0, 0, 0, 0
 		for frame = 1, math.floor(seconds * 60) do
 			local t = frame / 60
+			if opts.freeze and t > opts.freeze[1] and t < opts.freeze[2] then
+				continue
+			end
+			lost += math.max(t - lastFrame - cap, 0)
+			lastFrame = t
 			local batch = {}
-			while sent < math.floor(t * rate) do
+			while sent < math.floor((t - lost) * rate) do
 				sent += 1
 				table.insert(batch, { seq = sent })
 			end
@@ -288,6 +300,29 @@ do
 		most <= InputQueue.MAX_BURST + 1 and backlog(held, 3.5) <= InputQueue.DRAIN_TARGET,
 		string.format("%d in one frame", most)
 	)
+
+	-- A quarter-second client frame (a hitch while something loads). The
+	-- client simulates only a bank's worth of it, so the server runs it all
+	-- the moment it arrives.
+	local hitch = serve(6, { freeze = { 2, 2.25 } })
+	check(
+		"a long client frame sends no more inputs than the server runs at once",
+		hitch.dropped == 0 and backlog(hitch, 2.3) <= InputQueue.DRAIN_TARGET,
+		string.format("dropped %d, backlog %d", hitch.dropped, backlog(hitch, 2.3))
+	)
+	-- In a Studio play test the server freezes with it (one process), and the
+	-- inputs already on their way spend some of the bank, so a few wait and
+	-- drain.
+	local studioHitch = serve(6, { freeze = { 2, 2.25 }, stall = { 2, 2.25 } })
+	check(
+		"the same frame with the server frozen too drops nothing and drains",
+		studioHitch.dropped == 0 and backlog(studioHitch, 2.75) <= InputQueue.DRAIN_TARGET,
+		string.format("dropped %d, backlog %d after 2.75 s", studioHitch.dropped, backlog(studioHitch, 2.75))
+	)
+	-- Simulating the whole frame, as the client did with a 0.25 s cap, sends
+	-- 27 inputs from a 217 ms frame: more than the queue keeps.
+	local uncapped = serve(6, { freeze = { 2, 2.21 }, frameCap = 0.25 })
+	check("simulating all of a 217 ms frame drops inputs", uncapped.dropped >= 3, string.format("dropped %d", uncapped.dropped))
 end
 
 do

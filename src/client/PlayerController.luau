@@ -26,6 +26,7 @@ local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Accuracy = require(Shared.Weapons.Accuracy)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
+local InputQueue = require(Shared.Net.InputQueue)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
@@ -40,7 +41,13 @@ local DT = 1 / TICK_RATE
 local POSITION_TOLERANCE = 0.002 -- metres before we accept a server correction
 local VELOCITY_TOLERANCE = 0.01 -- m/s
 local CORRECTION_BLEND_TIME = 0.1 -- seconds to blend visual error out
-local MAX_FRAME_TIME = 0.25
+-- The most one frame simulates: as many ticks as the server runs at once
+-- (its bank, 125 ms), so a long frame never sends more inputs than the
+-- server keeps. A longer frame loses the rest, as Unreal's servers cut a
+-- move to 0.125 s by default. At 0.25 s, two hitches in Studio sent more
+-- than the server's queue holds, and the client was pulled back exactly 3
+-- and 5 ticks of running.
+local MAX_FRAME_TIME = InputQueue.MAX_BURST * DT
 local KICK_RATE = 30 -- 1/s: how fast the view catches up with the recoil (estimate)
 local SPRAY_TOLERANCE = 1e-6 -- spray position and drift (see mismatch)
 
