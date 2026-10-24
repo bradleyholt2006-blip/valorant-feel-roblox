@@ -34,9 +34,10 @@ Built one system at a time:
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife.
 Debug: F2 weapon lab, then spray lab and hit reg lab on further presses, F3 HUD (with the next
-shot's cone on the crosshair), F4 counter-strafe lab, F6 record CSV, F7 server ghost, F8 zero
-cm/360 counter, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot,
-4-8 give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only).
+shot's cone on the crosshair; G with the HUD on shows the server ghost), F4 counter-strafe lab
+(Z zeroes its cm/360 counter), F6 record CSV, F10 hitbox overlay, Backspace clear impact marks,
+counters and the spray plot, 4-8 give Vandal / Phantom / Operator / Sheriff / Classic (Studio or
+place owner only). F7 and F8 are left alone because Studio takes them for Start and Run.
 In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, B Network Buffering,
 K rewind cap 140 / 200 / 0 ms (0 is no lag compensation).
 Scripted playtests (Studio only): a tool that can press keys but can't move the mouse aims by

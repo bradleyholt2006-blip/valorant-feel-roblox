@@ -8,7 +8,8 @@
 --     firing error" crosshair option
 --   * stats panel: speed, % of max, accuracy state, flags, netcode health
 --   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
---   * ghost box at the last authoritative server position (toggle F7)
+--   * ghost box at the last authoritative server position (toggle G while the
+--     HUD is on; not F7, which Studio takes for Start)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -144,7 +145,7 @@ function DebugHud.start(controller: any)
 			visible = not visible
 			panel.Visible = visible
 			keys.Visible = visible
-		elseif input.KeyCode == Enum.KeyCode.F7 then
+		elseif input.KeyCode == Enum.KeyCode.G and visible then
 			ghostVisible = not ghostVisible
 			ghost.Parent = if ghostVisible then Workspace else nil
 		end
@@ -246,7 +247,7 @@ function DebugHud.start(controller: any)
 			string.format("rtt     %.0f ms   ping %.0f ms%s", net.rttSmooth * 1000, ping, simText),
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
-			string.format('<font color="#%s">F2 labs  F3 hud  F4 lab  F6 record  F7 ghost  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
+			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 
 		local serverSim = controller.serverSim

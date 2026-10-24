@@ -116,8 +116,9 @@ What the rules give for one wall hit square on (from `luau tests/run.luau`):
 | High | medium | x0.86 | x0.79 | x0.66 | x0.38 | stops |
 | High | hard | x0.76 | x0.59 | x0.25 | stops | stops |
 
-Low gets through no medium or hard wall, and Medium no hard one. Body / head damage through one
-wall:
+Low gets through no medium or hard wall, and Medium no hard one. High's x0.25 through 0.20 m of
+hard is exactly at its limit: only a shot dead level and square on gets through, and anything at
+an angle stops. Body / head damage through one wall:
 
 | Weapon | Open | 0.10 m wood | 0.20 m concrete | 0.10 m metal |
 | --- | --- | --- | --- | --- |
