@@ -22,7 +22,7 @@ jobs:
           curl -sSL -o roblox.d.luau https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.None.d.luau
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - name: Movement tests
+      - name: Simulation tests
         run: luau tests/run.luau
 
       - name: Type check

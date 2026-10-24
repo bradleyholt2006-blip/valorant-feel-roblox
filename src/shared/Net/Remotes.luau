@@ -1,6 +1,9 @@
 --!strict
 -- Remote instances live in ReplicatedStorage.VFRemotes. The server creates
 -- them; clients wait for them.
+--
+-- High-rate traffic (inputs, acks, snapshots) is packed into buffers by
+-- PlayerCodec. Low-rate events (shot results, damage, loadout) use tables.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -8,17 +11,25 @@ local RunService = game:GetService("RunService")
 local FOLDER = "VFRemotes"
 
 local definitions: { [string]: string } = {
-	MovementInput = "RemoteEvent", -- client -> server, reliable ordered input batches
-	MovementAck = "UnreliableRemoteEvent", -- server -> owner, authoritative state
-	MovementSnapshot = "UnreliableRemoteEvent", -- server -> all, character poses
-	MovementTuning = "RemoteEvent", -- both ways, live parameter overrides (Studio only)
+	PlayerInput = "RemoteEvent", -- client -> server, reliable ordered input batches
+	PlayerAck = "UnreliableRemoteEvent", -- server -> owner, authoritative PlayerSim state
+	Snapshot = "UnreliableRemoteEvent", -- server -> all, entity poses
+	Tuning = "RemoteEvent", -- both ways, live parameter overrides (Studio / owner only)
+	ShotResult = "RemoteEvent", -- server -> shooter, the verdict for each of their shots
+	ShotFx = "UnreliableRemoteEvent", -- server -> others, tracers for someone else's shot
+	Combat = "RemoteEvent", -- server -> all, damage / death / respawn events
+	Loadout = "RemoteEvent", -- client -> server, debug weapon give (Studio / owner only)
 }
 
 export type Remotes = {
-	MovementInput: RemoteEvent,
-	MovementAck: UnreliableRemoteEvent,
-	MovementSnapshot: UnreliableRemoteEvent,
-	MovementTuning: RemoteEvent,
+	PlayerInput: RemoteEvent,
+	PlayerAck: UnreliableRemoteEvent,
+	Snapshot: UnreliableRemoteEvent,
+	Tuning: RemoteEvent,
+	ShotResult: RemoteEvent,
+	ShotFx: UnreliableRemoteEvent,
+	Combat: RemoteEvent,
+	Loadout: RemoteEvent,
 }
 
 local cached: Remotes? = nil

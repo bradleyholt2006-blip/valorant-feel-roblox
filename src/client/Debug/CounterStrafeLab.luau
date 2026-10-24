@@ -105,10 +105,9 @@ function CounterStrafeLab.start(controller: any)
 
 	local function render()
 		local profile = controller.profile()
-		local weaponId = controller.weapon
-		local ref: any = ReferenceData[weaponId] or {}
+		local ref: any = ReferenceData[profile.id] or {}
 		local lines = {
-			string.format("<b>Counter-Strafe Lab</b>  %s  (deadzone %.0f%% of %.2f m/s)", profile.name, profile.accurateFraction.value * 100, profile.maxSpeed.value),
+			string.format("<b>Counter-Strafe Lab</b>  %s  (deadzone %.0f%% of %.2f m/s)", profile.name, profile.accurateFraction * 100, profile.maxSpeed),
 			"",
 			"method   to-accurate  to-zero   slide   overhold",
 		}
