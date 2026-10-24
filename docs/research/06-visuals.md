@@ -103,7 +103,7 @@ All values live in `src/shared/Visuals/VisualConfig.luau`, each with its status 
 | Your hands and weapon | No shadows | A Roblox difference (section 5): the reference's shade only themselves |
 | Sun brightness | 2.5 (BRINK has 3) | Estimate |
 | Ambient (shade the sky can't reach) / OutdoorAmbient | 100,100,105 / 115,115,120 (BRINK has 70,70,70 for both) | Estimate |
-| EnvironmentDiffuseScale / EnvironmentSpecularScale | 0.5 / 0.5 | Estimate |
+| EnvironmentDiffuseScale / EnvironmentSpecularScale | 0.5 / 0.5 (BRINK has 1 / 1) | Estimate |
 | ShadowSoftness | 0.25 (BRINK has 0.2) | Estimate |
 | ExposureCompensation | 0 | Estimate |
 | Haze | Atmosphere Density at most 0.2 (BRINK has 0.3) | Estimate |
@@ -182,6 +182,7 @@ What the numbers give (from `luau tests/run.luau`):
   every place on Soft, "a flatter look with softer lights and shadows"; Realistic is needed for
   local lights to cast "precise shadows and highlights"
   ([Roblox](https://create.roblox.com/docs/tutorials/use-case-tutorials/lighting/enhance-indoor-environments)).
+  BRINK is on Soft, with PrioritizeLightingQuality on.
   Our guess is that Soft is nearer the reference's soft baked shading on the open course, and that
   Realistic will matter once a map uses lights to pick out key spaces. The preset works with
   either; Studio check V6 compares them.
