@@ -18,9 +18,16 @@
 export type World = {
 	-- Sweep an axis-aligned box (center, halfExtents) along delta. Returns the
 	-- fraction of delta travelled before contact and the contact normal, or nil.
+	-- Like Roblox's Blockcast, it may not see geometry the box starts inside or
+	-- within a fraction of a millimetre of, which is why the simulation keeps
+	-- SKIN clear of everything.
 	sweep: (self: World, center: vector, halfExtents: vector, delta: vector) -> (number?, vector?),
 	-- True if a box at center would intersect level geometry.
 	overlaps: (self: World, center: vector, halfExtents: vector) -> boolean,
+	-- The gap from the box to the closest geometry within margin of it
+	-- (negative if the box is inside it) and the unit direction away from it,
+	-- or nil if there is none the world can measure.
+	nearest: (self: World, center: vector, halfExtents: vector, margin: number) -> (number?, vector?),
 }
 
 -- One tick of player input. Movement reads buttons and yaw; the weapon
@@ -65,8 +72,13 @@ local Buttons = {
 local BRAKE_TO_STOP_SPEED = 0.1 -- m/s
 local OVER_SPEED = 1.01
 
-local SKIN = 0.005 -- metres kept between the box and geometry
+-- Metres kept between the box and geometry, measured along the surface's
+-- normal. Roblox's Blockcast misses a part it starts within 0.0003 studs
+-- (0.08 mm) of, so a gap allowed to wear away lets the box through.
+local SKIN = 0.005
 local GROUND_PROBE = 0.04
+local LOOKAHEAD = 0.25 -- metres each sweep looks past the end of its move
+local MIN_INTO = 1e-3 -- a move closing on a surface slower than this runs along it
 local MAX_SLIDE_ITERATIONS = 4
 local UP = vector.create(0, 1, 0)
 local ZERO = vector.create(0, 0, 0)
@@ -212,81 +224,168 @@ local function clipVelocity(vel: vector, normal: vector): vector
 	return vel - normal * backoff
 end
 
--- Quake-style collide-and-slide. Returns the new centre and velocity.
-local function slideMove(world: World, center: vector, vel: vector, half: vector, dt: number): (vector, vector)
+-- Moving over a floor or ramp: the same horizontal velocity, plus whatever
+-- vertical speed keeps it on the surface, as Unreal's walking movement does.
+local function alongFloor(vel: vector, floor: vector): vector
+	return vector.create(vel.x, -(floor.x * vel.x + floor.z * vel.z) / floor.y, vel.z)
+end
+
+-- Moves the box `distance` along the unit `dir`, or halfway to whatever is in
+-- the way.
+local function pushOut(world: World, center: vector, half: vector, dir: vector, distance: number): vector
+	local delta = dir * distance
+	local fraction = world:sweep(center, half, delta)
+	if fraction then
+		delta *= fraction * 0.5
+	end
+	return center + delta
+end
+
+-- Moves the box along delta, stopping where its gap to whatever it meets is
+-- SKIN along that surface's normal (a gap measured along the move would wear
+-- away on glancing contacts). The sweep looks LOOKAHEAD past the move, so the
+-- box can't end it closer than SKIN to a surface just beyond. Returns the new
+-- centre and, if it met something, how much of the move it made (0 to 1) and
+-- the surface's normal.
+local function moveBox(world: World, center: vector, half: vector, delta: vector): (vector, number?, vector?)
+	local dist = vector.magnitude(delta)
+	local dir = delta / dist
+	local reach = dist + LOOKAHEAD
+	local fraction, normal = world:sweep(center, half, dir * reach)
+	if fraction == nil or normal == nil then
+		return center + delta, nil, nil
+	end
+	local contact = reach * fraction
+	local into = -vector.dot(dir, normal)
+	local stop = contact - SKIN / math.max(into, MIN_INTO)
+	if stop >= dist then
+		return center + delta, nil, nil
+	elseif stop >= 0 then
+		return center + dir * stop, stop / dist, normal
+	end
+	-- It started closer than SKIN: it stays, stepped back out to SKIN.
+	return pushOut(world, center, half, normal, SKIN - contact * math.max(into, 0)), 0, normal
+end
+
+-- Restores SKIN between the box and anything it has got closer to: sweeps
+-- can't see what the box starts on top of, so this runs before them.
+local function keepClear(world: World, center: vector, half: vector): vector
+	for _ = 1, 2 do
+		local gap, away = world:nearest(center, half, SKIN)
+		if gap == nil or away == nil or gap >= SKIN * 0.5 then
+			break
+		end
+		center += away * (SKIN - gap)
+	end
+	return center
+end
+
+-- Quake-style collide-and-slide. Surfaces flat enough to stand on are
+-- followed at the same horizontal velocity. In the air, steeper ones deflect
+-- the velocity. On the ground (floor is the ground's normal) they block like
+-- vertical walls instead, so they can't be climbed. Returns the new centre and
+-- velocity, and the last walkable surface it met, if any.
+local function slideMove(world: World, center: vector, vel: vector, half: vector, dt: number, cfg: any, floor: vector?): (vector, vector, vector?)
 	local timeLeft = dt
 	local planes: { vector } = {}
 	local original = vel
+	local landed: vector? = nil
 	for _ = 1, MAX_SLIDE_ITERATIONS do
 		local delta = vel * timeLeft
-		local dist = vector.magnitude(delta)
-		if dist < 1e-6 then
+		if vector.magnitude(delta) < 1e-6 then
 			break
 		end
-		local fraction, normal = world:sweep(center, half, delta)
+		local fraction, normal
+		center, fraction, normal = moveBox(world, center, half, delta)
 		if fraction == nil or normal == nil then
-			center += delta
 			break
 		end
-		local safe = math.max(dist * fraction - SKIN, 0) / dist
-		center += delta * safe
 		timeLeft *= 1 - fraction
 
-		table.insert(planes, normal)
-		vel = clipVelocity(vel, normal)
-		-- Two planes: slide along their crease so we don't jitter into a corner.
-		if #planes >= 2 then
-			local a, b = planes[#planes - 1], planes[#planes]
-			if vector.dot(vel, a) < -1e-4 then
-				local crease = vector.cross(a, b)
-				if vector.magnitude(crease) < 1e-4 then
-					return center, ZERO
+		if normal.y >= cfg.minGroundNormalY then
+			landed = normal
+			if floor then
+				floor = normal
+			end
+			vel = alongFloor(vel, normal)
+		else
+			local plane = normal
+			if floor then
+				plane = horizontal(normal)
+				if vector.magnitude(plane) < 1e-4 then
+					return center, ZERO, landed
 				end
-				crease = vector.normalize(crease)
-				vel = crease * vector.dot(vel, crease)
+				plane = vector.normalize(plane)
+			end
+			table.insert(planes, plane)
+			vel = clipVelocity(vel, plane)
+			-- Two planes: slide along their crease so we don't jitter into a corner.
+			if #planes >= 2 then
+				local a, b = planes[#planes - 1], planes[#planes]
+				if vector.dot(vel, a) < -1e-4 then
+					local crease = vector.cross(a, b)
+					if vector.magnitude(crease) < 1e-4 then
+						return center, ZERO, landed
+					end
+					crease = vector.normalize(crease)
+					vel = crease * vector.dot(vel, crease)
+				end
+			end
+			if floor then
+				vel = alongFloor(vel, floor)
 			end
 		end
 		-- Never let a bounce reverse the original direction (stops corner pops).
 		if vector.dot(vel, original) <= 0 then
-			return center, ZERO
+			return center, ZERO, landed
 		end
 	end
-	return center, vel
+	return center, vel, landed
 end
 
--- Ground move with stair stepping: try the plain move, then the move lifted by
--- stepHeight and set back down; keep whichever travelled further.
-local function groundMove(world: World, center: vector, vel: vector, half: vector, dt: number, cfg: any): (vector, vector)
-	local plainCenter, plainVel = slideMove(world, center, vel, half, dt)
+-- Ground move with stair stepping: move along the floor; if something stops
+-- that short, try the move lifted by stepHeight and set back down, and keep
+-- whichever travelled further. The lifted move reaches at least 2 x SKIN
+-- past where the plain one stopped, so a box held SKIN off a low edge can
+-- still get over it. A step must really go up or down: one that lands back
+-- at the same height has only reached past what stopped the plain move,
+-- such as the foot of a slope too steep to climb. The velocity stays
+-- horizontal.
+local function groundMove(world: World, center: vector, vel: vector, half: vector, dt: number, cfg: any, floor: vector): (vector, vector)
+	local plainCenter, plainVel = slideMove(world, center, alongFloor(vel, floor), half, dt, cfg, floor)
 	local plainDist = vector.magnitude(horizontal(plainCenter - center))
 	local wanted = vector.magnitude(horizontal(vel)) * dt
-	if plainDist >= wanted - 1e-4 then
-		return plainCenter, plainVel
+	if plainDist >= wanted - 1e-4 or wanted < 1e-6 then
+		return plainCenter, horizontal(plainVel)
 	end
 
-	local upFraction = world:sweep(center, half, UP * cfg.stepHeight)
-	local lift = cfg.stepHeight * (if upFraction then math.max(upFraction - 0.01, 0) else 1)
-	local lifted = center + UP * lift
-	local stepCenter, stepVel = slideMove(world, lifted, horizontal(vel), half, dt)
-	local downDelta = UP * -(lift + GROUND_PROBE)
-	local downFraction, downNormal = world:sweep(stepCenter, half, downDelta)
+	local lifted = moveBox(world, center, half, UP * cfg.stepHeight)
+	local lift = lifted.y - center.y
+	local reach = math.max(wanted, plainDist + SKIN * 2) / wanted
+	local stepCenter, stepVel = slideMove(world, lifted, horizontal(vel) * reach, half, dt, cfg, UP)
+	local downCenter, downFraction, downNormal = moveBox(world, stepCenter, half, UP * -(lift + GROUND_PROBE))
 	if downFraction == nil or downNormal == nil or downNormal.y < cfg.minGroundNormalY then
-		return plainCenter, plainVel
+		return plainCenter, horizontal(plainVel)
 	end
-	local dropDist = vector.magnitude(downDelta) * downFraction - SKIN
-	stepCenter += UP * -math.max(dropDist, 0)
-	if vector.magnitude(horizontal(stepCenter - center)) <= plainDist then
-		return plainCenter, plainVel
+	if math.abs(downCenter.y - center.y) < SKIN * 0.5 or vector.magnitude(horizontal(downCenter - center)) <= plainDist then
+		return plainCenter, horizontal(plainVel)
 	end
-	return stepCenter, vector.create(stepVel.x, plainVel.y, stepVel.z)
+	return downCenter, horizontal(stepVel) / reach
 end
 
-local function probeGround(world: World, center: vector, half: vector, distance: number, cfg: any): (boolean, vector, number)
+-- Looks for ground to stand on within `distance` below the box. Returns
+-- whether there is some, its normal, and the centre settled SKIN above it
+-- (along its normal).
+local function probeGround(world: World, center: vector, half: vector, distance: number, cfg: any): (boolean, vector, vector)
 	local fraction, normal = world:sweep(center, half, UP * -distance)
 	if fraction == nil or normal == nil or normal.y < cfg.minGroundNormalY then
-		return false, UP, 0
+		return false, UP, center
 	end
-	return true, normal, math.max(distance * fraction - SKIN, 0)
+	local drop = distance * fraction - SKIN / normal.y
+	if drop >= 0 then
+		return true, normal, center - UP * drop
+	end
+	return true, normal, pushOut(world, center, half, UP, -drop)
 end
 
 local function updateCrouch(s: State, world: World, buttons: number, dt: number, cfg: any)
@@ -344,25 +443,26 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 
 	local height = MovementSim.boxHeight(s, cfg)
 	local half = halfExtents(cfg, height)
-	local center = boxCenter(s.position, height)
+	local center = keepClear(world, boxCenter(s.position, height), half)
 
+	local landed: vector? = nil
 	if s.grounded then
-		center, vel = groundMove(world, center, vel, half, dt, cfg)
+		center, vel = groundMove(world, center, vel, half, dt, cfg, s.groundNormal)
 	else
-		center, vel = slideMove(world, center, vel, half, dt)
+		center, vel, landed = slideMove(world, center, vel, half, dt, cfg, nil)
 	end
 
-	-- Ground check. While already grounded, probe as far as a step so we stick
-	-- to stairs and slopes instead of flying off them.
+	-- Ground check. On the ground (unless we just jumped), probe as far as a
+	-- step so we stick to stairs and ramps instead of flying off them; in the
+	-- air, only when falling or after touching something to stand on.
 	local wasGrounded = s.grounded
 	local probe = if wasGrounded then cfg.stepHeight + GROUND_PROBE else GROUND_PROBE
-	local onGround, normal, drop = false, UP, 0
-	if vel.y <= 1e-3 then
-		onGround, normal, drop = probeGround(world, center, half, probe, cfg)
+	local onGround, normal = false, UP
+	if s.lastJumpTick ~= s.tick and (wasGrounded or landed or vel.y <= 1e-3) then
+		onGround, normal, center = probeGround(world, center, half, probe, cfg)
 	end
 	if onGround then
-		center -= UP * drop
-		vel = vector.create(vel.x, 0, vel.z)
+		vel = horizontal(vel)
 		if not wasGrounded then
 			s.lastLandTick = s.tick
 		end

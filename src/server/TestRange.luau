@@ -97,7 +97,7 @@ function TestRange.buildIfMissing()
 		sign(box, string.format("%.2f m", h))
 	end
 
-	-- Ramps (rotated about Z, rising toward -X).
+	-- Ramps (rotated about Z, rising toward +X).
 	for i, deg in { 30, 45, 50 } do
 		local length = 5
 		local rise = math.sin(math.rad(deg)) * length / 2

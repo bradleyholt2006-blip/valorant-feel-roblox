@@ -120,6 +120,30 @@ do
 end
 
 do
+	-- On a slope the ground move follows the floor's normal, so the ack must
+	-- carry it or a client corrected on a ramp would replay on flat ground.
+	local ramp = FakeWorld.new():addFloor():addPart(vector.create(18, math.sin(math.rad(30)) * 2.5, 6), vector.create(5, 0.2, 2), 0, 0, math.rad(30))
+	local function uphill(i: number, buttons: number): PlayerCodec.WireInput
+		return { seq = i, buttons = buttons, slot = 3, yaw = PlayerCodec.quantizeYaw(-math.pi / 2), pitch = 0, viewTime = i * DT }
+	end
+	local s = PlayerSim.new(vector.create(14, 0.02, 6), nil, 1)
+	for i = 1, 60 do
+		PlayerSim.step(s, uphill(i, B.Forward), cfg, ramp, DT)
+	end
+	local _, decoded = PlayerCodec.decodeAck(PlayerCodec.encodeAck(60, s))
+	check("ack carries the ground normal exactly", s.movement.grounded and s.movement.groundNormal.y < 0.9 and decoded.movement.groundNormal == s.movement.groundNormal)
+	-- Turning across the slope is what shows a wrong normal straight away.
+	local a, b = s, decoded :: PlayerSim.State
+	local identical = true
+	for i = 61, 120 do
+		PlayerSim.step(a, uphill(i, B.Forward + B.Left), cfg, ramp, DT)
+		PlayerSim.step(b, uphill(i, B.Forward + B.Left), cfg, ramp, DT)
+		identical = identical and a.movement.position == b.movement.position and a.movement.velocity == b.movement.velocity
+	end
+	check("resuming from an ack on a ramp replays bit for bit", identical and a.movement.position.y > 1)
+end
+
+do
 	local poses: { PlayerCodec.Pose } = {
 		{ id = PlayerCodec.DUMMY_BASE + 3, position = vector.create(1.23456, 0.5, -30.987), yaw = math.pi, pitch = -0.3, crouchAlpha = 0.37, grounded = true, alive = true },
 		{ id = PlayerCodec.entityIdForUser(123456789012), position = vector.create(-5, 2, 7), yaw = 7.5, pitch = 0.1, crouchAlpha = 1, grounded = false, alive = true },

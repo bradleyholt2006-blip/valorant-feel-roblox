@@ -152,7 +152,7 @@ end
 -- Ack: everything PlayerSim needs to resume from this state ------------------
 
 local ACK_SIZE = 4 -- seq
-	+ 4 + 8 * 3 + 8 * 3 + 1 + 8 + 4 + 4 -- movement
+	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ 3 + 3 + 6 + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 -- weapons
 	+ 4 + 8 -- tag
 
@@ -172,6 +172,10 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, m.velocity.x)
 	wf64(c, m.velocity.y)
 	wf64(c, m.velocity.z)
+	-- Exact: a vector's components are single precision.
+	wf32(c, m.groundNormal.x)
+	wf32(c, m.groundNormal.y)
+	wf32(c, m.groundNormal.z)
 	w8(c, (if m.grounded then 1 else 0) + (if m.crouched then 2 else 0) + (if m.jumpLatched then 4 else 0))
 	wf64(c, m.crouchAlpha)
 	w32(c, ago(m.tick, m.lastJumpTick))
@@ -217,6 +221,9 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local vz = rf64(c)
 	local position = vector.create(px, py, pz)
 	local velocity = vector.create(vx, vy, vz)
+	local nx = rf32(c)
+	local ny = rf32(c)
+	local nz = rf32(c)
 	local flags = r8(c)
 	local crouchAlpha = rf64(c)
 	local jumpAgo = r32(c)
@@ -228,7 +235,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		grounded = bit32.band(flags, 1) ~= 0,
 		crouched = bit32.band(flags, 2) ~= 0,
 		jumpLatched = bit32.band(flags, 4) ~= 0,
-		groundNormal = vector.create(0, 1, 0),
+		groundNormal = vector.create(nx, ny, nz),
 		crouchAlpha = crouchAlpha,
 		lastJumpTick = tick - jumpAgo,
 		lastLandTick = tick - landAgo,

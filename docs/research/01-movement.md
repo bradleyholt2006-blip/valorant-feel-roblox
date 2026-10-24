@@ -174,7 +174,7 @@ cap and into the deadzone. Both are gone with the model in section 5.
   (Source-style, capped wish speed).
 - **Custom kinematic controller.** Roblox Humanoid physics is replaced. The root part is anchored and
   positioned by the sim; collision is a collide-and-slide on an axis-aligned box using
-  `Workspace:Blockcast`, with stair stepping and ground snapping.
+  `Workspace:Blockcast`, with stair stepping and ground snapping (see Collision below).
 - **Server authority.** The server owns position. A token bucket limits each player to 128 ticks per
   real second (no speed hacks), the queue is capped at about 190 ms (no banking time), inputs are
   validated on decode, and tuning changes are accepted only in Studio or from the place owner.
@@ -193,6 +193,50 @@ Roblox differences from the reference that matter:
   (measured; system 4) rather than 7.8 ms.
 - Player-vs-player collision is off for now (characters ignore each other).
 
+### Collision
+
+The first Studio run found the player's box inside parts in three places: sliding down the face of
+a jump box after a missed jump (M5), at the foot of the 30 and 45 degree ramps (M6), and partway
+along the angled wall (M7). Probes in a playtest showed why.
+
+| Finding | Value | Status |
+| --- | --- | --- |
+| Blockcast ignores a part the cast starts this close to, or touching, or inside | 0.0003 studs (0.08 mm) or less | Measured (ours, Studio) |
+| Blockcast reports the part from | 0.001 studs (0.28 mm) | Measured (ours, Studio) |
+| Same for rotated parts and every approach angle tried (90, 30, 5 and 1 degrees) | yes | Measured (ours, Studio) |
+| Hits come back short of the true contact, along the normal | 0.00007 to 0.00026 studs | Measured (ours, Studio) |
+| Rotation of rotated parts as the client sees them, against the server | rounded by about 0.002 degrees | Measured (ours, Studio) |
+| Positions and sizes as the client sees them | exact | Measured (ours, Studio) |
+
+The old code backed every move off 5 mm along its direction of travel. Sliding along a surface at
+a shallow angle, that left a little less gap to the surface each tick, until the gap fell inside
+Blockcast's blind spot. The next cast then ignored the part and the box moved into it. At the foot
+of a ramp a second fault added to it: the first tick on the slope gave the player upward speed,
+which skipped the ground check, so the player went airborne and sank into the slab.
+
+What the collision does now (`MovementSim.luau`):
+
+- It keeps a 5 mm gap to every surface, measured straight out from the surface rather than along
+  the motion, so a glancing slide can't wear it down. That is 18 times the 0.28 mm at which
+  Blockcast is known to see a part.
+- Every sweep looks 0.25 m past the end of its move, so a surface just beyond the end of a move
+  still counts.
+- Before it moves, every tick measures the exact gap to the nearby block parts and pushes the box
+  back out to the 5 mm skin if it has come closer than half of that. Roblox's overlap queries only
+  know a part's bounding box, which for a rotated part is much bigger than the part, so
+  `BoxMath.luau` does the separating-axis test itself.
+- Walking up or down a ramp keeps the horizontal speed, and the velocity stays horizontal while on
+  the ground (Unreal's default walking; an estimate for the reference). On the ground, a slope
+  steeper than the 46 degree maximum blocks like a vertical wall, so sliding along it can't climb it.
+- The ground check runs on every grounded tick except the tick of a jump, so walking onto a slope
+  can't launch the player.
+- The ack carries the ground normal, so a correction on a ramp replays exactly.
+
+The client's 0.002 degree rounding moves a walk over the whole course by at most 0.15 mm and
+0.29 mm/s offline, inside the 2 mm and 1 cm/s correction tolerances. The offline tests
+(`tests/FakeWorld.luau`) copy the blind spot with a 1 mm tolerance, model rotated parts, and walk
+the course's ramps, angled wall and jump boxes.
+
 ## 6. Implementation map
 
 | File | Role |
@@ -201,6 +245,7 @@ Roblox differences from the reference that matter:
 | `src/shared/Movement/MovementSim.luau` | Deterministic movement step (braking, acceleration, jump, crouch, collision) |
 | `src/shared/Movement/StopAnalyzer.luau` | Detects and measures stops; shared by the lab and the tests |
 | `src/shared/Movement/RobloxWorld.luau` | Blockcast / overlap world adapter |
+| `src/shared/Movement/BoxMath.luau` | Exact gap or overlap between the player's box and a rotated block |
 | `src/shared/PlayerSim.luau` | Movement and weapons stepped together (since system 2) |
 | `src/shared/Net/PlayerCodec.luau` | Buffer encoding of inputs, acks and snapshots |
 | `src/server/PlayerSimServer.luau` | Authority, validation, acks |
@@ -247,7 +292,9 @@ This was written and tested outside Studio (offline Luau tests plus `luau-lsp` t
 Roblox definitions). Things only a Studio session can confirm:
 
 - That the client's per-frame root CFrame wins over the replicated server CFrame without flicker.
-- Blockcast precision on rotated parts and ramps (offline tests use axis-aligned boxes only).
+- That M5 to M7 pass with the collision fix (see Collision above). Only block parts are measured
+  exactly: wedges, cylinders and meshes still go by their bounding box, so the player may stop short
+  of a rotated one, and the pushout before each move can't see them. The course only uses blocks.
 - Whether `GetMouseDelta` needs the extra division by Roblox's sensitivity setting (cm/360 check).
 - Humanoid animation behaviour with an anchored root.
 - The first Studio run showed a 76 mm correction on spawning. The client and the server each read

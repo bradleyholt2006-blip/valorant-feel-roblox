@@ -5,6 +5,7 @@ local MovementConfig = require("../src/shared/Movement/MovementConfig")
 local MovementSim = require("../src/shared/Movement/MovementSim")
 local StopAnalyzer = require("../src/shared/Movement/StopAnalyzer")
 local WeaponConfig = require("../src/shared/Weapons/WeaponConfig")
+local BoxMath = require("../src/shared/Movement/BoxMath")
 local FakeWorld = require("./FakeWorld")
 local H = require("./Harness")
 
@@ -285,6 +286,199 @@ do
 	check("crouched under the ceiling", s.position.x > 1.5, tostring(s.position))
 	run(s, world, 0, 64)
 	check("cannot stand up under a low ceiling", s.crouched)
+end
+
+H.section("Collision with the course's ramps, angled wall and jump boxes")
+
+-- The course's movement pieces, as src/server/TestRange.luau builds them.
+-- `turn` adds degrees to every rotated part's angle, as replication rounding
+-- does (Studio showed the client 0.002 degrees off the server).
+local function course(turn: number?): any
+	local w = FakeWorld.new():addFloor()
+	for i, h in { 0.50, 0.70, 0.85, 1.00 } do
+		local x = -6 - (i - 1) * 2.5
+		w:addBox(vector.create(x - 0.75, 0, -10.75), vector.create(x + 0.75, h, -9.25))
+	end
+	for i, deg in { 30, 45, 50 } do
+		w:addPart(vector.create(18, math.sin(math.rad(deg)) * 2.5, 6 + (i - 1) * 3), vector.create(5, 0.2, 2), 0, 0, math.rad(deg + (turn or 0)))
+	end
+	w:addPart(vector.create(14, 1.5, -14), vector.create(8, 3, 0.3), 0, math.rad(30 + (turn or 0)), 0)
+	return w
+end
+
+local EAST = -math.pi / 2 -- yaw that walks toward +X
+local NORTH = 0 -- toward -Z
+
+type Leg = { buttons: number, yaw: number, ticks: number }
+
+-- Plays legs of input on a fresh player at the knife's run speed. Returns
+-- the final state, the smallest clearance kept to anything (negative means it
+-- got inside), the ticks spent in the air and every tick's position.
+local function walk(world: any, start: vector, legs: { Leg }): (MovementSim.State, number, number, { vector })
+	local s = MovementSim.newState(start)
+	local clearance, air = math.huge, 0
+	local path: { vector } = {}
+	for _, leg in legs do
+		for _ = 1, leg.ticks do
+			MovementSim.step(s, input(leg.buttons, leg.yaw), cfg, cfg.baseRunSpeed, world, DT)
+			local height = MovementSim.boxHeight(s, cfg)
+			local half = vector.create(cfg.halfWidth, height / 2, cfg.halfWidth)
+			clearance = math.min(clearance, world:clearance(s.position + vector.create(0, height / 2, 0), half))
+			air += if s.grounded then 0 else 1
+			table.insert(path, s.position)
+		end
+	end
+	return s, clearance, air, path
+end
+
+-- The box must always stay outside the fake world's blind spot (1 mm, over
+-- three times Roblox's), or a sweep could miss what it's next to.
+local CLEAR = FakeWorld.START_TOLERANCE
+
+do
+	local world = course()
+	for i, deg in { 30, 45 } do
+		local z = 6 + (i - 1) * 3
+		local up, upClear, upAir = walk(world, vector.create(14, 0.02, z), { { buttons = B.Forward, yaw = EAST, ticks = 100 } })
+		check(
+			string.format("walks up the %d degree ramp on the ground, clear of it", deg),
+			upAir == 0 and upClear >= CLEAR and up.position.y > 1 and up.groundNormal.y < 0.9,
+			string.format("air %d ticks, clearance %.4f m, at %s", upAir, upClear, tostring(up.position))
+		)
+		check(string.format("keeps its horizontal speed up the %d degree ramp", deg), near(MovementSim.horizontalSpeed(up), cfg.baseRunSpeed, 1e-3), tostring(up.velocity))
+		local down, downClear, downAir = walk(world, vector.create(14, 0.02, z), {
+			{ buttons = B.Forward, yaw = EAST, ticks = 100 },
+			{ buttons = B.Back, yaw = EAST, ticks = 160 },
+		})
+		check(
+			string.format("walks back down the %d degree ramp onto the floor", deg),
+			downAir == 0 and downClear >= CLEAR and down.position.x < 15 and near(down.position.y, 0.005, 1e-4),
+			string.format("air %d ticks, clearance %.4f m, at %s", downAir, downClear, tostring(down.position))
+		)
+	end
+
+	local steep, steepClear, steepAir, path = walk(world, vector.create(14, 0.02, 12), { { buttons = B.Forward, yaw = EAST, ticks = 160 } })
+	check(
+		"the 50 degree ramp blocks without letting you creep up it",
+		steepAir == 0 and steepClear >= CLEAR and steep.position.x < 16 and near(steep.position.y, 0.005, 1e-4) and steep.position == path[100],
+		string.format("air %d ticks, clearance %.4f m, at %s", steepAir, steepClear, tostring(steep.position))
+	)
+end
+
+do
+	-- The angled wall: run +X into it at 30 degrees, and along it at a
+	-- glancing 1 and 0.05 degrees, which wear a gap measured along the move
+	-- down to nothing.
+	local world = course()
+	local n = vector.create(0.5, 0, math.sqrt(3) / 2) -- its face normal; we start on the -n side
+	local t = vector.create(math.sqrt(3) / 2, 0, -0.5) -- along it
+	local wallCenter = vector.create(14, 0, -14)
+	-- The furthest the player's centre got to the wall's far side while level with it.
+	local function side(path: { vector }): number
+		local worst = -math.huge
+		for _, p in path do
+			if math.abs(vector.dot(p - wallCenter, t)) < 4 then
+				worst = math.max(worst, vector.dot(p - wallCenter, n))
+			end
+		end
+		return worst
+	end
+	local s, clear, _, path = walk(world, vector.create(10, 0.02, -12.94), { { buttons = B.Forward, yaw = EAST, ticks = 256 } })
+	check(
+		"slides along the angled wall and off its end instead of through it",
+		clear >= CLEAR and side(path) < 0 and s.position.x > 18,
+		string.format("clearance %.4f m, at %s", clear, tostring(s.position))
+	)
+	for _, degrees in { 1, 0.05 } do
+		local a = math.rad(degrees)
+		local wish = t * math.cos(a) + n * math.sin(a)
+		local start = wallCenter - n * (0.15 + cfg.halfWidth * (n.x + n.z) + 0.01) - t * 3.5 + vector.create(0, 0.02, 0)
+		local g, gClear, _, gPath = walk(world, start, { { buttons = B.Forward, yaw = math.atan2(-wish.x, -wish.z), ticks = 110 } })
+		check(
+			string.format("keeps clear of the angled wall on a %.2f degree glancing run", degrees),
+			gClear >= CLEAR and side(gPath) < 0,
+			string.format("clearance %.4f m, at %s", gClear, tostring(g.position))
+		)
+	end
+end
+
+do
+	-- Press against a box's side, jump with forward held and slide down it
+	-- (Studio sank the player into the 0.85 and 1.00 m boxes doing this).
+	-- The 0.70 m box is low enough to climb onto.
+	local world = course()
+	for i, h in { 0.70, 0.85, 1.00 } do
+		local x = -6 - i * 2.5
+		local s, clear = walk(world, vector.create(x, 0.02, -8.5), {
+			{ buttons = B.Forward, yaw = NORTH, ticks = 40 },
+			{ buttons = B.Forward + B.Jump, yaw = NORTH, ticks = 5 },
+			{ buttons = B.Forward, yaw = NORTH, ticks = 40 },
+			{ buttons = 0, yaw = NORTH, ticks = 80 },
+		})
+		local onTop = s.grounded and near(s.position.y, h + 0.005, 1e-4)
+		local beside = s.grounded and near(s.position.y, 0.005, 1e-4) and s.position.z > -9.25 + cfg.halfWidth
+		check(
+			string.format("a jump against the %.2f m box %s", h, if h < 0.83 then "lands on top" else "slides back down its side"),
+			clear >= CLEAR and (if h < 0.83 then onTop else beside),
+			string.format("clearance %.4f m, at %s", clear, tostring(s.position))
+		)
+	end
+end
+
+do
+	-- Dropped onto the 30 degree ramp: lands on it and stays put.
+	local s, clear, _, path = walk(course(), vector.create(18, 3, 6), { { buttons = 0, yaw = 0, ticks = 128 } })
+	check(
+		"lands on a ramp and stands on it without sliding",
+		s.grounded and clear >= CLEAR and s.groundNormal.y < 0.9 and s.position == path[100],
+		string.format("clearance %.4f m, at %s", clear, tostring(s.position))
+	)
+end
+
+do
+	-- Replication rounds rotated parts by about 0.002 degrees: the client's
+	-- prediction must stay inside its correction tolerance of the server's
+	-- (PlayerController: 2 mm and 0.01 m/s).
+	local legs = {
+		{ buttons = B.Forward, yaw = EAST, ticks = 100 },
+		{ buttons = B.Back, yaw = EAST, ticks = 100 },
+	}
+	local worst, worstSpeed = 0, 0
+	for _, start in { vector.create(14, 0.02, 6), vector.create(14, 0.02, 9), vector.create(14, 0.02, 12), vector.create(10, 0.02, -12.94) } do
+		local server, client = MovementSim.newState(start), MovementSim.newState(start)
+		local serverWorld, clientWorld = course(), course(0.002)
+		for _, leg in legs do
+			for _ = 1, leg.ticks do
+				MovementSim.step(server, input(leg.buttons, leg.yaw), cfg, cfg.baseRunSpeed, serverWorld, DT)
+				MovementSim.step(client, input(leg.buttons, leg.yaw), cfg, cfg.baseRunSpeed, clientWorld, DT)
+				worst = math.max(worst, vector.magnitude(server.position - client.position))
+				worstSpeed = math.max(worstSpeed, vector.magnitude(server.velocity - client.velocity))
+			end
+		end
+	end
+	check(
+		"rotated parts rounded by replication stay within the client's correction tolerance",
+		worst < 0.002 and worstSpeed < 0.01,
+		string.format("%.5f m, %.5f m/s", worst, worstSpeed)
+	)
+end
+
+do
+	-- Exact overlap tests where Roblox only gives bounding boxes: a box beside
+	-- a 45 degree ramp sits inside the ramp's bounding box but clear of it.
+	local ramp: BoxMath.Box = {
+		center = vector.create(0, 0, 0),
+		half = vector.create(2.5, 0.1, 1),
+		axes = { vector.create(math.sqrt(0.5), math.sqrt(0.5), 0), vector.create(-math.sqrt(0.5), math.sqrt(0.5), 0), vector.create(0, 0, 1) },
+	}
+	local half = vector.create(0.34, 0.9, 0.34)
+	local clearGap = BoxMath.separation(vector.create(1.2, -0.6, 0), half, ramp)
+	local insideGap, away = BoxMath.separation(vector.create(0, 0.3, 0), half, ramp)
+	check(
+		"exact box overlap test against a rotated part",
+		clearGap > 0.1 and insideGap < 0 and vector.dot(away, ramp.axes[2]) > 0.99,
+		string.format("%.3f m clear, %.3f m inside", clearGap, insideGap)
+	)
 end
 
 do
