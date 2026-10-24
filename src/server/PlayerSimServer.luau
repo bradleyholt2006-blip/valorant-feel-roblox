@@ -108,6 +108,7 @@ local function onCharacter(r: Record, character: Model)
 	r.rootOffset = CharacterRig.rootOffset(character, root)
 	local feet = Units.toMetres(root.Position - Vector3.new(0, r.rootOffset, 0))
 	r.spawnFeet = feet + vector.create(0, 0.05, 0)
+	character:SetAttribute(CharacterRig.SPAWN_FEET, Units.asVector3(r.spawnFeet))
 	r.sim = newSim(r)
 	r.queue = {}
 	r.tokens = 0

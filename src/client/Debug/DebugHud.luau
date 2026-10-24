@@ -38,9 +38,10 @@ local ARM_LENGTH = 8
 
 function DebugHud.start(controller: any)
 	local gui = Ui.screen("VFDebugHud", 20)
+	local centre = Ui.screen("VFCrosshair", 20, Enum.ScreenInsets.None)
 
 	-- Crosshair ------------------------------------------------------------
-	local crosshair = Ui.frame(gui, {
+	local crosshair = Ui.frame(centre, {
 		Size = UDim2.fromOffset(1, 1),
 		Position = UDim2.fromScale(0.5, 0.5),
 		BackgroundTransparency = 1,

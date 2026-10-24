@@ -13,11 +13,14 @@ Ui.TEXT = Color3.fromRGB(235, 235, 235)
 Ui.DIM = Color3.fromRGB(150, 150, 150)
 Ui.PANEL = Color3.fromRGB(12, 12, 16)
 
-function Ui.screen(name: string, order: number?): ScreenGui
+-- Panels keep clear of Roblox's top-bar buttons (the default insets). Things
+-- drawn on the camera's centre, like the crosshair, pass
+-- Enum.ScreenInsets.None so the middle of the gui is the middle of the view.
+function Ui.screen(name: string, order: number?, insets: Enum.ScreenInsets?): ScreenGui
 	local gui = Instance.new("ScreenGui")
 	gui.Name = name
 	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
+	gui.ScreenInsets = insets or Enum.ScreenInsets.CoreUISafeInsets
 	gui.DisplayOrder = order or 10
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	return gui

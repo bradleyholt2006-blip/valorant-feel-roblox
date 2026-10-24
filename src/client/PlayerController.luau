@@ -346,6 +346,24 @@ local function onRender(frameDt: number)
 	CameraController.render(feetStuds + Vector3.new(0, eye * Units.STUDS_PER_METRE, 0), zoom)
 end
 
+-- Where the server's simulation starts this life, from the new character.
+-- Reading our own copy of the character instead gave a different spawn (76 mm
+-- out in the first Studio run), depending on when each side looked, and the
+-- first ack then counted that as a misprediction.
+local function spawnFeet(character: Model, r: BasePart): vector
+	local value = character:GetAttribute(CharacterRig.SPAWN_FEET)
+	local deadline = os.clock() + 2
+	while typeof(value) ~= "Vector3" and os.clock() < deadline do
+		task.wait()
+		value = character:GetAttribute(CharacterRig.SPAWN_FEET)
+	end
+	if typeof(value) == "Vector3" then
+		return Units.asVector(value)
+	end
+	warn("[VF] The server sent no spawn point, so the client starts from its own reading")
+	return Units.toMetres(r.Position - Vector3.new(0, rootOffset, 0)) + vector.create(0, 0.05, 0)
+end
+
 local function onCharacter(character: Model)
 	local r = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
 	if not r then
@@ -353,7 +371,10 @@ local function onCharacter(character: Model)
 	end
 	root = r
 	rootOffset = CharacterRig.rootOffset(character, r)
-	local feet = Units.toMetres(r.Position - Vector3.new(0, rootOffset, 0)) + vector.create(0, 0.05, 0)
+	local feet = spawnFeet(character, r)
+	if localPlayer.Character ~= character then
+		return -- a newer character arrived while we waited
+	end
 	local loadout = if sim then table.clone(sim.weapons.loadout) else nil
 	sim = PlayerSim.new(feet, loadout)
 	PlayerController.sim = sim

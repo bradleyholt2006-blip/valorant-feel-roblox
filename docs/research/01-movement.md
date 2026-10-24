@@ -250,5 +250,10 @@ Roblox definitions). Things only a Studio session can confirm:
 - Blockcast precision on rotated parts and ramps (offline tests use axis-aligned boxes only).
 - Whether `GetMouseDelta` needs the extra division by Roblox's sensitivity setting (cm/360 check).
 - Humanoid animation behaviour with an anchored root.
+- The first Studio run showed a 76 mm correction on spawning. The client and the server each read
+  the spawn point off their own copy of the new character, at different moments, so the two
+  simulations started apart. The server now stores its spawn point on the character (the
+  `VFSpawnFeet` attribute) and the client starts from that, so a spawn only hands over the new
+  spray seed and the HUD's `max` stays at 0.0 mm.
 
 The [Studio test session](../studio-checklist.md) walks through these, with what to expect.
