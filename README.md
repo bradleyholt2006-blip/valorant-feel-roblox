@@ -22,6 +22,10 @@ Built one system at a time:
 5. **Wall penetration**: Low / Medium / High weapon classes against soft, medium, hard and solid
    materials, thickness along the ray, damage left after walls, bullets stopping inside walls,
    holes, dust and sparks, a wallbang lane - [research and design](docs/research/05-wall-penetration.md)
+6. **The look**: a lighting preset that keeps shade from getting dark and values close together,
+   colour grading and soft bloom, a subtle vignette, a red outline on enemies (blue on allies) that
+   grows with distance, the reference's four enemy colours for colour blindness, and no character
+   shadows - [research and design](docs/research/06-visuals.md)
 
 ## Running it
 
@@ -36,6 +40,8 @@ Built one system at a time:
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife.
+Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
+own lighting; N cycles the enemy outline colour.
 Debug: F2 weapon lab, then spray lab and hit reg lab on further presses, F3 HUD (with the next
 shot's cone on the crosshair and the last jump measured; G with the HUD on shows the server
 ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
@@ -52,8 +58,8 @@ setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimP
 ## Tests
 
 The shared simulation (movement, weapons, spread and recoil, hitboxes, wire formats, pose
-history, render clock, move pacing, lag compensation and wall penetration) is pure Luau and runs
-outside Roblox:
+history, render clock, move pacing, lag compensation and wall penetration) and the look's maths
+are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
@@ -63,7 +69,8 @@ It prints metrics reports (start, stop and counter-strafe timings per weapon; ai
 and how far air strafing bends a jump; fire rate, magazine and time-to-kill per weapon; cone and
 recoil by bullet, and tapping recovery, per weapon; client and server agreement on a strafing
 target through a simulated network; how evenly other players and dummies are drawn, paced and
-not; damage left through walls by class, material and thickness) and runs the test suites. CI
+not; damage left through walls by class, material and thickness; the vignette across the screen
+and the outline's tint by distance) and runs the test suites. CI
 also type-checks everything with `luau-lsp` and Roblox definitions.
 
 ## Rules for this project

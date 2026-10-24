@@ -14,5 +14,6 @@ require("./net")
 require("./hitreg")
 require("./pacing")
 require("./penetration")
+require("./visuals")
 
 H.finish()

@@ -12,6 +12,7 @@
 --   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
 --   * ghost box at the last authoritative server position (toggle G while the
 --     HUD is on; not F7, which Studio takes for Start)
+--   * whether the look (Visuals) is on, and the enemy outline colour
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,6 +32,7 @@ local Units = require(Shared.Units)
 local Ui = require(script.Parent.Ui)
 local CameraController = require(script.Parent.Parent.CameraController)
 local NetSim = require(script.Parent.Parent.NetSim)
+local Visuals = require(script.Parent.Parent.Visuals)
 
 local B = MovementSim.Buttons
 
@@ -80,7 +82,7 @@ function DebugHud.start(controller: any)
 
 	-- Stats panel ------------------------------------------------------------
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(330, 320),
+		Size = UDim2.fromOffset(330, 337),
 		Position = UDim2.fromOffset(12, 12),
 	})
 	local stats = Ui.label(panel, {
@@ -275,6 +277,7 @@ function DebugHud.start(controller: any)
 			string.format("rtt     %.0f ms   ping %.0f ms%s", net.rttSmooth * 1000, ping, simText),
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
+			string.format("look    %s (V)   enemy %s (N)", if Visuals.on then "on" else "off", Visuals.enemyColourName()),
 			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 

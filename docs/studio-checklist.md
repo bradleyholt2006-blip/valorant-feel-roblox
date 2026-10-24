@@ -1,9 +1,8 @@
 # Studio test session
 
-Systems 1 to 5 have so far only run outside Roblox: the offline tests and the type checks pass, but
-nothing has been played in Studio yet. This session is that first run. It goes through every
-"Known gaps to check in Studio" item in the five research docs, in an order where each step only
-relies on things earlier steps showed working.
+The offline tests and the type checks cover the shared simulation; this session covers what only
+Studio can show. It goes through every "Known gaps to check in Studio" item in the six research
+docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about an hour. Doing it in parts is fine; keep the order.
 
@@ -27,7 +26,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 2. Install Rojo 7.x and its Studio plugin, run `rojo serve` in this repository and connect from
    the plugin.
 3. Open the Output window (View tab, Output).
-4. Press Play (F5). Sections 1 to 7 need one player; section 8 needs two.
+4. Press Play (F5). Sections 1 to 8 need one player; section 9 needs two.
 
 | Key | What it does |
 | --- | --- |
@@ -38,6 +37,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 | G | Ghost box where the server has you (while the HUD is on) |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | F10 | Hitbox and wall overlay |
+| V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
+| N | The next enemy outline colour |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops while it's open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
 | 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic |
@@ -291,7 +292,39 @@ the dummy's boxes through the wall.
 - **P6 Plastic.** Shoot the light grey backstop behind the walls, or any other part of the course.
   Every bullet stops at its face.
 
-## 8. Two players
+## 8. The look
+
+From [06-visuals.md](research/06-visuals.md). Keep the HUD on, and F10 off: its boxes show
+through walls, the outlines don't. The HUD's `look` line says whether the look is on and which
+enemy colour it uses.
+
+- **V1 On and off.** The `look` line reads `look    on (V)   enemy Red (Default) (N)`. Press V: it
+  reads `off`, the shade gets darker, bright parts glow more, the screen's edges are no longer
+  darker and the dummies lose their outlines. In BRINK, the Explorer now shows Lighting back at
+  the place's own values: Brightness 3, Ambient and OutdoorAmbient 70, 70, 70, the Atmosphere's
+  Density 0.3 and the place's Bloom enabled, with no `VFColour` or `VFBloom` under Lighting
+  (another place shows its own values). Press V again, and toggle it a few more times: nothing
+  drifts. **Send:** a screenshot of the same view with the look on and off.
+- **V2 Vignette.** With the look on, face the light grey backstop behind the wallbang walls. The
+  screen's edges are a little darker than the middle, and the corners darker still. The HUD, the
+  crosshair and the labs aren't darkened, and Mouse 1 still fires and Mouse 2 still zooms, so the
+  vignette doesn't take clicks.
+- **V3 Outlines.** Every dummy has a thin red outline and a faint red tint. The static dummy at
+  50 m is clearly redder than the one at 10 m. The dummy behind the low wall at 22 m is outlined
+  only above the wall. From the red line in front of the wallbang walls, the dummies behind them
+  show no outline through the walls. **Send:** a screenshot down the target lane.
+- **V4 Colours.** N turns the outlines purple, then a deep yellow, then a paler yellow, then red
+  again, and the `look` line names each: `Purple (Tritanopia)`, `Yellow (Deuteranopia)`,
+  `Yellow (Protanopia)`, `Red (Default)`.
+- **V5 No shadows.** Stand in the sun with it behind you, so your shadow would fall ahead of you,
+  and look down: your avatar casts no shadow. The dummies cast none either. With the look off (V)
+  there's still none: that doesn't depend on the look.
+- **V6 Lighting style.** Stop the game. Select Lighting in the Explorer and find `LightingStyle`
+  in the Properties window: Studio starts places on Soft. Try Realistic, press Play and compare
+  with V, then keep whichever you prefer. Scripts can't change it, so it stays your choice for the
+  place. **Send:** which you kept.
+
+## 9. Two players
 
 Stop the game. In the Test tab, under Clients and Servers, pick Local Server with 2 players and
 press Start. Studio opens a server window and two player windows. Keys go to whichever window you
@@ -319,6 +352,9 @@ clicked last.
   sparks in the same places.
 - **T6 Corrections.** When players only move, `max` on both HUDs doesn't grow. Being shot slows you
   down, and that slow comes from the server, so it can add a few millimetres.
+- **T7 Their outline.** In each window, the other player has the same red outline and tint as the
+  dummies, and none shows through walls. A teammate would be outlined in blue, but there are no
+  Roblox teams yet.
 
 ## Results
 
@@ -337,6 +373,8 @@ H8 agreement on moving targets past the cap: body ___%, head ___%
 H9 strafer's biggest jump: ___ m/s, and with 40 ms and jitter: ___ m/s
 T1 motion on the other player: speed ___ m/s, last second ___-___, biggest jump ___ m/s
 T2 blocks: the other player shows as blocks only / something of the avatar still shows (what)
+V1 look off puts the place's lighting back: yes / no (what differed)
+V6 LightingStyle kept: Soft / Realistic
 Didn't look right (IDs and what you saw):
 ```
 
@@ -364,3 +402,8 @@ Didn't look right (IDs and what you saw):
 | 05 | Rays that start inside a part don't hit it, and the back cast's normal faces out | S1 |
 | 05 | The self-test's parts are found by raycasts one frame after they're added | S1 |
 | 05 | Holes, dust and sparks on the right faces, other players' holes, white wall labels | P2, P4, T5 |
+| 06 | Lighting set from the client shows there, and V puts the place's values back exactly | V1 |
+| 06 | The vignette sits over the world and under the HUD, covers the screen and takes no clicks | V2 |
+| 06 | Outlines only on the visible part of a target, the tint grows with distance, N changes it | V3, V4, T7 |
+| 06 | Hidden avatars cast no shadows | V5 |
+| 06 | The preset with LightingStyle on Soft and on Realistic | V6 |
