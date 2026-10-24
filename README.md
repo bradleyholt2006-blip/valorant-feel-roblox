@@ -12,7 +12,10 @@ Built one system at a time:
 3. **Spread and recoil**: firing error by bullet, recovery and tap efficiency, movement error by
    state, jump landing, aim-down-sights, recoil climb and sideways drift, seeded per-shot spread
    the server and client agree on - [research and design](docs/research/03-spread-recoil.md)
-4. Hit registration with lag compensation
+4. **Hit registration and lag compensation**: server rewind to what the shooter saw with Riot's
+   140 ms cap, a render clock measured from snapshot arrivals, Network Buffering, client-predicted
+   sparks and server hit confirms pinned to the body part, simulated latency, jitter and loss for
+   testing in Studio - [research and design](docs/research/04-hit-registration.md)
 
 ## Running it
 
@@ -23,23 +26,26 @@ Built one system at a time:
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife.
-Debug: F2 weapon lab, then spray lab on a second press, F3 HUD (with the next shot's cone on the
-crosshair), F4 counter-strafe lab, F6 record CSV, F7 server ghost, F8 zero cm/360 counter,
-F10 hitbox overlay, Backspace clear impact marks and the spray plot, 4-8 give Vandal / Phantom /
-Operator / Sheriff / Classic (Studio or place owner only).
+Debug: F2 weapon lab, then spray lab and hit reg lab on further presses, F3 HUD (with the next
+shot's cone on the crosshair), F4 counter-strafe lab, F6 record CSV, F7 server ghost, F8 zero
+cm/360 counter, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot,
+4-8 give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only).
+In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, B Network Buffering,
+K rewind cap 140 / 200 ms / off.
 
 ## Tests
 
-The shared simulation (movement, weapons, spread and recoil, hitboxes, wire formats) is pure Luau
-and runs outside Roblox:
+The shared simulation (movement, weapons, spread and recoil, hitboxes, wire formats, pose
+history, render clock and lag compensation) is pure Luau and runs outside Roblox:
 
 ```
 luau tests/run.luau
 ```
 
 It prints metrics reports (start, stop and counter-strafe timings per weapon; fire rate, magazine
-and time-to-kill per weapon; cone and recoil by bullet, and tapping recovery, per weapon) and runs
-the test suites. CI also type-checks everything with `luau-lsp` and Roblox definitions.
+and time-to-kill per weapon; cone and recoil by bullet, and tapping recovery, per weapon; client and
+server agreement on a strafing target through a simulated network) and runs the test suites. CI
+also type-checks everything with `luau-lsp` and Roblox definitions.
 
 ## Rules for this project
 

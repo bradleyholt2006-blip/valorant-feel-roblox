@@ -297,8 +297,10 @@ export type Pose = {
 	alive: boolean,
 }
 
-local SNAP_HEADER = 9
+local SNAP_HEADER = 8 + 2 + 1 -- server time, sequence number, pose count
 local SNAP_ENTRY = 4 + 12 + 2 + 2 + 1 + 1
+PlayerCodec.SNAPSHOT_HEADER = SNAP_HEADER
+PlayerCodec.SNAPSHOT_ENTRY = SNAP_ENTRY
 
 -- Entity ids: players use UserId mod 2^32; dummies use DUMMY_BASE + n.
 PlayerCodec.DUMMY_BASE = 4294901760 -- 0xFFFF0000
@@ -325,9 +327,12 @@ function PlayerCodec.quantizePose(pose: Pose): Pose
 	}
 end
 
-function PlayerCodec.encodeSnapshot(serverTime: number, poses: { Pose }): buffer
+-- `seq` counts snapshots (mod 65536) so clients can measure loss; every
+-- packet of a snapshot split over several carries the same one.
+function PlayerCodec.encodeSnapshot(serverTime: number, poses: { Pose }, seq: number?): buffer
 	local c: Cursor = { b = buffer.create(SNAP_HEADER + SNAP_ENTRY * #poses), o = 0 }
 	wf64(c, serverTime)
+	w16(c, (seq or 0) % 65536)
 	w8(c, #poses)
 	for _, pose in poses do
 		w32(c, pose.id)
@@ -342,9 +347,11 @@ function PlayerCodec.encodeSnapshot(serverTime: number, poses: { Pose }): buffer
 	return c.b
 end
 
-function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose })
+-- Returns the server time, the poses and the sequence number.
+function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose }, number)
 	local c: Cursor = { b = b, o = 0 }
 	local serverTime = rf64(c)
+	local seq = r16(c)
 	local count = r8(c)
 	local poses = table.create(count)
 	for _ = 1, count do
@@ -367,7 +374,7 @@ function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose })
 			alive = bit32.band(flags, 2) ~= 0,
 		})
 	end
-	return serverTime, poses
+	return serverTime, poses, seq
 end
 
 -- Unreliable remotes cap payloads near 900 bytes.

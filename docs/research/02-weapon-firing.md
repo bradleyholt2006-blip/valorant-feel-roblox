@@ -4,7 +4,7 @@ This covers the trigger and everything a shot needs short of where the bullet go
 fire rate, magazines, reloads, weapon switching, aim-down-sights and scopes, damage by body region
 and range, health and shields, the slow you get when hit, and how the server decides what a shot
 hit. Spread and recoil are system 3. Rewinding targets to what the shooter saw (lag compensation)
-is system 4; this system already carries the data it needs.
+is system 4 (`docs/research/04-hit-registration.md`).
 
 As with system 1, everything comes from public patch notes, Riot's engineering blogs, community
 wikis and footage. No game files, memory or protected assets were used. Status labels:
@@ -144,7 +144,7 @@ between the two neighbouring tick counts. The remainder carries over, so the ave
                                      │                                                           CombatServer.onShot
                          ClientShots: trace against the level and                                 ├─ level: Roblox raycast
                          the targets drawn at viewTime                                            ├─ targets: ShotResolver vs analytic hitboxes
-                                     │                                                            │   (targetProvider: system 4 rewinds here)
+                                     │                                                            │   (rewound to the shot's viewTime: system 4)
                          tracer, impact mark, muzzle flash (now)                                  ├─ damage by region and range ─► Health ─► tag slow
                                      │                                                            ├─ ShotResult ──► shooter: verdict
                          hit marker, damage number  ◄──────────── verdict ───────────────────────┤
@@ -164,8 +164,8 @@ between the two neighbouring tick counts. The remainder carries over, so the ave
 - **Analytic hitboxes.** A character is three yaw-oriented boxes (head, body, legs) built from a
   pose: feet position, yaw and crouch amount. The client and the server test the same boxes with
   the same code (`Hitboxes`, `ShotResolver`), and a recorded pose is all it takes to rebuild a
-  target in the past, which is what system 4 needs. The reference animates its server hitboxes;
-  ours don't animate yet.
+  target in the past, which is how system 4 rewinds them. The reference animates its server
+  hitboxes; ours don't animate yet.
 - **The server decides.** `CombatServer` traces the level with a Roblox raycast (characters
   excluded), then tests target hitboxes in front of the first wall, applies damage by region and
   range, shields first, tags the victim and pushes events: the verdict to the shooter, damage and
@@ -182,9 +182,9 @@ between the two neighbouring tick counts. The remainder carries over, so the ave
 
 Roblox differences from the reference that matter here:
 
-- Remote entities are drawn 50 ms in the past (60 Hz snapshots) against the reference's 7.8 ms.
-  Until system 4 the server tests targets where they are now, so shots at moving targets can
-  disagree with what you saw; the weapon lab counts how often.
+- Remote entities are drawn about 25-30 ms in the past (60 Hz snapshots) against the reference's
+  7.8 ms. Since system 4 the server rewinds targets to what the shooter saw; the weapon lab counts
+  how often its verdict and the client's guess agree.
 - No animation on hitboxes, and no wall penetration yet (each weapon's penetration class is
   recorded for later).
 - Not in this system: the Classic's burst alt-fire, knife attacks, abilities, the buy phase.
@@ -201,10 +201,10 @@ Roblox differences from the reference that matter here:
 | `src/shared/Combat/Health.luau` | Health and shields |
 | `src/shared/Net/PlayerCodec.luau` | Inputs (19 bytes per tick), acks with the full state, snapshots (22 bytes per entity) |
 | `src/server/PlayerSimServer.luau` | Authority: input queue, token bucket, acks, debug loadout |
-| `src/server/CombatServer.luau` | Shot resolution, damage, tagging, events; lag compensation hook |
+| `src/server/CombatServer.luau` | Shot resolution against rewound targets (system 4), damage, tagging, events |
 | `src/server/Entities.luau` | Registry of everything that can be shot |
 | `src/server/Dummies.luau` | Practice dummies (static, strafe, crouch) |
-| `src/server/Replication.luau` | 60 Hz pose snapshots; listener hook for system 4's history |
+| `src/server/Replication.luau` | Pose snapshots every server frame (60 Hz), recorded for the rewind |
 | `src/server/TestRange.luau` | Adds a target lane with 10-50 m markers, cover and dummy spawns |
 | `src/client/PlayerController.luau` | Prediction and reconciliation of the whole PlayerSim |
 | `src/client/RemoteEntities.luau` | Snapshot interpolation for players and dummies; dummy drawing |
@@ -218,7 +218,7 @@ Roblox differences from the reference that matter here:
 | Key | Tool |
 | --- | --- |
 | F2 | Weapon lab (first page; the second is the spray lab from system 3): weapon stats with their status, live timers, measured fire rate over the last burst, reload and draw-to-shot times against ReferenceData, a shot log of client guess vs server verdict with round trip and agreement rate, and a time-to-kill table |
-| F10 | Hitbox overlay through walls: other players' hitboxes; per shot, the ray, the boxes the client tested, the client's end point (yellow) and the server's (blue), red when they disagree |
+| F10 | Hitbox overlay through walls: other players' hitboxes; per shot, the ray, the boxes the client tested, the client's end point (yellow) and the server's (blue), red when they disagree (system 4 adds the server's rewound boxes) |
 | always | Impact marks stay on walls (newest 80), so a spray leaves its pattern (system 3 adds the spray lab and a cone ring on the crosshair) |
 | Backspace | Clear impact marks and the shot log |
 | 4-8 | Give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only) |
@@ -234,9 +234,9 @@ at 15 and 30 m, a crouching one at 20 m and one behind waist-high cover at 22 m.
 2. Settle the Vandal's ADS fire rate and update WeaponConfig with the status changed and the clip
    as the source.
 3. Measure tag duration and the hitbox edges; update `tagDuration` and `Hitboxes`.
-4. Shoot the static dummies: the lab's agreement should be 100%. Against the strafing dummies it
-   won't be until system 4; note the rate with Studio's incoming replication lag at 0 and 100 ms as
-   the baseline lag compensation has to beat.
+4. Shoot the static dummies: the lab's agreement should be 100%. Since system 4 it should be about
+   100% against the strafing dummies too, at any round trip under the rewind cap (the Hit Reg Lab
+   adds latency to check).
 5. Re-run `luau tests/run.luau` and update the table in section 4.
 
 ## Known gaps to check in Studio

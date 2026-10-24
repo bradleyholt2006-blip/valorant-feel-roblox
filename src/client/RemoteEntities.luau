@@ -2,12 +2,14 @@
 -- Renders every other entity (players and practice dummies) by interpolating
 -- server snapshots.
 --
--- Remote entities are drawn INTERP_DELAY seconds in the past so there are
--- always two snapshots to blend between. That delay is a known, fixed number:
--- every input carries the server time the client was looking at
--- (renderTime), which is what server-side lag compensation rewinds to.
--- Riot describes the same trade-off (7.8125 ms buffering at 128 Hz) in
--- "On Peeker's Advantage"; our snapshot rate is 60 Hz, so the delay is larger.
+-- Entities are drawn at the render clock's time (InterpClock): a little
+-- behind the newest snapshot, measured from how snapshots actually arrive,
+-- so there are almost always two to blend between. Every input carries the
+-- time of the frame on screen when it was sampled (viewTime), which is what
+-- the server's lag compensation rewinds to, and the blending is PoseHistory,
+-- the same code the server rewinds with. Riot describes the arrangement with
+-- one 128 Hz frame of buffering (7.8125 ms) in "On Peeker's Advantage"; ours
+-- has to cover a 60 Hz snapshot interval plus arrival jitter.
 --
 -- Dummies have no server-side parts: the client draws them straight from
 -- their analytic hitboxes, so what you see is exactly what can be hit.
@@ -19,6 +21,9 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlayerCodec = require(Shared.Net.PlayerCodec)
+local PoseHistory = require(Shared.Net.PoseHistory)
+local InterpClock = require(Shared.Net.InterpClock)
+local NetConfig = require(Shared.Net.NetConfig)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
@@ -26,17 +31,26 @@ local Hitboxes = require(Shared.Combat.Hitboxes)
 local ShotResolver = require(Shared.Combat.ShotResolver)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 
+local NetSim = require(script.Parent.NetSim)
+
 local RemoteEntities = {}
 
-RemoteEntities.INTERP_DELAY = 0.05 -- seconds; three snapshots at 60 Hz
-local MAX_BUFFER = 64
-
-type Sample = { time: number, pose: PlayerCodec.Pose }
-
-local buffers: { [number]: { Sample } } = {}
+local histories: { [number]: PoseHistory.History } = {}
 local lastSeen: { [number]: number } = {}
-local latestSnapshot = 0
+local latestSnapshot = -math.huge
 local localId = PlayerCodec.entityIdForUser(Players.LocalPlayer.UserId)
+
+-- The render clock, and the time of the frame being drawn / on screen.
+RemoteEntities.clock = InterpClock.new()
+local frameTime: number? = nil
+
+-- Index into NetConfig.Buffering (Minimum, Moderate, Maximum).
+RemoteEntities.buffering = 1
+
+-- Snapshot counts for the Hit Reg Lab. Lost and late come from the
+-- snapshots' sequence numbers.
+RemoteEntities.stats = { snapshots = 0, lost = 0, late = 0 }
+local lastSeq: number? = nil
 
 -- Last known health per entity, from combat events.
 RemoteEntities.health = {} :: { [number]: { health: number, shield: number } }
@@ -59,8 +73,29 @@ type Visual = { model: Model, parts: { [string]: BasePart }, label: TextLabel, f
 local visuals: { [number]: Visual } = {}
 local visualFolder: Folder? = nil
 
+-- The snapshot time remote entities are drawn at this frame (before the
+-- first snapshot, the server's time).
 function RemoteEntities.renderTime(): number
-	return Workspace:GetServerTimeNow() - RemoteEntities.INTERP_DELAY
+	return frameTime or Workspace:GetServerTimeNow()
+end
+
+-- The time of the frame on screen. Inputs sample it before this frame's
+-- entities move, so it is what the player was looking at.
+function RemoteEntities.shownTime(): number
+	return RemoteEntities.renderTime()
+end
+
+function RemoteEntities.setBuffering(index: number)
+	RemoteEntities.buffering = index
+	InterpClock.setExtra(RemoteEntities.clock, NetConfig.Buffering[index].extra)
+end
+
+-- Clears the snapshot and frame counters (Hit Reg Lab, Backspace).
+function RemoteEntities.resetStats()
+	local stats = RemoteEntities.stats
+	stats.snapshots, stats.lost, stats.late = 0, 0, 0
+	RemoteEntities.clock.frames = 0
+	RemoteEntities.clock.starved = 0
 end
 
 local function playerFor(id: number): Player?
@@ -76,64 +111,58 @@ local function isDummy(id: number): boolean
 	return id >= PlayerCodec.DUMMY_BASE
 end
 
+local function countSequence(seq: number)
+	local stats = RemoteEntities.stats
+	local last = lastSeq
+	if last == nil then
+		stats.snapshots += 1
+		lastSeq = seq
+		return
+	end
+	local ahead = (seq - last) % 65536
+	if ahead == 0 then
+		return -- another packet of the same snapshot
+	elseif ahead < 32768 then
+		stats.snapshots += 1
+		stats.lost += ahead - 1
+		lastSeq = seq
+	else
+		stats.late += 1 -- older than one already received
+	end
+end
+
 local function onSnapshot(payload: buffer)
 	if typeof(payload) ~= "buffer" then
 		return
 	end
-	local serverTime, poses = PlayerCodec.decodeSnapshot(payload)
+	local serverTime, poses, seq = PlayerCodec.decodeSnapshot(payload)
+	countSequence(seq)
+	InterpClock.onSnapshot(RemoteEntities.clock, serverTime, os.clock(), seq)
 	latestSnapshot = math.max(latestSnapshot, serverTime)
 	for _, pose in poses do
 		if pose.id == localId then
 			continue
 		end
-		lastSeen[pose.id] = serverTime
-		local buf = buffers[pose.id]
-		if not buf then
-			buf = {}
-			buffers[pose.id] = buf
+		lastSeen[pose.id] = math.max(lastSeen[pose.id] or -math.huge, serverTime)
+		local h = histories[pose.id]
+		if not h then
+			h = PoseHistory.new()
+			histories[pose.id] = h
 		end
-		local last = buf[#buf]
-		if last and serverTime <= last.time then
-			continue
-		end
-		table.insert(buf, { time = serverTime, pose = pose })
-		if #buf > MAX_BUFFER then
-			table.remove(buf, 1)
-		end
+		PoseHistory.push(h, serverTime, pose)
 	end
 end
 
-local function lerpAngle(a: number, b: number, t: number): number
-	local d = (b - a + math.pi) % (2 * math.pi) - math.pi
-	return a + d * t
+-- An entity's pose at a snapshot time, with which snapshots it came from.
+function RemoteEntities.lookup(id: number, serverTime: number): PoseHistory.Lookup?
+	local h = histories[id]
+	return if h then PoseHistory.sample(h, serverTime) else nil
 end
 
--- Interpolated pose of an entity at a server time (nil if never seen).
+-- Interpolated pose of an entity at a snapshot time (nil if never seen).
 function RemoteEntities.sample(id: number, serverTime: number): PlayerCodec.Pose?
-	local buf = buffers[id]
-	if not buf or #buf == 0 then
-		return nil
-	end
-	if serverTime <= buf[1].time then
-		return buf[1].pose
-	end
-	for i = #buf - 1, 1, -1 do
-		local a, b = buf[i], buf[i + 1]
-		if serverTime >= a.time then
-			local t = math.clamp((serverTime - a.time) / math.max(b.time - a.time, 1e-6), 0, 1)
-			return {
-				id = id,
-				position = a.pose.position + (b.pose.position - a.pose.position) * t,
-				yaw = lerpAngle(a.pose.yaw, b.pose.yaw, t),
-				pitch = a.pose.pitch + (b.pose.pitch - a.pose.pitch) * t,
-				crouchAlpha = a.pose.crouchAlpha + (b.pose.crouchAlpha - a.pose.crouchAlpha) * t,
-				grounded = b.pose.grounded,
-				alive = b.pose.alive,
-			}
-		end
-	end
-	-- Past the newest snapshot: hold it rather than extrapolate.
-	return buf[#buf].pose
+	local lookup = RemoteEntities.lookup(id, serverTime)
+	return if lookup then lookup.pose else nil
 end
 
 -- An entity is present if the newest snapshot included it.
@@ -142,23 +171,33 @@ function RemoteEntities.isPresent(id: number): boolean
 	return seen ~= nil and seen >= latestSnapshot - 1e-6
 end
 
--- Targets as they were drawn at a server time, for client-side shot prediction.
-function RemoteEntities.targets(serverTime: number): { ShotResolver.Target }
-	local out: { ShotResolver.Target } = {}
-	for id in buffers do
+-- Every present entity at a snapshot time, with its lookup.
+function RemoteEntities.lookups(serverTime: number): { { id: number, lookup: PoseHistory.Lookup } }
+	local out = {}
+	for id in histories do
 		if RemoteEntities.isPresent(id) then
-			local pose = RemoteEntities.sample(id, serverTime)
-			if pose then
-				table.insert(out, { id = id, pose = { position = pose.position, yaw = pose.yaw, crouchAlpha = pose.crouchAlpha } })
+			local lookup = RemoteEntities.lookup(id, serverTime)
+			if lookup then
+				table.insert(out, { id = id, lookup = lookup })
 			end
 		end
 	end
 	return out
 end
 
+-- Targets as they were drawn at a snapshot time, for client-side shot prediction.
+function RemoteEntities.targets(serverTime: number): { ShotResolver.Target }
+	local out: { ShotResolver.Target } = {}
+	for _, entry in RemoteEntities.lookups(serverTime) do
+		local pose = entry.lookup.pose
+		table.insert(out, { id = entry.id, pose = { position = pose.position, yaw = pose.yaw, crouchAlpha = pose.crouchAlpha } })
+	end
+	return out
+end
+
 function RemoteEntities.ids(): { number }
 	local out = {}
-	for id in buffers do
+	for id in histories do
 		table.insert(out, id)
 	end
 	return out
@@ -221,8 +260,9 @@ function RemoteEntities.placeBoxes(parts: { [string]: BasePart }, pose: Hitboxes
 end
 
 local function onRender()
+	frameTime = InterpClock.advance(RemoteEntities.clock, os.clock())
 	local renderTime = RemoteEntities.renderTime()
-	for id in buffers do
+	for id in histories do
 		local present = RemoteEntities.isPresent(id)
 		local pose = if present then RemoteEntities.sample(id, renderTime) else nil
 		if isDummy(id) then
@@ -242,7 +282,7 @@ local function onRender()
 		end
 		local player = playerFor(id)
 		if not player then
-			buffers[id] = nil
+			histories[id] = nil
 			continue
 		end
 		local character = player.Character
@@ -260,9 +300,9 @@ function RemoteEntities.start()
 	folder.Parent = Workspace
 	visualFolder = folder
 	local remotes = Remotes.get()
-	remotes.Snapshot.OnClientEvent:Connect(onSnapshot)
-	remotes.Combat.OnClientEvent:Connect(function(event)
-		if event.kind == "damage" or event.kind == "spawn" then
+	NetSim.on(remotes.Snapshot, onSnapshot)
+	NetSim.on(remotes.Combat, function(event: any)
+		if typeof(event) == "table" and (event.kind == "damage" or event.kind == "spawn") then
 			RemoteEntities.health[event.target] = { health = event.health, shield = event.shield }
 		end
 	end)

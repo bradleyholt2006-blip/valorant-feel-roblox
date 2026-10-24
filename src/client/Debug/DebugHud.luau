@@ -26,6 +26,7 @@ local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Ui)
 local CameraController = require(script.Parent.Parent.CameraController)
+local NetSim = require(script.Parent.Parent.NetSim)
 
 local B = MovementSim.Buttons
 
@@ -74,7 +75,7 @@ function DebugHud.start(controller: any)
 
 	-- Stats panel ------------------------------------------------------------
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(330, 252),
+		Size = UDim2.fromOffset(330, 270),
 		Position = UDim2.fromOffset(12, 12),
 	})
 	local stats = Ui.label(panel, {
@@ -217,6 +218,11 @@ function DebugHud.start(controller: any)
 		end
 		local net = controller.stats
 		local ping = Players.LocalPlayer:GetNetworkPing() * 1000
+		-- Round trip from our own acks (includes the server's frame), and the
+		-- latency the Hit Reg Lab is adding, if any.
+		local simText = if NetSim.active()
+			then string.format('  <font color="#%s">sim +%.0f ms</font>', Ui.hex(Ui.BAD), NetSim.settings.latency * 1000)
+			else ""
 		local stateText = if accurate
 			then string.format('<font color="#%s">ACCURATE</font>', Ui.hex(Ui.GOOD))
 			else string.format('<font color="#%s">MOVING ERROR</font>', Ui.hex(Ui.BAD))
@@ -235,10 +241,11 @@ function DebugHud.start(controller: any)
 			string.format("pos     %.2f %.2f %.2f m", s.position.x, s.position.y, s.position.z),
 			coneText,
 			"",
-			string.format("tick    %d Hz   fps %.0f   ping %.0f ms", MovementConfig.TickRate.value, fps, ping),
+			string.format("tick    %d Hz   fps %.0f", MovementConfig.TickRate.value, fps),
+			string.format("rtt     %.0f ms   ping %.0f ms%s", net.rttSmooth * 1000, ping, simText),
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
-			string.format('<font color="#%s">F2 weapon / spray labs  F3 hud  F4 lab  F6 record  F7 ghost  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
+			string.format('<font color="#%s">F2 labs  F3 hud  F4 lab  F6 record  F7 ghost  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 
 		local serverSim = controller.serverSim

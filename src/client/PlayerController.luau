@@ -32,6 +32,7 @@ local CharacterRig = require(Shared.CharacterRig)
 local CameraController = require(script.Parent.CameraController)
 local InputSampler = require(script.Parent.InputSampler)
 local RemoteEntities = require(script.Parent.RemoteEntities)
+local NetSim = require(script.Parent.NetSim)
 
 local TICK_RATE = MovementConfig.TickRate.value
 local DT = 1 / TICK_RATE
@@ -76,6 +77,10 @@ PlayerController.stats = {
 	maxCorrectionError = 0,
 	lastAckSeq = 0,
 	sentInputs = 0,
+	-- Input sent to its ack back: network round trip plus the server's queue
+	-- and frame, like Riot's "Network RTT + Processing Delays" graph.
+	rtt = 0,
+	rttSmooth = 0,
 }
 -- Called once per live simulated tick (debug tools hook in here).
 PlayerController.tickListeners = {} :: { (TickInfo) -> () }
@@ -101,6 +106,7 @@ local seq = 0
 local pending: { PlayerCodec.WireInput } = {}
 local unsent: { PlayerCodec.WireInput } = {}
 local predicted: { [number]: PlayerSim.State } = {}
+local sentAt: { [number]: number } = {}
 local accumulator = 0
 local simTime = 0
 local visualOffset = vector.create(0, 0, 0)
@@ -132,7 +138,8 @@ local function tick()
 		-- Quantise exactly as the wire does so both sides simulate the same input.
 		yaw = PlayerCodec.quantizeYaw(CameraController.yaw),
 		pitch = PlayerCodec.quantizePitch(CameraController.pitch),
-		viewTime = RemoteEntities.renderTime(),
+		-- What the player was looking at: the frame on screen.
+		viewTime = RemoteEntities.shownTime(),
 	}
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
@@ -173,7 +180,11 @@ local function flushInputs()
 	local chunk = PlayerCodec.MAX_INPUTS_PER_PACKET
 	for first = 1, #unsent, chunk do
 		local last = math.min(first + chunk - 1, #unsent)
-		remotes.PlayerInput:FireServer(PlayerCodec.encodeInputs(unsent, first, last))
+		NetSim.fireServer(remotes.PlayerInput, PlayerCodec.encodeInputs(unsent, first, last))
+	end
+	local now = os.clock()
+	for _, input in unsent do
+		sentAt[input.seq] = now
 	end
 	PlayerController.stats.sentInputs += #unsent
 	table.clear(unsent)
@@ -234,6 +245,16 @@ local function onAck(payload: buffer)
 	end
 	stats.lastAckSeq = ackSeq
 	PlayerController.serverSim = serverSim
+	local sent = sentAt[ackSeq]
+	if sent then
+		stats.rtt = os.clock() - sent
+		stats.rttSmooth = if stats.rttSmooth == 0 then stats.rtt else stats.rttSmooth + (stats.rtt - stats.rttSmooth) * 0.05
+	end
+	for k in sentAt do
+		if k <= ackSeq then
+			sentAt[k] = nil
+		end
+	end
 
 	while #pending > 0 and pending[1].seq <= ackSeq do
 		table.remove(pending, 1)
@@ -342,6 +363,7 @@ local function onCharacter(character: Model)
 	visualOffset = vector.create(0, 0, 0)
 	table.clear(pending)
 	table.clear(predicted)
+	table.clear(sentAt)
 	for _, listener in PlayerController.spawnListeners do
 		listener(sim :: PlayerSim.State)
 	end
@@ -379,13 +401,13 @@ function PlayerController.start()
 
 	CameraController.start()
 	InputSampler.start()
-	remotes.PlayerAck.OnClientEvent:Connect(onAck)
+	NetSim.on(remotes.PlayerAck, onAck)
 	remotes.Tuning.OnClientEvent:Connect(function(overrides)
 		PlayerController.overrides = overrides
 		PlayerController.cfg = MovementConfig.resolve(overrides)
 	end)
-	remotes.Combat.OnClientEvent:Connect(function(event)
-		if event.target == PlayerController.entityId and event.killed then
+	NetSim.on(remotes.Combat, function(event: any)
+		if typeof(event) == "table" and event.target == PlayerController.entityId and event.killed then
 			PlayerController.alive = false
 		end
 	end)

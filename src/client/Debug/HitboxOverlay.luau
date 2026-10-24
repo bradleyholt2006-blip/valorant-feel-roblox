@@ -3,10 +3,15 @@
 --
 --   * every other player's three hitboxes where this client draws them this
 --     frame (practice dummies are already drawn as their hitboxes)
---   * for each of your shots, for two seconds: the ray, the boxes of targets
---     near it as they were at the shot's viewTime (exactly what the client
---     tested), the client's end point (yellow) and the server's (blue). The
---     ray turns red when the server's verdict differs from the client's.
+--   * for each of your shots, for two seconds: the ray, the client's end
+--     point (yellow) and the boxes of the targets near the ray exactly as the
+--     client tested them (yellow)
+--   * when the verdict comes back: the server's end point (blue) and the
+--     boxes it tested after rewinding. Where the server tested the same pose
+--     as the client, the client's boxes turn white; where it didn't, the
+--     server's are drawn in blue next to them. A label gives the rewind, and
+--     when the verdict differs from the client's guess the ray turns red and
+--     the label says why (ClientShots.Cause).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -23,11 +28,11 @@ local ClientShots = require(script.Parent.Parent.Combat.ClientShots)
 
 local S = Units.STUDS_PER_METRE
 local SHOT_LIFETIME = 2
-local NEAR_RAY = 1.5 -- metres from the ray to a target's centre
 
 local LIVE_COLOR = Color3.fromRGB(90, 220, 120)
 local CLIENT_COLOR = Color3.fromRGB(255, 220, 80)
 local SERVER_COLOR = Color3.fromRGB(90, 160, 255)
+local SAME_COLOR = Color3.fromRGB(240, 240, 240)
 local DIFF_COLOR = Color3.fromRGB(240, 80, 80)
 
 local HitboxOverlay = {}
@@ -36,7 +41,13 @@ local enabled = false
 local folder: Folder? = nil
 local live: { [number]: { [string]: BasePart } } = {}
 
-type Drawn = { parts: { BasePart }, ray: BasePart?, expires: number }
+type Drawn = {
+	parts: { BasePart },
+	ray: BasePart?,
+	clientEnd: BasePart?,
+	boxes: { [number]: { BasePart } }, -- the client's tested boxes, by target
+	expires: number,
+}
 local drawn: { [ClientShots.Record]: Drawn } = {}
 
 local function newPart(): Part
@@ -75,6 +86,18 @@ local function regionParts(color: Color3): { [string]: BasePart }
 	return { head = outline(color), body = outline(color), legs = outline(color) }
 end
 
+-- Boxes for one pose, added to a shot's parts.
+local function drawBoxes(entry: Drawn, pose: Hitboxes.Pose, color: Color3): { BasePart }
+	local parts = regionParts(color)
+	RemoteEntities.placeBoxes(parts, pose)
+	local list = {}
+	for _, p in parts do
+		table.insert(entry.parts, p)
+		table.insert(list, p)
+	end
+	return list
+end
+
 local function line(from: vector, to: vector, color: Color3): Part
 	local p = newPart()
 	p.Transparency = 0.2
@@ -97,6 +120,24 @@ local function dot(at: vector, color: Color3): Part
 	return p
 end
 
+local function label(anchor: BasePart, text: string, color: Color3)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(240, 18)
+	gui.StudsOffset = Vector3.new(0, 0.25 * S, 0)
+	gui.AlwaysOnTop = true
+	gui.Adornee = anchor
+	local l = Instance.new("TextLabel")
+	l.Size = UDim2.fromScale(1, 1)
+	l.BackgroundTransparency = 1
+	l.Font = Enum.Font.RobotoMono
+	l.TextSize = 14
+	l.TextColor3 = color
+	l.TextStrokeTransparency = 0.3
+	l.Text = text
+	l.Parent = gui
+	gui.Parent = anchor
+end
+
 local function clearLive()
 	for _, parts in live do
 		for _, p in parts do
@@ -111,22 +152,16 @@ local function onFired(record: ClientShots.Record)
 		return
 	end
 	local shot = record.shot
-	local entry: Drawn = { parts = {}, ray = nil, expires = os.clock() + SHOT_LIFETIME }
-	for _, target in RemoteEntities.targets(record.input.viewTime) do
-		local toCenter = target.pose.position + vector.create(0, 0.9, 0) - shot.origin
-		local along = math.max(vector.dot(toCenter, shot.direction), 0)
-		if vector.magnitude(toCenter - shot.direction * along) <= NEAR_RAY then
-			local parts = regionParts(CLIENT_COLOR)
-			RemoteEntities.placeBoxes(parts, target.pose)
-			for _, p in parts do
-				table.insert(entry.parts, p)
-			end
-		end
+	local entry: Drawn = { parts = {}, ray = nil, clientEnd = nil, boxes = {}, expires = os.clock() + SHOT_LIFETIME }
+	for id, tested in record.tested do
+		entry.boxes[id] = drawBoxes(entry, tested.pose, CLIENT_COLOR)
 	end
 	local ray = line(shot.origin, record.predicted.point, CLIENT_COLOR)
 	entry.ray = ray
 	table.insert(entry.parts, ray)
-	table.insert(entry.parts, dot(record.predicted.point, CLIENT_COLOR))
+	local clientEnd = dot(record.predicted.point, CLIENT_COLOR)
+	entry.clientEnd = clientEnd
+	table.insert(entry.parts, clientEnd)
 	drawn[record] = entry
 end
 
@@ -136,16 +171,33 @@ local function onVerdict(record: ClientShots.Record)
 	if not entry or not verdict then
 		return
 	end
-	table.insert(entry.parts, dot(verdict.point, SERVER_COLOR))
+	local serverEnd = dot(verdict.point, SERVER_COLOR)
+	table.insert(entry.parts, serverEnd)
+	for id, tested in verdict.tested do
+		local mine = record.tested[id]
+		local boxes = entry.boxes[id]
+		if mine and boxes and ClientShots.samePose(mine.pose, tested.pose) then
+			for _, p in boxes do
+				setOutlineColor(p, SAME_COLOR)
+			end
+		else
+			drawBoxes(entry, tested.pose, SERVER_COLOR)
+		end
+	end
+	local text = string.format("rewind %.0f ms%s", verdict.rewind * 1000, if verdict.clamped then " CAPPED" else "")
 	if not record.agree then
+		text ..= "  " .. (record.cause or "?")
 		local ray = entry.ray
 		if ray then
 			ray.Color = DIFF_COLOR
 		end
-		for _, p in entry.parts do
-			setOutlineColor(p, DIFF_COLOR)
-		end
 	end
+	-- Label the nearer end point: usually the target.
+	local anchor = entry.clientEnd
+	if not anchor or verdict.distance < record.predicted.distance then
+		anchor = serverEnd
+	end
+	label(anchor :: BasePart, text, if record.agree then SAME_COLOR else DIFF_COLOR)
 end
 
 local function render()

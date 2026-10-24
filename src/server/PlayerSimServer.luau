@@ -7,6 +7,11 @@
 -- order. A token bucket stops a client simulating faster than real time, the
 -- queue cap bounds how far behind the server will ever run, and shots come
 -- out of the simulation itself, so fire rate and ammo are enforced here.
+--
+-- Each server frame runs everyone's queued inputs a tick at a time in turn
+-- (one input per player per round), so when two players' shots land in the
+-- same frame the one fired on the earlier tick is resolved first, whichever
+-- player's queue happens to come first.
 
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
@@ -222,9 +227,9 @@ local function onLoadout(player: Player, slot: any, id: any)
 	r.ackDirty = true
 end
 
-local function simulate(r: Record, dt: number)
-	local cfg = Tuning.config()
-	r.tokens = math.min(r.tokens + dt * TICK_RATE, MAX_BURST_TICKS)
+-- Runs the player's next queued input, if the token bucket allows one.
+-- Returns whether there may be more to run this frame.
+local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 	while r.alive and r.tokens >= 1 and #r.queue > 0 do
 		local input = table.remove(r.queue, 1) :: PlayerCodec.WireInput
 		r.tokens -= 1
@@ -239,22 +244,38 @@ local function simulate(r: Record, dt: number)
 		if shot then
 			onShot(r.entity, shot, input.viewTime)
 		end
+		return true
 	end
-	if r.sim.movement.position.y < KILL_HEIGHT then
-		r.sim = newSim(r)
-		r.entity.sim = r.sim
-		r.ackDirty = true
-	end
-	placeRoot(r)
+	return false
 end
 
 function PlayerSimServer.step(dt: number)
+	local cfg = Tuning.config()
+	for _, r in records do
+		if r.root then
+			r.tokens = math.min(r.tokens + dt * TICK_RATE, MAX_BURST_TICKS)
+		end
+	end
+	local more = true
+	while more do
+		more = false
+		for _, r in records do
+			if r.root and stepOne(r, cfg) then
+				more = true
+			end
+		end
+	end
 	local remotes = Remotes.get()
 	for _, r in records do
 		if not r.root then
 			continue
 		end
-		simulate(r, dt)
+		if r.sim.movement.position.y < KILL_HEIGHT then
+			r.sim = newSim(r)
+			r.entity.sim = r.sim
+			r.ackDirty = true
+		end
+		placeRoot(r)
 		if r.ackDirty then
 			r.ackDirty = false
 			remotes.PlayerAck:FireClient(r.player, PlayerCodec.encodeAck(r.lastSeq, r.sim))

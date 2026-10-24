@@ -1,32 +1,40 @@
 --!strict
--- Broadcasts timestamped pose snapshots of every entity (players and dummies)
--- so clients can interpolate them at a fixed delay.
+-- Broadcasts a timestamped, numbered pose snapshot of every entity (players
+-- and dummies) once per server frame, so clients can interpolate them.
+--
+-- Poses are quantised exactly as the wire does before anything sees them,
+-- and listeners (lag compensation) get each snapshot as sent, so the
+-- server's history holds exactly what clients draw.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlayerCodec = require(Shared.Net.PlayerCodec)
+local NetConfig = require(Shared.Net.NetConfig)
 local Remotes = require(Shared.Net.Remotes)
 
 local Entities = require(script.Parent.Entities)
 
-local SNAPSHOT_RATE = 60
+-- Roblox servers step at 60 Hz, so this sends every frame; it only skips
+-- frames if a server ever runs much faster than that.
+local MIN_SPACING = 0.75 / NetConfig.SNAPSHOT_RATE
 
 local Replication = {}
 
-local accumulator = 0
+local lastSent = -math.huge
+local seq = 0
 
 -- Listeners get every snapshot as sent (server time + quantised poses).
 Replication.listeners = {} :: { (number, { PlayerCodec.Pose }) -> () }
 
-function Replication.step(dt: number)
-	accumulator += dt
-	if accumulator < 1 / SNAPSHOT_RATE then
+function Replication.step()
+	local now = Workspace:GetServerTimeNow()
+	if now - lastSent < MIN_SPACING then
 		return
 	end
-	accumulator = 0
-	local now = Workspace:GetServerTimeNow()
+	lastSent = now
+	seq = (seq + 1) % 65536
 	local poses = Entities.poses()
 	local quantized = table.create(#poses)
 	for i, pose in poses do
@@ -39,7 +47,7 @@ function Replication.step(dt: number)
 	local chunk = PlayerCodec.MAX_POSES_PER_SNAPSHOT
 	for first = 1, math.max(#quantized, 1), chunk do
 		local slice = table.move(quantized, first, math.min(first + chunk - 1, #quantized), 1, {})
-		remote:FireAllClients(PlayerCodec.encodeSnapshot(now, slice))
+		remote:FireAllClients(PlayerCodec.encodeSnapshot(now, slice, seq))
 	end
 end
 

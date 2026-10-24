@@ -1,15 +1,20 @@
 --!strict
 -- Resolves shots on the server and applies damage.
 --
--- A shot comes out of the shooter's PlayerSim on the tick it was fired. The
--- server traces it against level geometry (Roblox raycast) and against every
--- target's analytic hitboxes (ShotResolver), applies damage by region and
--- range, slows the victim ("tagging"), and tells everyone what happened. In
+-- A shot comes out of the shooter's PlayerSim on the tick it was fired, with
+-- that tick's viewTime: the snapshot time the shooter's screen was showing.
+-- The server rewinds every other living entity to that time (lag
+-- compensation, capped at 140 ms like the reference since Patch 6.02),
+-- traces the shot against level geometry (Roblox raycast) and those
+-- entities' analytic hitboxes (ShotResolver), applies damage by region and
+-- range, slows the victim ("tagging") and tells everyone what happened. In
 -- the push model Riot describes, clients get hit events, not polled health.
 --
--- This version tests targets where they are on the server right now. Lag
--- compensation (rewinding targets to what the shooter saw) is system 4; the
--- viewTime the client sent with the shot is already passed through for it.
+-- The verdict sent back to the shooter also says what the server tested:
+-- how far it rewound, the rewound pose of every target near the ray and the
+-- snapshots it came from, the shot's origin and the distance to the level.
+-- That is what the debug tools use to draw the server's boxes next to the
+-- client's and to say why the two disagree when they do.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,6 +27,8 @@ local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local ShotResolver = require(Shared.Combat.ShotResolver)
+local LagCompensation = require(Shared.Combat.LagCompensation)
+local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
@@ -38,19 +45,11 @@ worldParams.FilterType = Enum.RaycastFilterType.Exclude
 worldParams.CollisionGroup = RobloxWorld.CHARACTER_GROUP
 worldParams.RespectCanCollide = true
 
--- Hook for lag compensation (system 4): returns the targets as the shooter saw them.
-local targetProvider: (shooter: Entities.Entity, viewTime: number) -> { ShotResolver.Target } = function(shooter)
-	local targets: { ShotResolver.Target } = {}
-	for _, pose in Entities.poses() do
-		if pose.id ~= shooter.id then
-			table.insert(targets, { id = pose.id, pose = { position = pose.position, yaw = pose.yaw, crouchAlpha = pose.crouchAlpha } })
-		end
-	end
-	return targets
-end
+local history = LagCompensation.new()
 
-function CombatServer.setTargetProvider(provider: (Entities.Entity, number) -> { ShotResolver.Target })
-	targetProvider = provider
+-- Replication listener: every snapshot sent becomes rewind history.
+function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
+	LagCompensation.record(history, time, poses)
 end
 
 -- Distance (metres) to the first piece of level geometry along the shot.
@@ -88,14 +87,39 @@ local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount
 	return result
 end
 
+-- Positions go as metres in a Vector3 (the wire keeps float32 exactly), so
+-- the client can compare them with its own bit for bit.
+local function describeTarget(t: LagCompensation.Target): { [string]: any }
+	return {
+		id = t.id,
+		position = Units.asVector3(t.pose.position),
+		yaw = t.pose.yaw,
+		crouch = t.pose.crouchAlpha,
+		from = t.from,
+		to = t.to,
+		held = t.held,
+	}
+end
+
 function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, viewTime: number)
 	if not shooter.health.alive then
 		return -- a dead player's queued shots are rejected, as in the reference
 	end
 	local def = WeaponConfig.get(shot.weapon)
+	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
+	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
+		local entity = Entities.get(id)
+		return id ~= shooter.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil
+	end)
 	local blockedAt = worldDistance(shot.origin, shot.direction)
-	local hit = ShotResolver.resolve(shot.origin, shot.direction, targetProvider(shooter, viewTime), blockedAt, shooter.id)
+	local hit = ShotResolver.resolve(shot.origin, shot.direction, LagCompensation.shotTargets(rewound), blockedAt, shooter.id)
 
+	local tested = {}
+	for _, t in rewound do
+		if ShotResolver.nearRay(shot.origin, shot.direction, t.pose, blockedAt) then
+			table.insert(tested, describeTarget(t))
+		end
+	end
 	local endPoint = if hit then hit.point else shot.origin + shot.direction * blockedAt
 	local verdict: { [string]: any } = {
 		shotNumber = shot.shotNumber,
@@ -103,6 +127,13 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 		weapon = shot.weapon,
 		endPoint = Units.toStuds(endPoint),
 		viewTime = viewTime,
+		rewindTime = rewind.time,
+		rewind = rewind.amount,
+		clamped = rewind.clamped,
+		origin = Units.asVector3(shot.origin),
+		direction = Units.asVector3(shot.direction),
+		blockedAt = blockedAt,
+		tested = tested,
 	}
 	if hit then
 		local victim = Entities.get(hit.targetId)
@@ -112,6 +143,7 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 			verdict.target = hit.targetId
 			verdict.region = hit.region
 			verdict.distance = hit.distance
+			verdict.hitPoint = Units.asVector3(hit.point)
 			verdict.damage = result.damage
 			verdict.killed = result.killed
 		end

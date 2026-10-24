@@ -10,6 +10,13 @@
 -- level geometry stay up (newest MAX_MARKS) so a spray against the backstop
 -- leaves its pattern for comparison with reference footage. Backspace clears
 -- them.
+--
+-- Hits on characters follow Patch 1.07: a small client-predicted spark
+-- appears at once where the shot met the target as drawn ("DOES NOT mean
+-- your shot has registered on the server (similar to tracers)"), and the hit
+-- confirm only comes with the server's verdict, spawned "at the location of
+-- the hit on the character" and staying attached to it as the character
+-- moves, turns or crouches.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,11 +26,13 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
+local Hitboxes = require(Shared.Combat.Hitboxes)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
 local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
+local NetSim = require(script.Parent.Parent.NetSim)
 local ClientShots = require(script.Parent.ClientShots)
 
 local S = Units.STUDS_PER_METRE
@@ -278,16 +287,60 @@ local function drawShot(record: ClientShots.Record)
 	local from = WeaponEffects.muzzlePosition()
 	tracer(from, Units.toStuds(outcome.point), Color3.fromRGB(255, 220, 140), 0.012)
 	if outcome.targetId then
-		spark(outcome.point, Color3.fromRGB(255, 90, 70), 0.04)
+		spark(outcome.point, Color3.fromRGB(255, 240, 200), 0.02) -- client-predicted, not a hit
 	elseif outcome.normal then
 		mark(outcome.point, outcome.normal)
 	end
 end
 
+-- Server hit confirms, each pinned to a spot on a region's box.
+local CONFIRM_TIME = 0.35
+local CONFIRM_COLOR = Color3.fromRGB(200, 30, 40)
+type Confirm = { id: number, region: Hitboxes.Region, fraction: vector, start: number, size: number, part: BasePart }
+local confirms: { Confirm } = {}
+
 local function onVerdict(record: ClientShots.Record)
 	local verdict = record.verdict
-	if verdict and verdict.targetId and verdict.region then
-		RemoteEntities.flashRegion(verdict.targetId, verdict.region)
+	if not verdict or not verdict.targetId or not verdict.region then
+		return
+	end
+	RemoteEntities.flashRegion(verdict.targetId, verdict.region)
+	-- Where on the target, from the pose the server hit.
+	local tested = verdict.tested[verdict.targetId]
+	local hitPoint = verdict.hitPoint
+	local region: Hitboxes.Region = verdict.region :: Hitboxes.Region
+	local box = if tested then Hitboxes.region(tested.pose, region) else nil
+	if not box or not hitPoint then
+		return
+	end
+	local confirm: Confirm = {
+		id = verdict.targetId,
+		region = region,
+		fraction = Hitboxes.boxFraction(box, hitPoint),
+		start = os.clock(),
+		size = if region == "head" then 0.07 else 0.08, -- Patch 1.07 scaled headshot effects down slightly
+		part = effectPart("HitConfirm", CONFIRM_COLOR, Enum.Material.Neon),
+	}
+	table.insert(confirms, confirm)
+end
+
+local function updateConfirms()
+	local now = os.clock()
+	local renderTime = RemoteEntities.renderTime()
+	for i = #confirms, 1, -1 do
+		local c = confirms[i]
+		local t = (now - c.start) / CONFIRM_TIME
+		local pose = if RemoteEntities.isPresent(c.id) then RemoteEntities.sample(c.id, renderTime) else nil
+		local box = if pose and t < 1 then Hitboxes.region({ position = pose.position, yaw = pose.yaw, crouchAlpha = pose.crouchAlpha }, c.region) else nil
+		if not box then
+			c.part:Destroy()
+			table.remove(confirms, i)
+			continue
+		end
+		c.part.Size = Vector3.one * c.size * (1 + t) * S
+		c.part.CFrame = CFrame.new(Units.toStuds(Hitboxes.boxPoint(box, c.fraction)))
+		c.part.Transparency = 0.1 + 0.9 * t
+		c.part.Parent = effectsFolder
 	end
 end
 
@@ -327,7 +380,7 @@ function WeaponEffects.start()
 		table.insert(queued, record)
 	end)
 	table.insert(ClientShots.verdictListeners, onVerdict)
-	Remotes.get().ShotFx.OnClientEvent:Connect(onShotFx)
+	NetSim.on(Remotes.get().ShotFx, onShotFx)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if not processed and input.KeyCode == Enum.KeyCode.Backspace then
@@ -342,6 +395,7 @@ function WeaponEffects.start()
 			drawShot(record)
 		end
 		table.clear(queued)
+		updateConfirms()
 		local now = os.clock()
 		for i = #fades, 1, -1 do
 			local e = fades[i]

@@ -5,7 +5,7 @@ how it grows over a spray and recovers between shots (Gun Recovery Time and tap 
 extra error for moving, jumping and landing, what crouching and aiming down sights do, where in
 the cone a bullet lands ("error power"), the recoil climb and sideways drift, and how much of the
 recoil the camera shows. Firing itself (fire rate, ammo, scopes) is system 2. Rewinding targets to
-what the shooter saw is system 4.
+what the shooter saw is system 4 (`docs/research/04-hit-registration.md`).
 
 As before, everything comes from public patch notes, developer statements, community wikis and
 footage. No game files, memory or protected assets were used. Status labels:

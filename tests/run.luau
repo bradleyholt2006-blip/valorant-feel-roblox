@@ -11,5 +11,6 @@ require("./weapons")
 require("./accuracy")
 require("./combat")
 require("./net")
+require("./hitreg")
 
 H.finish()
