@@ -4,9 +4,10 @@
 -- Clients send their per-tick input; the server re-runs the same PlayerSim on
 -- it and owns the result. Like the reference's server move queue (Riot,
 -- "Peeking into VALORANT's Netcode"), inputs are numbered, queued and run in
--- order. A token bucket stops a client simulating faster than real time, the
--- queue cap bounds how far behind the server will ever run, and shots come
--- out of the simulation itself, so fire rate and ammo are enforced here.
+-- order. InputQueue's budget stops a client simulating faster than real time,
+-- its cap bounds how far behind the server will ever run, and it drains a
+-- backlog that would otherwise last. Shots come out of the simulation itself,
+-- so fire rate and ammo are enforced here.
 --
 -- Each server frame runs everyone's queued inputs a tick at a time in turn
 -- (one input per player per round), so when two players' shots land in the
@@ -25,6 +26,7 @@ local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
+local InputQueue = require(Shared.Net.InputQueue)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
@@ -34,8 +36,6 @@ local Tuning = require(script.Parent.Tuning)
 
 local TICK_RATE = MovementConfig.TickRate.value
 local DT = 1 / TICK_RATE
-local MAX_BURST_TICKS = 16 -- real-time slack a client may bank (125 ms)
-local MAX_QUEUE = 24 -- inputs; beyond this the oldest are dropped (~190 ms)
 local KILL_HEIGHT = -150 -- metres
 
 type Record = {
@@ -46,8 +46,7 @@ type Record = {
 	rootOffset: number, -- studs from feet to HumanoidRootPart centre
 	spawnFeet: vector,
 	sim: PlayerSim.State,
-	queue: { PlayerCodec.WireInput },
-	tokens: number,
+	inputs: InputQueue.Queue<PlayerCodec.WireInput>,
 	lastSeq: number,
 	ackDirty: boolean,
 	yaw: number,
@@ -110,8 +109,7 @@ local function onCharacter(r: Record, character: Model)
 	r.spawnFeet = feet + vector.create(0, 0.05, 0)
 	character:SetAttribute(CharacterRig.SPAWN_FEET, Units.asVector3(r.spawnFeet))
 	r.sim = newSim(r)
-	r.queue = {}
-	r.tokens = 0
+	r.inputs = InputQueue.new()
 	r.character = character
 	r.root = root
 	r.ackDirty = true
@@ -158,7 +156,7 @@ local function onPlayerAdded(player: Player)
 		end,
 		onKilled = function()
 			r.alive = false
-			table.clear(r.queue)
+			InputQueue.clear(r.inputs)
 			local humanoid = r.character and r.character:FindFirstChildOfClass("Humanoid")
 			if humanoid then
 				humanoid.Health = 0
@@ -173,8 +171,7 @@ local function onPlayerAdded(player: Player)
 		rootOffset = 3,
 		spawnFeet = vector.create(0, 5, 0),
 		sim = PlayerSim.new(vector.create(0, 5, 0)),
-		queue = {},
-		tokens = 0,
+		inputs = InputQueue.new(),
 		lastSeq = 0,
 		ackDirty = false,
 		yaw = 0,
@@ -203,14 +200,13 @@ local function onInput(player: Player, payload: any)
 	end
 	for _, input in inputs do
 		if input.seq > r.lastSeq then
-			table.insert(r.queue, input)
+			local dropped = InputQueue.push(r.inputs, input)
+			if dropped then
+				r.lastSeq = math.max(r.lastSeq, dropped.seq)
+				r.droppedInputs += 1
+				r.ackDirty = true
+			end
 		end
-	end
-	while #r.queue > MAX_QUEUE do
-		local dropped = table.remove(r.queue, 1) :: PlayerCodec.WireInput
-		r.lastSeq = math.max(r.lastSeq, dropped.seq)
-		r.droppedInputs += 1
-		r.ackDirty = true
 	end
 end
 
@@ -228,12 +224,14 @@ local function onLoadout(player: Player, slot: any, id: any)
 	r.ackDirty = true
 end
 
--- Runs the player's next queued input, if the token bucket allows one.
--- Returns whether there may be more to run this frame.
+-- Runs the player's next queued input, if the budget allows one. Returns
+-- whether there may be more to run this frame.
 local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
-	while r.alive and r.tokens >= 1 and #r.queue > 0 do
-		local input = table.remove(r.queue, 1) :: PlayerCodec.WireInput
-		r.tokens -= 1
+	while r.alive do
+		local input = InputQueue.take(r.inputs)
+		if not input then
+			return false
+		end
 		if input.seq <= r.lastSeq then
 			continue
 		end
@@ -254,7 +252,7 @@ function PlayerSimServer.step(dt: number)
 	local cfg = Tuning.config()
 	for _, r in records do
 		if r.root then
-			r.tokens = math.min(r.tokens + dt * TICK_RATE, MAX_BURST_TICKS)
+			InputQueue.refill(r.inputs, dt)
 		end
 	end
 	local more = true
@@ -271,6 +269,7 @@ function PlayerSimServer.step(dt: number)
 		if not r.root then
 			continue
 		end
+		InputQueue.endFrame(r.inputs, dt)
 		if r.sim.movement.position.y < KILL_HEIGHT then
 			r.sim = newSim(r)
 			r.entity.sim = r.sim
