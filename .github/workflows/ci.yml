@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Luau, Rojo and luau-lsp
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -sSL -o luau.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
+          unzip -q luau.zip -d "$HOME/bin"
+          curl -sSL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-linux-x86_64.zip
+          unzip -q rojo.zip -d "$HOME/bin"
+          curl -sSL -o lsp.zip https://github.com/JohnnyMorganz/luau-lsp/releases/latest/download/luau-lsp-linux-x86_64.zip
+          unzip -q lsp.zip -d "$HOME/bin"
+          curl -sSL -o roblox.d.luau https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.None.d.luau
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Movement tests
+        run: luau tests/run.luau
+
+      - name: Type check
+        run: |
+          rojo sourcemap default.project.json -o sourcemap.json
+          luau-lsp analyze --definitions=roblox.d.luau --sourcemap=sourcemap.json src

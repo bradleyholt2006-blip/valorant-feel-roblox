@@ -1,0 +1,124 @@
+--!strict
+-- Builds a measurement course (original geometry) when the place has no map.
+-- Everything is laid out in metres so it matches the numbers in the docs:
+--   * 20 m sprint lane with a stripe every metre and a post every 5 m
+--   * steps of 0.20 / 0.35 / 0.50 m (the last should block; stepHeight 0.35)
+--   * a 1.5 m crouch tunnel
+--   * jump boxes of 0.50 / 0.70 / 0.85 / 1.00 m
+--   * ramps at 30 / 45 / 50 degrees (maxGroundAngle is 46)
+--   * an angled wall for wall-slide checks
+
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Units = require(ReplicatedStorage:WaitForChild("Shared").Units)
+
+local S = Units.STUDS_PER_METRE
+
+local TestRange = {}
+
+local function part(parent: Instance, name: string, sizeM: Vector3, centerM: Vector3, color: Color3, rotation: CFrame?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.Size = sizeM * S
+	p.CFrame = CFrame.new(centerM * S) * (rotation or CFrame.identity)
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	return p
+end
+
+local function sign(target: BasePart, text: string)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Top
+	gui.PixelsPerStud = 40
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Text = text
+	label.Parent = gui
+	gui.Parent = target
+end
+
+function TestRange.buildIfMissing()
+	if Workspace:FindFirstChild("Map") or Workspace:FindFirstChild("VFTestRange") then
+		return
+	end
+	local root = Instance.new("Folder")
+	root.Name = "VFTestRange"
+
+	local grey = Color3.fromRGB(70, 72, 80)
+	local light = Color3.fromRGB(200, 200, 205)
+	local accent = Color3.fromRGB(240, 90, 90)
+
+	part(root, "Floor", Vector3.new(80, 1, 80), Vector3.new(0, -0.5, 0), grey)
+
+	-- Sprint lane along +X from x = 0.
+	for m = 0, 20 do
+		local stripe = part(root, "Lane" .. m, Vector3.new(0.05, 0.01, 2), Vector3.new(m, 0.005, -6), if m % 5 == 0 then accent else light)
+		stripe.CanCollide = false
+		if m % 5 == 0 then
+			local post = part(root, "Post" .. m, Vector3.new(0.1, 2, 0.1), Vector3.new(m, 1, -7.2), accent)
+			post.CanCollide = false
+			local tag = part(root, "Tag" .. m, Vector3.new(0.8, 0.01, 0.4), Vector3.new(m, 0.006, -4.6), grey)
+			tag.CanCollide = false
+			sign(tag, m .. " m")
+		end
+	end
+
+	-- Steps.
+	for i, h in { 0.20, 0.35, 0.50 } do
+		local step = part(root, string.format("Step_%.2fm", h), Vector3.new(2, h, 2), Vector3.new(-6 - (i - 1) * 3, h / 2, 6), light)
+		sign(step, string.format("%.2f m", h))
+	end
+
+	-- Crouch tunnel: 1.5 m clearance, 4 m long.
+	part(root, "TunnelRoof", Vector3.new(4, 0.3, 3), Vector3.new(8, 1.5 + 0.15, 8), light)
+	part(root, "TunnelWallA", Vector3.new(4, 1.5, 0.3), Vector3.new(8, 0.75, 6.35), grey)
+	part(root, "TunnelWallB", Vector3.new(4, 1.5, 0.3), Vector3.new(8, 0.75, 9.65), grey)
+
+	-- Jump boxes.
+	for i, h in { 0.50, 0.70, 0.85, 1.00 } do
+		local box = part(root, string.format("Jump_%.2fm", h), Vector3.new(1.5, h, 1.5), Vector3.new(-6 - (i - 1) * 2.5, h / 2, -10), accent)
+		sign(box, string.format("%.2f m", h))
+	end
+
+	-- Ramps (rotated about Z, rising toward -X).
+	for i, deg in { 30, 45, 50 } do
+		local length = 5
+		local rise = math.sin(math.rad(deg)) * length / 2
+		local ramp = part(
+			root,
+			"Ramp_" .. deg,
+			Vector3.new(length, 0.2, 2),
+			Vector3.new(18, rise, 6 + (i - 1) * 3),
+			light,
+			CFrame.Angles(0, 0, math.rad(deg))
+		)
+		sign(ramp, deg .. " deg")
+	end
+
+	-- Angled wall for slide tests.
+	part(root, "SlideWall", Vector3.new(8, 3, 0.3), Vector3.new(14, 1.5, -14), grey, CFrame.Angles(0, math.rad(30), 0))
+
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "Spawn"
+	spawn.Anchored = true
+	spawn.Size = Vector3.new(1.5, 0.1, 1.5) * S
+	spawn.CFrame = CFrame.new(Vector3.new(0, 0.05, 0) * S)
+	spawn.Transparency = 0.5
+	spawn.CanCollide = false
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Parent = root
+
+	root.Parent = Workspace
+end
+
+return TestRange

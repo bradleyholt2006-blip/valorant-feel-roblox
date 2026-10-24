@@ -1,0 +1,208 @@
+--!strict
+-- Always-on movement HUD (toggle F3):
+--   * crosshair whose arms spread with movement error, like the reference
+--     game's "Movement error" crosshair option, so footage can be compared
+--     side by side
+--   * stats panel: speed, % of max, accuracy state, flags, netcode health
+--   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
+--   * ghost box at the last authoritative server position (toggle F7)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local MovementConfig = require(Shared.Movement.MovementConfig)
+local MovementSim = require(Shared.Movement.MovementSim)
+local Units = require(Shared.Units)
+
+local Ui = require(script.Parent.Ui)
+
+local B = MovementSim.Buttons
+
+local DebugHud = {}
+
+local CROSSHAIR_MIN_GAP = 4
+local CROSSHAIR_MAX_GAP = 40
+local ARM_LENGTH = 8
+
+function DebugHud.start(controller: any)
+	local gui = Ui.screen("VFDebugHud", 20)
+
+	-- Crosshair ------------------------------------------------------------
+	local crosshair = Ui.frame(gui, {
+		Size = UDim2.fromOffset(1, 1),
+		Position = UDim2.fromScale(0.5, 0.5),
+		BackgroundTransparency = 1,
+	})
+	local dot = Ui.frame(crosshair, {
+		Size = UDim2.fromOffset(2, 2),
+		Position = UDim2.fromOffset(-1, -1),
+		BackgroundColor3 = Ui.TEXT,
+		BackgroundTransparency = 0,
+	})
+	local arms = {}
+	for _, dir in { Vector2.new(1, 0), Vector2.new(-1, 0), Vector2.new(0, 1), Vector2.new(0, -1) } do
+		local arm = Ui.frame(crosshair, {
+			Size = if dir.X ~= 0 then UDim2.fromOffset(ARM_LENGTH, 2) else UDim2.fromOffset(2, ARM_LENGTH),
+			BackgroundColor3 = Ui.GOOD,
+			BackgroundTransparency = 0,
+		})
+		table.insert(arms, { frame = arm, dir = dir })
+	end
+
+	-- Stats panel ------------------------------------------------------------
+	local panel = Ui.frame(gui, {
+		Size = UDim2.fromOffset(330, 236),
+		Position = UDim2.fromOffset(12, 12),
+	})
+	local stats = Ui.label(panel, {
+		Size = UDim2.new(1, -16, 1, -12),
+		Position = UDim2.fromOffset(8, 6),
+	})
+
+	-- Key overlay ------------------------------------------------------------
+	local keys = Ui.frame(gui, {
+		Size = UDim2.fromOffset(166, 112),
+		Position = UDim2.new(0.5, -83, 1, -132),
+		BackgroundTransparency = 1,
+	})
+	local keyCells: { { frame: Frame, flag: number } } = {}
+	local function key(text: string, flag: number, x: number, y: number, w: number?)
+		local cell = Ui.frame(keys, {
+			Size = UDim2.fromOffset(w or 38, 30),
+			Position = UDim2.fromOffset(x, y),
+		})
+		Ui.label(cell, {
+			Size = UDim2.fromScale(1, 1),
+			Text = text,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center,
+		})
+		table.insert(keyCells, { frame = cell, flag = flag })
+	end
+	key("W", B.Forward, 64, 0)
+	key("A", B.Left, 22, 34)
+	key("S", B.Back, 64, 34)
+	key("D", B.Right, 106, 34)
+	key("Shift", B.Walk, 0, 68, 52)
+	key("Ctrl", B.Crouch, 56, 68, 46)
+	key("Space", B.Jump, 106, 68, 60)
+
+	-- Ghost ------------------------------------------------------------------
+	local ghost = Instance.new("Part")
+	ghost.Name = "VFServerGhost"
+	ghost.Anchored = true
+	ghost.CanCollide = false
+	ghost.CanQuery = false
+	ghost.CanTouch = false
+	ghost.Transparency = 0.7
+	ghost.Color = Ui.NEUTRAL
+	ghost.Material = Enum.Material.ForceField
+	ghost.Parent = nil
+
+	local visible = true
+	local ghostVisible = false
+	local lastInput = 0
+	local lastState: MovementSim.State? = nil
+	local lastInfo: any = nil
+
+	table.insert(controller.tickListeners, function(info: any)
+		lastInput = info.input.buttons
+		lastState = info.state
+		lastInfo = info
+	end)
+
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		if input.KeyCode == Enum.KeyCode.F3 then
+			visible = not visible
+			panel.Visible = visible
+			keys.Visible = visible
+		elseif input.KeyCode == Enum.KeyCode.F7 then
+			ghostVisible = not ghostVisible
+			ghost.Parent = if ghostVisible then Workspace else nil
+		end
+	end)
+
+	local fps = 60
+	RunService.RenderStepped:Connect(function(dt)
+		fps += (1 / math.max(dt, 1e-4) - fps) * 0.05
+		local s = lastState
+		local info = lastInfo
+		if not s or not info then
+			return
+		end
+		local cfg = controller.cfg
+		local speed = MovementSim.horizontalSpeed(s)
+		local threshold = info.maxSpeed * info.accurateFraction
+		local accurate = MovementSim.isAccurate(s, info.maxSpeed, info.accurateFraction)
+		local landPenalty = (s.tick - s.lastLandTick) / MovementConfig.TickRate.value < cfg.jumpLandPenaltyTime
+
+		-- Crosshair spread: 0 inside the deadzone, then linear up to max speed.
+		local errorFraction = 0
+		if not s.grounded then
+			errorFraction = 1
+		elseif speed > threshold then
+			errorFraction = math.clamp((speed - threshold) / math.max(info.maxSpeed - threshold, 1e-3), 0, 1)
+		end
+		local gap = CROSSHAIR_MIN_GAP + (CROSSHAIR_MAX_GAP - CROSSHAIR_MIN_GAP) * errorFraction
+		for _, arm in arms do
+			local d = arm.dir
+			arm.frame.Position = UDim2.fromOffset(
+				if d.X > 0 then gap elseif d.X < 0 then -gap - ARM_LENGTH else -1,
+				if d.Y > 0 then gap elseif d.Y < 0 then -gap - ARM_LENGTH else -1
+			)
+			arm.frame.BackgroundColor3 = if accurate and not landPenalty then Ui.GOOD else Ui.BAD
+		end
+		dot.BackgroundColor3 = if accurate then Ui.GOOD else Ui.BAD
+
+		for _, cell in keyCells do
+			local down = bit32.band(lastInput, cell.flag) ~= 0
+			cell.frame.BackgroundColor3 = if down then Ui.NEUTRAL else Ui.PANEL
+			cell.frame.BackgroundTransparency = if down then 0.1 else 0.45
+		end
+
+		if not visible then
+			return
+		end
+		local net = controller.stats
+		local ping = Players.LocalPlayer:GetNetworkPing() * 1000
+		local stateText = if accurate
+			then string.format('<font color="#%s">ACCURATE</font>', Ui.hex(Ui.GOOD))
+			else string.format('<font color="#%s">MOVING ERROR</font>', Ui.hex(Ui.BAD))
+		local flags = table.concat({
+			if s.grounded then "ground" else "air",
+			if s.crouched then "crouch" else "",
+			if bit32.band(lastInput, B.Walk) ~= 0 then "walk" else "",
+			if landPenalty then "LAND" else "",
+		}, " ")
+		stats.Text = table.concat({
+			string.format("<b>%s</b>  %s", controller.profile().name, stateText),
+			string.format("speed   %5.2f m/s  %5.1f st/s", speed, speed * Units.STUDS_PER_METRE),
+			string.format("of max  %5.1f%%   deadzone %.0f%% (%.2f m/s)", speed / info.maxSpeed * 100, info.accurateFraction * 100, threshold),
+			string.format("vert    %5.2f m/s", s.velocity.y),
+			string.format("state   %s", flags),
+			string.format("pos     %.2f %.2f %.2f m", s.position.x, s.position.y, s.position.z),
+			"",
+			string.format("tick    %d Hz   fps %.0f   ping %.0f ms", MovementConfig.TickRate.value, fps, ping),
+			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
+			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
+			string.format('<font color="#%s">F3 hud  F4 lab  F6 record  F7 ghost  1/2/3 weapon</font>', Ui.hex(Ui.DIM)),
+		}, "\n")
+
+		local server = controller.serverState
+		if ghostVisible and server then
+			local h = MovementSim.boxHeight(server, cfg)
+			local size = Vector3.new(cfg.halfWidth * 2, h, cfg.halfWidth * 2) * Units.STUDS_PER_METRE
+			ghost.Size = size
+			ghost.CFrame = CFrame.new(Units.toStuds(server.position) + Vector3.new(0, size.Y / 2, 0))
+		end
+	end)
+end
+
+return DebugHud
