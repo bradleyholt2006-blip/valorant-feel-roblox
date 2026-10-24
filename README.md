@@ -6,7 +6,8 @@ only from public footage, patch notes, developer blogs and our own measurements.
 
 Built one system at a time:
 
-1. **First-person movement and counter-strafing** - [research and design](docs/research/01-movement.md)
+1. **First-person movement and counter-strafing**, with Counter-Strike's air strafing held to running
+   speed - [research and design](docs/research/01-movement.md)
 2. **Weapon firing**: fire modes, fire rate, ammo, reload, draw, ADS and scopes, damage, health and
    shields, hit slow, server-side hit resolution, practice dummies, and other players drawn as
    their hitboxes until there are agent models - [research and design](docs/research/02-weapon-firing.md)
@@ -36,11 +37,11 @@ Built one system at a time:
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife.
 Debug: F2 weapon lab, then spray lab and hit reg lab on further presses, F3 HUD (with the next
-shot's cone on the crosshair; G with the HUD on shows the server ghost), F4 counter-strafe lab
-(Z zeroes its cm/360 counter, Backspace clears its stops), F6 record CSV, F10 hitbox overlay,
-Backspace clear impact marks, counters and the spray plot, 4-8 give Vandal / Phantom / Operator /
-Sheriff / Classic (Studio or place owner only). F7 and F8 are left alone because Studio takes them
-for Start and Run.
+shot's cone on the crosshair and the last jump measured; G with the HUD on shows the server
+ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
+CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot, 4-8 give
+Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only). F7 and F8 are left
+alone because Studio takes them for Start and Run.
 In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, B Network Buffering,
 K rewind cap 140 / 200 / 0 ms (0 is no lag compensation); its motion line measures how evenly the
 player or dummy nearest the crosshair moves.
@@ -58,12 +59,12 @@ outside Roblox:
 luau tests/run.luau
 ```
 
-It prints metrics reports (start, stop and counter-strafe timings per weapon; fire rate, magazine
-and time-to-kill per weapon; cone and recoil by bullet, and tapping recovery, per weapon; client and
-server agreement on a strafing target through a simulated network; how evenly other players and
-dummies are drawn, paced and not; damage left through walls by class, material and thickness) and
-runs the test suites. CI also type-checks everything with
-`luau-lsp` and Roblox definitions.
+It prints metrics reports (start, stop and counter-strafe timings per weapon; air drift, air stops
+and how far air strafing bends a jump; fire rate, magazine and time-to-kill per weapon; cone and
+recoil by bullet, and tapping recovery, per weapon; client and server agreement on a strafing
+target through a simulated network; how evenly other players and dummies are drawn, paced and
+not; damage left through walls by class, material and thickness) and runs the test suites. CI
+also type-checks everything with `luau-lsp` and Roblox definitions.
 
 ## Rules for this project
 

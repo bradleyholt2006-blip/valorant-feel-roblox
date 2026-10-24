@@ -13,7 +13,9 @@
 -- decelerates through the input instead, at the same rate. So counter-
 -- strafing stops no sooner than letting go, which matches Riot's own stop
 -- timings (docs/research/01-movement.md), unlike Source-engine games where
--- it stops you far sooner.
+-- it stops you far sooner. In the air it borrows from Counter-Strike
+-- instead: its air acceleration, so air strafing works as it does there, but
+-- held to running speed, which is what Valorant players report.
 
 export type World = {
 	-- Sweep an axis-aligned box (center, halfExtents) along delta. Returns the
@@ -204,16 +206,34 @@ local function groundVelocity(vel: vector, wishDir: vector, wishSpeed: number, d
 	return vector.create(h.x, vel.y, h.z)
 end
 
--- Air control (Source-style: only the part of the velocity along the wish
--- direction is limited, by the wish speed).
-local function accelerate(vel: vector, wishDir: vector, wishSpeed: number, accel: number, dt: number): vector
-	local current = vector.dot(vel, wishDir)
-	local add = wishSpeed - current
+-- One tick of air velocity: Quake's air acceleration, as Counter-Strike
+-- uses it, under Valorant's speed limit.
+--   * Input adds up to airAcceleration x wishSpeed per second along the wish
+--     direction, but only until the velocity's share along it reaches
+--     airWishSpeedCap. So pushing the way you already move adds nothing,
+--     pushing against it brakes you hard, and pushing across it adds a
+--     little sideways each tick, which turns the velocity: holding A or D
+--     while turning the mouse the same way keeps it following the crosshair
+--     (air strafing).
+--   * Input can't take the speed along the ground past airSpeedLimit x
+--     wishSpeed, or past what it already was if that's faster, so strafing
+--     turns you without speeding you up. Counter-Strike has no such limit,
+--     which is how strafing builds speed there.
+--   * Letting go keeps the velocity: nothing brakes you in the air.
+local function airVelocity(vel: vector, wishDir: vector, wishSpeed: number, dt: number, cfg: any): vector
+	local h = horizontal(vel)
+	local add = math.min(wishSpeed, cfg.airWishSpeedCap) - vector.dot(h, wishDir)
 	if add <= 0 then
 		return vel
 	end
-	local accelSpeed = math.min(accel * wishSpeed * dt, add)
-	return vel + wishDir * accelSpeed
+	local before = vector.magnitude(h)
+	h += wishDir * math.min(cfg.airAcceleration * wishSpeed * dt, add)
+	local limit = math.max(wishSpeed * cfg.airSpeedLimit, before)
+	local speed = vector.magnitude(h)
+	if speed > limit then
+		h *= limit / speed
+	end
+	return vector.create(h.x, vel.y, h.z)
 end
 
 local function clipVelocity(vel: vector, normal: vector): vector
@@ -434,7 +454,9 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 		vel = groundVelocity(vel, wishDir, wishSpeed, dt, cfg)
 		vel = vector.create(vel.x, 0, vel.z)
 	else
-		vel = accelerate(vel, wishDir, math.min(wishSpeed, cfg.airWishSpeedCap), cfg.airAcceleration, dt)
+		-- Crouching doesn't slow input in the air, as in Source and Unreal.
+		local airWishSpeed = if has(buttons, Buttons.Walk) then weaponMaxSpeed * cfg.walkMultiplier else weaponMaxSpeed
+		vel = airVelocity(vel, wishDir, airWishSpeed, dt, cfg)
 	end
 
 	if not s.grounded then

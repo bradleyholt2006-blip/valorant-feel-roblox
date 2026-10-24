@@ -124,6 +124,25 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
 - **M10 Recorder.** Press F6, strafe and stop a few times, then F6 again. The Output window shows
   `[Recorder] N ticks. CSV follows:`, the rows, then `[Recorder] end of CSV`. There's no need to
   send it.
+- **M11 Air control.** With the Vandal, watch the HUD's three `jump` lines, which describe your
+  last jump: its airtime, distance and how far to the side of where you faced as you left the
+  ground; how far the path bent on the way; and the speed along the ground leaving and landing,
+  with the top speed between.
+  1. Stand still, jump and hold D until you land: `jump 0.66 s  0.37 m  0.37 m right`,
+     `path bent 0°`, `speed 0.00 > 0.57 m/s, top 0.57`.
+  2. Run down the sprint lane, jump and let go of everything: `3.59 m  0.00 m right`,
+     `path bent 0°`, `speed 5.40 > 5.40`.
+  3. Run, jump and hold S: you stop in the air and land within 0.3 m of where you jumped, reading
+     `speed 5.40 > 0.57`.
+  4. Run, let go of W as you jump, hold D and turn the mouse smoothly right, about a quarter turn
+     during the jump. The view keeps moving straight ahead while it turns, and the HUD reads a
+     bend of the angle you turned plus about 6 degrees (`path bent 96° right` for exactly a
+     quarter turn), landing about 2.5 m to the right at `speed 5.40 > 5.40`. Try it to the left
+     with A.
+  5. The same quarter turn with W held instead of D: the path barely bends (about 6 degrees).
+  6. Strafe-hop down the sprint lane: jump holding D with the mouse turning right, jump again the
+     moment you land holding A with the mouse turning left, and so on. You can keep it going, and
+     `top` never goes past 5.40.
 
 ## 4. Weapons
 
@@ -306,6 +325,7 @@ S1 self-test line:
 C3 counts: slider ___ gave ___ counts, slider ___ gave ___ counts (mouse DPI, if known: ___)
 M2 counter: accurate ___ ms, stopped ___ ms; release: accurate ___ ms, stopped ___ ms
 M9 corrections max: ___ mm (no latency), ___ mm (50 ms each way)
+M11 air: standing D ___ m right; let go ___ m, speed ___ > ___; S lands ___ m from take-off; D quarter turn: bent ___°, speed ___ > ___; W quarter turn: bent ___°; hops top ___ m/s
 W1 fire rate: Vandal ___, Phantom ___, Sheriff ___, Classic ___, Operator ___
 H1 snapshots ___/s, render delay ___ ms, held a pose on ___% of frames
 H2 agreement ___%, rewind mean ___ ms
@@ -325,6 +345,7 @@ Didn't look right (IDs and what you saw):
 | 01 | The client's per-frame root CFrame wins over the replicated one without flicker | T1 |
 | 01 | Collision with ramps, the angled wall and the jump boxes' faces | M5, M6, M7 |
 | 01 | Whether `GetMouseDelta` needs Roblox's sensitivity divided out | C3 |
+| 01 | Air strafing with a real mouse at Roblox frame rates | M11 |
 | 02 | Mouse buttons reach the game, and right-click isn't taken by the camera scripts | C1 |
 | 02 | Viewmodel and muzzle flash in front of a scriptable camera at 103 degrees | C2 |
 | 02 | The `VFCharacters` group keeps characters out of shot traces | W6, T3 |

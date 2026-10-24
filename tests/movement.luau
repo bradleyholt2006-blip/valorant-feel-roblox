@@ -4,6 +4,7 @@
 local MovementConfig = require("../src/shared/Movement/MovementConfig")
 local MovementSim = require("../src/shared/Movement/MovementSim")
 local StopAnalyzer = require("../src/shared/Movement/StopAnalyzer")
+local JumpAnalyzer = require("../src/shared/Movement/JumpAnalyzer")
 local WeaponConfig = require("../src/shared/Weapons/WeaponConfig")
 local BoxMath = require("../src/shared/Movement/BoxMath")
 local FakeWorld = require("./FakeWorld")
@@ -542,6 +543,169 @@ do
 	analyzer:clear()
 	local _, after = analyzer:average("release", "distance")
 	check("clearing the analyzer forgets every stop (the lab's Backspace)", #analyzer.history == 0 and after == 0)
+end
+
+H.section("Air movement")
+
+-- One jump on the flat floor, measured the way the HUD measures it: run at
+-- full speed first if `running`, take off, then hold `keys` in the air while
+-- the mouse turns right at `turn` degrees a second (left if negative), until
+-- the player lands. Also returns the fastest speed along the ground on the
+-- way and how long holding `keys` took to stop the run, if it did.
+local function airJump(keys: number, turn: number, running: boolean, c: any?): (JumpAnalyzer.Jump, number, number?)
+	local tuning = c or cfg
+	local s = spawn(floor)
+	local analyzer = JumpAnalyzer.new()
+	local yaw, t = 0, 0
+	local function step(buttons: number): JumpAnalyzer.Jump?
+		MovementSim.step(s, input(buttons, yaw), tuning, RIFLE, floor, DT)
+		t += DT
+		return JumpAnalyzer.tick(analyzer, t, s.position, s.velocity, s.grounded, yaw)
+	end
+	local runKeys = if running then B.Forward else 0
+	for _ = 1, if running then 256 else 1 do
+		step(runKeys)
+	end
+	step(runKeys + B.Jump)
+	local fastest, stopped = 0, nil
+	for i = 1, 512 do
+		yaw -= math.rad(turn) * DT
+		local jump = step(keys)
+		fastest = math.max(fastest, MovementSim.horizontalSpeed(s))
+		if stopped == nil and running and -s.velocity.z <= 0 then
+			stopped = i * DT
+		end
+		if jump then
+			return jump, fastest, stopped
+		end
+	end
+	error("never landed")
+end
+
+-- A run and then `count` strafe hops in a row: each one holds D and turns
+-- right, the next A and left, and jumps again on the tick it lands. Returns
+-- the fastest speed along the ground on the way.
+local STRAFE_TURN = 180 -- degrees a second
+local function strafeHops(count: number, c: any?): number
+	local tuning = c or cfg
+	local s = spawn(floor)
+	local yaw = 0
+	run(s, floor, B.Forward, 256)
+	local fastest = 0
+	for hop = 1, count do
+		local keys, sign = if hop % 2 == 1 then B.Right else B.Left, if hop % 2 == 1 then 1 else -1
+		MovementSim.step(s, input(keys + B.Jump, yaw), tuning, RIFLE, floor, DT)
+		repeat
+			yaw -= sign * math.rad(STRAFE_TURN) * DT
+			MovementSim.step(s, input(keys, yaw), tuning, RIFLE, floor, DT)
+			fastest = math.max(fastest, MovementSim.horizontalSpeed(s))
+		until s.grounded
+	end
+	return fastest
+end
+
+local CS = MovementConfig.resolve({ airSpeedLimit = 1e6 }) -- Counter-Strike: no limit on the speed strafing builds
+
+local drift = airJump(B.Right, 0, false)
+local coast = airJump(0, 0, true)
+local braked, _, airStop = airJump(B.Back, 0, true)
+local forwardTurn = airJump(B.Forward, 90, true)
+print(string.format("[air] standing jump holding D: lands %.2f m to the side, drifting at %.2f m/s", drift.side, drift.landingSpeed))
+print(string.format("[air] running jump (%.2f m/s), letting go: %.2f m in %s, lands at %.2f m/s", RIFLE, coast.distance, fmt(coast.airtime, "ms", 1000), coast.landingSpeed))
+print(string.format("[air] running jump holding S: stopped in the air after %s, lands %+.2f m along the run from take-off", fmt(airStop, "ms", 1000), braked.forward))
+for _, rate in { 90, 180, 360, 720 } do
+	local jump = airJump(B.Right, rate, true)
+	print(string.format("[air] running jump holding D, mouse turning right %d deg/s: path bends %.0f deg (the crosshair turns %.0f), lands at %.2f m/s", rate, jump.bend, rate * (jump.airtime - DT), jump.landingSpeed))
+end
+print(string.format("[air] running jump holding W, mouse turning right 90 deg/s: path bends %.0f deg", forwardTurn.bend))
+print(string.format("[air] 10 strafe hops, mouse %d deg/s: fastest %.2f m/s (Counter-Strike's model, without the limit: %.2f m/s)", STRAFE_TURN, strafeHops(10), strafeHops(10, CS)))
+
+do
+	check(
+		"standing jump holding D drifts at the wish-speed cap",
+		near(drift.landingSpeed, cfg.airWishSpeedCap, 1e-3) and near(drift.side, cfg.airWishSpeedCap * drift.airtime, 0.02) and math.abs(drift.forward) < 1e-3,
+		string.format("side %.3f m, forward %.3f m, %.3f m/s", drift.side, drift.forward, drift.landingSpeed)
+	)
+	check(
+		"letting go in the air keeps the speed and the line",
+		near(coast.landingSpeed, RIFLE, 1e-3) and near(coast.distance, RIFLE * coast.airtime, 0.02) and math.abs(coast.side) < 1e-3 and math.abs(coast.bend) < 1e-3,
+		string.format("%.3f m/s, %.3f m, side %.3f, bend %.3f", coast.landingSpeed, coast.distance, coast.side, coast.bend)
+	)
+	check("holding the opposite key stops a run in the air within 0.1 s", airStop ~= nil and airStop <= 0.1, fmt(airStop, "ms", 1000))
+	check(
+		"and lands about where it jumped, drifting back at the cap, which the analyzer doesn't count as a bend",
+		math.abs(braked.forward) < 0.3 and near(braked.landingSpeed, cfg.airWishSpeedCap, 1e-3) and math.abs(braked.bend) < 1e-3,
+		string.format("%.3f m, %.3f m/s, bend %.1f deg", braked.forward, braked.landingSpeed, braked.bend)
+	)
+
+	-- Air strafing: the path keeps following the crosshair, a few degrees to
+	-- the strafe side of it, without losing speed, until the mouse turns
+	-- faster than about 680 degrees a second.
+	for _, rate in { 90, 180, 360 } do
+		local jump = airJump(B.Right, rate, true)
+		local crosshair = rate * (jump.airtime - DT)
+		check(
+			string.format("holding D with the mouse turning %d deg/s bends the path with the crosshair, at full speed", rate),
+			math.abs(jump.bend - crosshair) < 10 and near(jump.landingSpeed, RIFLE, 1e-3),
+			string.format("bend %.1f deg, crosshair %.1f deg, %.3f m/s", jump.bend, crosshair, jump.landingSpeed)
+		)
+	end
+	local left = airJump(B.Left, -180, true)
+	local right = airJump(B.Right, 180, true)
+	check("strafing left bends the path left as far", near(left.bend, -right.bend, 1e-3), string.format("%.2f / %.2f deg", left.bend, right.bend))
+	check("holding W doesn't steer while you look where you're going", math.abs(forwardTurn.bend) < 1, string.format("%.2f deg", forwardTurn.bend))
+
+	local fastest = strafeHops(10)
+	check("strafe hops never beat running speed", fastest <= RIFLE + 1e-3, string.format("%.3f m/s", fastest))
+	local gained = strafeHops(10, CS)
+	check("raising airSpeedLimit lets strafing build speed, as in Counter-Strike", gained > RIFLE * 1.15, string.format("%.3f m/s", gained))
+end
+
+do
+	-- Crouching in the air doesn't weaken air control.
+	local crouched = airJump(B.Right + B.Crouch, 180, true)
+	local standing = airJump(B.Right, 180, true)
+	check("crouching in the air strafes as well as standing", near(crouched.bend, standing.bend, 0.01) and near(crouched.landingSpeed, standing.landingSpeed, 1e-3), string.format("%.2f / %.2f deg", crouched.bend, standing.bend))
+end
+
+do
+	-- Already faster than running (as a dash would make you): strafing turns
+	-- the path but neither speeds it up nor slows it down.
+	local s = MovementSim.newState(vector.create(0, 20, 0))
+	s.velocity = vector.create(0, 0, -8)
+	local yaw = 0
+	for _ = 1, 64 do
+		yaw -= math.rad(180) * DT
+		MovementSim.step(s, input(B.Right, yaw), cfg, RIFLE, floor, DT)
+	end
+	local h = vector.create(s.velocity.x, 0, s.velocity.z)
+	local bend = math.deg(math.atan2(h.x, -h.z))
+	check(
+		"faster than running, strafing turns you without changing your speed",
+		near(vector.magnitude(h), 8, 1e-3) and bend > 60 and not s.grounded,
+		string.format("%.3f m/s, bend %.1f deg", vector.magnitude(h), bend)
+	)
+end
+
+do
+	-- The analyzer counts a step off a ledge as time in the air, and
+	-- measures sideways from where you faced, not where you moved.
+	local world = FakeWorld.new():addFloor():addBox(vector.create(-1, 0, -1), vector.create(1, 1, 1))
+	local s = spawn(world, vector.create(0, 1.02, 0))
+	local analyzer = JumpAnalyzer.new()
+	local t, landed = 0, nil
+	for _ = 1, 256 do
+		MovementSim.step(s, input(B.Right, 0), cfg, RIFLE, world, DT)
+		t += DT
+		landed = JumpAnalyzer.tick(analyzer, t, s.position, s.velocity, s.grounded, 0) or landed
+	end
+	check(
+		"stepping off a ledge counts as time in the air, measured to the side of where you faced",
+		landed ~= nil and landed.side > 1 and math.abs(landed.forward) < 1e-3 and math.abs(landed.bend) < 1e-3 and #analyzer.history == 1,
+		if landed then string.format("side %.2f m, forward %.3f m, %.2f s", landed.side, landed.forward, landed.airtime) else "never landed"
+	)
+	JumpAnalyzer.clear(analyzer)
+	check("clearing the jump analyzer forgets every jump", #analyzer.history == 0)
 end
 
 return nil
