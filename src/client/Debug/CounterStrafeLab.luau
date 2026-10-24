@@ -13,6 +13,8 @@
 -- And the cm/360 check: Z (while the lab is open) zeroes a mouse-count
 -- counter. Turn exactly 360 degrees and compare counts with the expected
 -- value for your sensitivity. (Not F8: Studio takes that for Run.)
+--
+-- Backspace (while the lab is open) clears the stop log.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -110,7 +112,7 @@ function CounterStrafeLab.start(controller: any)
 		local ref: any = ReferenceData[profile.id] or {}
 		local lines = {
 			string.format("<b>Counter-Strafe Lab</b>  %s  (deadzone %.1f%% of %.2f m/s)", profile.name, profile.accurateFraction * 100, profile.maxSpeed),
-			"",
+			string.format('<font color="#%s">Backspace clear  Z zero counts  F4 close</font>', Ui.hex(Ui.DIM)),
 			"method   to-accurate  to-zero   slide   overhold",
 		}
 		local history = analyzer.history
@@ -192,6 +194,9 @@ function CounterStrafeLab.start(controller: any)
 			panel.Visible = not panel.Visible
 		elseif input.KeyCode == Enum.KeyCode.Z and panel.Visible then
 			CameraController.countsX = 0
+		elseif input.KeyCode == Enum.KeyCode.Backspace and panel.Visible then
+			analyzer:clear()
+			overholdFor = nil
 		end
 	end)
 

@@ -37,8 +37,8 @@ export type Level = {
 	-- pieces in `skip` and any piece the origin is inside.
 	cast: (self: Level, origin: vector, dir: vector, maxDistance: number, skip: { any }) -> Surface?,
 	-- Where the ray leaves the piece it entered at `surface`, if that is at
-	-- most `depth` metres past the entry: distance from the origin and the
-	-- exit face's outward normal.
+	-- most `depth` metres past the entry (give or take EXIT_TOLERANCE):
+	-- distance from the origin and the exit face's outward normal.
 	exit: (self: Level, origin: vector, dir: vector, surface: Surface, depth: number) -> (number?, vector?),
 }
 
@@ -66,6 +66,12 @@ local Penetration = {}
 
 -- A piece that starts this close past the last exit continues the same wall.
 Penetration.CONTACT = 0.01
+
+-- How far past the depth asked for a level may still report an exit, so that
+-- rounding (Roblox raycasts are single precision) doesn't decide a wall that
+-- is exactly as thick as the bullet can go. At 0.05 mm, a wall at a class's
+-- limit lets the bullet through only within about a degree of square on.
+Penetration.EXIT_TOLERANCE = 5e-5
 
 local function limitFor(class: WeaponConfig.PenetrationClass, material: Material): number
 	local limits = WeaponConfig.Penetration.limits

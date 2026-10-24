@@ -269,7 +269,7 @@ the course's ramps, angled wall and jump boxes.
 | F3 | HUD: speed (m/s and studs/s), % of max, ACCURATE / MOVING ERROR, flags, tick, ping, pending inputs, corrections |
 | always | Movement-error crosshair (same idea as the reference's option) and a W A S D / Shift / Ctrl / Space key overlay |
 | always | Speed graph: 2.5 s of speed, coloured by accuracy, with the deadzone line |
-| F4 | Counter-Strafe Lab: per-stop timing, slide, "overhold" coaching, averages vs ReferenceData (Riot's stop times for the rifles) over the stops that began at full speed (others are dimmed and marked `part speed`), live tuning box, cm/360 check |
+| F4 | Counter-Strafe Lab: per-stop timing, slide, "overhold" coaching, averages vs ReferenceData (Riot's stop times for the rifles) over the stops that began at full speed (others are dimmed and marked `part speed`), live tuning box, cm/360 check; Backspace clears its stops |
 | F6 | Recorder: per-tick CSV printed to Output for spreadsheet comparison |
 | G (HUD on) | Ghost: box at the last authoritative server position (not F7: Studio takes it for Start) |
 | Z (lab open) | Zero the cm/360 counter (not F8: Studio takes it for Run) |
