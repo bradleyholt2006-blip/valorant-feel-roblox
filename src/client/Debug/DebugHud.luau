@@ -246,12 +246,16 @@ function DebugHud.start(controller: any)
 		local jumpLines = { "jump    --", "", "" }
 		local j = lastJump
 		if j then
-			local function way(x: number): string
-				return if x >= 0 then "right" else "left"
+			-- How far and which way, with no way when it rounds to nothing, so
+			-- a straight jump doesn't read "0.00 m left" from float noise.
+			local function across(x: number, format: string): string
+				local text = string.format(format, math.abs(x))
+				local shown = tonumber(string.match(text, "^[%d.]+"))
+				return if shown == 0 then text elseif x > 0 then text .. " right" else text .. " left"
 			end
 			jumpLines = {
-				string.format("jump    %.2f s  %.2f m  %.2f m %s", j.airtime, j.distance, math.abs(j.side), way(j.side)),
-				string.format("        path bent %.0f\u{B0} %s", math.abs(j.bend), way(j.bend)),
+				string.format("jump    %.2f s  %.2f m  %s", j.airtime, j.distance, across(j.side, "%.2f m")),
+				string.format("        path bent %s", across(j.bend, "%.0f\u{B0}")),
 				string.format("        speed %.2f > %.2f m/s, top %.2f", j.takeoffSpeed, j.landingSpeed, j.peakSpeed),
 			}
 		end
