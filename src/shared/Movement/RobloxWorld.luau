@@ -5,9 +5,14 @@
 -- Characters are put in the CHARACTER_GROUP collision group, which doesn't
 -- collide with itself, so the sweep ignores every player (including the one
 -- moving). Player-vs-player blocking is a later decision.
+--
+-- Roblox's box queries only know parts' bounding boxes, which for a rotated
+-- part are far bigger than the part. Block-shaped parts are measured exactly
+-- here with BoxMath; other shapes keep the bounding-box answer.
 
 local Workspace = game:GetService("Workspace")
 
+local BoxMath = require(script.Parent.BoxMath)
 local Units = require(script.Parent.Parent.Units)
 
 local CHARACTER_GROUP = "VFCharacters"
@@ -30,6 +35,19 @@ function RobloxWorld.new(): any
 	return setmetatable({ castParams = castParams, overlapParams = overlapParams }, RobloxWorld)
 end
 
+-- A block-shaped part as a BoxMath box in metres, or nil for other shapes.
+local function block(part: BasePart): BoxMath.Box?
+	if not (part:IsA("Part") and part.Shape == Enum.PartType.Block) then
+		return nil
+	end
+	local cf = part.CFrame
+	return {
+		center = Units.toMetres(cf.Position),
+		half = Units.toMetres(part.Size) * 0.5,
+		axes = { Units.asVector(cf.XVector), Units.asVector(cf.YVector), Units.asVector(cf.ZVector) },
+	}
+end
+
 function RobloxWorld:sweep(center: vector, half: vector, delta: vector): (number?, vector?)
 	local deltaStuds = Units.toStuds(delta)
 	local length = deltaStuds.Magnitude
@@ -45,7 +63,29 @@ end
 
 function RobloxWorld:overlaps(center: vector, half: vector): boolean
 	local parts = Workspace:GetPartBoundsInBox(CFrame.new(Units.toStuds(center)), Units.toStuds(half * 2), self.overlapParams)
-	return #parts > 0
+	for _, part in parts do
+		local box = block(part)
+		if box == nil or BoxMath.separation(center, half, box) < 0 then
+			return true
+		end
+	end
+	return false
+end
+
+function RobloxWorld:nearest(center: vector, half: vector, margin: number): (number?, vector?)
+	local reach = half + vector.create(margin, margin, margin)
+	local parts = Workspace:GetPartBoundsInBox(CFrame.new(Units.toStuds(center)), Units.toStuds(reach * 2), self.overlapParams)
+	local best: number?, away: vector? = nil, nil
+	for _, part in parts do
+		local box = block(part)
+		if box then
+			local gap, out = BoxMath.separation(center, half, box)
+			if gap <= margin and (best == nil or gap < best) then
+				best, away = gap, out
+			end
+		end
+	end
+	return best, away
 end
 
 return RobloxWorld

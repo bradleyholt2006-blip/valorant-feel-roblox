@@ -108,8 +108,8 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
 - **M5 Jump boxes.** You can jump onto the 0.50 m and 0.70 m boxes. You just miss the 0.85 m one,
   because our jump peaks at 0.83 m, and 1.00 m is out of reach.
 - **M6 Ramps.** You walk up and down the 30 and 45 degree ramps with no bouncing or sticking. The
-  50 degree ramp is too steep to walk up. The ramps are rotated parts, which the offline tests
-  never cover.
+  50 degree ramp is too steep to walk up. The ramps are rotated parts. The offline tests now
+  model them, but Roblox's own collision queries are what count here.
 - **M7 Slide wall.** Run into the angled wall at a shallow angle: you slide along it smoothly,
   without sticking or shaking.
 - **M8 Ghost.** F7 shows a box where the server has you. Standing still, it sits on you. At a run
@@ -291,7 +291,7 @@ Didn't look right (IDs and what you saw):
 | Research doc | Known gap | Checks |
 | --- | --- | --- |
 | 01 | The client's per-frame root CFrame wins over the replicated one without flicker | T1 |
-| 01 | Blockcast on rotated parts and ramps | M6, M7 |
+| 01 | Collision with ramps, the angled wall and the jump boxes' faces | M5, M6, M7 |
 | 01 | Whether `GetMouseDelta` needs Roblox's sensitivity divided out | C3 |
 | 01 | Humanoid animation with an anchored root | T2 |
 | 02 | Mouse buttons reach the game, and right-click isn't taken by the camera scripts | C1 |
