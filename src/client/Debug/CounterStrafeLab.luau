@@ -7,7 +7,7 @@
 -- starts accelerating you the other way).
 --
 -- Also hosts the live tuning box (Studio / place owner): type
--- "groundFriction 10" and press Enter; "reset" clears overrides. Changes are
+-- "groundFriction 3" and press Enter; "reset" clears overrides. Changes are
 -- applied by the server and pushed to every client so prediction stays in sync.
 --
 -- And the cm/360 check: F8 zeroes a mouse-count counter. Turn exactly 360
@@ -46,8 +46,8 @@ end
 function CounterStrafeLab.start(controller: any)
 	local gui = Ui.screen("VFCounterStrafeLab", 21)
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(520, 372),
-		Position = UDim2.new(0, 12, 1, -384),
+		Size = UDim2.fromOffset(520, 404),
+		Position = UDim2.new(0, 12, 1, -416),
 		Visible = false,
 	})
 	local body = Ui.label(panel, {
@@ -128,12 +128,16 @@ function CounterStrafeLab.start(controller: any)
 		end
 		local relAcc, relN = analyzer:average("release", "timeToAccurate")
 		local cntAcc, cntN = analyzer:average("counter", "timeToAccurate")
+		local relZero = analyzer:average("release", "timeToZero")
+		local cntZero = analyzer:average("counter", "timeToZero")
 		local relSlide = analyzer:average("release", "distance")
 		local cntSlide = analyzer:average("counter", "distance")
 		table.insert(lines, "")
 		table.insert(lines, string.format("<b>release</b> x%d  accurate %s", relN, compare(relAcc, ref.releaseTimeToAccurate, "ms", 1000)))
+		table.insert(lines, string.format("          stopped %s", compare(relZero, ref.releaseTimeToZero, "ms", 1000)))
 		table.insert(lines, string.format("          slide %s", compare(relSlide, ref.releaseSlide, "cm", 100)))
 		table.insert(lines, string.format("<b>counter</b> x%d  accurate %s", cntN, compare(cntAcc, ref.counterTimeToAccurate, "ms", 1000)))
+		table.insert(lines, string.format("          stopped %s", compare(cntZero, ref.counterTimeToZero, "ms", 1000)))
 		table.insert(lines, string.format("          slide %s", compare(cntSlide, ref.counterSlide, "cm", 100)))
 		local degPerCount = CameraController.YAW_DEGREES_PER_COUNT * CameraController.sensitivity
 		table.insert(lines, "")
@@ -171,7 +175,7 @@ function CounterStrafeLab.start(controller: any)
 				end
 			end
 		end
-		warn("[Lab] unknown command; try e.g. 'groundFriction 10'")
+		warn("[Lab] unknown command; try e.g. 'groundFriction 3'")
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)

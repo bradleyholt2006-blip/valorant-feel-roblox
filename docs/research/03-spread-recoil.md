@@ -207,12 +207,13 @@ randomness and correct them to the server's end point a round trip later. We cho
 prediction for now; switching is a matter of not sending `seed` in the ack. This is about our own
 game's anti-cheat design and has nothing to do with the reference's.
 
-### Known issue for the movement follow-up
+### Fixed in the movement follow-up
 
-The movement model's friction floor (`stopSpeed`) can't hold a speed below about 1.6 m/s, so a
-tagged runner (capped at 1.485 m/s) sags below the cap and into the deadzone within a few ticks.
-The accuracy test above is checked at the moment of the tag; the movement refinement after this
-system has to fix the friction model so a slowed runner holds the cap.
+System 1's Source-style friction floor (`stopSpeed`) couldn't hold a speed below about 1.6 m/s, so a
+tagged runner (capped at 1.485 m/s) sagged below the cap and into the deadzone within a few ticks.
+The Unreal-style ground model that replaced it (see `docs/research/01-movement.md`) has no friction
+while moving the way you push, so a held key holds the cap exactly, and the accuracy test now
+checks every tick of the slow.
 
 ## 6. Implementation map
 

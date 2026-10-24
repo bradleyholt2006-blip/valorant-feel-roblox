@@ -34,14 +34,31 @@ MovementConfig.Params = {
 	deadzoneFraction = p(0.275, "confirmed", "Patch 3.0: 'Weapon Deadzones changed from 30% >>> 27.5%' (Patch 0.50 had raised it from 25% to 30%)"),
 
 	-- Speed multipliers relative to the equipped weapon's run speed.
-	walkMultiplier = p(0.55, "estimate", "No public number found; measure walk speed over a known distance"),
+	walkMultiplier = p(
+		0.61,
+		"estimate",
+		"Riot's 2020 stop timings (Riot_Classick, r/VALORANT) give 'Run -> Walk (61%)' as the point a stopping player reached walk accuracy, which suggests walking is 61% of run speed; measure walk speed over a known distance"
+	),
 	crouchMultiplier = p(0.35, "estimate", "No public number found; measure crouch-walk speed over a known distance"),
 
-	-- Source/UE-style ground model: friction (1/s) decays speed, acceleration
-	-- (1/s, scaled by wish speed) pushes toward the wish velocity.
-	groundAcceleration = p(11.0, "estimate", "Tuned so 0 -> max takes ~0.2s; measure with movement-error indicator"),
-	groundFriction = p(9.0, "estimate", "Tuned so a release-only stop crosses the deadzone in ~0.13s"),
-	stopSpeed = p(2.0, "estimate", "Friction floor in m/s; makes the last part of a stop linear, like Source"),
+	-- Unreal-style ground model (see MovementSim): input accelerates at
+	-- maxAcceleration, and letting go brakes at
+	-- brakingFrictionFactor x groundFriction x speed + brakingDeceleration.
+	-- Riot timed stops on the Phantom (Riot_Classick, r/VALORANT, 2020):
+	-- counter-strafing reached 25% speed in 0.104 s and a full stop in 0.160 s,
+	-- a stop without counter-strafing 0.110 s and 0.170 s.
+	maxAcceleration = p(
+		20.48,
+		"estimate",
+		"Unreal's default (2048 cm/s^2); with groundFriction it reproduces Riot's counter-strafe timings. Start-up (0 to full rifle speed in about 0.26 s) still needs measuring"
+	),
+	groundFriction = p(2.75, "estimate", "Fitted to Riot's counter-strafe timings at 128 Hz: 25% speed at 0.104 s, stopped at 0.160 s"),
+	brakingFrictionFactor = p(
+		2,
+		"estimate",
+		"Unreal's default. With brakingDeceleration = maxAcceleration, letting go brakes like counter-strafing, which is what Riot's timings show"
+	),
+	brakingDeceleration = p(20.48, "estimate", "Unreal's default (equal to maxAcceleration)"),
 
 	airAcceleration = p(1.5, "estimate", "Air control is weak in the reference; tune from strafe-jump footage"),
 	airWishSpeedCap = p(0.8, "estimate", "Caps air wish speed (m/s) so air strafing can't build speed"),
@@ -70,9 +87,10 @@ export type Values = {
 	deadzoneFraction: number,
 	walkMultiplier: number,
 	crouchMultiplier: number,
-	groundAcceleration: number,
+	maxAcceleration: number,
 	groundFriction: number,
-	stopSpeed: number,
+	brakingFrictionFactor: number,
+	brakingDeceleration: number,
 	airAcceleration: number,
 	airWishSpeedCap: number,
 	gravity: number,
