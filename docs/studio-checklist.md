@@ -130,8 +130,8 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
   with the top speed between.
   1. Stand still, jump and hold D until you land: `jump 0.66 s  0.37 m  0.37 m right`,
      `path bent 0°`, `speed 0.00 > 0.57 m/s, top 0.57`.
-  2. Run down the sprint lane, jump and let go of everything: `3.59 m  0.00 m right`,
-     `path bent 0°`, `speed 5.40 > 5.40`.
+  2. Run down the sprint lane, jump and let go of everything: `3.59 m  0.00 m`, `path bent 0°`,
+     `speed 5.40 > 5.40`. A side or bend that rounds to nothing has no direction after it.
   3. Run, jump and hold S: you stop in the air and land within 0.3 m of where you jumped, reading
      `speed 5.40 > 0.57`.
   4. Run, let go of W as you jump, hold D and turn the mouse smoothly right, about a quarter turn
