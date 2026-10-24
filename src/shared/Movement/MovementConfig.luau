@@ -31,7 +31,7 @@ MovementConfig.Params = {
 	-- (WeaponConfig.moveMultiplier), e.g. rifles 80% = 5.40 m/s.
 	baseRunSpeed = p(6.75, "community", "Fandom wiki Melee page: 'standard run speed of 6.75 m/s'"),
 	-- Below this fraction of max speed a weapon counts as stationary.
-	deadzoneFraction = p(0.30, "confirmed", "Patch 0.50: 'Deadzone accuracy speed threshold increased: 25% >> 30%'"),
+	deadzoneFraction = p(0.275, "confirmed", "Patch 3.0: 'Weapon Deadzones changed from 30% >>> 27.5%' (Patch 0.50 had raised it from 25% to 30%)"),
 
 	-- Speed multipliers relative to the equipped weapon's run speed.
 	walkMultiplier = p(0.55, "estimate", "No public number found; measure walk speed over a known distance"),
@@ -40,7 +40,7 @@ MovementConfig.Params = {
 	-- Source/UE-style ground model: friction (1/s) decays speed, acceleration
 	-- (1/s, scaled by wish speed) pushes toward the wish velocity.
 	groundAcceleration = p(11.0, "estimate", "Tuned so 0 -> max takes ~0.2s; measure with movement-error indicator"),
-	groundFriction = p(9.0, "estimate", "Tuned so release-only stop crosses the 30% deadzone in ~0.13s"),
+	groundFriction = p(9.0, "estimate", "Tuned so a release-only stop crosses the deadzone in ~0.13s"),
 	stopSpeed = p(2.0, "estimate", "Friction floor in m/s; makes the last part of a stop linear, like Source"),
 
 	airAcceleration = p(1.5, "estimate", "Air control is weak in the reference; tune from strafe-jump footage"),

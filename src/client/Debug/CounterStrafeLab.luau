@@ -107,7 +107,7 @@ function CounterStrafeLab.start(controller: any)
 		local profile = controller.profile()
 		local ref: any = ReferenceData[profile.id] or {}
 		local lines = {
-			string.format("<b>Counter-Strafe Lab</b>  %s  (deadzone %.0f%% of %.2f m/s)", profile.name, profile.accurateFraction * 100, profile.maxSpeed),
+			string.format("<b>Counter-Strafe Lab</b>  %s  (deadzone %.1f%% of %.2f m/s)", profile.name, profile.accurateFraction * 100, profile.maxSpeed),
 			"",
 			"method   to-accurate  to-zero   slide   overhold",
 		}

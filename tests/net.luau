@@ -79,10 +79,13 @@ local function sameWeapons(a: WeaponSim.State, b: WeaponSim.State): boolean
 		and a.lastShotTime == b.lastShotTime
 		and a.sprayIndex == b.sprayIndex
 		and a.shotCounter == b.shotCounter
+		and a.seed == b.seed
+		and a.recoilYaw == b.recoilYaw
+		and a.swayDir == b.swayDir
 end
 
 do
-	local s = PlayerSim.new(vector.create(0, 0.02, 0))
+	local s = PlayerSim.new(vector.create(0, 0.02, 0), nil, 3141592653)
 	for i = 1, 400 do
 		PlayerSim.step(s, inputAt(i), cfg, floor, DT)
 	end
@@ -91,6 +94,7 @@ do
 	check("ack carries the seq", seq == 400)
 	check("ack carries movement exactly", decoded.movement.position == s.movement.position and decoded.movement.velocity == s.movement.velocity and decoded.movement.tick == s.movement.tick)
 	check("ack carries weapon state exactly", sameWeapons(decoded.weapons, s.weapons))
+	check("ack carries the spray seed and drift (system 3)", decoded.weapons.seed == 3141592653 and decoded.weapons.recoilYaw == s.weapons.recoilYaw and decoded.weapons.swayDir == s.weapons.swayDir)
 	check("ack carries the hit slow", decoded.tagUntilTick == s.tagUntilTick and decoded.tagMultiplier == s.tagMultiplier)
 
 	-- Resume both from here: the original and the decoded copy must stay identical.

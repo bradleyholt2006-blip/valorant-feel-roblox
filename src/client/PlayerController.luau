@@ -23,6 +23,7 @@ local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
+local Accuracy = require(Shared.Weapons.Accuracy)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -38,6 +39,8 @@ local POSITION_TOLERANCE = 0.002 -- metres before we accept a server correction
 local VELOCITY_TOLERANCE = 0.01 -- m/s
 local CORRECTION_BLEND_TIME = 0.1 -- seconds to blend visual error out
 local MAX_FRAME_TIME = 0.25
+local KICK_RATE = 30 -- 1/s: how fast the view catches up with the recoil (estimate)
+local SPRAY_TOLERANCE = 1e-6 -- spray position and drift (see mismatch)
 
 export type TickInfo = {
 	time: number,
@@ -83,6 +86,9 @@ PlayerController.shotListeners = {} :: { (WeaponSim.Shot, PlayerCodec.WireInput)
 PlayerController.spawnListeners = {} :: { (PlayerSim.State) -> () }
 -- Increments on every spawn; shot numbers restart each life.
 PlayerController.life = 0
+-- Buttons of the latest simulated tick (the debug tools read the accuracy
+-- state with them).
+PlayerController.buttons = 0
 
 local localPlayer = Players.LocalPlayer
 local world = RobloxWorld.new()
@@ -132,6 +138,7 @@ local function tick()
 	prevCrouch = s.movement.crouchAlpha
 	local shot = PlayerSim.step(s, input, PlayerController.cfg, world, DT)
 	simTime += DT
+	PlayerController.buttons = input.buttons
 
 	table.insert(pending, input)
 	table.insert(unsent, input)
@@ -183,7 +190,9 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		return true, posErr
 	end
 	-- Weapon state is exact on both sides (same ticks, same float maths), so
-	-- any difference at all means the server saw something we didn't.
+	-- any difference at all means the server saw something we didn't. The
+	-- spray position and drift go through `^` and could in principle round
+	-- differently on another machine's maths library, so they get a tolerance.
 	local gw, sw = guess.weapons, server.weapons
 	for slot = 1, 3 do
 		if gw.loadout[slot] ~= sw.loadout[slot] or gw.ammo[slot] ~= sw.ammo[slot] or gw.reserve[slot] ~= sw.reserve[slot] then
@@ -199,8 +208,11 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or gw.fireHeld ~= sw.fireHeld
 		or gw.altHeld ~= sw.altHeld
 		or gw.lastShotTime ~= sw.lastShotTime
-		or gw.sprayIndex ~= sw.sprayIndex
+		or math.abs(gw.sprayIndex - sw.sprayIndex) > SPRAY_TOLERANCE
+		or math.abs(gw.recoilYaw - sw.recoilYaw) > SPRAY_TOLERANCE
+		or gw.swayDir ~= sw.swayDir
 		or gw.shotCounter ~= sw.shotCounter
+		or gw.seed ~= sw.seed
 	then
 		return true, posErr
 	end
@@ -259,6 +271,25 @@ local function onAck(payload: buffer)
 	stats.pending = #pending
 end
 
+-- The view follows a share of the recoil (the weapon's camera fraction) of
+-- the bullet that would fire next, so it climbs with a spray and settles as
+-- the spray recovers. Eased so each shot reads as a kick, not a snap. Visual
+-- only: the aim sent to the server never includes it.
+local function updateKick(s: PlayerSim.State, frameDt: number)
+	local def = PlayerSim.def(s)
+	local w = s.weapons
+	local scoped = w.scoped > 0 and def.ads ~= nil
+	local t = (s.movement.tick + accumulator / DT) * DT
+	local bullet, sway = Accuracy.next(def, w, t, DT, WeaponSim.fireInterval(def, w.scoped))
+	local ctx = PlayerSim.accuracyContext(s, PlayerController.buttons, PlayerController.cfg, DT)
+	local up, right = Accuracy.recoil(def, ctx, bullet, sway, scoped)
+	local fraction = Accuracy.cameraFraction(def, scoped)
+	local k = 1 - math.exp(-frameDt * KICK_RATE)
+	CameraController.kickPitch += (math.rad(up * fraction) - CameraController.kickPitch) * k
+	-- Positive camera yaw turns left; positive recoil yaw is to the right.
+	CameraController.kickYaw += (-math.rad(right * fraction) - CameraController.kickYaw) * k
+end
+
 local function onRender(frameDt: number)
 	CameraController.updateLook()
 	local s = sim
@@ -289,6 +320,7 @@ local function onRender(frameDt: number)
 	end
 	local def = PlayerSim.def(s)
 	local zoom = if s.weapons.scoped > 0 and def.ads then def.ads.zoom[s.weapons.scoped] else 1
+	updateKick(s, frameDt)
 	CameraController.render(feetStuds + Vector3.new(0, eye * Units.STUDS_PER_METRE, 0), zoom)
 end
 

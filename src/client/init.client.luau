@@ -14,6 +14,7 @@ local SpeedGraph = require(script.Debug.SpeedGraph)
 local CounterStrafeLab = require(script.Debug.CounterStrafeLab)
 local Recorder = require(script.Debug.Recorder)
 local WeaponLab = require(script.Debug.WeaponLab)
+local SprayLab = require(script.Debug.SprayLab)
 local HitboxOverlay = require(script.Debug.HitboxOverlay)
 
 -- Our HUD replaces Roblox's health bar, and number keys belong to weapons.
@@ -31,7 +32,20 @@ SpeedGraph.start(PlayerController)
 CounterStrafeLab.start(PlayerController)
 Recorder.start(PlayerController)
 WeaponLab.start(PlayerController)
+SprayLab.start(PlayerController)
 HitboxOverlay.start()
+
+-- F2 pages through the weapon labs: Weapon Lab, Spray Lab, off.
+local labs = { WeaponLab, SprayLab }
+local labPage = 0
+UserInputService.InputBegan:Connect(function(input, processed)
+	if not processed and input.KeyCode == Enum.KeyCode.F2 then
+		labPage = (labPage + 1) % (#labs + 1)
+		for i, lab in labs do
+			lab.setVisible(i == labPage)
+		end
+	end
+end)
 
 -- Debug weapon give (Studio / place owner only) until there is a buy phase.
 -- The weapon goes into its slot with full ammo and is drawn.

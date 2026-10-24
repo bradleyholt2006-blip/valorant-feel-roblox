@@ -11,7 +11,7 @@
 local MovementSim = require("./Movement/MovementSim")
 local WeaponSim = require("./Weapons/WeaponSim")
 local WeaponConfig = require("./Weapons/WeaponConfig")
-local Hitboxes = require("./Combat/Hitboxes")
+local Accuracy = require("./Weapons/Accuracy")
 
 export type State = {
 	movement: MovementSim.State,
@@ -24,10 +24,17 @@ local PlayerSim = {}
 
 PlayerSim.Buttons = MovementSim.Buttons
 
-function PlayerSim.new(feet: vector, loadout: { string }?): State
+-- Below the deadzone speed a weapon counts as standing still. The test is
+-- strict, with a margin, because Patch 3.0 put the hit slow and the deadzone
+-- both at 27.5%: a player running into a tag sits exactly on the line and
+-- must stay inaccurate (that patch removed "tag into accuracy").
+local DEADZONE_MARGIN = 1e-3 -- m/s
+
+-- `seed` drives the random part of every shot this life (server-chosen).
+function PlayerSim.new(feet: vector, loadout: { string }?, seed: number?): State
 	return {
 		movement = MovementSim.newState(feet),
-		weapons = WeaponSim.newState(loadout),
+		weapons = WeaponSim.newState(loadout, seed),
 		tagUntilTick = 0,
 		tagMultiplier = 1,
 	}
@@ -78,7 +85,35 @@ function PlayerSim.deadzoneSpeed(s: State, cfg: any): number
 end
 
 function PlayerSim.isAccurate(s: State, cfg: any): boolean
-	return s.movement.grounded and MovementSim.horizontalSpeed(s.movement) <= PlayerSim.deadzoneSpeed(s, cfg) + 1e-6
+	return s.movement.grounded and MovementSim.horizontalSpeed(s.movement) < PlayerSim.deadzoneSpeed(s, cfg) - DEADZONE_MARGIN
+end
+
+-- Movement state for the cone of fire. Binary, like the reference: walk
+-- accuracy needs the walk key and walking speed, so slowing from a run to a
+-- stop never passes through it (Patch 0.50).
+function PlayerSim.moveState(s: State, buttons: number, cfg: any): Accuracy.MoveState
+	local m = s.movement
+	if not m.grounded then
+		return "air"
+	end
+	local speed = MovementSim.horizontalSpeed(m)
+	if speed < PlayerSim.deadzoneSpeed(s, cfg) - DEADZONE_MARGIN then
+		return "still"
+	elseif m.crouched then
+		return "crouch"
+	elseif MovementSim.has(buttons, PlayerSim.Buttons.Walk) and speed <= PlayerSim.maxSpeed(s, cfg) * cfg.walkMultiplier + DEADZONE_MARGIN then
+		return "walk"
+	end
+	return "run"
+end
+
+function PlayerSim.accuracyContext(s: State, buttons: number, cfg: any, dt: number): Accuracy.Context
+	local m = s.movement
+	return {
+		moveState = PlayerSim.moveState(s, buttons, cfg),
+		crouched = m.crouched,
+		landing = m.grounded and (m.tick - m.lastLandTick) * dt < cfg.jumpLandPenaltyTime - 1e-9,
+	}
 end
 
 function PlayerSim.eye(s: State, cfg: any): vector
@@ -89,11 +124,8 @@ end
 function PlayerSim.step(s: State, input: any, cfg: any, world: any, dt: number): WeaponSim.Shot?
 	MovementSim.step(s.movement, input, cfg, PlayerSim.maxSpeed(s, cfg), world, dt)
 	local tick = s.movement.tick
-	local shot = WeaponSim.step(s.weapons, input, tick * dt, dt, PlayerSim.eye(s, cfg), tick)
-	if shot then
-		shot.direction = Hitboxes.direction(shot.yaw, shot.pitch)
-	end
-	return shot
+	local ctx = PlayerSim.accuracyContext(s, input.buttons, cfg, dt)
+	return WeaponSim.step(s.weapons, input, tick * dt, dt, PlayerSim.eye(s, cfg), tick, ctx)
 end
 
 -- Hit slow, applied by the server between ticks. Speed is clamped at once and

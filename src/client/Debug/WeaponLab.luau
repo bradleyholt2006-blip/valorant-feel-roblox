@@ -1,6 +1,6 @@
 --!strict
--- Weapon Lab (toggle F2): measures our weapon timing and hit registration so
--- they can be checked against the reference.
+-- Weapon Lab (F2, first page): measures our weapon timing and hit
+-- registration so they can be checked against the reference.
 --
 --   * stats of the equipped weapon (every number labelled by its source in
 --     WeaponConfig) and its live timers
@@ -33,6 +33,15 @@ local LOG_ROWS = 10
 local TARGET_HP = 150
 
 local WeaponLab = {}
+
+local panelFrame: Frame? = nil
+
+function WeaponLab.setVisible(visible: boolean)
+	local p = panelFrame
+	if p then
+		p.Visible = visible
+	end
+end
 
 type Burst = { weapon: string, intervals: { number } }
 
@@ -72,6 +81,7 @@ function WeaponLab.start(controller: any)
 		Position = UDim2.new(1, -612, 0, 120),
 		Visible = false,
 	})
+	panelFrame = panel
 	local body = Ui.label(panel, {
 		Size = UDim2.new(1, -16, 1, -12),
 		Position = UDim2.fromOffset(8, 6),
@@ -187,7 +197,7 @@ function WeaponLab.start(controller: any)
 		if PlayerSim.isTagged(sim) then
 			table.insert(states, string.format('<font color="#%s">TAGGED x%.3f</font>', Ui.hex(Ui.BAD), sim.tagMultiplier))
 		end
-		table.insert(lines, string.format("state  %s   ammo %d / %d   spray #%d", if #states > 0 then table.concat(states, ", ") else "ready", w.ammo[slot], w.reserve[slot], w.sprayIndex))
+		table.insert(lines, string.format("state  %s   ammo %d / %d   spray %.2f", if #states > 0 then table.concat(states, ", ") else "ready", w.ammo[slot], w.reserve[slot], w.sprayIndex))
 		table.insert(lines, string.format(
 			'<font color="#%s">sources: rate %s | damage %s | move %s</font>',
 			Ui.hex(Ui.DIM),
@@ -287,7 +297,7 @@ function WeaponLab.start(controller: any)
 			end
 		end
 		table.insert(lines, "")
-		table.insert(lines, string.format('<font color="#%s">F2 lab  F10 hitboxes  R reload  RMB scope  1/2/3 slot  4 Vandal 5 Phantom 6 Operator 7 Sheriff 8 Classic  Backspace clear marks + log</font>', Ui.hex(Ui.DIM)))
+		table.insert(lines, string.format('<font color="#%s">F2 next page  F10 hitboxes  R reload  RMB scope  1/2/3 slot  4 Vandal 5 Phantom 6 Operator 7 Sheriff 8 Classic  Backspace clear marks + log</font>', Ui.hex(Ui.DIM)))
 		body.Text = table.concat(lines, "\n")
 	end
 
@@ -295,9 +305,7 @@ function WeaponLab.start(controller: any)
 		if processed then
 			return
 		end
-		if input.KeyCode == Enum.KeyCode.F2 then
-			panel.Visible = not panel.Visible
-		elseif input.KeyCode == Enum.KeyCode.Backspace then
+		if input.KeyCode == Enum.KeyCode.Backspace then
 			ClientShots.reset()
 			current, lastBurst, lastShot = nil, nil, nil
 			lastReload, lastDrawToShot = nil, nil

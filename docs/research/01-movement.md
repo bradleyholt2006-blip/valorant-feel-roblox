@@ -39,17 +39,17 @@ Status labels used throughout:
 | Operator run speed | 5.13 m/s | Community | [Liquipedia, Operator](https://liquipedia.net/valorant/Operator) |
 | Operator scoped speed | 72% of normal (was 76%) | Confirmed | [Patch 1.09](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-1-09) |
 | Accuracy deadzone, Operator | inaccurate above 15% of max speed (was 30%) | Confirmed | Patch 1.09 |
-| Accuracy deadzone, every weapon | accurate below 30% of max speed (was 25%) | Confirmed | [Patch 0.50](https://playvalorant.com/en-gb/news/game-updates/valorant-patch-notes-0-50/): "Deadzone accuracy speed threshold increased: 25% >> 30%" |
+| Accuracy deadzone, every other weapon | accurate below 27.5% of max speed | Confirmed | [Patch 0.50](https://playvalorant.com/en-gb/news/game-updates/valorant-patch-notes-0-50/): "Deadzone accuracy speed threshold increased: 25% >> 30%"; [Patch 3.0](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-3-0/): "Weapon Deadzones changed from 30% >>> 27.5%" |
 | Jump-land inaccuracy | binary, 0.225 s, value 7.0 | Confirmed | Patch 1.09 |
 | Rifle moving error | run 3.75 → 5.0, walk 0.8 → 1.1, crouch-walk 0.3 → 0.8 | Confirmed | [Patch 2.02](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-2-02/) |
-| Rifle moving error (later) | walk 2 → 3, run 5 → 6 | Community | Patch 9.10, reported by [esports.net](https://www.esports.net/news/valorant/valorant-9-10-patch-notes) and Liquipedia |
+| Rifle moving error (later) | walk 1.3 → 2.0 (3.0); walk 2 → 3, run 5 → 6 (9.10) | Confirmed | Patch 3.0; Patch 9.10 as quoted by [esports.gg](https://esports.gg/news/valorant/valorant-9-10-patch/) and [Sportskeeda](https://www.sportskeeda.com/valorant/new-valorant-regen-shield-weapon-changes-explained) |
 | Counter-strafe accuracy timing | Riot was reviewing "how quickly players become accurate after full movement" | Confirmed (qualitative) | On Peeker's Advantage |
 | Mouse yaw | 0.07° per count × sensitivity | Community | Widely published sensitivity converters; verify with cm/360 |
 | Field of view | 103° horizontal, fixed | Community | Widely published |
 | Roblox stud | 28 cm | Confirmed (Roblox) | [Roblox units](https://create.roblox.com/docs/physics/units) |
 
 The moving-error numbers belong to the weapon system and are recorded here only because they are
-the reason the deadzone matters. They are used by spread (system 3).
+the reason the deadzone matters. They are used by spread (system 3, `docs/research/03-spread-recoil.md`).
 
 **Not found publicly:** walk speed, crouch speed, acceleration, deceleration/friction, jump height,
 gravity, collision size, eye height, step height, max slope. All of those are estimates below.
@@ -81,8 +81,8 @@ How a measurement maps to a parameter (our model is Source/UE-style ground frict
 - Below `stopSpeed` it drops linearly at `stopSpeed · f` m/s².
 - So release time to a threshold vt (vt < stopSpeed) is
   `ln(v0 / stopSpeed) / f + (stopSpeed − vt) / (stopSpeed · f)`.
-  With v0 = 5.4, stopSpeed = 2.0, f = 9, vt = 1.62 that is 0.110 + 0.021 = 0.131 s, matching the
-  simulated 125 ms (the simulation is discrete at 128 Hz).
+  With v0 = 5.4, stopSpeed = 2.0, f = 9, vt = 1.485 that is 0.110 + 0.029 = 0.139 s, matching the
+  simulated 133 ms (the simulation is discrete at 128 Hz).
 - Counter-strafing adds `groundAcceleration · maxSpeed` (59.4 m/s² with our numbers) on top of friction.
 
 Two measurements (release time and counter time) are enough to solve for friction and acceleration;
@@ -100,7 +100,7 @@ Since system 2, each weapon's speed is `baseRunSpeed` (the knife's 6.75 m/s) tim
 | Tick rate | 128 Hz | Confirmed |
 | Knife / rifle / Operator speed | 6.75 / 5.40 / 5.13 m/s | Community |
 | Operator deadzone | 15% | Confirmed |
-| Deadzone, every other weapon | 30% | Confirmed |
+| Deadzone, every other weapon | 27.5% | Confirmed |
 | Jump-land penalty time | 0.225 s | Confirmed |
 | Walk / crouch multiplier | 0.55 / 0.35 | Estimate |
 | Ground acceleration | 11 /s | Estimate |
@@ -114,11 +114,11 @@ Since system 2, each weapon's speed is `baseRunSpeed` (the knife's 6.75 m/s) tim
 
 What these estimates currently produce (from `luau tests/run.luau`):
 
-| Rifle (5.40 m/s, 30% deadzone) | Ours | Reference |
+| Rifle (5.40 m/s, 27.5% deadzone) | Ours | Reference |
 | --- | --- | --- |
 | Standing → 95% speed | 172 ms | not measured |
 | Standing → inaccurate | 39 ms | not measured |
-| Release → accurate | 125 ms | not measured |
+| Release → accurate | 133 ms | not measured |
 | Release → stopped | 211 ms, 0.42 m slide | not measured |
 | Counter-strafe → accurate | 39 ms | not measured |
 | Counter-strafe → stopped | 55 ms, 0.10 m slide | not measured |

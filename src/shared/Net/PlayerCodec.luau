@@ -153,7 +153,7 @@ end
 
 local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 1 + 8 + 4 + 4 -- movement
-	+ 3 + 3 + 6 + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 -- weapons
+	+ 3 + 3 + 6 + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 -- weapons
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -195,6 +195,9 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, w.lastShotTime)
 	wf64(c, w.sprayIndex)
 	w32(c, w.shotCounter % 2 ^ 32)
+	w32(c, w.seed)
+	wf64(c, w.recoilYaw)
+	w8(c, w.swayDir + 1)
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -250,6 +253,9 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local lastShotTime = rf64(c)
 	local sprayIndex = rf64(c)
 	local shotCounter = r32(c)
+	local seed = r32(c)
+	local recoilYaw = rf64(c)
+	local swayDir = r8(c) - 1
 	local weapons = {
 		loadout = loadout,
 		ammo = ammo,
@@ -264,6 +270,9 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		lastShotTime = lastShotTime,
 		sprayIndex = sprayIndex,
 		shotCounter = shotCounter,
+		seed = seed,
+		recoilYaw = recoilYaw,
+		swayDir = swayDir,
 	}
 
 	local tagUntilTick = r32(c)

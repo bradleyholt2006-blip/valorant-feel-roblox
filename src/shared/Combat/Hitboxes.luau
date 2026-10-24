@@ -116,12 +116,6 @@ function Hitboxes.raycast(origin: vector, dir: vector, boxes: { Box }, maxDistan
 	return best
 end
 
--- Unit view direction from yaw/pitch (Roblox convention: yaw 0 looks down -Z).
-function Hitboxes.direction(yaw: number, pitch: number): vector
-	local cp = math.cos(pitch)
-	return vector.create(-math.sin(yaw) * cp, math.sin(pitch), -math.cos(yaw) * cp)
-end
-
 -- Bounding radius around the feet, for cheap rejection before box tests.
 Hitboxes.BOUND_RADIUS = 1.2
 
