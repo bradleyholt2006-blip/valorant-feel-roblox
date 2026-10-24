@@ -392,7 +392,7 @@ do
 	for _, degrees in { 1, 0.05 } do
 		local a = math.rad(degrees)
 		local wish = t * math.cos(a) + n * math.sin(a)
-		local start = wallCenter - n * (0.15 + cfg.halfWidth * (n.x + n.z) + 0.01) - t * 3.5 + vector.create(0, 0.02, 0)
+		local start = wallCenter - n * (0.15 + cfg.halfWidth * (n.x + n.z) + 0.005) - t * 3.5 + vector.create(0, 0.02, 0)
 		local g, gClear, _, gPath = walk(world, start, { { buttons = B.Forward, yaw = math.atan2(-wish.x, -wish.z), ticks = 110 } })
 		check(
 			string.format("keeps clear of the angled wall on a %.2f degree glancing run", degrees),
