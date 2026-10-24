@@ -168,7 +168,9 @@ From [02-weapon-firing.md](research/02-weapon-firing.md). Press F2 once for the 
   your spray seed ([03-spread-recoil.md](research/03-spread-recoil.md)), and it has to arrive
   before your first shot.
 - **W6 Your own body.** Look down at your feet and fire. The marks land on the floor, not in the
-  air above it, which would mean your own body is getting in the way of your shots.
+  air above it, which would mean your own body is getting in the way of your shots. No part of
+  your Roblox avatar shows when you look down, straight after pressing Play as well as after a
+  respawn.
 - **W7 Operator scope.** With the Operator (6), mouse 2 cycles through 2.5x, 5x and off. Scoped
   shots land exactly on the crosshair. Unscoped shots spread widely (5 degrees).
 
