@@ -281,9 +281,11 @@ and speeding up again reach 0.36 m/s, so the lab calls a jump under 0.5 smooth.
   moves and runs one per 128 Hz tick, half a frame behind on average; ours runs them when they
   arrive and paces the snapshots, which costs 6-12 ms of delay for players and about 6 ms for
   dummies where the reference's queue costs about half of a 7.8 ms frame.
-- **No hitbox animation.** The reference animates server hitboxes (every 4th frame, lerped on a
-  rewind). Ours are boxes rebuilt from position, yaw and crouch, which makes the rewind exact but
-  means a running or crouching character's limbs don't move their boxes.
+- **No hitbox animation, and blocks for bodies.** The reference animates server hitboxes (every
+  4th frame, lerped on a rewind). Ours are boxes rebuilt from position, yaw and crouch, which makes
+  the rewind exact but means a running or crouching character's limbs don't move their boxes.
+  Until there are agent models, other players are drawn as those boxes, like the dummies, with
+  their Roblox avatars hidden, so what you see of anyone is exactly what can be hit.
 - **No penetration (until system 5).** Shots stopped at the first level geometry here; system 5
   traces them through walls, and the verdict now carries the walls too.
 - **Ping in Studio is close to zero.** Hence the simulated network. Real packet loss on Roblox's
@@ -309,7 +311,7 @@ and speeding up again reach 0.36 m/s, so the lab calls a jump under 0.5 smooth.
 | `src/server/init.server.luau` | Dummies, players and the snapshot all work to the frame's server time |
 | `src/server/Tuning.luau` | `maxRewind` is tunable live (Studio or the place owner) |
 | `src/client/NetSim.luau` | Simulated latency, jitter and loss for this client's gameplay messages |
-| `src/client/RemoteEntities.luau` | Histories, the render clock, snapshot counts, Network Buffering, a `MotionMeter` per entity |
+| `src/client/RemoteEntities.luau` | Histories, the render clock, snapshot counts, Network Buffering, a `MotionMeter` per entity; draws dummies and other players as their hitboxes and hides other players' avatars |
 | `src/client/PlayerController.luau` | `viewTime` from the frame on screen; round trip from input to ack |
 | `src/client/Combat/ClientShots.luau` | The client's trace, the verdict, what each side tested and why they differ |
 | `src/client/Combat/WeaponEffects.luau` | Predicted spark at once; confirm pinned to the box hit |

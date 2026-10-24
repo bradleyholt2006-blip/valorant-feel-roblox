@@ -283,11 +283,13 @@ clicked last.
   names them and reads `speed 5.40 m/s`, `last second 5.40-5.40` and a green `biggest jump` under
   0.5 m/s. Before the server paced players' moves, a steady run read anywhere from about 2.5 to
   7.6 m/s, with jumps of 1 to 2.5. Then swap windows and measure player 1 the same way.
-- **T2 Animation.** Does the other player's character play its walk animation, or slide along
-  standing still? Either is fine for now; say which.
+- **T2 Blocks.** Each window draws the other player like a dummy but in red: a yellow head on a
+  red body and dark red legs, with their name and health over the head. Their Roblox avatar
+  doesn't show at all, so there's no hair or hat poking out of the blocks and no Roblox name tag
+  inside them. Press F10: the green outlines sit exactly on the blocks.
 - **T3 Hitting a player.** Press F10 in window 1. Player 2 strafes left and right in the target
   lane, 10 to 20 m out, and player 1 shoots them. Shots register, with damage numbers and hit
-  confirms, and the overlay's boxes turn white on them. No impact marks appear on their body, which
+  confirms, the block that was hit flashes white, and the overlay's boxes turn white on them. No impact marks appear on their body, which
   would mean characters block shots.
 - **T4 Death and respawn.** Kill player 2 with one Vandal headshot or four body shots. Their screen
   shows `ELIMINATED - respawning` and the kill feed shows the kill. About 3 s later they're back at
@@ -312,7 +314,7 @@ H7 agreement on moving targets with the cap at 0: body ___%, head ___%
 H8 agreement on moving targets past the cap: body ___%, head ___%
 H9 strafer's biggest jump: ___ m/s, and with 40 ms and jitter: ___ m/s
 T1 motion on the other player: speed ___ m/s, last second ___-___, biggest jump ___ m/s
-T2 animation: walks / slides
+T2 blocks: the other player shows as blocks only / something of the avatar still shows (what)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -323,10 +325,10 @@ Didn't look right (IDs and what you saw):
 | 01 | The client's per-frame root CFrame wins over the replicated one without flicker | T1 |
 | 01 | Collision with ramps, the angled wall and the jump boxes' faces | M5, M6, M7 |
 | 01 | Whether `GetMouseDelta` needs Roblox's sensitivity divided out | C3 |
-| 01 | Humanoid animation with an anchored root | T2 |
 | 02 | Mouse buttons reach the game, and right-click isn't taken by the camera scripts | C1 |
 | 02 | Viewmodel and muzzle flash in front of a scriptable camera at 103 degrees | C2 |
 | 02 | The `VFCharacters` group keeps characters out of shot traces | W6, T3 |
+| 02 | Other players' avatars stay hidden and only their blocks show | T2 |
 | 02 | Death and respawn with an anchored root and `BreakJointsOnDeath` off | T4 |
 | 03 | The camera kick at 60 and 240 fps, and the HUD ring on the impacts | R5, R2 |
 | 03 | The first ack after spawning corrects the seed before the first shot | W5 |
