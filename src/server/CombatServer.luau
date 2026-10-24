@@ -159,7 +159,9 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 			verdict.region = hit.region
 			verdict.distance = hit.distance
 			verdict.hitPoint = Units.asVector3(hit.point)
-			verdict.damage = result.damage
+			-- What the shot did, not the health it took: a 160 headshot on a
+			-- 150 HP target still reads 160, so damage values can be checked.
+			verdict.damage = amount
 			verdict.killed = result.killed
 		end
 	end
