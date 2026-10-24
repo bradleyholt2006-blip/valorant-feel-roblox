@@ -26,7 +26,10 @@ Built one system at a time:
 2. `rojo serve` in this folder, connect from Studio, press Play.
 3. With no `Map` in Workspace, a measurement course with a target lane and practice dummies is
    built automatically. Look straight ahead from the spawn to face the lane; the wallbang lane is
-   to the left.
+   to the left. In a place made from the Baseplate template, delete its `Baseplate` and
+   `SpawnLocation` first.
+4. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
+   system's Studio checks in order, with what each lab should read.
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife.

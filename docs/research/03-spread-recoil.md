@@ -262,3 +262,5 @@ session can confirm:
 - The first ack after spawning corrects the seed before the first shot in normal play (the weapon
   lab's agreement column should stay at 100% against static dummies).
 - The spray lab's plot matches the impact marks on the wall at a known distance.
+
+The [Studio test session](../studio-checklist.md) walks through these, with what to expect.

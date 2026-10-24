@@ -250,3 +250,5 @@ Roblox definitions). Things only a Studio session can confirm:
 - Blockcast precision on rotated parts and ramps (offline tests use axis-aligned boxes only).
 - Whether `GetMouseDelta` needs the extra division by Roblox's sensitivity setting (cm/360 check).
 - Humanoid animation behaviour with an anchored root.
+
+The [Studio test session](../studio-checklist.md) walks through these, with what to expect.
