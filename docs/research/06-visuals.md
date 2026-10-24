@@ -79,7 +79,7 @@ the pixels.
 | Vignette | In The Range, face a flat, evenly lit wall and take a screenshot with Vignette on, then off (Settings > Video > Graphics Quality), without moving. Pick the brightness at the centre, at the middle of each edge and in each corner, on and off | The darkening at the edges (strength), whether the corners are darker than the edges multiplied (if so, it's round, not two layers), and where it starts |
 | Enemy colours | For each Enemy Highlight Color option, a screenshot of a bot 10 m away. Pick the brightest pixels of the rim | The four colours |
 | Rim and distance | The same bot at 10, 20 and 40 m: the rim's width in pixels, and how red the body looks | Whether the rim keeps its width on screen (an outline, like ours) or shrinks with the model (a fresnel), and the tint near and far |
-| Sun and shade | On a map, one material in sun and in shade, and the same material indoors. Pick each | The ratios our Brightness, OutdoorAmbient and Ambient should give |
+| Sun and shade | On a map, one material in sun and in shade, and the same material indoors. Pick each | The ratios our OutdoorAmbient and Ambient should give against the place's sun |
 | Bloom | A bright weapon skin's highlight with Bloom on and off | How far the glow spreads |
 | Defaults | The Video settings on a fresh install | Which effects are on by default |
 
@@ -101,9 +101,9 @@ All values live in `src/shared/Visuals/VisualConfig.luau`, each with its status 
 | Ally colour | 100,170,255 | Estimate (that it's blue is confirmed) |
 | No character shadows | Your avatar and other players' hidden avatars cast none; the blocks never did | Confirmed |
 | Your hands and weapon | No shadows | A Roblox difference (section 5): the reference's shade only themselves |
-| Sun brightness | 2.5 (BRINK has 3) | Estimate |
-| Ambient (shade the sky can't reach) / OutdoorAmbient | 100,100,105 / 115,115,120 (BRINK has 70,70,70 for both) | Estimate |
-| EnvironmentDiffuseScale / EnvironmentSpecularScale | 0.5 / 0.5 (BRINK has 1 / 1) | Estimate |
+| Ambient (shade the sky can't reach) / OutdoorAmbient (on top of the sky's light outdoors) | 110,110,115 / 95,95,100 (BRINK has 70,70,70 for both) | Estimate |
+| EnvironmentDiffuseScale / EnvironmentSpecularScale | 1 / 1, the sky's full light and reflections (BRINK's own values) | Estimate |
+| The sun's strength and direction | Left to the place (BRINK: Brightness 3, ClockTime 14.5) | Not set: Riot lights each map for itself |
 | ShadowSoftness | 0.25 (BRINK has 0.2) | Estimate |
 | ExposureCompensation | 0 | Estimate |
 | Haze | Atmosphere Density at most 0.2 (BRINK has 0.3) | Estimate |
@@ -144,9 +144,10 @@ What the numbers give (from `luau tests/run.luau`):
   the sun's direction, the sky, the Atmosphere's colours and any fog stay the map's.
 - **A preset over the place's lighting.** The reference lights each map offline and caps each
   area's darkness and brightness. Roblox lights at runtime, so the nearest thing is a preset that
-  keeps the shade up (Ambient where the sky can't reach, OutdoorAmbient and some sky light in
-  outdoor shade) under a slightly softer sun, so values stay close together. A map can still light
-  its own areas (see the rules below).
+  lifts the shade: Ambient where the sky can't reach, and OutdoorAmbient on top of the sky's full
+  light outdoors. That also brings shade closer to sunlit faces in value. It adds light rather
+  than taking it away: the ambients rise only a little, as Roblox advises with the sky's light at
+  full, and the sun stays the map's. A map can still light its own areas (see the rules below).
 - **The outline is a Highlight.** Roblox has no per-model shaders, so no fresnel. A Highlight draws
   an outline round the whole model's silhouette and a tint over it. The outline stands in for the
   rim, and a tint that grows with distance stands in for "brightened" and "larger and more
@@ -235,8 +236,8 @@ Riot's rules from the map article, for BRINK and any map after it:
 3. Set the four enemy colours and the ally colour from the colour picks.
 4. Outline: compare the rim's width and the body's tint at 10 and 40 m with our dummies at the same
    distances, and set the outline transparency and the tint curve.
-5. Lighting: compare the sun-to-shade ratio on similar surfaces and adjust Brightness against
-   OutdoorAmbient; check an interior against Ambient.
+5. Lighting: compare the sun-to-shade ratio on similar surfaces and adjust OutdoorAmbient (or the
+   place's Brightness); check an interior against Ambient.
 6. Re-run `luau tests/run.luau` and update the tables in section 4.
 
 ## Known gaps to check in Studio

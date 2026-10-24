@@ -48,7 +48,6 @@ end
 
 -- What the preset sets on Lighting.
 local PRESET: { [string]: any } = {
-	Brightness = L.brightness.value,
 	Ambient = color3(L.ambient),
 	OutdoorAmbient = color3(L.outdoorAmbient),
 	EnvironmentDiffuseScale = L.environmentDiffuse.value,

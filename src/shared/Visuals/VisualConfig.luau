@@ -31,25 +31,31 @@ local VisualConfig = {}
 -- Lighting ------------------------------------------------------------------------
 
 -- Set on this client's Lighting while the look is on, over the place's own
--- values, which come back when it's off. The sun's direction (ClockTime,
--- GeographicLatitude) and the sky stay the place's own: Riot lights each map
--- for itself.
+-- values, which come back when it's off. It lifts the shade: the sky's
+-- light stays at full and the ambients go up, which also brings shade closer
+-- to sunlit faces in value. The sun (its strength and direction) and the sky
+-- stay the place's own: Riot lights each map for itself.
 VisualConfig.Lighting = {
-	brightness = p(
-		2.5,
-		"estimate",
-		"Sun a little softer than BRINK's 3, so sunlit and shaded faces sit closer in value. The Art of VALORANT Map Environments (Riot): 'we make sure that our materials are similar in value and there isn't too much contrast or darkness'"
-	),
 	ambient = rgb(
-		100,
-		100,
-		105,
+		110,
+		110,
+		115,
 		"estimate",
-		"Light in places the sky can't reach. The Art of VALORANT Map Environments: 'we make sure that they aren't too dark, especially in interior spaces'; VALORANT Shaders and Gameplay Clarity (Riot): 'We also tune the maximum \"darkness\" or \"brightness\" for each area across the map'"
+		"Light in places the sky can't reach (BRINK has 70,70,70). The Art of VALORANT Map Environments (Riot): 'we make sure that they aren't too dark, especially in interior spaces'; VALORANT Shaders and Gameplay Clarity (Riot): 'We also tune the maximum \"darkness\" or \"brightness\" for each area across the map'"
 	),
-	outdoorAmbient = rgb(115, 115, 120, "estimate", "Light in outdoor shade, a touch cool like a sky-lit shadow; the same quotes as ambient"),
-	environmentDiffuse = p(0.5, "estimate", "Share of the sky's colour in the shade; Roblox advises lowering Ambient and OutdoorAmbient as this goes up"),
-	environmentSpecular = p(0.5, "estimate", "Sky reflections on smooth surfaces, half strength"),
+	outdoorAmbient = rgb(
+		95,
+		95,
+		100,
+		"estimate",
+		"Light in outdoor shade on top of the sky's (BRINK has 70,70,70), a touch cool; lower than ambient because outdoor shade also has the sky. The Art of VALORANT Map Environments: 'we make sure that our materials are similar in value and there isn't too much contrast or darkness'"
+	),
+	environmentDiffuse = p(
+		1,
+		"estimate",
+		"The sky's full light in the shade, as Roblox's templates (and BRINK) have it; Roblox advises lowering Ambient and OutdoorAmbient as this goes up, so they rise only a little"
+	),
+	environmentSpecular = p(1, "estimate", "Full sky reflections on smooth surfaces, as Roblox's templates (and BRINK) have it"),
 	shadowSoftness = p(0.25, "estimate", "Softer sun-shadow edges, nearer the reference's baked lightmaps (Lightmass, per VALORANT Shaders and Gameplay Clarity)"),
 	exposure = p(0, "estimate", "No exposure bias, so the look is the same in every place"),
 	maxHaze = p(
@@ -68,7 +74,7 @@ VisualConfig.Colour = {
 	contrast = p(
 		0.05,
 		"estimate",
-		"A slight lift, so the softer lighting doesn't look flat. The reference's Improve Clarity setting 'seems to basically just affect your contrast/the dynamic range of the lighting' (ProSettings)"
+		"A slight lift, so the lighter shade doesn't look flat. The reference's Improve Clarity setting 'seems to basically just affect your contrast/the dynamic range of the lighting' (ProSettings)"
 	),
 	saturation = p(0.1, "estimate", "Slightly richer colour, for the stylised, bright look; Riot's art director calls it 'illustrative visual design' (Inverse, 2020)"),
 	brightness = p(0, "estimate", "No change: the lighting sets the brightness"),

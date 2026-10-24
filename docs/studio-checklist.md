@@ -301,11 +301,10 @@ enemy colour it uses.
 - **V1 On and off.** The `look` line reads `look    on (V)   enemy Red (Default) (N)`. Press V: it
   reads `off`, the shade gets darker, bright parts glow more, the screen's edges are no longer
   darker and the dummies lose their outlines. In BRINK, the Explorer now shows Lighting back at
-  the place's own values: Brightness 3, Ambient and OutdoorAmbient 70, 70, 70,
-  EnvironmentDiffuseScale and EnvironmentSpecularScale 1, the Atmosphere's Density 0.3 and the
-  place's Bloom enabled, with no `VFColour` or `VFBloom` under Lighting
-  (another place shows its own values). Press V again, and toggle it a few more times: nothing
-  drifts. **Send:** a screenshot of the same view with the look on and off.
+  the place's own values: Ambient and OutdoorAmbient 70, 70, 70, ShadowSoftness 0.2, the
+  Atmosphere's Density 0.3 and the place's Bloom enabled, with no `VFColour` or `VFBloom` under
+  Lighting (another place shows its own values). Press V again, and toggle it a few more times:
+  nothing drifts. **Send:** a screenshot of the same view with the look on and off.
 - **V2 Vignette.** With the look on, face the light grey backstop behind the wallbang walls. The
   screen's edges are a little darker than the middle, and the corners darker still. The HUD, the
   crosshair and the labs aren't darkened, and Mouse 1 still fires and Mouse 2 still zooms, so the
