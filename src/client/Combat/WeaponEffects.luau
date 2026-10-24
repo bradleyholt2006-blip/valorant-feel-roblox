@@ -11,6 +11,12 @@
 -- leaves its pattern for comparison with reference footage. Backspace clears
 -- them.
 --
+-- Walls follow the reference's two cues: a bullet that goes through leaves a
+-- hole with "a puff of white smoke" (and a hole where it comes out), one
+-- that doesn't makes an orange spark (TheGamer's wallbang guide). A bullet
+-- that stops inside a wall counts as not going through. Other players' shots
+-- are traced through the level again here to draw their holes.
+--
 -- Hits on characters follow Patch 1.07: a small client-predicted spark
 -- appears at once where the shot met the target as drawn ("DOES NOT mean
 -- your shot has registered on the server (similar to tracers)"), and the hit
@@ -26,7 +32,9 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
+local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Hitboxes = require(Shared.Combat.Hitboxes)
+local Penetration = require(Shared.Combat.Penetration)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
@@ -269,6 +277,48 @@ local function spark(point: vector, color: Color3, size: number)
 	fade(p, 0.15, 0)
 end
 
+local PUFF_COLOR = Color3.fromRGB(235, 235, 228)
+local RICOCHET_COLOR = Color3.fromRGB(255, 150, 60)
+
+local function puff(point: vector, normal: vector, size: number)
+	local p = effectPart("Puff", PUFF_COLOR)
+	p.Size = Vector3.one * size * S
+	p.CFrame = CFrame.new(Units.toStuds(point + normal * size * 0.6))
+	fade(p, 0.3, 0.2)
+end
+
+-- Holes and sparks along a shot, for the walls it met up to `upTo` metres.
+-- Pieces that touch are one wall: one entry, and one exit if the bullet came
+-- out of the last of them.
+local function drawWalls(origin: vector, dir: vector, walls: { Penetration.Wall }, upTo: number)
+	local i = 1
+	while i <= #walls do
+		local first = walls[i]
+		if first.entry > upTo + 1e-3 then
+			return
+		end
+		local last = first
+		while walls[i + 1] and walls[i + 1].continues do
+			i += 1
+			last = walls[i]
+		end
+		i += 1
+		local at = origin + dir * first.entry
+		mark(at, first.normal)
+		local exit, exitNormal = last.exit, last.exitNormal
+		if exit and exitNormal then
+			puff(at, first.normal, 0.06)
+			if exit <= upTo + 1e-3 then
+				local out = origin + dir * exit
+				mark(out, exitNormal)
+				puff(out, exitNormal, 0.04)
+			end
+		else
+			spark(at + first.normal * 0.01, RICOCHET_COLOR, 0.025)
+		end
+	end
+end
+
 function WeaponEffects.clearMarks()
 	for _, m in marks do
 		m:Destroy()
@@ -286,10 +336,9 @@ local function drawShot(record: ClientShots.Record)
 	local outcome = record.predicted
 	local from = WeaponEffects.muzzlePosition()
 	tracer(from, Units.toStuds(outcome.point), Color3.fromRGB(255, 220, 140), 0.012)
+	drawWalls(record.shot.origin, record.shot.direction, outcome.penetration.walls, outcome.distance)
 	if outcome.targetId then
 		spark(outcome.point, Color3.fromRGB(255, 240, 200), 0.02) -- client-predicted, not a hit
-	elseif outcome.normal then
-		mark(outcome.point, outcome.normal)
 	end
 end
 
@@ -349,9 +398,15 @@ local function onShotFx(fx: any)
 		return
 	end
 	tracer(fx.from, fx.to, Color3.fromRGB(150, 200, 255), 0.01)
-	if not fx.hit then
-		spark(Units.toMetres(fx.to), Color3.fromRGB(200, 200, 200), 0.03)
+	local from, to = Units.toMetres(fx.from), Units.toMetres(fx.to)
+	local length = vector.magnitude(to - from)
+	if length < 1e-3 then
+		return
 	end
+	local dir = (to - from) / length
+	local class: WeaponConfig.PenetrationClass = WeaponConfig.get(if typeof(fx.weapon) == "string" then fx.weapon else "knife").penetration
+	local trace = Penetration.trace(ClientShots.level, from, dir, class, length + 0.01)
+	drawWalls(from, dir, trace.walls, length)
 end
 
 function WeaponEffects.start()

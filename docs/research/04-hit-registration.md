@@ -5,8 +5,8 @@ are each looking at a slightly different moment: how other players are drawn (in
 the render clock), what time each shot carries, how the server rewinds targets to what the shooter
 saw and how far it is willing to go (the rewind cap), how hits are shown (a client-predicted spark
 at once, the server's confirm a round trip later), and the tools that check the client and the
-server agree. How a shot is traced and damaged is system 2; where the bullet goes is system 3. Wall
-penetration is a possible later system.
+server agree. How a shot is traced and damaged is system 2; where the bullet goes is system 3;
+how it goes through walls is system 5.
 
 As before, everything comes from Riot's engineering blogs, patch notes, developer posts and
 footage. No game files, memory, network traffic or protected assets were used. Status labels:
@@ -205,8 +205,8 @@ entities ever moving backwards.
 - **No hitbox animation.** The reference animates server hitboxes (every 4th frame, lerped on a
   rewind). Ours are boxes rebuilt from position, yaw and crouch, which makes the rewind exact but
   means a running or crouching character's limbs don't move their boxes.
-- **No penetration.** Shots stop at the first level geometry; each weapon's penetration class is
-  recorded for a later system.
+- **No penetration (until system 5).** Shots stopped at the first level geometry here; system 5
+  traces them through walls, and the verdict now carries the walls too.
 - **Ping in Studio is close to zero.** Hence the simulated network. Real packet loss on Roblox's
   reliable channel shows up as extra delay (resends), which `NetSim` doesn't model.
 

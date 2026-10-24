@@ -12,5 +12,6 @@ require("./accuracy")
 require("./combat")
 require("./net")
 require("./hitreg")
+require("./penetration")
 
 H.finish()

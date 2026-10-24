@@ -52,6 +52,9 @@ export type RecoilDef = {
 
 export type DamageBand = { maxRange: number, head: number, body: number, legs: number }
 
+-- Wall penetration class, as the Arsenal lists it (Low / Medium / High).
+export type PenetrationClass = "none" | "low" | "medium" | "high"
+
 export type AdsDef = {
 	zoom: { number }, -- zoom levels cycled by alt-fire (FOV divisor)
 	fireRateMultiplier: Param,
@@ -72,7 +75,7 @@ export type WeaponDef = {
 	deadzoneFraction: Param?, -- overrides MovementConfig deadzone
 	damage: { DamageBand },
 	damageSource: Param, -- status/source for the whole damage table (value unused)
-	penetration: "none" | "low" | "medium" | "high",
+	penetration: PenetrationClass,
 	ads: AdsDef?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
@@ -405,6 +408,37 @@ WeaponConfig.Health = {
 }
 
 WeaponConfig.MaxRange = 250 -- metres; bullets are hitscan
+
+-- Wall penetration (Combat/Penetration, docs/research/05-wall-penetration.md).
+-- Each weapon has a class; each surface a material: soft (wood, glass),
+-- medium (stone, brick, concrete), hard (metal) or solid (never penetrable).
+-- A bullet carries a budget of 1. A wall costs entryCost when the bullet
+-- enters it from open air, plus thickness along the ray / limit of the rest,
+-- so a single wall exactly `limit` thick, hit square on, takes the whole
+-- budget. Hits past the walls take damage x (1 - damageLoss * budget spent).
+WeaponConfig.Penetration = {
+	classSource = p(
+		0,
+		"community",
+		"Weapon classes (WeaponDef.penetration): Shacknews (Apr 2020) and Codashop (Oct 2020) stat tables, Liquipedia Vandal 'Medium'. Riot names the classes in Patch 1.03 (Guardian 'Medium >>> Heavy')"
+	),
+	-- Thickest single wall of each material a class gets through, hit square on (metres).
+	limits = {
+		none = { soft = 0, medium = 0, hard = 0 },
+		low = { soft = 0.25, medium = 0, hard = 0 },
+		medium = { soft = 0.5, medium = 0.25, hard = 0 },
+		high = { soft = 1.0, medium = 0.5, hard = 0.2 },
+	} :: { [string]: { [string]: number } },
+	limitsSource = p(
+		0,
+		"estimate",
+		"Which class gets through which material is community (quarkez's tests via Dexerto, Jun 2020: glass and wood need low penetration, stone or brick medium, metal high); the thicknesses are ours"
+	),
+	entryCost = p(0.1, "estimate", "Not published; fit from the same wall at two angles (docs/research/05-wall-penetration.md)"),
+	damageLoss = p(0.75, "estimate", "Not published; a bullet that barely gets through keeps a quarter of its damage. Fit from wallbang damage"),
+	-- Pieces of geometry one shot is traced through, at most (bounds the raycasts).
+	maxPieces = 16,
+}
 
 -- Accuracy rules shared by every weapon.
 WeaponConfig.Accuracy = {

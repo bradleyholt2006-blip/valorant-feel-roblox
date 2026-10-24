@@ -5,29 +5,32 @@
 -- that tick's viewTime: the snapshot time the shooter's screen was showing.
 -- The server rewinds every other living entity to that time (lag
 -- compensation, capped at 140 ms like the reference since Patch 6.02),
--- traces the shot against level geometry (Roblox raycast) and those
--- entities' analytic hitboxes (ShotResolver), applies damage by region and
--- range, slows the victim ("tagging") and tells everyone what happened. In
--- the push model Riot describes, clients get hit events, not polled health.
+-- traces the shot through the level (Penetration, over Roblox raycasts) and
+-- against those entities' analytic hitboxes (ShotResolver), applies damage by
+-- region, range and the walls it went through, slows the victim ("tagging")
+-- and tells everyone what happened. In the push model Riot describes,
+-- clients get hit events, not polled health.
 --
 -- The verdict sent back to the shooter also says what the server tested:
 -- how far it rewound, the rewound pose of every target near the ray and the
--- snapshots it came from, the shot's origin and the distance to the level.
--- That is what the debug tools use to draw the server's boxes next to the
--- client's and to say why the two disagree when they do.
+-- snapshots it came from, the shot's origin, where the level stopped it and
+-- the walls on the way. That is what the debug tools use to draw the
+-- server's boxes and walls next to the client's and to say why the two
+-- disagree when they do.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
-local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local ShotResolver = require(Shared.Combat.ShotResolver)
 local LagCompensation = require(Shared.Combat.LagCompensation)
+local Penetration = require(Shared.Combat.Penetration)
+local RobloxLevel = require(Shared.Combat.RobloxLevel)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -40,26 +43,12 @@ local DT = 1 / MovementConfig.TickRate.value
 
 local CombatServer = {}
 
-local worldParams = RaycastParams.new()
-worldParams.FilterType = Enum.RaycastFilterType.Exclude
-worldParams.CollisionGroup = RobloxWorld.CHARACTER_GROUP
-worldParams.RespectCanCollide = true
-
+local level = RobloxLevel.new()
 local history = LagCompensation.new()
 
 -- Replication listener: every snapshot sent becomes rewind history.
 function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 	LagCompensation.record(history, time, poses)
-end
-
--- Distance (metres) to the first piece of level geometry along the shot.
-local function worldDistance(origin: vector, dir: vector): number
-	local maxRange = WeaponConfig.MaxRange
-	local result = Workspace:Raycast(Units.toStuds(origin), Units.toStuds(dir * maxRange), worldParams)
-	if result then
-		return result.Distance * Units.METRES_PER_STUD
-	end
-	return maxRange
 end
 
 local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount: number, region: string)
@@ -87,6 +76,27 @@ local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount
 	return result
 end
 
+-- The walls a shot met before `distance`, for the shooter's debug tools.
+local function describeWalls(trace: Penetration.Trace, distance: number): { { [string]: any } }
+	local out = {}
+	for _, wall in trace.walls do
+		if wall.entry > distance + 1e-4 then
+			break
+		end
+		table.insert(out, {
+			material = wall.material,
+			name = wall.name,
+			entry = wall.entry,
+			exit = wall.exit,
+			thickness = wall.thickness,
+			used = wall.used,
+			multiplier = wall.multiplier,
+			continues = wall.continues,
+		})
+	end
+	return out
+end
+
 -- Positions go as metres in a Vector3 (the wire keeps float32 exactly), so
 -- the client can compare them with its own bit for bit.
 local function describeTarget(t: LagCompensation.Target): { [string]: any }
@@ -111,7 +121,8 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 		local entity = Entities.get(id)
 		return id ~= shooter.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil
 	end)
-	local blockedAt = worldDistance(shot.origin, shot.direction)
+	local trace = Penetration.trace(level, shot.origin, shot.direction, def.penetration, WeaponConfig.MaxRange)
+	local blockedAt = trace.stop
 	local hit = ShotResolver.resolve(shot.origin, shot.direction, LagCompensation.shotTargets(rewound), blockedAt, shooter.id)
 
 	local tested = {}
@@ -121,6 +132,8 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 		end
 	end
 	local endPoint = if hit then hit.point else shot.origin + shot.direction * blockedAt
+	local endDistance = if hit then hit.distance else blockedAt
+	local multiplier = Penetration.multiplierAt(trace, endDistance)
 	local verdict: { [string]: any } = {
 		shotNumber = shot.shotNumber,
 		tick = shot.tick,
@@ -133,12 +146,14 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 		origin = Units.asVector3(shot.origin),
 		direction = Units.asVector3(shot.direction),
 		blockedAt = blockedAt,
+		multiplier = multiplier,
+		walls = describeWalls(trace, endDistance),
 		tested = tested,
 	}
 	if hit then
 		local victim = Entities.get(hit.targetId)
 		if victim and victim.health.alive then
-			local amount = WeaponConfig.damageAt(def, hit.region, hit.distance)
+			local amount = Penetration.damage(WeaponConfig.damageAt(def, hit.region, hit.distance), multiplier)
 			local result = damage(shooter, victim, amount, hit.region)
 			verdict.target = hit.targetId
 			verdict.region = hit.region
@@ -153,7 +168,14 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 	if shooter.player then
 		remotes.ShotResult:FireClient(shooter.player, verdict)
 	end
-	local fx = { shooter = shooter.id, from = Units.toStuds(shot.origin), to = verdict.endPoint, hit = verdict.target ~= nil }
+	-- Other clients trace the walls again themselves to draw the holes.
+	local fx = {
+		shooter = shooter.id,
+		weapon = shot.weapon,
+		from = Units.toStuds(shot.origin),
+		to = verdict.endPoint,
+		hit = verdict.target ~= nil,
+	}
 	for _, entity in Entities.all() do
 		if entity.player and entity ~= shooter then
 			remotes.ShotFx:FireClient(entity.player, fx)

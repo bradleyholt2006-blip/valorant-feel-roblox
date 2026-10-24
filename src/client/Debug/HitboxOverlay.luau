@@ -12,6 +12,12 @@
 --     server's are drawn in blue next to them. A label gives the rewind, and
 --     when the verdict differs from the client's guess the ray turns red and
 --     the label says why (ClientShots.Cause).
+--   * the walls each shot met: a thick segment through every piece the
+--     bullet went into, coloured by material, labelled with its thickness
+--     along the ray, the share of the bullet's budget it took and the damage
+--     left after it. When the verdict arrives the labels turn white if the
+--     server's walls match the client's, and red, with the server's list in
+--     blue, if not.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -21,6 +27,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Hitboxes = require(Shared.Combat.Hitboxes)
+local Penetration = require(Shared.Combat.Penetration)
 local Units = require(Shared.Units)
 
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
@@ -35,6 +42,13 @@ local SERVER_COLOR = Color3.fromRGB(90, 160, 255)
 local SAME_COLOR = Color3.fromRGB(240, 240, 240)
 local DIFF_COLOR = Color3.fromRGB(240, 80, 80)
 
+local MATERIAL_COLORS: { [string]: Color3 } = {
+	soft = Color3.fromRGB(205, 150, 90),
+	medium = Color3.fromRGB(175, 175, 180),
+	hard = Color3.fromRGB(120, 175, 225),
+	solid = Color3.fromRGB(230, 90, 90),
+}
+
 local HitboxOverlay = {}
 
 local enabled = false
@@ -46,6 +60,7 @@ type Drawn = {
 	ray: BasePart?,
 	clientEnd: BasePart?,
 	boxes: { [number]: { BasePart } }, -- the client's tested boxes, by target
+	wallLabels: { TextLabel }, -- the client's walls
 	expires: number,
 }
 local drawn: { [ClientShots.Record]: Drawn } = {}
@@ -98,13 +113,14 @@ local function drawBoxes(entry: Drawn, pose: Hitboxes.Pose, color: Color3): { Ba
 	return list
 end
 
-local function line(from: vector, to: vector, color: Color3): Part
+local function line(from: vector, to: vector, color: Color3, width: number?): Part
 	local p = newPart()
 	p.Transparency = 0.2
 	p.Material = Enum.Material.Neon
 	p.Color = color
 	local a, b = Units.toStuds(from), Units.toStuds(to)
-	p.Size = Vector3.new(0.008 * S, 0.008 * S, math.max((b - a).Magnitude, 0.01))
+	local w = (width or 0.008) * S
+	p.Size = Vector3.new(w, w, math.max((b - a).Magnitude, 0.01))
 	p.CFrame = CFrame.lookAt((a + b) / 2, b)
 	return p
 end
@@ -120,10 +136,10 @@ local function dot(at: vector, color: Color3): Part
 	return p
 end
 
-local function label(anchor: BasePart, text: string, color: Color3)
+local function label(anchor: BasePart, text: string, color: Color3, rise: number?): TextLabel
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromOffset(240, 18)
-	gui.StudsOffset = Vector3.new(0, 0.25 * S, 0)
+	gui.StudsOffset = Vector3.new(0, (rise or 0.25) * S, 0)
 	gui.AlwaysOnTop = true
 	gui.Adornee = anchor
 	local l = Instance.new("TextLabel")
@@ -136,6 +152,52 @@ local function label(anchor: BasePart, text: string, color: Color3)
 	l.Text = text
 	l.Parent = gui
 	gui.Parent = anchor
+	return l
+end
+
+local function wallText(name: string?, material: string, thickness: number, used: number, multiplier: number, exited: boolean): string
+	local what = if name then string.format("%s (%s)", name, material) else material
+	if not exited and thickness == 0 then
+		return what .. " stops"
+	end
+	local after = if exited then string.format("x%.2f", multiplier) else "stops inside"
+	return string.format("%s %.2f m  %.0f%%  %s", what, thickness, used * 100, after)
+end
+
+-- The pieces of level a shot went into, up to `upTo` metres.
+local function drawWalls(entry: Drawn, origin: vector, dir: vector, walls: { Penetration.Wall }, upTo: number)
+	for i, wall in walls do
+		if wall.entry > upTo + 1e-3 then
+			break
+		end
+		local depth = wall.exit or (wall.entry + wall.thickness)
+		local color = MATERIAL_COLORS[wall.material] or SAME_COLOR
+		local from, to = origin + dir * wall.entry, origin + dir * math.max(depth, wall.entry + 0.01)
+		local segment = line(from, to, color, 0.03)
+		table.insert(entry.parts, segment)
+		local text = wallText(wall.name, wall.material, wall.thickness, wall.used, wall.multiplier, wall.exit ~= nil)
+		table.insert(entry.wallLabels, label(segment, text, CLIENT_COLOR, 0.35 + (i - 1) % 3 * 0.12))
+	end
+end
+
+local function sameWalls(mine: { Penetration.Wall }, upTo: number, server: { ClientShots.WallReport }): boolean
+	local n = 0
+	for _, wall in mine do
+		if wall.entry > upTo + 1e-3 then
+			break
+		end
+		n += 1
+		local theirs = server[n]
+		if
+			not theirs
+			or theirs.material ~= wall.material
+			or math.abs(theirs.used - wall.used) > 1e-3
+			or (theirs.exit == nil) ~= (wall.exit == nil)
+		then
+			return false
+		end
+	end
+	return n == #server
 end
 
 local function clearLive()
@@ -152,7 +214,7 @@ local function onFired(record: ClientShots.Record)
 		return
 	end
 	local shot = record.shot
-	local entry: Drawn = { parts = {}, ray = nil, clientEnd = nil, boxes = {}, expires = os.clock() + SHOT_LIFETIME }
+	local entry: Drawn = { parts = {}, ray = nil, clientEnd = nil, boxes = {}, wallLabels = {}, expires = os.clock() + SHOT_LIFETIME }
 	for id, tested in record.tested do
 		entry.boxes[id] = drawBoxes(entry, tested.pose, CLIENT_COLOR)
 	end
@@ -162,6 +224,7 @@ local function onFired(record: ClientShots.Record)
 	local clientEnd = dot(record.predicted.point, CLIENT_COLOR)
 	entry.clientEnd = clientEnd
 	table.insert(entry.parts, clientEnd)
+	drawWalls(entry, shot.origin, shot.direction, record.predicted.penetration.walls, record.predicted.distance)
 	drawn[record] = entry
 end
 
@@ -184,7 +247,29 @@ local function onVerdict(record: ClientShots.Record)
 			drawBoxes(entry, tested.pose, SERVER_COLOR)
 		end
 	end
+	-- Walls: the client's labels turn white when the server met the same ones.
+	local walls = record.predicted.penetration.walls
+	if sameWalls(walls, record.predicted.distance, verdict.walls) then
+		for _, l in entry.wallLabels do
+			l.TextColor3 = SAME_COLOR
+		end
+	else
+		for _, l in entry.wallLabels do
+			l.TextColor3 = DIFF_COLOR
+		end
+		local origin, dir = record.shot.origin, record.shot.direction
+		for i, wall in verdict.walls do
+			local at = dot(origin + dir * wall.entry, SERVER_COLOR)
+			table.insert(entry.parts, at)
+			local text = wallText(wall.name, wall.material, wall.thickness, wall.used, wall.multiplier, wall.exit ~= nil)
+			label(at, "server " .. text, SERVER_COLOR, -0.2 - (i - 1) % 3 * 0.12)
+		end
+	end
+
 	local text = string.format("rewind %.0f ms%s", verdict.rewind * 1000, if verdict.clamped then " CAPPED" else "")
+	if verdict.multiplier < 1 then
+		text ..= string.format("  walls x%.2f", verdict.multiplier)
+	end
 	if not record.agree then
 		text ..= "  " .. (record.cause or "?")
 		local ray = entry.ray
