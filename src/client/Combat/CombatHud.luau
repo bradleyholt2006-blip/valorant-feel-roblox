@@ -88,7 +88,10 @@ local function damageNumber(point: vector, amount: number, color: Color3)
 end
 
 function CombatHud.start()
-	local gui = Ui.screen("VFCombatHud", 15)
+	-- The hit marker, reload bar and scope sit on the camera's centre; the kill
+	-- feed keeps clear of the top bar.
+	local gui = Ui.screen("VFCombatHud", 15, Enum.ScreenInsets.None)
+	local feedGui = Ui.screen("VFKillFeed", 15)
 
 	-- Health / shield (left of centre) and ammo (right of centre) ------------
 	local vitals = Ui.frame(gui, {
@@ -171,7 +174,7 @@ function CombatHud.start()
 	local markerColor = Ui.TEXT
 
 	-- Kill feed ---------------------------------------------------------------
-	local feed = Ui.label(gui, {
+	local feed = Ui.label(feedGui, {
 		Size = UDim2.fromOffset(320, FEED_ROWS * 18),
 		Position = UDim2.new(1, -332, 0, 12),
 		TextXAlignment = Enum.TextXAlignment.Right,
