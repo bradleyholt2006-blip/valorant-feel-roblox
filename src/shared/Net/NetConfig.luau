@@ -39,6 +39,7 @@ NetConfig.Interp = {
 		"Share of recent snapshots that must have arrived in time; the rest show as a held pose (Riot accepts 'player pops' from packet loss at its minimum buffering)"
 	),
 	margin = p(0.002, "estimate", "Seconds added on top of the measured delay"),
+	settle = p(0.1, "estimate", "Seconds the render clock takes to close 63% of a gap to its target (it eases exponentially)"),
 	maxRate = p(0.1, "estimate", "How much faster or slower than real time the render clock may run while it adjusts (10%)"),
 }
 
@@ -51,6 +52,20 @@ NetConfig.Buffering = {
 	{ name = "Maximum", extra = 0.03125, reference = 0.0390625 },
 } :: { Buffering }
 NetConfig.bufferingSource = "RiotStealthyJesus, r/VALORANT (2020): 'Minimum' is 1 frame of delay (7.8125ms), 'Moderate' 3 frames (23.4375ms), 'Maximum' 5 frames (39.0625ms)"
+
+-- Pacing -------------------------------------------------------------------------
+
+-- The server shows each player's and dummy's ticks on a steady timeline in
+-- the snapshots (MovePacer), a little behind the newest tick: far enough
+-- that the next tick has almost always run, measured per entity.
+NetConfig.Pacing = {
+	window = p(2, "estimate", "Seconds of server frames the delay is measured over"),
+	percentile = p(0.99, "estimate", "Share of recent server frames that must already have run the tick shown"),
+	margin = p(0.002, "estimate", "Seconds added on top of the measured delay"),
+	settle = p(0.1, "estimate", "Seconds the time shown takes to close 63% of a gap to its target (it eases exponentially)"),
+	maxRate = p(0.1, "estimate", "How much faster or slower than real time the time shown may run while it adjusts (10%)"),
+}
+NetConfig.pacingSource = "Peeking into VALORANT's Netcode (Riot): the server 'establishes a basis between that client's timeline and its own' and adjusts it 'to maintain a healthy queue of upcoming moves to execute', targeting 'an average of half a frame of movement data on servers'"
 
 -- Reference values the Hit Reg Lab compares against -------------------------------
 

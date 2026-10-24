@@ -17,7 +17,8 @@ export type Entity = {
 	player: Player?,
 	health: Health.State,
 	sim: any?, -- PlayerSim.State when spawned
-	-- Current pose in metres, or nil while not spawned.
+	-- The pose snapshots show, in metres (a little behind the simulation,
+	-- MovePacer), or nil while not spawned.
 	pose: () -> PlayerCodec.Pose?,
 	onKilled: (attacker: Entity?) -> (),
 }
@@ -42,7 +43,8 @@ function Entities.all(): { [number]: Entity }
 	return byId
 end
 
--- Current poses of every living, spawned entity.
+-- The poses this frame's snapshot shows of every living, spawned entity
+-- (players and dummies pace theirs, MovePacer).
 function Entities.poses(): { PlayerCodec.Pose }
 	local out = {}
 	for _, entity in byId do

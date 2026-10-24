@@ -9,6 +9,7 @@ local PlayerSim = require("../src/shared/PlayerSim")
 local PlayerCodec = require("../src/shared/Net/PlayerCodec")
 local PoseHistory = require("../src/shared/Net/PoseHistory")
 local InterpClock = require("../src/shared/Net/InterpClock")
+local MovePacer = require("../src/shared/Net/MovePacer")
 local NetConfig = require("../src/shared/Net/NetConfig")
 local LagCompensation = require("../src/shared/Combat/LagCompensation")
 local ShotResolver = require("../src/shared/Combat/ShotResolver")
@@ -241,7 +242,8 @@ end
 --
 -- A server at 60 Hz frames simulates a practice dummy strafing 15 m in front
 -- of a still shooter (left and right every 0.6 s at rifle speed, with the
--- real movement model) and sends a snapshot every frame. The client draws
+-- real movement model) and sends a snapshot every frame, showing the dummy
+-- through a MovePacer as the real server does. The client draws
 -- 144 Hz frames with the render clock and fires about five shots a second at
 -- the target as drawn (a perfect aimer). By default each shot goes to a random
 -- spot on one of its boxes, half of them close to an edge on purpose; with
@@ -302,6 +304,11 @@ local function simulate(case: NetCase): NetResult
 	local target = PlayerSim.new(vector.create(0, 0.02, -15), { "vandal", "", "" }, 1)
 	local ticks = 0
 	local simulated = 0
+	local pacer = MovePacer.new()
+	local function targetPose(): PlayerCodec.Pose
+		local m = target.movement
+		return { id = TARGET_ID, position = m.position, yaw = math.pi, pitch = 0, crouchAlpha = m.crouchAlpha, grounded = m.grounded, alive = true }
+	end
 	local history = LagCompensation.new()
 	local seen = PoseHistory.new()
 	local clock = InterpClock.new()
@@ -338,6 +345,7 @@ local function simulate(case: NetCase): NetResult
 				local buttons = if (ticks // STRAFE_TICKS) % 2 == 0 then B.Left else B.Right
 				PlayerSim.step(target, { seq = ticks, buttons = buttons, slot = 1, yaw = math.pi, pitch = 0, viewTime = 0 }, cfg, floor, DT)
 				simulated += DT
+				MovePacer.push(pacer, simulated, targetPose())
 			end
 			-- Shots first, then the frame's snapshot, as on the real server.
 			while #toServer > 0 and toServer[1].at <= now do
@@ -360,8 +368,8 @@ local function simulate(case: NetCase): NetResult
 					result.movingAgreed += if agreed then 1 else 0
 				end
 			end
-			local m = target.movement
-			local p = PlayerCodec.quantizePose({ id = TARGET_ID, position = m.position, yaw = math.pi, pitch = 0, crouchAlpha = m.crouchAlpha, grounded = m.grounded, alive = true })
+			-- Until its first tick, where it is, as Dummies does.
+			local p = PlayerCodec.quantizePose(MovePacer.advance(pacer, now) or targetPose())
 			LagCompensation.record(history, now, { p })
 			frame += 1
 			if rand() >= case.loss then

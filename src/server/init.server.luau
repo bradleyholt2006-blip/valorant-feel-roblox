@@ -2,9 +2,11 @@
 -- Server entry point. Order inside each Heartbeat matters: dummies advance,
 -- then player inputs run (their shots rewind targets through the snapshots
 -- sent so far), then the frame's snapshot goes out and joins that history.
+-- All three work to the same server time, the one the snapshot carries.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local RobloxLevel = require(ReplicatedStorage:WaitForChild("Shared").Combat.RobloxLevel)
 
@@ -22,9 +24,10 @@ Dummies.start()
 table.insert(Replication.listeners, CombatServer.record)
 
 RunService.Heartbeat:Connect(function(dt)
-	Dummies.step(dt)
-	PlayerSimServer.step(dt)
-	Replication.step()
+	local now = Workspace:GetServerTimeNow()
+	Dummies.step(now)
+	PlayerSimServer.step(dt, now)
+	Replication.step(now)
 end)
 
 -- Checks wall penetration measures parts of known size (Output window).

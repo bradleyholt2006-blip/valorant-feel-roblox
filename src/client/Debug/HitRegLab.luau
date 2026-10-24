@@ -10,6 +10,9 @@
 --   * snapshots: how many arrive per second, how many were lost or late, the
 --     render clock's delay, how often a frame had to hold a pose, and the
 --     Network Buffering setting next to the reference's
+--   * motion: how evenly the player or dummy nearest your crosshair moves on
+--     screen over the last second (MotionMeter): its speed, slowest and
+--     fastest, and the biggest jump any frame made off the frames either side
 --   * rewind: how far back the server went for your shots, how many hit the
 --     cap, and the round trip at which shots start to hit it
 --   * agreement between the client's guess and the server's verdict, on all
@@ -26,10 +29,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local NetConfig = require(Shared.Net.NetConfig)
 local InterpClock = require(Shared.Net.InterpClock)
+local MotionMeter = require(Shared.Net.MotionMeter)
+local Hitboxes = require(Shared.Combat.Hitboxes)
+local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Ui)
 local NetSim = require(script.Parent.Parent.NetSim)
@@ -44,6 +51,7 @@ local CAPS = { NetConfig.maxRewind.value, NetConfig.Reference.maxRewindAtLaunch.
 local RATE_WINDOW = 2 -- seconds the snapshot rate is measured over
 local REFERENCE_SNAPSHOT_RATE = 128 -- the reference sends every server frame
 local CAUSES = { "capped", "shooter", "gone", "snapshot", "world", "pose", "edge" }
+local MOTION_CONE = 10 -- degrees from the crosshair the motion line looks for an entity in
 
 local HitRegLab = {}
 
@@ -76,6 +84,30 @@ local function percent(n: number, of: number): string
 	return if of > 0 then string.format("%.1f%%", n / of * 100) else "--"
 end
 
+-- The entity drawn nearest the crosshair, by the angle to its body box,
+-- within MOTION_CONE.
+local function aimedAt(): number?
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return nil
+	end
+	local eye = Units.toMetres(camera.CFrame.Position)
+	local look = Units.asVector(camera.CFrame.LookVector)
+	local best, bestAngle = nil, math.rad(MOTION_CONE)
+	for _, entry in RemoteEntities.lookups(RemoteEntities.renderTime()) do
+		local pose = entry.lookup.pose
+		local box = Hitboxes.region({ position = pose.position, yaw = pose.yaw, crouchAlpha = pose.crouchAlpha }, "body")
+		local to = if box then box.center - eye else nil
+		if to and vector.magnitude(to) > 0 then
+			local angle = math.acos(math.clamp(vector.dot(vector.normalize(to), look), -1, 1))
+			if angle < bestAngle then
+				best, bestAngle = entry.id, angle
+			end
+		end
+	end
+	return best
+end
+
 -- The value after `current` in a list, going round (the first if it isn't there).
 local function nextIn(list: { number }, current: number): number
 	for i, v in list do
@@ -89,7 +121,7 @@ end
 function HitRegLab.start(controller: any)
 	local gui = Ui.screen("VFHitRegLab", 22)
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(660, 600),
+		Size = UDim2.fromOffset(660, 680),
 		Position = UDim2.new(1, -672, 0, 120),
 		Visible = false,
 	})
@@ -210,6 +242,26 @@ function HitRegLab.start(controller: any)
 			ms1(buffering.extra),
 			dim("reference " .. table.concat(references, " / ") .. " ms (Min / Mod / Max)")
 		))
+		table.insert(lines, "")
+
+		-- Motion -----------------------------------------------------------------------
+		local aimed = aimedAt()
+		local motion = if aimed then RemoteEntities.motion(aimed) else nil
+		if aimed and motion then
+			table.insert(lines, string.format("<b>motion</b>  %s, nearest your crosshair", RemoteEntities.nameOf(aimed)))
+			table.insert(lines, string.format(
+				"  speed %.2f m/s   last second %.2f-%.2f   biggest jump %s",
+				motion.speed,
+				motion.low,
+				motion.high,
+				colored(if motion.jump < MotionMeter.SMOOTH then Ui.GOOD else Ui.BAD, string.format("%.2f m/s", motion.jump))
+			))
+		else
+			table.insert(lines, string.format("<b>motion</b>  aim within %d degrees of a player or dummy to measure it", MOTION_CONE))
+			table.insert(lines, "  speed --")
+		end
+		table.insert(lines, dim(string.format("  jump: a frame moving more or less than the ones beside it; smooth is under %.1f", MotionMeter.SMOOTH)))
+		table.insert(lines, dim('  reference    "The other nine players continue to see smooth movement" (Riot)'))
 		table.insert(lines, "")
 
 		-- Rewind ---------------------------------------------------------------------

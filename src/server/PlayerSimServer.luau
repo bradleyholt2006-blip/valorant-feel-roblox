@@ -13,6 +13,9 @@
 -- (one input per player per round), so when two players' shots land in the
 -- same frame the one fired on the earlier tick is resolved first, whichever
 -- player's queue happens to come first.
+--
+-- Moves run in bunches as they arrive, so what the snapshots show of each
+-- player is paced onto a steady timeline first (MovePacer).
 
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
@@ -27,6 +30,7 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
+local MovePacer = require(Shared.Net.MovePacer)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
@@ -53,6 +57,8 @@ type Record = {
 	pitch: number,
 	alive: boolean,
 	droppedInputs: number,
+	pacer: MovePacer.Pacer, -- the pose after each move, at the move's time
+	shown: PlayerCodec.Pose?, -- what this frame's snapshot shows
 }
 
 export type ShotHandler = (shooter: Entities.Entity, shot: WeaponSim.Shot, viewTime: number) -> ()
@@ -82,6 +88,26 @@ local function tagPart(part: Instance)
 	if part:IsA("BasePart") then
 		part.CollisionGroup = RobloxWorld.CHARACTER_GROUP
 	end
+end
+
+-- The player's pose as the simulation has it now.
+local function currentPose(r: Record): PlayerCodec.Pose
+	local m = r.sim.movement
+	return {
+		id = r.entity.id,
+		position = m.position,
+		yaw = r.yaw,
+		pitch = r.pitch,
+		crouchAlpha = m.crouchAlpha,
+		grounded = m.grounded,
+		alive = true,
+	}
+end
+
+-- Starts the snapshots over from where the player is (spawned or moved).
+local function restartPacing(r: Record)
+	MovePacer.reset(r.pacer)
+	r.shown = nil
 end
 
 local function placeRoot(r: Record)
@@ -114,6 +140,7 @@ local function onCharacter(r: Record, character: Model)
 	r.root = root
 	r.ackDirty = true
 	r.alive = true
+	restartPacing(r)
 	Health.reset(r.entity.health)
 	r.entity.sim = r.sim
 
@@ -143,16 +170,8 @@ local function onPlayerAdded(player: Player)
 			if not r.root or not r.alive then
 				return nil
 			end
-			local m = r.sim.movement
-			return {
-				id = r.entity.id,
-				position = m.position,
-				yaw = r.yaw,
-				pitch = r.pitch,
-				crouchAlpha = m.crouchAlpha,
-				grounded = m.grounded,
-				alive = true,
-			}
+			-- Until the first move of this life has run, where it spawned.
+			return r.shown or currentPose(r)
 		end,
 		onKilled = function()
 			r.alive = false
@@ -178,6 +197,8 @@ local function onPlayerAdded(player: Player)
 		pitch = 0,
 		alive = false,
 		droppedInputs = 0,
+		pacer = MovePacer.new(),
+		shown = nil,
 	}
 	records[player] = r
 	Entities.add(entity)
@@ -239,6 +260,7 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.yaw = input.yaw
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
 		local shot = PlayerSim.step(r.sim, input, cfg, world, DT)
+		MovePacer.push(r.pacer, input.seq * DT, currentPose(r))
 		r.ackDirty = true
 		if shot then
 			onShot(r.entity, shot, input.viewTime)
@@ -248,7 +270,9 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 	return false
 end
 
-function PlayerSimServer.step(dt: number)
+-- One server frame: dt seconds since the last, ending at server time `now`
+-- (the time this frame's snapshot carries).
+function PlayerSimServer.step(dt: number, now: number)
 	local cfg = Tuning.config()
 	for _, r in records do
 		if r.root then
@@ -274,7 +298,9 @@ function PlayerSimServer.step(dt: number)
 			r.sim = newSim(r)
 			r.entity.sim = r.sim
 			r.ackDirty = true
+			restartPacing(r)
 		end
+		r.shown = if r.alive then MovePacer.advance(r.pacer, now) else nil
 		placeRoot(r)
 		if r.ackDirty then
 			r.ackDirty = false

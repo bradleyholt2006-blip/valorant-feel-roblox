@@ -13,6 +13,9 @@
 --
 -- Dummies have no server-side parts: the client draws them straight from
 -- their analytic hitboxes, so what you see is exactly what can be hit.
+--
+-- Where each entity is drawn every frame also goes into a MotionMeter, for
+-- the Hit Reg Lab's motion line.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,6 +26,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local PoseHistory = require(Shared.Net.PoseHistory)
 local InterpClock = require(Shared.Net.InterpClock)
+local MotionMeter = require(Shared.Net.MotionMeter)
 local NetConfig = require(Shared.Net.NetConfig)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -35,7 +39,10 @@ local NetSim = require(script.Parent.NetSim)
 
 local RemoteEntities = {}
 
+local MOTION_WINDOW = 1 -- seconds of drawn frames each entity's motion is measured over
+
 local histories: { [number]: PoseHistory.History } = {}
+local meters: { [number]: MotionMeter.Meter } = {}
 local lastSeen: { [number]: number } = {}
 local latestSnapshot = -math.huge
 local localId = PlayerCodec.entityIdForUser(Players.LocalPlayer.UserId)
@@ -203,10 +210,26 @@ function RemoteEntities.ids(): { number }
 	return out
 end
 
+-- What an entity is called: its dummy model's name or its player's.
+function RemoteEntities.nameOf(id: number): string
+	if isDummy(id) then
+		return string.format("Dummy_%d", id - PlayerCodec.DUMMY_BASE)
+	end
+	local player = playerFor(id)
+	return if player then player.Name else tostring(id)
+end
+
+-- How evenly an entity has moved on screen over the last second, or nil
+-- until it has been drawn for a few frames.
+function RemoteEntities.motion(id: number): MotionMeter.Reading?
+	local meter = meters[id]
+	return if meter then MotionMeter.read(meter) else nil
+end
+
 local function makeVisual(id: number): Visual
 	local folder = visualFolder :: Folder
 	local model = Instance.new("Model")
-	model.Name = string.format("Dummy_%d", id - PlayerCodec.DUMMY_BASE)
+	model.Name = RemoteEntities.nameOf(id)
 	local parts: { [string]: BasePart } = {}
 	for region, color in REGION_COLORS do
 		local p = Instance.new("Part")
@@ -260,18 +283,28 @@ function RemoteEntities.placeBoxes(parts: { [string]: BasePart }, pose: Hitboxes
 end
 
 local function onRender()
-	frameTime = InterpClock.advance(RemoteEntities.clock, os.clock())
+	local now = os.clock()
+	frameTime = InterpClock.advance(RemoteEntities.clock, now)
 	local renderTime = RemoteEntities.renderTime()
 	for id in histories do
 		local present = RemoteEntities.isPresent(id)
 		local pose = if present then RemoteEntities.sample(id, renderTime) else nil
+		local meter = meters[id]
+		if pose then
+			if not meter then
+				meter = MotionMeter.new(MOTION_WINDOW)
+				meters[id] = meter
+			end
+			MotionMeter.push(meter, now, pose.position)
+		elseif meter then
+			MotionMeter.clear(meter)
+		end
 		if isDummy(id) then
 			local visual = visuals[id] or makeVisual(id)
 			visuals[id] = visual
 			visual.model.Parent = if pose then visualFolder else nil
 			if pose then
 				RemoteEntities.placeBoxes(visual.parts, pose)
-				local now = os.clock()
 				for region, part in visual.parts do
 					part.Color = if (visual.flashUntil[region] or 0) > now then FLASH_COLOR else REGION_COLORS[region]
 				end
@@ -283,6 +316,7 @@ local function onRender()
 		local player = playerFor(id)
 		if not player then
 			histories[id] = nil
+			meters[id] = nil
 			continue
 		end
 		local character = player.Character

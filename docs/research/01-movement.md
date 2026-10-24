@@ -187,8 +187,11 @@ cap and into the deadzone. Both are gone with the model in section 5.
   than 2 mm or 1 cm/s, it rewinds to the server state, replays unacknowledged inputs, and blends the
   visual error out over about 100 ms so the camera doesn't snap.
 - **Remote players** are interpolated from timestamped snapshots on a render clock that measures
-  how late snapshots arrive. Every input carries the time of the frame on screen, which is what the
-  server rewinds targets to for hit registration (system 4, `docs/research/04-hit-registration.md`).
+  how late snapshots arrive. The server runs each player's moves as they arrive, two or three to a
+  packet, so the snapshots show each move at its own time on a steady timeline instead of the
+  newest one each frame (`MovePacer`), and others see them move evenly. Every input carries the
+  time of the frame on screen, which is what the server rewinds targets to for hit registration
+  (system 4, `docs/research/04-hit-registration.md`).
 
 Roblox differences from the reference that matter:
 
