@@ -20,9 +20,11 @@
 --     setting. A lost snapshot doesn't raise the delay: like the reference at
 --     its minimum buffering, the entity holds its pose for an interval
 --     instead ("player pops" with packet loss, as Riot puts it).
---   * The render time eases toward (local time + offset - delay), running at
---     most 10% fast or slow, so changes in latency never make remote players
---     jump or move backwards.
+--   * The render time eases toward (local time + offset - delay), closing
+--     most of a gap in a tenth of a second and running at most 10% fast or
+--     slow, so changes in latency never make remote players jump or move
+--     backwards, and the small changes each arrival makes don't show as
+--     changes of speed.
 --
 -- The clock never reads the client's estimate of the server's time: it only
 -- follows the snapshots, so what it says is what the screen shows.
@@ -125,8 +127,12 @@ function InterpClock.advance(c: Clock, now: number): number?
 		if math.abs(err) > SNAP_ERROR then
 			nextTime = target
 		else
+			-- Close the gap gradually, as MovePacer does: the target moves a
+			-- little with each arrival, and following each move at once shows as
+			-- speed changes.
+			local share = 1 - math.exp(-dt / NetConfig.Interp.settle.value)
 			local step = dt * NetConfig.Interp.maxRate.value
-			nextTime = free + math.clamp(err, -step, step)
+			nextTime = free + math.clamp(err * share, -step, step)
 		end
 	end
 	c.time = nextTime

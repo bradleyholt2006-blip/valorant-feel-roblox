@@ -211,6 +211,12 @@ Reg Lab and F10 for the overlay. Backspace clears the lab's counters between ste
   between what you saw and what it tests. Agreement on moving targets is a bit under half for body
   shots (4 to 12 of 20 is within chance) and about a fifth for head shots (1 to 7). Then press `[`
   eight times, J twice and L twice to switch everything off. The HUD's red `sim` text goes away.
+- **H9 Smooth movement.** Aim at the strafing dummy at 15 m and keep it within 10 degrees of the
+  crosshair. The lab's `motion` line reads `Dummy_N, nearest your crosshair`. Its `speed` swings
+  between 0 and 5.40 m/s as it strafes, but `biggest jump` stays green, under 0.5 m/s: no frame
+  moves it much more or less than the frames either side. Before the server paced the dummies,
+  this read 1 to 2.5. Press `]` four times and J once, and check it again; then press `[` four
+  times and J twice to switch them off.
 
 ## 7. Wall penetration
 
@@ -271,7 +277,12 @@ press Start. Studio opens a server window and two player windows. Keys go to whi
 clicked last.
 
 - **T1 Smooth movement.** In each window, the other player moves smoothly as they run, stop and
-  jump, with no flicker or jumping back and forth.
+  jump, with no flicker or jumping back and forth. To measure it, open the Hit Reg Lab in window 1
+  (F2 three times) and keep player 2 within 10 degrees of the crosshair while they run along the
+  sprint lane, holding D for at least 2 s. While they're still running, the lab's `motion` line
+  names them and reads `speed 5.40 m/s`, `last second 5.40-5.40` and a green `biggest jump` under
+  0.5 m/s. Before the server paced players' moves, a steady run read anywhere from about 2.5 to
+  7.6 m/s, with jumps of 1 to 2.5. Then swap windows and measure player 1 the same way.
 - **T2 Animation.** Does the other player's character play its walk animation, or slide along
   standing still? Either is fine for now; say which.
 - **T3 Hitting a player.** Press F10 in window 1. Player 2 strafes left and right in the target
@@ -299,6 +310,8 @@ H2 agreement ___%, rewind mean ___ ms
 H5 agreement ___%, rewind mean ___ ms, hit confirm ___ ms, round trip ___ ms
 H7 agreement on moving targets with the cap at 0: body ___%, head ___%
 H8 agreement on moving targets past the cap: body ___%, head ___%
+H9 strafer's biggest jump: ___ m/s, and with 40 ms and jitter: ___ m/s
+T1 motion on the other player: speed ___ m/s, last second ___-___, biggest jump ___ m/s
 T2 animation: walks / slides
 Didn't look right (IDs and what you saw):
 ```
@@ -322,6 +335,7 @@ Didn't look right (IDs and what you saw):
 | 04 | `viewTime` is read before remote entities move | H2, H3 |
 | 04 | Hit confirms stay on the body part and go when the target dies | H4 |
 | 04 | About 100% agreement against strafers, with white boxes in the overlay | H2, H3, H5 |
+| 04 | Pacing keeps other players and dummies smooth with Roblox's real timing | H9, T1 |
 | 05 | Rays that start inside a part don't hit it, and the back cast's normal faces out | S1 |
 | 05 | The self-test's parts are found by raycasts one frame after they're added | S1 |
 | 05 | Holes, dust and sparks on the right faces, other players' holes, white wall labels | P2, P4, T5 |

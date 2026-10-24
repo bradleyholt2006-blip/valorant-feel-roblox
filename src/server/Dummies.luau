@@ -6,6 +6,10 @@
 --
 -- Spawn points are Parts in a "DummySpawns" folder (TestRange builds some)
 -- with a Mode attribute: "static", "strafe" or "crouch".
+--
+-- They tick at 128 Hz on the server's clock, two or three ticks a 60 Hz
+-- frame, so the snapshots show them through a MovePacer, about a tick
+-- behind, and they move as evenly as the simulation does.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +21,7 @@ local PlayerSim = require(Shared.PlayerSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
+local MovePacer = require(Shared.Net.MovePacer)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
@@ -26,6 +31,7 @@ local Tuning = require(script.Parent.Tuning)
 local TICK_RATE = MovementConfig.TickRate.value
 local DT = 1 / TICK_RATE
 local RESPAWN_TIME = 2
+local MAX_CATCH_UP = 0.25 -- seconds of ticks a frame will run after a stall; older ones are skipped
 local STRAFE_TICKS = math.floor(0.6 * TICK_RATE) -- direction change every 0.6 s (estimate of the range bots)
 
 local B = PlayerSim.Buttons
@@ -39,14 +45,16 @@ type Dummy = {
 	alive: boolean,
 	respawnAt: number,
 	ticks: number,
+	pacer: MovePacer.Pacer, -- the pose after each tick, at the tick's server time
+	shown: PlayerCodec.Pose?, -- what this frame's snapshot shows
 }
 
 local Dummies = {}
 
 local dummies: { Dummy } = {}
 local world = RobloxWorld.new()
-local accumulator = 0
-local clock = 0
+local lastTick: number? = nil -- server time of the last tick
+local clock = 0 -- server time of the last frame
 
 local function buttonsFor(d: Dummy): number
 	if d.mode == "strafe" then
@@ -57,11 +65,27 @@ local function buttonsFor(d: Dummy): number
 	return 0
 end
 
+-- The dummy's pose as the simulation has it now.
+local function currentPose(d: Dummy): PlayerCodec.Pose
+	local m = d.sim.movement
+	return {
+		id = d.entity.id,
+		position = m.position,
+		yaw = d.yaw,
+		pitch = 0,
+		crouchAlpha = m.crouchAlpha,
+		grounded = m.grounded,
+		alive = true,
+	}
+end
+
 local function spawnDummy(d: Dummy)
 	d.sim = PlayerSim.new(d.spawnFeet, { "vandal", "", "" }, d.entity.id)
 	d.entity.sim = d.sim
 	d.alive = true
 	d.ticks = 0
+	MovePacer.reset(d.pacer)
+	d.shown = nil
 	Health.reset(d.entity.health)
 	Remotes.get().Combat:FireAllClients({ kind = "spawn", target = d.entity.id, health = d.entity.health.health, shield = d.entity.health.shield })
 end
@@ -80,16 +104,8 @@ local function addDummy(index: number, feet: vector, mode: string)
 			if not d.alive then
 				return nil
 			end
-			local m = d.sim.movement
-			return {
-				id = d.entity.id,
-				position = m.position,
-				yaw = d.yaw,
-				pitch = 0,
-				crouchAlpha = m.crouchAlpha,
-				grounded = m.grounded,
-				alive = true,
-			}
+			-- Until its first tick, where it spawned.
+			return d.shown or currentPose(d)
 		end,
 		onKilled = function()
 			d.alive = false
@@ -105,6 +121,8 @@ local function addDummy(index: number, feet: vector, mode: string)
 		alive = true,
 		respawnAt = 0,
 		ticks = 0,
+		pacer = MovePacer.new(),
+		shown = nil,
 	}
 	table.insert(dummies, d)
 	Entities.add(entity)
@@ -136,15 +154,20 @@ function Dummies.start()
 	end
 end
 
-function Dummies.step(dt: number)
-	clock += dt
-	accumulator = math.min(accumulator + dt, 0.25)
+-- One server frame, ending at server time `now` (the time this frame's
+-- snapshot carries): runs every tick due by then.
+function Dummies.step(now: number)
+	clock = now
+	local last = lastTick or now
+	if now - last > MAX_CATCH_UP then
+		last = now - MAX_CATCH_UP
+	end
 	local cfg = Tuning.config()
-	while accumulator >= DT do
-		accumulator -= DT
+	while last + DT <= now do
+		last += DT
 		for _, d in dummies do
 			if not d.alive then
-				if clock >= d.respawnAt then
+				if last >= d.respawnAt then
 					spawnDummy(d)
 				end
 				continue
@@ -152,7 +175,12 @@ function Dummies.step(dt: number)
 			d.ticks += 1
 			local input = { seq = d.ticks, buttons = buttonsFor(d), yaw = d.yaw, pitch = 0, slot = 1, viewTime = 0 }
 			PlayerSim.step(d.sim, input, cfg, world, DT)
+			MovePacer.push(d.pacer, last, currentPose(d))
 		end
+	end
+	lastTick = last
+	for _, d in dummies do
+		d.shown = if d.alive then MovePacer.advance(d.pacer, now) else nil
 	end
 end
 

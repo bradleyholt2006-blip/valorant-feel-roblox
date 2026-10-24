@@ -1,8 +1,9 @@
 # System 4: Hit registration and lag compensation
 
 This covers how the server decides what a shot hit when the shooter, the target and the server
-are each looking at a slightly different moment: how other players are drawn (interpolation and
-the render clock), what time each shot carries, how the server rewinds targets to what the shooter
+are each looking at a slightly different moment: how other players are drawn (interpolation, the
+render clock, and the server pacing their moves so they move evenly), what time each shot carries,
+how the server rewinds targets to what the shooter
 saw and how far it is willing to go (the rewind cap), how hits are shown (a client-predicted spark
 at once, the server's confirm a round trip later), and the tools that check the client and the
 server agree. How a shot is traced and damaged is system 2; where the bullet goes is system 3;
@@ -31,6 +32,8 @@ footage. No game files, memory, network traffic or protected assets were used. S
 - The Network Buffering setting (Minimum, Moderate, Maximum) smooths other players' movement on a
   bad connection at the cost of seeing them a little later.
 - On a connection that drops packets, other players "pop": they freeze for a moment, then jump.
+- Otherwise other players move smoothly on your screen: someone running at a steady speed doesn't
+  speed up and slow down from frame to frame, even when their own connection is uneven.
 - Once a lethal shot is processed, the victim's later shots don't count, even if they fired on
   their own screen at about the same moment.
 
@@ -43,6 +46,10 @@ How it works (Riot):
 | "Hit registration in VALORANT works by saving player positions and animation state in a historical buffer. When the server receives a shot packet from the client, it rewinds the player positions and animation state using the historical buffer" | Confirmed | [VALORANT's 128-Tick Servers](https://technology.riotgames.com/node/112) |
 | Server hitboxes follow server-side animation, which runs every 4th frame: "In the event of a rewind we could lerp between the saved animations" | Confirmed | Same article |
 | Clients "send up exactly what time in the simulation they were looking at when firing a shot"; "In reasonable networking conditions, this allows for near-perfect hit registration" | Confirmed | [Peeking into VALORANT's Netcode](https://technology.riotgames.com/node/111) |
+| "When the server starts receiving data from a client, it establishes a basis between that client's timeline and its own"; "As each update arrives from a client, the server slots it into the corresponding slot in its queue", and it "sets up its basis (and adjusts as needed) to maintain a healthy queue of upcoming moves to execute" | Confirmed | Same article |
+| When a move hasn't arrived in time, "the server will predict what the client would have done", usually that "they continued to hold down whatever keys were being held in the last received update" | Confirmed | Same article |
+| "targeting one buffered frame of movement data for clients and an average of half a frame of movement data on servers"; "clients and servers always update movement, physics, and other related systems with a fixed timestep: exactly 128 times per second" | Confirmed | Same article |
+| Running the simulation on whatever data is newest means guessing, and the wrong guesses make characters pop or slide to catch up: "This sort of artifact goes directly against our design goal of smooth movement, and would make it difficult for players to track a moving target." Corrections are "only seen by the player who encountered the underlying network issues"; "The other nine players continue to see smooth movement." | Confirmed | Same article |
 | The rewind is capped: "Without limits, a player with 500ms latency could kill you a half second after you'd moved behind cover" | Confirmed | Same article |
 | "When the server processes a lethal shot, it marks the victim as dead, rejecting any future shots from that victim" | Confirmed | Same article |
 | "Adjusted max server rewind limit down to 140 ms from 200 ms." The 200 ms "was set ... based on what we deemed as acceptable networking conditions"; against high ping it "should feel less like you're getting shot after moving behind cover", and high-ping players "may start to experience hit registration inaccuracy" | Confirmed | [Patch 6.02](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-6-02/) (Feb 2023) |
@@ -94,7 +101,8 @@ All values live in `src/shared/Net/NetConfig.luau`, each with its status and sou
 | Network Buffering | +0, +15.6, +31.25 ms over our minimum | Confirmed steps (Riot: 1, 3 and 5 frames) |
 | Snapshot rate | 60 Hz, every server frame | Roblox's frame rate (the reference: 128 Hz) |
 | Render delay | measured: the 98th percentile of how late snapshots arrive, plus one send interval, plus 2 ms | Estimate (the reference: a fixed 7.8125 ms) |
-| Render clock correction | at most 10% faster or slower; jumps only when more than 0.25 s off | Estimate |
+| Render clock correction | eases (63% of a gap in 0.1 s), at most 10% faster or slower; jumps only when more than 0.25 s off | Estimate |
+| Players and dummies in the snapshots | paced: each tick shown at its own time, as far behind the server's time as the newest tick was on all but 1% of the last 2 s of frames, plus 2 ms; eased like the render clock; never past the newest tick | Estimate (the reference runs queued moves on its own 128 Hz tick, half a frame behind on average) |
 | History | 64 snapshots per entity (about a second) | Estimate (needs only to cover the cap) |
 | Hitboxes | rebuilt from position, yaw and crouch; not animated | Simplification (the reference animates them) |
 
@@ -108,9 +116,9 @@ both miss); "as seen" means the server tested the pose that was actually on scre
 | --- | --- | --- | --- | --- | --- |
 | None (Studio) | 100% | 100% | 40 / 48 ms | 0 | 0% |
 | 40 ms each way, 0-3 ms jitter | 100% | 100% | 124 / 133 ms | 0 | 0% |
-| The same, no lag compensation | 30.1% | 30.1% | 0 | all | 0% |
+| The same, no lag compensation | 29.5% | 29.5% | 0 | all | 0% |
 | The same, 3% of snapshots lost | 100% | 99.7% | 124 / 133 ms | 0 | 1.6% |
-| 75 ms each way (past the cap) | 52.9% | 52.9% | 140 / 140 ms | all | 0% |
+| 75 ms each way (past the cap) | 52.6% | 52.6% | 140 / 140 ms | all | 0% |
 | 40 ms each way, the old fixed 50 ms delay | 99.7% | 95.2% | 106 / 115 ms | 0 | 44.9% |
 
 Aimed at the middle of the body or the head instead, as a player tracking the strafer does (and
@@ -119,9 +127,9 @@ the Studio checklist's H6 to H8), agreement on shots at the moving strafer:
 | Network | Body | Head | Rewind mean | Capped |
 | --- | --- | --- | --- | --- |
 | 40 ms each way, 0-5 ms jitter, 2% of snapshots lost (H6) | 100% | 100% | 127 ms | 0 |
-| The same, no lag compensation (H7) | 26.7% | 22.0% | 0 | all |
-| None (Studio), no lag compensation | 100% | 82.5% | 0 | all |
-| 80 ms each way, 0-5 ms jitter, 2% lost (H8, past the cap) | 44.8% | 21.5% | 140 ms (207 asked for) | all |
+| The same, no lag compensation (H7) | 26.1% | 21.3% | 0 | all |
+| None (Studio), no lag compensation | 100% | 81.7% | 0 | all |
+| 80 ms each way, 0-5 ms jitter, 2% lost (H8, past the cap) | 43.1% | 22.7% | 140 ms (207 asked for) | all |
 
 Without the full rewind, whether a shot agrees depends on where in the strafe it lands. The dummy
 spends most of each 0.6 s strafe slowing down and speeding up, and near a turn it has hardly
@@ -135,6 +143,35 @@ so body shots agree without lag compensation; only the head (0.12 m) shows the d
 The render clock on its own: 40 ms each way gives a delay of 24.2 ms and no starved frames; with
 0-8 ms of jitter, 30.3 ms and none; a jump from 40 to 100 ms settles within 2 s without the
 entities ever moving backwards.
+
+How evenly others move (`tests/pacing.luau`). A player runs left and right 15 m in front of a
+still observer, 2 s each way at rifle speed (5.40 m/s), through the real path: their client's
+frames, one packet of 128 Hz moves a frame, the server's input queue and simulation at 60 Hz. A
+dummy strafes the same way on the server's clock. Each goes into the snapshots twice, as the newest
+pose every server frame (what the server sent before pacing) and paced, and the observer draws
+both with the render clock at the same frame rate as the player. Speeds are while running at full
+speed; a jump is how far a frame's velocity is off the line through the frames either side
+(`MotionMeter`, the Hit Reg Lab's motion line), over every frame, turns included; delay is the
+mean time from the player being somewhere to being drawn there.
+
+| Network, frame rate | Snapshots show | Drawn speed (5th-95th) | Frames within 1% of 5.40 | Biggest jump | Delay |
+| --- | --- | --- | --- | --- | --- |
+| Studio, 60 fps | newest pose | 5.06-7.29 m/s | 13.1% | 2.32 m/s | 54.5 ms |
+| | paced | 5.40-5.40 m/s | 100% | 0.23 m/s | 60.3 ms |
+| Studio, 144 fps | newest pose | 2.53-7.59 m/s | 3.7% | 2.32 m/s | 36.3 ms |
+| | paced | 5.40-5.40 m/s | 99.4% | 0.36 m/s | 43.0 ms |
+| Studio, 60 fps, frames up to 20% long, server frames up to 2 ms late | newest pose | 1.79-7.25 m/s | 2.9% | 6.24 m/s | 53.4 ms |
+| | paced | 5.37-5.43 m/s | 98.4% | 0.41 m/s | 65.6 ms |
+| 40 ms each way, 0-5 ms jitter, 144 fps | newest pose | 2.53-7.59 m/s | 1.1% | 2.37 m/s | 118.7 ms |
+| | paced | 5.39-5.42 m/s | 98.3% | 0.31 m/s | 128.0 ms |
+
+Paced, the server had to hold a player on their newest move (the next hadn't run) on 0.3-0.4% of
+frames, and shots at the paced player agreed with the server 100% of the time in every case. The
+dummy gives the same picture: from the newest pose 4.84-7.59 m/s with jumps up to 1.5-3.9 m/s;
+paced 5.39-5.42 m/s, 98.2% of frames or more within 1%, jumps at most 0.35 m/s, 5.5-6.5 ms later.
+On a steady run the paced jumps stay under 0.04 m/s, except where a late move made the server hold
+the player (0.41 m/s with uneven frames). The rest come from the turns, where slowing down
+and speeding up again reach 0.36 m/s, so the lab calls a jump under 0.5 smooth.
 
 ## 5. Design
 
@@ -176,8 +213,25 @@ entities ever moving backwards.
   the delay is the 98th percentile of those plus 2 ms plus the Network Buffering setting. Lost
   snapshots don't count as long intervals (sequence numbers say how many were sent), so loss
   shows as a short pose hold, like the reference's "player pops", not as a bigger delay for
-  everyone. The clock eases toward its target at up to 10% faster or slower than real time and
-  never runs backwards, so a change in latency never makes anyone jitter.
+  everyone. The clock eases toward its target, closing 63% of a gap in 0.1 s and running at most
+  10% faster or slower than real time, and never runs backwards, so neither a change in latency
+  nor the small change each arrival makes to the target shows as jitter.
+- **Paced snapshots.** The server runs a player's moves the moment they arrive, and they arrive in
+  bunches: a client at 60 fps sends two or three 128 Hz moves a packet, and each 60 Hz server
+  frame runs whatever has come in since the last. Sending each frame's newest pose made other
+  players lurch, drawn at anything from 2.5 to 7.6 m/s while running at a steady 5.40, and the
+  dummies, two or three 128 Hz ticks a frame, did the same in a regular beat. Riot's server runs
+  each client's moves from a queue on its own 128 Hz tick, so everyone else gets them at an even
+  pace. Ours keeps running moves at once, so nobody's movement or shots wait, and paces only what
+  the snapshots show (`MovePacer`). Each tick's pose is kept at its own time: a player's move
+  number over 128, or the server time of a dummy's tick. Every frame the server notes how far the
+  newest tick is from its own time; the snapshot shows the entity at server time plus the low end
+  of that over the last 2 s (on all but 1% of those frames the tick had run by then), less 2 ms.
+  The time shown eases toward that target the same way the render clock does, never passes the
+  newest tick (a late move makes the entity wait, then catch up gently) and never goes back. It
+  costs 6-12 ms before others see a player move and about 6 ms for a dummy. Lag compensation
+  records the same paced snapshots, so hit registration still checks exactly what the shooter
+  saw.
 - **Rewind and the cap.** The server rebuilds every other living entity at `viewTime` clamped to
   between 140 ms ago and now (a time from the future is checked at now). A shooter whose view is
   older than the cap is checked against the world at the cap, so they start to miss moving targets
@@ -222,6 +276,11 @@ entities ever moving backwards.
 - **Peeker's advantage** follows: by Riot's formula ours is about one frame + the round trip + the
   render delay, so roughly 25-30 ms more than the reference at the same ping. Only faster server
   frames would close that, which Roblox doesn't offer.
+- **No fixed tick for running moves.** Roblox gives the server a 60 Hz Heartbeat, not a 128 Hz
+  loop, and a client's moves come two or three to a packet. The reference queues each client's
+  moves and runs one per 128 Hz tick, half a frame behind on average; ours runs them when they
+  arrive and paces the snapshots, which costs 6-12 ms of delay for players and about 6 ms for
+  dummies where the reference's queue costs about half of a 7.8 ms frame.
 - **No hitbox animation.** The reference animates server hitboxes (every 4th frame, lerped on a
   rewind). Ours are boxes rebuilt from position, yaw and crouch, which makes the rewind exact but
   means a running or crouching character's limbs don't move their boxes.
@@ -234,31 +293,36 @@ entities ever moving backwards.
 
 | File | Role |
 | --- | --- |
-| `src/shared/Net/NetConfig.luau` | The cap, render clock and buffering numbers, and the reference values the lab compares with, each with status and source |
+| `src/shared/Net/NetConfig.luau` | The cap, render clock, pacing and buffering numbers, and the reference values the lab compares with, each with status and source |
 | `src/shared/Net/PoseHistory.luau` | Pose history and the one interpolation rule both sides use |
 | `src/shared/Net/InterpClock.luau` | The render clock: delay measured from snapshot arrivals, eased, never backwards |
+| `src/shared/Net/MovePacer.luau` | Each player's and dummy's ticks put on a steady timeline for the snapshots |
+| `src/shared/Net/MotionMeter.luau` | How evenly something moves on screen: speed and the biggest jump, for the lab and the tests |
 | `src/shared/Combat/LagCompensation.luau` | Server history, rewind time with the cap, rewound targets |
 | `src/shared/Combat/ShotResolver.luau` | Skips targets whose bounding sphere is off the ray (`nearRay`) |
 | `src/shared/Combat/Hitboxes.luau` | `region`, `boxFraction` and `boxPoint` for confirms pinned to a box |
 | `src/shared/Net/PlayerCodec.luau` | Snapshots carry a sequence number |
-| `src/server/Replication.luau` | A snapshot every server frame, quantised before anything sees it |
+| `src/server/Replication.luau` | A snapshot of the paced poses every server frame, quantised before anything sees it |
 | `src/server/CombatServer.luau` | Rewinds, resolves and sends the detailed verdict |
-| `src/server/PlayerSimServer.luau` | One input per player per round, so shots resolve in tick order |
+| `src/server/PlayerSimServer.luau` | One input per player per round, so shots resolve in tick order; paces each player's moves |
+| `src/server/Dummies.luau` | Ticks the dummies on the server's clock and paces them |
+| `src/server/init.server.luau` | Dummies, players and the snapshot all work to the frame's server time |
 | `src/server/Tuning.luau` | `maxRewind` is tunable live (Studio or the place owner) |
 | `src/client/NetSim.luau` | Simulated latency, jitter and loss for this client's gameplay messages |
-| `src/client/RemoteEntities.luau` | Histories, the render clock, snapshot counts, Network Buffering |
+| `src/client/RemoteEntities.luau` | Histories, the render clock, snapshot counts, Network Buffering, a `MotionMeter` per entity |
 | `src/client/PlayerController.luau` | `viewTime` from the frame on screen; round trip from input to ack |
 | `src/client/Combat/ClientShots.luau` | The client's trace, the verdict, what each side tested and why they differ |
 | `src/client/Combat/WeaponEffects.luau` | Predicted spark at once; confirm pinned to the box hit |
 | `src/client/Debug/HitRegLab.luau` | The Hit Reg Lab (below) |
 | `src/client/Debug/HitboxOverlay.luau` | Client and server boxes per shot |
 | `tests/hitreg.luau` | Offline tests and the simulated network |
+| `tests/pacing.luau` | `MovePacer` and `MotionMeter`, and a simulated network that measures how evenly a player and a dummy are drawn |
 
 ## 7. Debug tools
 
 | Key | Tool |
 | --- | --- |
-| F2 (third press) | Hit Reg Lab: the rewind cap against Riot's 140 / 200 ms; the round trip from input to ack against Riot's "20-30 ms over network RTT"; snapshots per second, lost and late, the render delay and how often a frame held a pose, Network Buffering against the reference's 7.8 / 23.4 / 39.1 ms; rewind last, mean and max, shots capped, and the round trip at which shots start to hit the cap; client and server agreement on all shots and on moving targets, with the reasons when they differ; shot to hit confirm against one round trip; peeker's advantage by Riot's formula against 40-70 ms |
+| F2 (third press) | Hit Reg Lab: the rewind cap against Riot's 140 / 200 ms; the round trip from input to ack against Riot's "20-30 ms over network RTT"; snapshots per second, lost and late, the render delay and how often a frame held a pose, Network Buffering against the reference's 7.8 / 23.4 / 39.1 ms; the motion of the player or dummy nearest the crosshair (within 10 degrees): its speed, slowest and fastest over the last second, and the biggest jump, green under 0.5 m/s, against Riot's "The other nine players continue to see smooth movement"; rewind last, mean and max, shots capped, and the round trip at which shots start to hit the cap; client and server agreement on all shots and on moving targets, with the reasons when they differ; shot to hit confirm against one round trip; peeker's advantage by Riot's formula against 40-70 ms |
 | `[` / `]` (lab open) | Simulated latency down / up 10 ms each way (0-150 ms) |
 | J / L / B / K (lab open) | Jitter 0, 5, 15 ms; loss 0, 2, 5%; Network Buffering Minimum, Moderate, Maximum; rewind cap 140 ms, 200 ms, 0 for no lag compensation (Studio or place owner) |
 | F10 | Hitbox overlay: per shot, the client's boxes and end point in yellow; when the verdict comes, the server's end point in blue, the client's boxes turn white where the server tested the same pose, the server's are drawn in blue where it didn't, and a label gives the rewind (CAPPED when the cap moved it) and the reason for any difference; the ray turns red |
@@ -277,11 +341,15 @@ entities ever moving backwards.
    (section 4).
 3. With two players in Studio (Test tab, Clients and Servers, 2 players) and F10 on, shoot one
    strafing past cover and check the white boxes sit where the target was drawn.
-4. Measure the reference's hit confirm delay and behind-cover window (section 3); compare with the
+4. In the same test, one player runs along the sprint lane while the other aims at them with the
+   lab open: the motion line should read 5.40 m/s, 5.40-5.40 over the last second, and a biggest
+   jump under 0.5 (the newest pose gave 1-2.5 m/s). Aimed at a strafing dummy, the jump should
+   stay under 0.5 too.
+5. Measure the reference's hit confirm delay and behind-cover window (section 3); compare with the
    lab's confirm delay and rewind at the same round trip.
-5. If shooters around 100-125 ms of round trip should still land moving shots, as they do in the
+6. If shooters around 100-125 ms of round trip should still land moving shots, as they do in the
    reference, try `NetConfig.maxRewind` at 0.17 and judge being hit behind cover against it.
-6. Re-run `luau tests/run.luau` and update the tables in section 4.
+7. Re-run `luau tests/run.luau` and update the tables in section 4.
 
 ## Known gaps to check in Studio
 
@@ -297,5 +365,8 @@ session can confirm:
   snapshots).
 - Agreement is about 100% against the strafing dummies with no simulated latency, and the
   overlay's white boxes match the dummies.
+- With Roblox's real frame and packet timing, pacing keeps others smooth: the motion line reads a
+  biggest jump under 0.5 m/s on another player running steadily (5.40-5.40) and on the strafing
+  dummies.
 
 The [Studio test session](../studio-checklist.md) walks through these, with what to expect.

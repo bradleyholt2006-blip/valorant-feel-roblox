@@ -4,9 +4,10 @@
 --
 -- Poses are quantised exactly as the wire does before anything sees them,
 -- and listeners (lag compensation) get each snapshot as sent, so the
--- server's history holds exactly what clients draw.
+-- server's history holds exactly what clients draw. Players and dummies give
+-- their paced poses (MovePacer), so they move evenly from one snapshot to
+-- the next.
 
-local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -28,8 +29,8 @@ local seq = 0
 -- Listeners get every snapshot as sent (server time + quantised poses).
 Replication.listeners = {} :: { (number, { PlayerCodec.Pose }) -> () }
 
-function Replication.step()
-	local now = Workspace:GetServerTimeNow()
+-- Sends the frame's snapshot, stamped with server time `now`.
+function Replication.step(now: number)
 	if now - lastSent < MIN_SPACING then
 		return
 	end
