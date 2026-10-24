@@ -192,10 +192,11 @@ function DebugHud.start(controller: any)
 			string.format("tick    %d Hz   fps %.0f   ping %.0f ms", MovementConfig.TickRate.value, fps, ping),
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
-			string.format('<font color="#%s">F3 hud  F4 lab  F6 record  F7 ghost  1/2/3 weapon</font>', Ui.hex(Ui.DIM)),
+			string.format('<font color="#%s">F2 weapons  F3 hud  F4 lab  F6 record  F7 ghost  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 
-		local server = controller.serverState
+		local serverSim = controller.serverSim
+		local server = serverSim and serverSim.movement
 		if ghostVisible and server then
 			local h = MovementSim.boxHeight(server, cfg)
 			local size = Vector3.new(cfg.halfWidth * 2, h, cfg.halfWidth * 2) * Units.STUDS_PER_METRE

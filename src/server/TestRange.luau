@@ -7,6 +7,8 @@
 --   * jump boxes of 0.50 / 0.70 / 0.85 / 1.00 m
 --   * ramps at 30 / 45 / 50 degrees (maxGroundAngle is 46)
 --   * an angled wall for wall-slide checks
+--   * a target lane down -Z with stripes every 10 m to 50 m, a backstop, a
+--     waist-high cover and practice dummy spawn points
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -106,6 +108,40 @@ function TestRange.buildIfMissing()
 
 	-- Angled wall for slide tests.
 	part(root, "SlideWall", Vector3.new(8, 3, 0.3), Vector3.new(14, 1.5, -14), grey, CFrame.Angles(0, math.rad(30), 0))
+
+	-- Target lane straight ahead of the spawn (yaw 0 looks down -Z), with
+	-- distance stripes, a backstop and practice dummy spawn points.
+	part(root, "LaneFloor", Vector3.new(24, 1, 24), Vector3.new(2, -0.5, -50), grey)
+	part(root, "Backstop", Vector3.new(24, 6, 0.5), Vector3.new(2, 3, -60), light)
+	for _, m in { 10, 20, 30, 40, 50 } do
+		local stripe = part(root, "Range" .. m, Vector3.new(12, 0.01, 0.05), Vector3.new(2, 0.005, -m), accent)
+		stripe.CanCollide = false
+		local tag = part(root, "RangeTag" .. m, Vector3.new(0.8, 0.01, 0.4), Vector3.new(-5, 0.006, -m), grey)
+		tag.CanCollide = false
+		sign(tag, m .. " m")
+	end
+	-- Waist-high cover with a dummy behind it: only its head is exposed.
+	part(root, "Cover", Vector3.new(2, 1.2, 0.4), Vector3.new(8, 0.6, -21), light)
+
+	local spawns = Instance.new("Folder")
+	spawns.Name = "DummySpawns"
+	spawns.Parent = root
+	local dummySpots = {
+		{ x = 0, z = -10, mode = "static" },
+		{ x = 3, z = -15, mode = "strafe" },
+		{ x = -2, z = -20, mode = "crouch" },
+		{ x = 0, z = -30, mode = "static" },
+		{ x = 3, z = -30, mode = "strafe" },
+		{ x = 0, z = -50, mode = "static" },
+		{ x = 8, z = -22, mode = "static" },
+	}
+	for i, spot in dummySpots do
+		local marker = part(spawns, string.format("Dummy%02d", i), Vector3.new(0.5, 0.02, 0.5), Vector3.new(spot.x, 0.01, spot.z), accent)
+		marker.CanCollide = false
+		marker.CanQuery = false
+		marker.Transparency = 0.6
+		marker:SetAttribute("Mode", spot.mode)
+	end
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "Spawn"

@@ -16,6 +16,13 @@ CameraController.fieldOfView = 103 -- horizontal, reference game's fixed FOV (co
 
 CameraController.yaw = 0
 CameraController.pitch = 0
+-- Extra view rotation drawn on top of the aim (weapon recoil kick), radians.
+CameraController.kickPitch = 0
+CameraController.kickYaw = 0
+-- Current zoom (1 = hip). Mouse sensitivity scales with 1 / zoom while
+-- zoomed, so the crosshair moves across the scene at the same speed (estimate
+-- of the reference's default scoped sensitivity).
+CameraController.zoom = 1
 
 local MAX_PITCH = math.rad(89)
 
@@ -57,16 +64,24 @@ function CameraController.updateLook()
 	-- our sensitivity is the only scale applied.
 	local delta = UserInputService:GetMouseDelta() / userSensitivity()
 	CameraController.countsX += delta.X
-	local radPerCount = math.rad(CameraController.YAW_DEGREES_PER_COUNT * CameraController.sensitivity)
+	local radPerCount = math.rad(CameraController.YAW_DEGREES_PER_COUNT * CameraController.sensitivity) / CameraController.zoom
 	CameraController.yaw -= delta.X * radPerCount
 	CameraController.pitch = math.clamp(CameraController.pitch - delta.Y * radPerCount, -MAX_PITCH, MAX_PITCH)
 end
 
-function CameraController.render(eyeStuds: Vector3)
+-- Horizontal FOV after zoom: zoom divides tan(fov / 2).
+function CameraController.zoomedFov(zoom: number): number
+	return math.deg(2 * math.atan(math.tan(math.rad(CameraController.fieldOfView) / 2) / zoom))
+end
+
+function CameraController.render(eyeStuds: Vector3, zoom: number?)
 	local camera = Workspace.CurrentCamera
+	CameraController.zoom = zoom or 1
 	camera.CameraType = Enum.CameraType.Scriptable
-	camera.FieldOfView = verticalFov(CameraController.fieldOfView, camera.ViewportSize)
-	camera.CFrame = CFrame.new(eyeStuds) * CFrame.Angles(0, CameraController.yaw, 0) * CFrame.Angles(CameraController.pitch, 0, 0)
+	camera.FieldOfView = verticalFov(CameraController.zoomedFov(CameraController.zoom), camera.ViewportSize)
+	local yaw = CameraController.yaw + CameraController.kickYaw
+	local pitch = math.clamp(CameraController.pitch + CameraController.kickPitch, -MAX_PITCH, MAX_PITCH)
+	camera.CFrame = CFrame.new(eyeStuds) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
 end
 
 return CameraController

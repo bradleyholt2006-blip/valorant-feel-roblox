@@ -20,11 +20,15 @@ export type World = {
 	overlaps: (self: World, center: vector, halfExtents: vector) -> boolean,
 }
 
+-- One tick of player input. Movement reads buttons and yaw; the weapon
+-- simulation also reads pitch and slot; hit registration reads viewTime.
 export type Input = {
 	seq: number,
 	buttons: number,
 	yaw: number, -- radians, 0 looks down -Z (Roblox convention)
-	weapon: string,
+	pitch: number, -- radians, positive looks up
+	slot: number, -- weapon slot the player wants equipped (1 primary, 2 secondary, 3 melee)
+	viewTime: number, -- server time of the remote world the client was looking at
 }
 
 export type State = {
@@ -38,7 +42,6 @@ export type State = {
 	jumpLatched: boolean, -- jump must be released before the next jump
 	lastJumpTick: number,
 	lastLandTick: number,
-	weapon: string,
 }
 
 local Buttons = {
@@ -49,6 +52,9 @@ local Buttons = {
 	Walk = 16,
 	Crouch = 32,
 	Jump = 64,
+	Fire = 128,
+	AltFire = 256,
+	Reload = 512,
 }
 
 local SKIN = 0.005 -- metres kept between the box and geometry
@@ -69,7 +75,7 @@ local function horizontal(v: vector): vector
 	return vector.create(v.x, 0, v.z)
 end
 
-function MovementSim.newState(position: vector, weapon: string?): State
+function MovementSim.newState(position: vector): State
 	return {
 		tick = 0,
 		position = position,
@@ -81,7 +87,6 @@ function MovementSim.newState(position: vector, weapon: string?): State
 		jumpLatched = false,
 		lastJumpTick = -math.huge,
 		lastLandTick = -math.huge,
-		weapon = weapon or "rifle",
 	}
 end
 
@@ -263,7 +268,6 @@ end
 -- Advance the state by one fixed tick. Mutates and returns s.
 function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: number, world: World, dt: number): State
 	s.tick += 1
-	s.weapon = input.weapon
 	local buttons = input.buttons
 
 	updateCrouch(s, world, buttons, dt, cfg)
@@ -328,7 +332,7 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	return s
 end
 
--- Accuracy deadzone check used by the debug HUD and, later, the weapon system.
+-- Accuracy deadzone check used by the debug HUD and the weapon system.
 function MovementSim.isAccurate(s: State, weaponMaxSpeed: number, accurateFraction: number): boolean
 	return s.grounded and MovementSim.horizontalSpeed(s) <= weaponMaxSpeed * accurateFraction + 1e-6
 end
