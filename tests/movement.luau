@@ -514,4 +514,31 @@ do
 	check("analyzer logs a counter stop", analyzer.history[2] ~= nil and analyzer.history[2].method == "counter")
 end
 
+do
+	-- The reference times are for stops from a full run, so a release before
+	-- reaching full speed is logged but left out of the averages.
+	local analyzer = StopAnalyzer.new()
+	local s = spawn(floor)
+	local t = 0
+	local function tickWith(buttons: number, n: number)
+		for _ = 1, n do
+			MovementSim.step(s, input(buttons), cfg, 5.40, floor, DT)
+			t += DT
+			analyzer:tick(t, s.position, s.velocity, MovementSim.wishDirection(buttons, 0), 5.40 * 0.275, 5.40 * 0.95)
+		end
+	end
+	tickWith(B.Right, 200)
+	tickWith(0, 100)
+	tickWith(B.Right, 20) -- about half speed
+	tickWith(0, 100)
+	local full, part = analyzer.history[1], analyzer.history[2]
+	local _, averaged = analyzer:average("release", "distance")
+	check("a stop from a full run counts toward the averages", full ~= nil and full.fromFullSpeed)
+	check(
+		"a stop from part speed is logged but not averaged",
+		part ~= nil and not part.fromFullSpeed and averaged == 1,
+		if part then string.format("began at %.2f m/s", part.startSpeed) else "no second stop"
+	)
+end
+
 return nil

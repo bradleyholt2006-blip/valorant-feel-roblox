@@ -35,8 +35,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F3 | HUD panel (on at the start) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
-| F7 | Ghost box where the server has you |
-| F8 | Zero the mouse counter in the Counter-Strafe Lab |
+| G | Ghost box where the server has you (while the HUD is on) |
+| Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | F10 | Hitbox and wall overlay |
 | Backspace | Clear impact marks, the shot log, the lab counters and the spray plot |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
@@ -77,10 +77,10 @@ and 50 shields) and comes back 2 s after it dies.
   camera or do anything else.
 - **C2 Viewmodel.** The dark block gun sits low on the right, moves to the middle while you zoom,
   and the muzzle flash shows at its tip. The camera doesn't cut off any part of it.
-- **C3 Mouse counts.** Press F4, then F8 to zero the counter. Move the mouse 10 cm to the right
+- **C3 Mouse counts.** Press F4, then Z to zero the counter. Move the mouse 10 cm to the right
   along a ruler, slowly and steadily, and read the counts on the `cm/360 check` line. Open the
   Roblox menu (Esc), go to Settings and change Camera Sensitivity, say from 1 to 2 (note both
-  values). Close the menu, press F8 and move the same 10 cm again. The counts should be the same
+  values). Close the menu, press Z and move the same 10 cm again. The counts should be the same
   both times, within a few percent: our code divides Roblox's own sensitivity out of the mouse
   movement, and this shows whether that's right. If you know your mouse's DPI, the counts should
   also be about DPI x 3.94 (3150 at 800 DPI). **Send:** both counts and both slider values.
@@ -112,9 +112,9 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
   model them, but Roblox's own collision queries are what count here.
 - **M7 Slide wall.** Run into the angled wall at a shallow angle: you slide along it smoothly,
   without sticking or shaking.
-- **M8 Ghost.** F7 shows a box where the server has you. Standing still, it sits on you. At a run
+- **M8 Ghost.** G shows a box where the server has you. Standing still, it sits on you. At a run
   it trails a little behind you (by your speed times the round trip) and catches up when you stop.
-  F7 again hides it.
+  G again hides it.
 - **M9 Corrections.** The HUD's `corrections` count goes up when you spawn or give yourself a
   weapon, because the server knows about those first. Moving should never add to `max`, which
   should stay at `0.0 mm`. Check it after a few minutes of running, jumping, crouching, the ramps
@@ -229,15 +229,21 @@ the dummy's boxes through the wall.
   | Wall | Classic | Vandal | Operator |
   | --- | --- | --- | --- |
   | wood 0.10 m | 17 | 32 | 129 |
-  | wood 0.20 m | 10 | 26 | 119 |
+  | wood 0.20 m | 10 | 26 | 118 |
   | wood 0.40 m | stops | 15 | 98 |
-  | concrete 0.10 m | stops | 26 | 119 |
+  | concrete 0.10 m | stops | 26 | 118 |
   | concrete 0.20 m | stops | 15 | 98 |
   | concrete 0.40 m | stops | stops | 58 |
   | metal 0.10 m | stops | stops | 88 |
-  | metal 0.20 m | stops | stops | 38 |
+  | metal 0.20 m | stops | stops | stops |
   | metal 0.40 m | stops | stops | stops |
-  | concrete 0.20 m at 45 degrees | stops | stops | 81 |
+  | concrete 0.20 m at 45 degrees | stops | stops | 81 or 82 |
+
+  Three Operator cells sit on an edge, where the shot's slight downward angle decides them. A shot
+  from eye height to the dummy's chest comes down about 2 degrees, which makes each wall a fraction
+  of a millimetre thicker along the ray. Square on and dead level, 0.20 m wood and 0.10 m concrete
+  would do exactly 118.5 and round to 119. 0.20 m metal is exactly the Operator's limit, so only a
+  level shot gets through it (38). The turned wall moves by about 1 for each half degree off 45.
 
   The damage adds up, so a dummy can die partway through; give it 2 s to come back before the next
   shot. **Send:** any numbers that differ.

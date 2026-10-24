@@ -10,8 +10,9 @@
 -- "groundFriction 3" and press Enter; "reset" clears overrides. Changes are
 -- applied by the server and pushed to every client so prediction stays in sync.
 --
--- And the cm/360 check: F8 zeroes a mouse-count counter. Turn exactly 360
--- degrees and compare counts with the expected value for your sensitivity.
+-- And the cm/360 check: Z (while the lab is open) zeroes a mouse-count
+-- counter. Turn exactly 360 degrees and compare counts with the expected
+-- value for your sensitivity. (Not F8: Studio takes that for Run.)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -27,6 +28,7 @@ local CameraController = require(script.Parent.Parent.CameraController)
 local CounterStrafeLab = {}
 
 local ROWS = 8
+local FULL_SPEED = 0.95 -- share of max speed a stop must begin at to be averaged (the reference stops are from a full run)
 
 type Entry = StopAnalyzer.StopResult & { overhold: number? }
 
@@ -86,7 +88,7 @@ function CounterStrafeLab.start(controller: any)
 	table.insert(controller.tickListeners, function(info: any)
 		local s = info.state
 		local threshold = info.maxSpeed * info.accurateFraction
-		analyzer:tick(info.time, s.position, s.velocity, info.wishDir, threshold)
+		analyzer:tick(info.time, s.position, s.velocity, info.wishDir, threshold, info.maxSpeed * FULL_SPEED)
 
 		-- Overhold: time the counter key stays down after the stop completed.
 		local entry = overholdFor
@@ -116,12 +118,16 @@ function CounterStrafeLab.start(controller: any)
 			local r = history[i] :: Entry
 			local overhold = r.overhold
 			local coach = ""
-			if overhold ~= nil then
+			if not r.fromFullSpeed then
+				coach = "part speed"
+			elseif overhold ~= nil then
 				coach = if overhold > 0.03
 					then string.format('<font color="#%s">%3.0fms late</font>', Ui.hex(Ui.BAD), overhold * 1000)
 					else string.format('<font color="#%s">clean</font>', Ui.hex(Ui.GOOD))
 			end
-			table.insert(lines, string.format("%-8s %s    %s   %4.2fm   %s", r.method, Ui.ms(r.timeToAccurate), Ui.ms(r.timeToZero), r.distance, coach))
+			local row = string.format("%-8s %s    %s   %4.2fm   %s", r.method, Ui.ms(r.timeToAccurate), Ui.ms(r.timeToZero), r.distance, coach)
+			-- Began below full speed: shown, but left out of the averages below.
+			table.insert(lines, if r.fromFullSpeed then row else string.format('<font color="#%s">%s</font>', Ui.hex(Ui.DIM), row))
 		end
 		for _ = #history, ROWS - 1 do
 			table.insert(lines, "")
@@ -142,7 +148,7 @@ function CounterStrafeLab.start(controller: any)
 		local degPerCount = CameraController.YAW_DEGREES_PER_COUNT * CameraController.sensitivity
 		table.insert(lines, "")
 		table.insert(lines, string.format(
-			"cm/360 check (F8 zero): %.0f counts = %.1f deg   expect %.0f counts per 360",
+			"cm/360 check (Z zero): %.0f counts = %.1f deg   expect %.0f counts per 360",
 			math.abs(CameraController.countsX),
 			math.abs(CameraController.countsX) * degPerCount,
 			360 / degPerCount
@@ -184,7 +190,7 @@ function CounterStrafeLab.start(controller: any)
 		end
 		if input.KeyCode == Enum.KeyCode.F4 then
 			panel.Visible = not panel.Visible
-		elseif input.KeyCode == Enum.KeyCode.F8 then
+		elseif input.KeyCode == Enum.KeyCode.Z and panel.Visible then
 			CameraController.countsX = 0
 		end
 	end)

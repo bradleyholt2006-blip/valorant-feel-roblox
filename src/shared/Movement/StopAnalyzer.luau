@@ -7,7 +7,9 @@
 -- the accuracy threshold. It is timed from the end of the tick before, when
 -- the key changed, so a stop that crossed the threshold within its first tick
 -- took one tick, the way footage times it from the key. It is measured until
--- speed is ~zero or the player asks to move again.
+-- speed is ~zero or the player asks to move again. The reference times are
+-- for stops from a full run, so a stop that began slower is logged but left
+-- out of the averages.
 --
 -- Pure module: used by the in-game Counter-Strafe Lab and by the offline tests.
 
@@ -15,7 +17,8 @@ export type StopMethod = "release" | "counter" | "mixed"
 
 export type StopResult = {
 	method: StopMethod,
-	startSpeed: number, -- m/s when the stop began
+	startSpeed: number, -- m/s when the key changed (the end of the tick before)
+	fromFullSpeed: boolean, -- began at the full speed given to tick (always true when none was)
 	timeToAccurate: number?, -- s until speed <= threshold (nil if never)
 	timeToZero: number?, -- s until speed <= zeroSpeed
 	distance: number, -- m travelled after the stop began
@@ -25,6 +28,7 @@ export type StopResult = {
 type Active = {
 	startTime: number,
 	startSpeed: number,
+	fromFullSpeed: boolean,
 	startDir: vector,
 	method: StopMethod,
 	timeToAccurate: number?,
@@ -43,6 +47,7 @@ export type Analyzer = typeof(setmetatable(
 		active: Active?,
 		lastWish: vector,
 		lastTime: number?,
+		lastSpeed: number?,
 		history: { StopResult },
 		maxHistory: number,
 		onStop: ((StopResult) -> ())?,
@@ -55,6 +60,7 @@ function StopAnalyzer.new(maxHistory: number?): Analyzer
 		active = nil,
 		lastWish = vector.create(0, 0, 0),
 		lastTime = nil,
+		lastSpeed = nil,
 		history = {},
 		maxHistory = maxHistory or 50,
 		onStop = nil,
@@ -70,6 +76,7 @@ local function finish(self: Analyzer, timeToZero: number?)
 	local result: StopResult = {
 		method = a.method,
 		startSpeed = a.startSpeed,
+		fromFullSpeed = a.fromFullSpeed,
 		timeToAccurate = a.timeToAccurate,
 		timeToZero = timeToZero,
 		distance = a.distance,
@@ -88,7 +95,8 @@ end
 --   wishDir: normalised wish direction from MovementSim.wishDirection (or zero)
 --   velocity: horizontal velocity in m/s
 --   threshold: accuracy threshold speed (maxSpeed * accurateFraction)
-function StopAnalyzer.tick(self: Analyzer, time: number, position: vector, velocity: vector, wishDir: vector, threshold: number)
+--   fullSpeed: the speed a stop must begin at to count as from a full run
+function StopAnalyzer.tick(self: Analyzer, time: number, position: vector, velocity: vector, wishDir: vector, threshold: number, fullSpeed: number?)
 	local speed = vector.magnitude(vector.create(velocity.x, 0, velocity.z))
 	local a = self.active
 
@@ -118,7 +126,8 @@ function StopAnalyzer.tick(self: Analyzer, time: number, position: vector, veloc
 		if moving and wasPushing and not stillPushing then
 			self.active = {
 				startTime = self.lastTime or time,
-				startSpeed = speed,
+				startSpeed = self.lastSpeed or speed,
+				fromFullSpeed = (self.lastSpeed or speed) >= (fullSpeed or 0),
 				startDir = velDir,
 				method = if vector.dot(wishDir, velDir) < -0.5 then "counter" else "release",
 				timeToAccurate = nil,
@@ -130,14 +139,15 @@ function StopAnalyzer.tick(self: Analyzer, time: number, position: vector, veloc
 	end
 	self.lastWish = wishDir
 	self.lastTime = time
+	self.lastSpeed = speed
 end
 
--- Mean of a numeric field over the history, filtered by method.
+-- Mean of a numeric field over the stops from full speed, filtered by method.
 function StopAnalyzer.average(self: Analyzer, method: StopMethod, field: "timeToAccurate" | "timeToZero" | "distance"): (number?, number)
 	local sum, n = 0, 0
 	for _, r in self.history do
 		local v = (r :: any)[field]
-		if r.method == method and v ~= nil then
+		if r.method == method and r.fromFullSpeed and v ~= nil then
 			sum += v
 			n += 1
 		end
