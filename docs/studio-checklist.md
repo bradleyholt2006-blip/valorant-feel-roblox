@@ -196,11 +196,20 @@ Reg Lab and F10 for the overlay. Backspace clears the lab's counters between ste
   0, and the `hit confirm` mean is close to the round trip shown in the network section.
 - **H6 Jitter and loss.** Press J once (0 to 5 ms of jitter) and L once (2% loss) and shoot 20
   more times. Agreement is still about 100%. The odd `snapshot` difference is fine.
-- **H7 No lag compensation.** Press K twice to turn the rewind cap off, then Backspace, and shoot
-  the strafer 20 times. Agreement on moving targets falls to around a third. Press K once more to
+- **H7 No lag compensation.** Leave the latency, jitter and loss on. Press K twice: the lab's
+  rewind cap reads `0 ms (no lag compensation)`, so the server tests the strafer where it is now
+  instead of where you saw it. Press Backspace and shoot the strafer 20 times at the body, then
+  Backspace and 20 times at the head. Leave uneven gaps between shots, anything from a third of a
+  second to a second: an even beat can fall into step with the dummy's 0.6 s strafe and land every
+  shot at the same point of it. Every shot reads `capped`, because a cap of 0 moves all of them to
+  the present. Agreement on moving targets falls to about a quarter for body shots and a fifth for
+  head shots. With 20 shots, anything from 1 to 8 agreeing is within chance. Press K once more to
   put the cap back at 140 ms.
-- **H8 Past the cap.** Press `]` four more times (80 ms each way), then Backspace, and shoot 20
-  times. Nearly every shot is `capped`, and agreement on the strafer is about half. Then press `[`
+- **H8 Past the cap.** Press `]` four more times (80 ms each way). Then, as in H7, press Backspace
+  and shoot 20 times at the body, then Backspace and 20 times at the head, with uneven gaps.
+  Every shot is `capped`: the server goes back the full 140 ms, which still leaves about 65 ms
+  between what you saw and what it tests. Agreement on moving targets is a bit under half for body
+  shots (4 to 12 of 20 is within chance) and about a fifth for head shots (1 to 7). Then press `[`
   eight times, J twice and L twice to switch everything off. The HUD's red `sim` text goes away.
 
 ## 7. Wall penetration
@@ -281,7 +290,8 @@ W1 fire rate: Vandal ___, Phantom ___, Sheriff ___, Classic ___, Operator ___
 H1 snapshots ___/s, render delay ___ ms, held a pose on ___% of frames
 H2 agreement ___%, rewind mean ___ ms
 H5 agreement ___%, rewind mean ___ ms, hit confirm ___ ms, round trip ___ ms
-H7 agreement on moving targets with the cap off: ___%
+H7 agreement on moving targets with the cap at 0: body ___%, head ___%
+H8 agreement on moving targets past the cap: body ___%, head ___%
 T2 animation: walks / slides
 Didn't look right (IDs and what you saw):
 ```

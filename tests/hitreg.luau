@@ -242,10 +242,13 @@ end
 -- A server at 60 Hz frames simulates a practice dummy strafing 15 m in front
 -- of a still shooter (left and right every 0.6 s at rifle speed, with the
 -- real movement model) and sends a snapshot every frame. The client draws
--- 144 Hz frames with the render clock and fires about five shots a second at a
--- random spot on one of the target's boxes as drawn (a perfect aimer, with
--- half the shots close to an edge on purpose). Each shot carries the time of the frame
--- the player saw. Two comparisons with the server's verdict:
+-- 144 Hz frames with the render clock and fires about five shots a second at
+-- the target as drawn (a perfect aimer). By default each shot goes to a random
+-- spot on one of its boxes, half of them close to an edge on purpose; with
+-- `aim` every shot goes to the middle of one box, as a player tracking the
+-- target does (and TestAim, which Studio playtests aim with). Each shot
+-- carries the time of the frame the player saw. Two comparisons with the
+-- server's verdict:
 --   * agree: the client's own trace of the shot (what the debug tools show)
 --   * faithful: the shot against the target exactly as it was drawn, i.e.
 --     whether the server judged what the player saw
@@ -255,7 +258,10 @@ type NetCase = {
 	down: number, -- server to client
 	jitter: number, -- extra delay each way, uniform from 0 to this
 	loss: number, -- share of snapshots lost
-	rewind: boolean, -- lag compensation on; off checks targets where they are now
+	maxRewind: number?, -- the server's rewind cap (NetConfig.maxRewind); 0 is no lag compensation
+	aim: Hitboxes.Region?, -- aim at the middle of this box instead of anywhere on any box
+	gap: number?, -- seconds between shots, evenly, instead of an uneven 0.17-0.23 s
+	first: number?, -- when the first shot goes (1.5 s)
 	fixedClock: boolean?, -- draw at (server time - 50 ms) like system 1-3, instead of the render clock
 	seconds: number?,
 }
@@ -264,6 +270,8 @@ type NetResult = {
 	shots: number,
 	agreed: number,
 	faithful: number,
+	moving: number, -- shots at the target while it moved, as the Hit Reg Lab counts them
+	movingAgreed: number,
 	clamped: number,
 	rewindSum: number,
 	rewindMax: number,
@@ -275,6 +283,7 @@ local TARGET_ID = PlayerCodec.DUMMY_BASE + 1
 local SHOOTER_ID = 1
 local STRAFE_TICKS = math.floor(0.6 * MovementConfig.TickRate.value)
 local REGIONS: { Hitboxes.Region } = { "head", "body", "legs" }
+local MOVING_SPEED = 0.5 -- m/s over the last 50 ms drawn, ClientShots' test for a moving target
 
 local function boxPose(p: PlayerCodec.Pose): Hitboxes.Pose
 	return { position = p.position, yaw = p.yaw, crouchAlpha = p.crouchAlpha }
@@ -299,12 +308,23 @@ local function simulate(case: NetCase): NetResult
 	local eye = vector.create(0, cfg.standEyeHeight, 0)
 	local toClient: { { at: number, time: number, seq: number, pose: PlayerCodec.Pose } } = {}
 	local frame = 0
-	local toServer: { { at: number, viewTime: number, dir: vector, predicted: ShotResolver.Result?, seen: ShotResolver.Result? } } = {}
-	local result: NetResult = { shots = 0, agreed = 0, faithful = 0, clamped = 0, rewindSum = 0, rewindMax = 0, frames = 0, starved = 0 }
+	local toServer: { { at: number, viewTime: number, dir: vector, predicted: ShotResolver.Result?, seen: ShotResolver.Result?, moving: boolean } } = {}
+	local result: NetResult = {
+		shots = 0,
+		agreed = 0,
+		faithful = 0,
+		moving = 0,
+		movingAgreed = 0,
+		clamped = 0,
+		rewindSum = 0,
+		rewindMax = 0,
+		frames = 0,
+		starved = 0,
+	}
 	local duration = case.seconds or 60
 	local nextServer = 0
 	local nextClient = 0.0013
-	local nextShot = 1.5
+	local nextShot = case.first or 1.5
 	local upFree = 0
 	local lastRender: number? = nil
 	local lastDrawn: PlayerCodec.Pose? = nil
@@ -322,23 +342,23 @@ local function simulate(case: NetCase): NetResult
 			-- Shots first, then the frame's snapshot, as on the real server.
 			while #toServer > 0 and toServer[1].at <= now do
 				local shot = table.remove(toServer, 1) :: any
-				local targets: { ShotResolver.Target }
-				if case.rewind then
-					local rewind = LagCompensation.rewindTime(shot.viewTime, now, NetConfig.maxRewind.value)
-					result.rewindSum += rewind.amount
-					result.rewindMax = math.max(result.rewindMax, rewind.amount)
-					result.clamped += if rewind.clamped then 1 else 0
-					targets = LagCompensation.shotTargets(LagCompensation.targets(history, rewind.time, function(id)
-						return id ~= SHOOTER_ID
-					end))
-				else
-					local m = target.movement
-					targets = { { id = TARGET_ID, pose = { position = m.position, yaw = math.pi, crouchAlpha = m.crouchAlpha } } }
-				end
+				-- With a cap of 0 this is the newest pose sent, as on the real server.
+				local rewind = LagCompensation.rewindTime(shot.viewTime, now, case.maxRewind or NetConfig.maxRewind.value)
+				result.rewindSum += rewind.amount
+				result.rewindMax = math.max(result.rewindMax, rewind.amount)
+				result.clamped += if rewind.clamped then 1 else 0
+				local targets = LagCompensation.shotTargets(LagCompensation.targets(history, rewind.time, function(id)
+					return id ~= SHOOTER_ID
+				end))
 				local verdict = ShotResolver.resolve(eye, shot.dir, targets, 100, SHOOTER_ID)
+				local agreed = same(verdict, shot.predicted)
 				result.shots += 1
-				result.agreed += if same(verdict, shot.predicted) then 1 else 0
+				result.agreed += if agreed then 1 else 0
 				result.faithful += if same(verdict, shot.seen) then 1 else 0
+				if shot.moving then
+					result.moving += 1
+					result.movingAgreed += if agreed then 1 else 0
+				end
 			end
 			local m = target.movement
 			local p = PlayerCodec.quantizePose({ id = TARGET_ID, position = m.position, yaw = math.pi, pitch = 0, crouchAlpha = m.crouchAlpha, grounded = m.grounded, alive = true })
@@ -381,20 +401,27 @@ local function simulate(case: NetCase): NetResult
 			-- client traces the shot at that frame's time with the snapshots it
 			-- has now, as ClientShots does.
 			if lastRender and lastDrawn and now >= nextShot then
-				nextShot += 0.17 + rand() * 0.06 -- irregular, so shots land at every phase of the snapshot cycle
+				nextShot += case.gap or 0.17 + rand() * 0.06 -- irregular, so shots land at every phase of the snapshot cycle
 				local drawn = boxPose(lastDrawn)
-				local box = Hitboxes.region(drawn, REGIONS[math.floor(rand() * 3) + 1]) :: Hitboxes.Box
-				-- Half the shots go anywhere on the box (and a little past it),
-				-- half close to a side edge, where a few millimetres decide.
-				local u = if rand() < 0.5 then rand() * 2.2 - 1.1 else (0.85 + rand() * 0.3) * (if rand() < 0.5 then -1 else 1)
-				local aim = box.center + vector.create(u * box.half.x, (rand() * 1.8 - 0.9) * box.half.y, 0)
+				local aim: vector
+				if case.aim then
+					aim = (Hitboxes.region(drawn, case.aim) :: Hitboxes.Box).center
+				else
+					local box = Hitboxes.region(drawn, REGIONS[math.floor(rand() * 3) + 1]) :: Hitboxes.Box
+					-- Half the shots go anywhere on the box (and a little past it),
+					-- half close to a side edge, where a few millimetres decide.
+					local u = if rand() < 0.5 then rand() * 2.2 - 1.1 else (0.85 + rand() * 0.3) * (if rand() < 0.5 then -1 else 1)
+					aim = box.center + vector.create(u * box.half.x, (rand() * 1.8 - 0.9) * box.half.y, 0)
+				end
 				local dir = vector.normalize(aim - eye)
 				local traced = PoseHistory.sample(seen, lastRender) :: PoseHistory.Lookup
+				local before = PoseHistory.sample(seen, lastRender - 0.05)
+				local moving = before ~= nil and vector.magnitude(traced.pose.position - before.pose.position) / 0.05 > MOVING_SPEED
 				local predicted = ShotResolver.resolve(eye, dir, { { id = TARGET_ID, pose = boxPose(traced.pose) } }, 100, SHOOTER_ID)
 				local seenResult = ShotResolver.resolve(eye, dir, { { id = TARGET_ID, pose = drawn } }, 100, SHOOTER_ID)
 				local at = math.max(upFree, now + case.up + rand() * case.jitter)
 				upFree = at
-				table.insert(toServer, { at = at, viewTime = lastRender, dir = dir, predicted = predicted, seen = seenResult })
+				table.insert(toServer, { at = at, viewTime = lastRender, dir = dir, predicted = predicted, seen = seenResult, moving = moving })
 			end
 			lastRender = render
 			local drawnNow = if render then PoseHistory.sample(seen, render) else nil
@@ -407,9 +434,10 @@ end
 local function report(name: string, r: NetResult): number
 	local agreement = r.agreed / math.max(r.shots, 1)
 	print(string.format(
-		"  [hitreg] %-34s agree %6s  as seen %6s  of %d  rewind mean %3.0f ms max %3.0f  capped %d  starved %s",
+		"  [hitreg] %-40s agree %6s  moving %6s  as seen %6s  of %d  rewind mean %3.0f ms max %3.0f  capped %d  starved %s",
 		name,
 		pct(r.agreed, r.shots),
+		pct(r.movingAgreed, r.moving),
 		pct(r.faithful, r.shots),
 		r.shots,
 		r.rewindSum / math.max(r.shots, 1) * 1000,
@@ -421,31 +449,90 @@ local function report(name: string, r: NetResult): number
 end
 
 do
-	local studio = report("Studio (no latency)", simulate({ up = 0, down = 0, jitter = 0, loss = 0, rewind = true }))
+	local studio = report("Studio (no latency)", simulate({ up = 0, down = 0, jitter = 0, loss = 0 }))
 	check("no latency: client and server always agree", studio == 1)
 
-	local good = simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0, rewind = true })
+	local good = simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0 })
 	local goodAgree = report("80 ms ping, 3 ms jitter", good)
 	check("80 ms ping: they agree on at least 99% of shots", goodAgree >= 0.99, pct(good.agreed, good.shots))
 	check("80 ms ping: nothing hits the 140 ms cap", good.clamped == 0)
 
-	local noRewind = report("80 ms ping, no lag compensation", simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0, rewind = false }))
+	local noRewind = report("80 ms ping, no lag compensation", simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0, maxRewind = 0 }))
 	check("without lag compensation most shots at a strafing target disagree", noRewind < 0.6, string.format("%.0f%%", noRewind * 100))
 
-	local lossy = simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0.03, rewind = true })
+	local lossy = simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0.03 })
 	local lossyAgree = report("80 ms ping, 3% snapshot loss", lossy)
 	check("3% snapshot loss: they still agree on at least 97% of shots", lossyAgree >= 0.97, pct(lossy.agreed, lossy.shots))
 
-	local high = simulate({ up = 0.075, down = 0.075, jitter = 0.003, loss = 0, rewind = true })
+	local high = simulate({ up = 0.075, down = 0.075, jitter = 0.003, loss = 0 })
 	local highAgree = report("150 ms ping (past the cap)", high)
 	check("150 ms ping: every shot is checked at the 140 ms cap", high.clamped == high.shots and high.shots > 0)
 	check("past the cap the shooter's view and the server's diverge", highAgree < goodAgree)
 
-	local fixed = simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0, rewind = true, fixedClock = true })
+	local fixed = simulate({ up = 0.04, down = 0.04, jitter = 0.003, loss = 0, fixedClock = true })
 	report("80 ms ping, old fixed 50 ms clock", fixed)
 	check("the old clock drew past its newest snapshot on a third or more of frames at 40 ms one way", fixed.starved / fixed.frames > 0.33, pct(fixed.starved, fixed.frames))
 	check("so the server judged shots against poses the player never saw", fixed.faithful < fixed.shots, pct(fixed.faithful, fixed.shots))
 	check("with the render clock the server judges what the player saw", good.faithful == good.shots and good.starved / good.frames < 0.02, pct(good.faithful, good.shots))
+end
+
+-- The Studio checklist's H6 to H8 (docs/studio-checklist.md quotes these),
+-- aimed like a player tracking the strafer: at the middle of its body, or of
+-- its head. Without the cap's full rewind, whether a shot agrees depends on
+-- where in the strafe it lands: near a turn the dummy has barely moved, at
+-- full speed it has left the ray.
+do
+	local function aimed(name: string, case: NetCase): (NetResult, NetResult)
+		local body, head = table.clone(case), table.clone(case)
+		body.aim, head.aim = "body", "head"
+		local b, h = simulate(body), simulate(head)
+		report(name .. ", body", b)
+		report(name .. ", head", h)
+		return b, h
+	end
+	local function moving(r: NetResult): number
+		return r.movingAgreed / math.max(r.moving, 1)
+	end
+
+	local h6b, h6h = aimed("H6 40 ms each way, jitter, loss", { up = 0.04, down = 0.04, jitter = 0.005, loss = 0.02 })
+	check("H6: shots at the middle of a box agree at least 99% of the time", h6b.agreed / h6b.shots >= 0.99 and h6h.agreed / h6h.shots >= 0.99)
+
+	local h7b, h7h = aimed("H7 the same, no lag compensation", { up = 0.04, down = 0.04, jitter = 0.005, loss = 0.02, maxRewind = 0 })
+	check("H7: with the cap at 0 every shot counts as capped", h7b.clamped == h7b.shots and h7h.clamped == h7h.shots)
+	check("H7: about a quarter of body shots at the moving strafer agree", moving(h7b) > 0.18 and moving(h7b) < 0.34, pct(h7b.movingAgreed, h7b.moving))
+	check("H7: and about a fifth of head shots", moving(h7h) > 0.12 and moving(h7h) < 0.3, pct(h7h.movingAgreed, h7h.moving))
+
+	local nb, nh = aimed("H7 at Studio's own ping", { up = 0, down = 0, jitter = 0, loss = 0, maxRewind = 0 })
+	check(
+		"at Studio's own ping, no lag compensation hardly shows on the body (the strafer moves less than its half width)",
+		moving(nb) >= 0.95,
+		pct(nb.movingAgreed, nb.moving)
+	)
+	check("but it does on the head", moving(nh) < 0.95, pct(nh.movingAgreed, nh.moving))
+
+	local h8b, h8h = aimed("H8 80 ms each way, past the cap", { up = 0.08, down = 0.08, jitter = 0.005, loss = 0.02 })
+	check("H8: every shot is checked at the cap", h8b.clamped == h8b.shots and h8h.clamped == h8h.shots)
+	check("H8: a bit under half the body shots at the moving strafer agree", moving(h8b) > 0.35 and moving(h8b) < 0.55, pct(h8b.movingAgreed, h8b.moving))
+	check("H8: and about a fifth of head shots", moving(h8h) > 0.15 and moving(h8h) < 0.3, pct(h8h.movingAgreed, h8h.moving))
+
+	-- An even beat at the strafe's own period lands every shot at the same
+	-- point of it, so the checklist asks for uneven gaps.
+	local low, high = 1, 0
+	for i = 0, 9 do
+		local r = simulate({
+			up = 0.04,
+			down = 0.04,
+			jitter = 0.005,
+			loss = 0.02,
+			maxRewind = 0,
+			aim = "body",
+			gap = STRAFE_TICKS * DT,
+			first = 1.5 + i * 0.06,
+			seconds = 1.5 + 20 * 0.6,
+		})
+		low, high = math.min(low, moving(r)), math.max(high, moving(r))
+	end
+	check("H7: 20 body shots on a 0.6 s beat agree on almost none or almost all, depending on when the first goes", low < 0.1 and high > 0.9, string.format("%.0f%% to %.0f%%", low * 100, high * 100))
 end
 
 return nil

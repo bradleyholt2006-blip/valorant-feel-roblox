@@ -86,7 +86,7 @@ All values live in `src/shared/Net/NetConfig.luau`, each with its status and sou
 
 | Parameter | Value | Status |
 | --- | --- | --- |
-| Rewind cap | 140 ms (200 ms and off one key away in the Hit Reg Lab) | Confirmed (Patch 6.02) |
+| Rewind cap | 140 ms (200 ms, and 0 for no lag compensation, one key away in the Hit Reg Lab) | Confirmed (Patch 6.02) |
 | The server rewinds to the time on the shooter's screen | yes | Confirmed |
 | A dead player's later shots are rejected | yes | Confirmed |
 | Spark at once, server confirm on the body part and moving with it | yes | Confirmed (Patch 1.07) |
@@ -108,10 +108,29 @@ both miss); "as seen" means the server tested the pose that was actually on scre
 | --- | --- | --- | --- | --- | --- |
 | None (Studio) | 100% | 100% | 40 / 48 ms | 0 | 0% |
 | 40 ms each way, 0-3 ms jitter | 100% | 100% | 124 / 133 ms | 0 | 0% |
-| The same, no lag compensation | 30.1% | 30.1% | 0 | 0 | 0% |
+| The same, no lag compensation | 30.1% | 30.1% | 0 | all | 0% |
 | The same, 3% of snapshots lost | 100% | 99.7% | 124 / 133 ms | 0 | 1.6% |
 | 75 ms each way (past the cap) | 52.9% | 52.9% | 140 / 140 ms | all | 0% |
 | 40 ms each way, the old fixed 50 ms delay | 99.7% | 95.2% | 106 / 115 ms | 0 | 44.9% |
+
+Aimed at the middle of the body or the head instead, as a player tracking the strafer does (and
+the Studio checklist's H6 to H8), agreement on shots at the moving strafer:
+
+| Network | Body | Head | Rewind mean | Capped |
+| --- | --- | --- | --- | --- |
+| 40 ms each way, 0-5 ms jitter, 2% of snapshots lost (H6) | 100% | 100% | 127 ms | 0 |
+| The same, no lag compensation (H7) | 26.7% | 22.0% | 0 | all |
+| None (Studio), no lag compensation | 100% | 82.5% | 0 | all |
+| 80 ms each way, 0-5 ms jitter, 2% lost (H8, past the cap) | 44.8% | 21.5% | 140 ms (207 asked for) | all |
+
+Without the full rewind, whether a shot agrees depends on where in the strafe it lands. The dummy
+spends most of each 0.6 s strafe slowing down and speeding up, and near a turn it has hardly
+moved, so those shots still agree; at full speed it has left the ray. Shots fired on an even beat
+near 0.6 s or 1.2 s land at the same point of the strafe every time: 20 body shots at H7's latency
+then agree anywhere from 0% to 100%, depending on when the first one goes, which is why the
+checklist asks for uneven gaps. With no latency, the server's newest pose is only 25-30 ms newer
+than the one drawn, and in that time the strafer moves less than the body's half width (0.22 m),
+so body shots agree without lag compensation; only the head (0.12 m) shows the difference.
 
 The render clock on its own: 40 ms each way gives a delay of 24.2 ms and no starved frames; with
 0-8 ms of jitter, 30.3 ms and none; a jump from 40 to 100 ms settles within 2 s without the
@@ -241,7 +260,7 @@ entities ever moving backwards.
 | --- | --- |
 | F2 (third press) | Hit Reg Lab: the rewind cap against Riot's 140 / 200 ms; the round trip from input to ack against Riot's "20-30 ms over network RTT"; snapshots per second, lost and late, the render delay and how often a frame held a pose, Network Buffering against the reference's 7.8 / 23.4 / 39.1 ms; rewind last, mean and max, shots capped, and the round trip at which shots start to hit the cap; client and server agreement on all shots and on moving targets, with the reasons when they differ; shot to hit confirm against one round trip; peeker's advantage by Riot's formula against 40-70 ms |
 | `[` / `]` (lab open) | Simulated latency down / up 10 ms each way (0-150 ms) |
-| J / L / B / K (lab open) | Jitter 0, 5, 15 ms; loss 0, 2, 5%; Network Buffering Minimum, Moderate, Maximum; rewind cap 140 ms, 200 ms, off (Studio or place owner) |
+| J / L / B / K (lab open) | Jitter 0, 5, 15 ms; loss 0, 2, 5%; Network Buffering Minimum, Moderate, Maximum; rewind cap 140 ms, 200 ms, 0 for no lag compensation (Studio or place owner) |
 | F10 | Hitbox overlay: per shot, the client's boxes and end point in yellow; when the verdict comes, the server's end point in blue, the client's boxes turn white where the server tested the same pose, the server's are drawn in blue where it didn't, and a label gives the rewind (CAPPED when the cap moved it) and the reason for any difference; the ray turns red |
 | F2 (first press) | The weapon lab's shot log now shows each shot's rewind (`!` when capped) and the reason for a DIFF |
 | F3 | The HUD shows the round trip, and the simulated latency in red when it's on |
@@ -252,8 +271,10 @@ entities ever moving backwards.
 1. In Studio with the lab open, shoot the strafing dummies at 0, 40, 80 and 120 ms of simulated
    round trip (`]` adds 10 ms each way), with J and L at their middle settings too. Agreement
    should stay at about 100% until the cap; every DIFF names its reason in the shot log.
-2. Turn the cap off (K twice) and repeat at 80 ms: agreement on the strafers should fall to
-   around a third, which shows what the rewind is doing.
+2. Set the cap to 0 (K twice) and repeat at 80 ms, with uneven gaps between shots: agreement on
+   the moving strafer should fall to about a quarter for body shots and a fifth for head shots,
+   which shows what the rewind is doing. At Studio's own ping it hardly falls for body shots
+   (section 4).
 3. With two players in Studio (Test tab, Clients and Servers, 2 players) and F10 on, shoot one
    strafing past cover and check the white boxes sit where the target was drawn.
 4. Measure the reference's hit confirm delay and behind-cover window (section 3); compare with the
