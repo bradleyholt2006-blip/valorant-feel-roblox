@@ -283,13 +283,14 @@ local function makeVisual(id: number): Visual
 	return { model = model, parts = parts, colors = colors, label = label, flashUntil = {} }
 end
 
--- Hides another player's Roblox avatar on this client, with anything added
--- to it later (accessories load after the character) and the name Roblox
--- shows over it: their blocks and label stand in for both.
+-- Hides another player's Roblox avatar on this client, with its shadow,
+-- anything added to it later (accessories load after the character) and the
+-- name Roblox shows over it: their blocks and label stand in for all of it.
 local function hideAvatar(character: Model)
 	local function hide(d: Instance)
 		if d:IsA("BasePart") then
 			d.LocalTransparencyModifier = 1
+			d.CastShadow = false
 		elseif d:IsA("Decal") then
 			d.LocalTransparencyModifier = 1
 		elseif d:IsA("Humanoid") then

@@ -396,10 +396,12 @@ local function onCharacter(character: Model)
 	for _, listener in PlayerController.spawnListeners do
 		listener(sim :: PlayerSim.State)
 	end
-	-- Hide our own body in first person.
+	-- Hide our own body in first person, and its shadow: the reference casts
+	-- shadows only from first-person objects, your hands and weapon.
 	local function hide(d: Instance)
 		if d:IsA("BasePart") then
 			d.LocalTransparencyModifier = 1
+			d.CastShadow = false
 		elseif d:IsA("Decal") then
 			d.LocalTransparencyModifier = 1
 		end
