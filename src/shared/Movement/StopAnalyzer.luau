@@ -4,8 +4,10 @@
 --
 -- A stop starts on the tick the player stops asking to move in their current
 -- direction (key released, or opposite key pressed) while moving faster than
--- the accuracy threshold. It is measured until speed is ~zero or the player
--- asks to move again.
+-- the accuracy threshold. It is timed from the end of the tick before, when
+-- the key changed, so a stop that crossed the threshold within its first tick
+-- took one tick, the way footage times it from the key. It is measured until
+-- speed is ~zero or the player asks to move again.
 --
 -- Pure module: used by the in-game Counter-Strafe Lab and by the offline tests.
 
@@ -40,6 +42,7 @@ export type Analyzer = typeof(setmetatable(
 	{} :: {
 		active: Active?,
 		lastWish: vector,
+		lastTime: number?,
 		history: { StopResult },
 		maxHistory: number,
 		onStop: ((StopResult) -> ())?,
@@ -51,6 +54,7 @@ function StopAnalyzer.new(maxHistory: number?): Analyzer
 	return setmetatable({
 		active = nil,
 		lastWish = vector.create(0, 0, 0),
+		lastTime = nil,
 		history = {},
 		maxHistory = maxHistory or 50,
 		onStop = nil,
@@ -113,7 +117,7 @@ function StopAnalyzer.tick(self: Analyzer, time: number, position: vector, veloc
 		local wasPushing = vector.dot(self.lastWish, velDir) > 0.5
 		if moving and wasPushing and not stillPushing then
 			self.active = {
-				startTime = time,
+				startTime = self.lastTime or time,
 				startSpeed = speed,
 				startDir = velDir,
 				method = if vector.dot(wishDir, velDir) < -0.5 then "counter" else "release",
@@ -125,6 +129,7 @@ function StopAnalyzer.tick(self: Analyzer, time: number, position: vector, veloc
 		end
 	end
 	self.lastWish = wishDir
+	self.lastTime = time
 end
 
 -- Mean of a numeric field over the history, filtered by method.

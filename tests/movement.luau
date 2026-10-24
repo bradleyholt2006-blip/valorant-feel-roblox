@@ -100,6 +100,44 @@ for _, id in { "knife", "classic", "vandal", "operator" } do
 		print(string.format("    counter stop: accurate %s, zero %s, slide %.2f m", fmt(counter.timeToAccurate, "ms", 1000), fmt(counter.timeToZero, "ms", 1000), counter.distance))
 	end
 end
+-- Riot timed these on the Phantom (same 5.40 m/s as the Vandal) in 2020,
+-- when the deadzone was 25%.
+local RIOT = {
+	counter = { quarter = 0.104, zero = 0.160 },
+	walkStop = { quarter = 0.110, zero = 0.170 }, -- no counter-strafe, walk bound to fire
+}
+-- Time to 25% speed and to a stop from a full rifle run (ticks of the new
+-- input until the speed is below the line, as footage times it from the key).
+local function rifleStop(buttons: number): (number?, number?)
+	local s = spawn(floor)
+	run(s, floor, B.Right, 256)
+	local quarter, zero
+	for i = 1, 256 do
+		MovementSim.step(s, input(buttons), cfg, RIFLE, floor, DT)
+		local along = s.velocity.x
+		if quarter == nil and along <= RIFLE * 0.25 then
+			quarter = i * DT
+		end
+		if along <= 0.05 then
+			zero = i * DT
+			break
+		end
+	end
+	return quarter, zero
+end
+local counterQuarter, counterZero = rifleStop(B.Left)
+local releaseQuarter, releaseZero = rifleStop(0)
+print(string.format(
+	"[riot] Phantom 2020, to 25%% speed / stopped: counter-strafe %s / %s (ours %s / %s), no counter-strafe %s / %s (ours, letting go: %s / %s)",
+	fmt(RIOT.counter.quarter, "ms", 1000),
+	fmt(RIOT.counter.zero, "ms", 1000),
+	fmt(counterQuarter, "ms", 1000),
+	fmt(counterZero, "ms", 1000),
+	fmt(RIOT.walkStop.quarter, "ms", 1000),
+	fmt(RIOT.walkStop.zero, "ms", 1000),
+	fmt(releaseQuarter, "ms", 1000),
+	fmt(releaseZero, "ms", 1000)
+))
 do
 	local s = spawn(floor)
 	local startY = s.position.y
@@ -154,17 +192,52 @@ do
 end
 
 do
-	local threshold = 5.40 * cfg.deadzoneFraction
-	local function stopTime(buttons: number): number?
-		local s = spawn(floor)
-		run(s, floor, B.Right, 256)
-		return timeUntil(s, floor, buttons, 256, RIFLE, function(st)
-			return MovementSim.horizontalSpeed(st) <= threshold
-		end)
+	-- Riot's numbers are only good to a few ms ("inconsistent frame rates and
+	-- human input"), and ours move in 7.8 ms ticks: allow one tick.
+	local function within(ours: number?, riot: number): boolean
+		return ours ~= nil and math.abs(ours - riot) <= DT + 1e-9
 	end
-	local release, counter = stopTime(0), stopTime(B.Left)
-	check("counter-strafe reaches accuracy faster than release", release ~= nil and counter ~= nil and counter < release, string.format("%s vs %s", tostring(counter), tostring(release)))
-	check("release stop becomes accurate within 250ms", release ~= nil and release <= 0.25)
+	local detail = string.format("%s / %s", fmt(counterQuarter, "ms", 1000), fmt(counterZero, "ms", 1000))
+	check("counter-strafe reaches 25% speed in 0.104 s (Riot, Phantom)", within(counterQuarter, RIOT.counter.quarter), detail)
+	check("counter-strafe stops in 0.160 s (Riot, Phantom)", within(counterZero, RIOT.counter.zero), detail)
+	-- Riot timed the stop without counter-strafing with walk bound to fire,
+	-- 6-10 ms slower, and said letting go of the keys is at least as fast.
+	check(
+		"letting go stops as fast as counter-strafing, within a tick",
+		releaseQuarter ~= nil and counterQuarter ~= nil and releaseZero ~= nil and counterZero ~= nil
+			and math.abs(releaseQuarter - counterQuarter) <= DT + 1e-9
+			and math.abs(releaseZero - counterZero) <= DT + 1e-9,
+		string.format("%s / %s", fmt(releaseQuarter, "ms", 1000), fmt(releaseZero, "ms", 1000))
+	)
+	check("and no slower than Riot's walk-key stop", releaseQuarter ~= nil and releaseZero ~= nil and releaseQuarter <= RIOT.walkStop.quarter + DT and releaseZero <= RIOT.walkStop.zero + DT)
+end
+
+do
+	-- Holding a key holds the wish speed exactly, however slow: a slowed
+	-- player must not drift down into the deadzone (Patch 3.0's "tag into
+	-- accuracy"). 1.2 m/s is below anything friction alone could sustain in
+	-- a Source-style model.
+	local s = spawn(floor)
+	run(s, floor, B.Right, 256, 0, 1.2)
+	local lowest, highest = math.huge, 0
+	for _ = 1, 128 do
+		run(s, floor, B.Right, 1, 0, 1.2)
+		local speed = MovementSim.horizontalSpeed(s)
+		lowest, highest = math.min(lowest, speed), math.max(highest, speed)
+	end
+	check("a held key holds a slow wish speed exactly", near(lowest, 1.2, 1e-5) and near(highest, 1.2, 1e-5), string.format("%.5f .. %.5f", lowest, highest))
+end
+
+do
+	-- Pressing walk while running brakes down to walking speed and stops there.
+	local s = spawn(floor)
+	run(s, floor, B.Right, 256)
+	local walkSpeed = RIFLE * cfg.walkMultiplier
+	local reached = timeUntil(s, floor, B.Right + B.Walk, 128, RIFLE, function(st)
+		return MovementSim.horizontalSpeed(st) <= walkSpeed + 1e-6
+	end)
+	run(s, floor, B.Right + B.Walk, 64)
+	check("walking from a run brakes to walk speed, not below it", reached ~= nil and reached < 0.1 and near(MovementSim.horizontalSpeed(s), walkSpeed, 1e-5), fmt(reached, "ms", 1000))
 end
 
 do
@@ -241,8 +314,8 @@ do
 	tickWith(B.Right, 200)
 	tickWith(0, 200)
 	tickWith(B.Left, 200)
-	tickWith(B.Right, 12)
-	tickWith(B.Left, 40)
+	tickWith(B.Right, 32)
+	tickWith(0, 40)
 	check("analyzer logs a release stop", analyzer.history[1] ~= nil and analyzer.history[1].method == "release")
 	check("analyzer logs a counter stop", analyzer.history[2] ~= nil and analyzer.history[2].method == "counter")
 end

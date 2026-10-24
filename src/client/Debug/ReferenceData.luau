@@ -20,6 +20,7 @@ export type Entry = {
 	releaseTimeToZero: Measurement?, -- key release -> fully stopped
 	releaseSlide: Measurement?, -- distance travelled after release
 	counterTimeToAccurate: Measurement?, -- opposite key press -> indicator collapses
+	counterTimeToZero: Measurement?, -- opposite key press -> fully stopped
 	counterSlide: Measurement?,
 	-- Weapons (seconds)
 	fireInterval: Measurement?, -- muzzle flash to muzzle flash while holding fire
@@ -30,9 +31,25 @@ export type Entry = {
 	sprayPattern: SprayPattern?, -- full spray at a wall, mouse untouched, averaged over sprays
 }
 
+-- Riot timed stops from a full run on the Phantom (Riot_Classick on
+-- r/VALORANT, 2020, tests by the designer Excal; "approximate because of
+-- inconsistent frame rates and human input"). Times to the deadzone were taken
+-- at the beta's 25%, so only the times to a full stop are entered here; the
+-- offline tests check the 25% times (0.104 s counter-strafing, 0.110 s
+-- without). The Vandal runs at the same 5.40 m/s, so it shares them.
+local RIOT_2020 = "Riot_Classick, r/VALORANT 2020 (Excal's Phantom test)"
+local RIFLE_STOPS: Entry = {
+	counterTimeToZero = { value = 0.160, n = 1, source = RIOT_2020 .. ": standard counter-strafing, 'Run -> Stop (0%): 0.160s'" },
+	releaseTimeToZero = {
+		value = 0.170,
+		n = 1,
+		source = RIOT_2020 .. ": no counter-strafe with walk bound to fire, 0.170s; Riot says letting go of the keys is at least as fast",
+	},
+}
+
 local ReferenceData: { [string]: Entry } = {
-	vandal = {},
-	phantom = {},
+	vandal = table.clone(RIFLE_STOPS),
+	phantom = table.clone(RIFLE_STOPS),
 	operator = {},
 	classic = {},
 	sheriff = {},

@@ -4,6 +4,7 @@
 -- sideways drift, and determinism of the per-shot randomness.
 
 local MovementConfig = require("../src/shared/Movement/MovementConfig")
+local MovementSim = require("../src/shared/Movement/MovementSim")
 local PlayerSim = require("../src/shared/PlayerSim")
 local WeaponSim = require("../src/shared/Weapons/WeaponSim")
 local WeaponConfig = require("../src/shared/Weapons/WeaponConfig")
@@ -311,14 +312,24 @@ end
 
 do
 	-- Patch 3.0's "tag into accuracy": the hit slow (to 27.5% speed) and the
-	-- deadzone (27.5%) meet exactly, and a slowed runner must stay inaccurate.
-	-- Checked at the moment of the tag: the friction model then lets the speed
-	-- sag below the cap over the next ticks, which the movement refinement
-	-- (after this system) has to fix.
+	-- deadzone (27.5%) meet exactly, and a runner held at the cap must stay
+	-- inaccurate on every tick of the slow.
 	local s = newPlayer()
 	run(s, B.Forward, 256)
-	PlayerSim.applyTag(s, cfg, WeaponConfig.Health.tagSpeedMultiplier.value, 1, DT)
-	check("a runner slowed to the tag cap is not inside the deadzone", PlayerSim.moveState(s, B.Forward, cfg) == "run" and not PlayerSim.isAccurate(s, cfg))
+	local duration = WeaponConfig.Health.tagDuration.value
+	PlayerSim.applyTag(s, cfg, WeaponConfig.Health.tagSpeedMultiplier.value, duration, DT)
+	local running = PlayerSim.moveState(s, B.Forward, cfg) == "run" and not PlayerSim.isAccurate(s, cfg)
+	local slowest = math.huge
+	for _ = 1, math.ceil(duration / DT) - 1 do
+		PlayerSim.step(s, input(B.Forward), cfg, floor, DT)
+		running = running and PlayerSim.moveState(s, B.Forward, cfg) == "run" and not PlayerSim.isAccurate(s, cfg)
+		slowest = math.min(slowest, MovementSim.horizontalSpeed(s.movement))
+	end
+	check(
+		"a runner slowed to the tag cap stays out of the deadzone for the whole slow",
+		running and PlayerSim.isTagged(s) and near(slowest, 5.40 * 0.275, 1e-5),
+		string.format("slowest %.5f m/s", slowest)
+	)
 
 	local stop = newPlayer()
 	run(stop, B.Right, 256)

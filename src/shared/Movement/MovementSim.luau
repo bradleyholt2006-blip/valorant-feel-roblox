@@ -7,10 +7,13 @@
 -- seconds. Nothing here touches Roblox services, which is what lets the
 -- offline tests in /tests run it with a fake world.
 --
--- Model: Source/UE-style ground friction + acceleration. That model produces
--- the counter-strafe effect for free: releasing a key only applies friction,
--- while pressing the opposite key applies friction *and* acceleration against
--- the current velocity, so speed falls under the accuracy threshold sooner.
+-- Model: ground movement in the style of Unreal's character movement (the
+-- reference game runs on Unreal Engine 4). Letting go of the keys brakes
+-- (friction plus a constant deceleration); pressing the opposite key
+-- decelerates through the input instead, at the same rate. So counter-
+-- strafing stops no sooner than letting go, which matches Riot's own stop
+-- timings (docs/research/01-movement.md), unlike Source-engine games where
+-- it stops you far sooner.
 
 export type World = {
 	-- Sweep an axis-aligned box (center, halfExtents) along delta. Returns the
@@ -56,6 +59,11 @@ local Buttons = {
 	AltFire = 256,
 	Reload = 512,
 }
+
+-- Unreal's constants: a braking player under 10 cm/s stops dead, and a speed
+-- counts as over the limit only beyond 1% (of its square) to absorb rounding.
+local BRAKE_TO_STOP_SPEED = 0.1 -- m/s
+local OVER_SPEED = 1.01
 
 local SKIN = 0.005 -- metres kept between the box and geometry
 local GROUND_PROBE = 0.04
@@ -138,18 +146,54 @@ function MovementSim.wishSpeed(s: State, buttons: number, cfg: any, maxSpeed: nu
 	return maxSpeed
 end
 
-local function applyFriction(vel: vector, dt: number, cfg: any): vector
-	local h = horizontal(vel)
-	local speed = vector.magnitude(h)
-	if speed < 1e-4 then
-		return vector.create(0, vel.y, 0)
+-- Brakes a horizontal velocity: friction in proportion to speed plus a
+-- constant deceleration, never through zero.
+local function brake(h: vector, speed: number, dt: number, cfg: any): vector
+	local newSpeed = speed - (cfg.brakingFrictionFactor * cfg.groundFriction * speed + cfg.brakingDeceleration) * dt
+	if newSpeed <= BRAKE_TO_STOP_SPEED then
+		return ZERO
 	end
-	local control = math.max(speed, cfg.stopSpeed)
-	local newSpeed = math.max(speed - control * cfg.groundFriction * dt, 0)
-	local scaled = h * (newSpeed / speed)
-	return vector.create(scaled.x, vel.y, scaled.z)
+	return h * (newSpeed / speed)
 end
 
+-- One tick of ground velocity:
+--   * No input, or faster than the wish speed (just pressed walk or crouch,
+--     or slowed by a weapon): brake. Braking while still pushing forward
+--     stops at the wish speed instead of going below it.
+--   * Input: friction only turns the velocity toward the input direction (it
+--     does nothing while already moving that way), then the input
+--     accelerates at maxAcceleration up to the wish speed.
+-- A counter-strafe therefore decelerates at 2 x groundFriction x speed +
+-- maxAcceleration, which with brakingFrictionFactor 2 and
+-- brakingDeceleration = maxAcceleration is exactly the braking rate.
+local function groundVelocity(vel: vector, wishDir: vector, wishSpeed: number, dt: number, cfg: any): vector
+	local h = horizontal(vel)
+	local speed = vector.magnitude(h)
+	local pushing = vector.magnitude(wishDir) > 0
+	local over = speed * speed > wishSpeed * wishSpeed * OVER_SPEED
+	if speed > 0 and (over or not pushing) then
+		local braked = brake(h, speed, dt, cfg)
+		if pushing and vector.dot(wishDir, h) > 0 and vector.magnitude(braked) < wishSpeed then
+			braked = h * (wishSpeed / speed)
+		end
+		h = braked
+	elseif pushing then
+		h -= (h - wishDir * speed) * math.min(dt * cfg.groundFriction, 1)
+	end
+	if pushing then
+		local current = vector.magnitude(h)
+		local limit = if current * current > wishSpeed * wishSpeed * OVER_SPEED then current else wishSpeed
+		h += wishDir * (cfg.maxAcceleration * dt)
+		local magnitude = vector.magnitude(h)
+		if magnitude > limit then
+			h *= limit / magnitude
+		end
+	end
+	return vector.create(h.x, vel.y, h.z)
+end
+
+-- Air control (Source-style: only the part of the velocity along the wish
+-- direction is limited, by the wish speed).
 local function accelerate(vel: vector, wishDir: vector, wishSpeed: number, accel: number, dt: number): vector
 	local current = vector.dot(vel, wishDir)
 	local add = wishSpeed - current
@@ -285,11 +329,10 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 		s.grounded = false
 		s.jumpLatched = true
 		s.lastJumpTick = s.tick
-		vel = applyFriction(vel, dt, cfg)
+		vel = groundVelocity(vel, wishDir, wishSpeed, dt, cfg)
 		vel = vector.create(vel.x, cfg.jumpVelocity, vel.z)
 	elseif s.grounded then
-		vel = applyFriction(vel, dt, cfg)
-		vel = accelerate(vel, wishDir, wishSpeed, cfg.groundAcceleration, dt)
+		vel = groundVelocity(vel, wishDir, wishSpeed, dt, cfg)
 		vel = vector.create(vel.x, 0, vel.z)
 	else
 		vel = accelerate(vel, wishDir, math.min(wishSpeed, cfg.airWishSpeedCap), cfg.airAcceleration, dt)

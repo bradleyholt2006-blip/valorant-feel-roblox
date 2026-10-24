@@ -20,8 +20,9 @@ Status labels used throughout:
 - Acceleration is quick but not instant. Stopping is quicker than starting.
 - Shots are only accurate while the player is (nearly) still. There is a speed threshold, the
   "deadzone", under which the weapon counts as stationary.
-- Counter-strafing (tapping the opposite key) gets you under that threshold sooner than just letting go.
-  Holding the opposite key too long starts moving you the other way.
+- Counter-strafing (tapping the opposite key) barely helps, unlike in Counter-Strike: Riot's own
+  timings put it within a few milliseconds of other ways of stopping, and Riot says letting go of
+  the keys is as fast. Holding the opposite key too long starts moving you the other way.
 - Holding A and D together cancels out to no movement.
 - Jumping gives limited air control. Shots are inaccurate in the air and for a short time after landing.
 - The game ships a crosshair option, "Movement error", that visibly widens the crosshair when you
@@ -44,6 +45,10 @@ Status labels used throughout:
 | Rifle moving error | run 3.75 → 5.0, walk 0.8 → 1.1, crouch-walk 0.3 → 0.8 | Confirmed | [Patch 2.02](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-2-02/) |
 | Rifle moving error (later) | walk 1.3 → 2.0 (3.0); walk 2 → 3, run 5 → 6 (9.10) | Confirmed | Patch 3.0; Patch 9.10 as quoted by [esports.gg](https://esports.gg/news/valorant/valorant-9-10-patch/) and [Sportskeeda](https://www.sportskeeda.com/valorant/new-valorant-regen-shield-weapon-changes-explained) |
 | Counter-strafe accuracy timing | Riot was reviewing "how quickly players become accurate after full movement" | Confirmed (qualitative) | On Peeker's Advantage |
+| Stop timings, Phantom from a full run (2020 beta) | counter-strafing: 61% speed at 0.055 s, 25% at 0.104 s, stopped at 0.160 s. Walk bound to fire, no counter-strafe: 0.065 / 0.110 / 0.170 s. Walk bound to fire with a counter-strafe: 0.060 / 0.107 / 0.166 s. Riot: "approximate because of inconsistent frame rates and human input" | Confirmed | Riot_Classick on r/VALORANT, ["Walking/Running Accuracy too high?"](https://www.reddit.com/r/VALORANT/comments/g7ql8r/) (tests by the designer Excal), via [devtrackers.gg](https://devtrackers.gg/valorant/p/f29d0021-walking-running-accuracy-too-high) |
+| Letting go vs the walk key | "stopping by letting off of movement inputs or counter-strafing is faster than using walk" | Confirmed | Same post |
+| Walk accuracy during a stop (2020 beta) | reached at 61% speed ("Run -> Walk (61%)"); Patch 0.50 then removed walk accuracy from stops | Confirmed | Same post; Patch 0.50 |
+| Engine | Unreal Engine 4 | Confirmed | Riot tech blog, [VALORANT's 128-Tick Servers](https://technology.riotgames.com/node/112), which describes optimising Unreal's replication |
 | Mouse yaw | 0.07° per count × sensitivity | Community | Widely published sensitivity converters; verify with cm/360 |
 | Field of view | 103° horizontal, fixed | Community | Widely published |
 | Roblox stud | 28 cm | Confirmed (Roblox) | [Roblox units](https://create.roblox.com/docs/physics/units) |
@@ -51,8 +56,9 @@ Status labels used throughout:
 The moving-error numbers belong to the weapon system and are recorded here only because they are
 the reason the deadzone matters. They are used by spread (system 3, `docs/research/03-spread-recoil.md`).
 
-**Not found publicly:** walk speed, crouch speed, acceleration, deceleration/friction, jump height,
-gravity, collision size, eye height, step height, max slope. All of those are estimates below.
+**Not found publicly:** walk speed (the 61% walk-accuracy point above is a hint), crouch speed,
+acceleration from a standstill, jump height, gravity, collision size, eye height, step height, max
+slope. All of those are estimates below. Deceleration is pinned down by Riot's stop timings.
 
 ## 3. What can be measured, and how
 
@@ -65,8 +71,8 @@ measurement should be repeated at least 5 times; enter the average and the count
 | Measurement | Method | Gives us |
 | --- | --- | --- |
 | Run / walk / crouch speed | Frames to cross a known distance at full speed (run up first) | `maxSpeed`, `walkMultiplier`, `crouchMultiplier` |
-| Start time | Frames from key down until the crosshair stops widening | `groundAcceleration` |
-| Release stop | Frames from key up until the movement-error crosshair snaps closed | `groundFriction`, `stopSpeed` |
+| Start time | Frames from key down until the crosshair stops widening | `maxAcceleration` (and whether it differs from the stop) |
+| Release stop | Frames from key up until the movement-error crosshair snaps closed | `groundFriction`, `brakingDeceleration` |
 | Counter-strafe stop | Frames from opposite-key down until the crosshair closes | checks acceleration + friction together |
 | Slide distance | Release on a floor line, measure overshoot against a known-size object | cross-check for friction |
 | Jump airtime | Frames from take-off to landing on flat ground | `gravity` with apex height: g = 8h / t² |
@@ -75,18 +81,22 @@ measurement should be repeated at least 5 times; enter the average and the count
 | Crouch / eye height | Compare camera height to objects of known height | eye heights |
 | cm/360 | Mouse distance for one full turn at a known sensitivity | verifies 0.07°/count |
 
-How a measurement maps to a parameter (our model is Source/UE-style ground friction):
+How a measurement maps to a parameter (our model is Unreal-style ground movement, section 5):
 
-- While speed is above `stopSpeed`, a release decays exponentially: v(t) = v0·e^(−f·t).
-- Below `stopSpeed` it drops linearly at `stopSpeed · f` m/s².
-- So release time to a threshold vt (vt < stopSpeed) is
-  `ln(v0 / stopSpeed) / f + (stopSpeed − vt) / (stopSpeed · f)`.
-  With v0 = 5.4, stopSpeed = 2.0, f = 9, vt = 1.485 that is 0.110 + 0.029 = 0.139 s, matching the
-  simulated 133 ms (the simulation is discrete at 128 Hz).
-- Counter-strafing adds `groundAcceleration · maxSpeed` (59.4 m/s² with our numbers) on top of friction.
+- Letting go brakes: v' = −(2·f·v + a), where f is `groundFriction` (doubled by
+  `brakingFrictionFactor`) and a is `brakingDeceleration`. Counter-strafing decelerates through
+  the input at 2·f·v + `maxAcceleration`, the same rate, because a = `maxAcceleration`.
+- So the time from v0 to a threshold vt is `ln((v0 + c) / (vt + c)) / (2f)` with c = a / 2f.
+  With v0 = 5.4, f = 2.75, a = 20.48 that is 0.107 s to 25% speed and 0.163 s to a stop. The
+  simulation steps this at 128 Hz and crosses the two lines at 104 and 160 ms (interpolating
+  between ticks), which is what Riot measured.
+- Starting from a standstill there is no friction: speed rises linearly at `maxAcceleration`, so
+  the time to full speed is v0 / a (0.26 s for a rifle).
 
-Two measurements (release time and counter time) are enough to solve for friction and acceleration;
-the rest are direct reads.
+Riot's two stop times fix f and a. The start time is then a prediction, and the measurement that
+tests the model: if the reference reaches full speed much sooner than 0.26 s, it accelerates
+harder than it decelerates on a counter-strafe, and the model needs a separate start
+acceleration. The rest are direct reads.
 
 ## 4. Confirmed vs estimated, as implemented
 
@@ -102,10 +112,9 @@ Since system 2, each weapon's speed is `baseRunSpeed` (the knife's 6.75 m/s) tim
 | Operator deadzone | 15% | Confirmed |
 | Deadzone, every other weapon | 27.5% | Confirmed |
 | Jump-land penalty time | 0.225 s | Confirmed |
-| Walk / crouch multiplier | 0.55 / 0.35 | Estimate |
-| Ground acceleration | 11 /s | Estimate |
-| Ground friction | 9 /s | Estimate |
-| Stop speed | 2.0 m/s | Estimate |
+| Walk / crouch multiplier | 0.61 (from Riot's 61% walk-accuracy point) / 0.35 | Estimate |
+| Max acceleration = braking deceleration | 20.48 m/s² (2048 cm/s², Unreal's default) | Estimate, fitted |
+| Ground friction | 2.75 /s, doubled when braking (Unreal's default factor of 2) | Estimate, fitted to Riot's stop timings |
 | Air acceleration / wish cap | 1.5 /s, 0.8 m/s | Estimate |
 | Gravity / jump apex | 15 m/s², 0.85 m | Estimate |
 | Step height / max slope | 0.35 m / 46° | Estimate |
@@ -116,13 +125,24 @@ What these estimates currently produce (from `luau tests/run.luau`):
 
 | Rifle (5.40 m/s, 27.5% deadzone) | Ours | Reference |
 | --- | --- | --- |
-| Standing → 95% speed | 172 ms | not measured |
-| Standing → inaccurate | 39 ms | not measured |
-| Release → accurate | 133 ms | not measured |
-| Release → stopped | 211 ms, 0.42 m slide | not measured |
-| Counter-strafe → accurate | 39 ms | not measured |
-| Counter-strafe → stopped | 55 ms, 0.10 m slide | not measured |
+| Standing → 95% speed | 258 ms | not measured |
+| Standing → inaccurate | 78 ms | not measured |
+| Counter-strafe → 25% speed | 109 ms | 104 ms (Riot) |
+| Counter-strafe → stopped | 164 ms, 0.31 m slide | 160 ms (Riot) |
+| Letting go → 25% speed | 109 ms | 110 ms with walk bound to fire (Riot) |
+| Letting go → stopped | 156 ms, 0.31 m slide | 170 ms with walk bound to fire (Riot) |
+| Letting go or counter-strafe → accurate (27.5%) | 102 ms | not measured |
 | Jump apex / airtime | 0.83 m / 664 ms | not measured |
+
+Times are ticks of the new input until the speed is below the line, as footage times it from the
+key, so ours move in steps of 7.8 ms. Letting go stops a tick before a counter-strafe because
+braking snaps to zero under 10 cm/s (as Unreal does), while a counter-strafe ends when the velocity
+reverses.
+
+System 1 used a Source-style model at first, which made counter-strafing about three times as fast
+as letting go (39 against 133 ms to accuracy). Riot's timings showed the reference doesn't work
+that way, and the Source model's friction floor also let a slowed runner sag below the hit-slow
+cap and into the deadzone. Both are gone with the model in section 5.
 
 ## 5. Design
 
@@ -145,6 +165,13 @@ What these estimates currently produce (from `luau tests/run.luau`):
   result wins. It never touches Roblox services, so it also runs in the offline test suite.
 - **Metres inside, studs outside.** The sim works in SI units so every number compares directly with
   the reference. `Units` and `RobloxWorld` convert at the boundary.
+- **Unreal-style ground model.** With no input, or when moving faster than the wish speed (just
+  pressed walk or crouch, or drew a slower weapon), the player brakes: friction in proportion to
+  speed, doubled, plus a constant deceleration, never through zero. With input, friction only
+  turns the velocity toward the input (none while already moving that way) and the input
+  accelerates at `maxAcceleration` up to the wish speed. A counter-strafe therefore decelerates at
+  the braking rate, and a held key holds any wish speed exactly. Air control is unchanged
+  (Source-style, capped wish speed).
 - **Custom kinematic controller.** Roblox Humanoid physics is replaced. The root part is anchored and
   positioned by the sim; collision is a collide-and-slide on an axis-aligned box using
   `Workspace:Blockcast`, with stair stepping and ground snapping.
@@ -169,7 +196,7 @@ Roblox differences from the reference that matter:
 | File | Role |
 | --- | --- |
 | `src/shared/Movement/MovementConfig.luau` | Every parameter with status and source |
-| `src/shared/Movement/MovementSim.luau` | Deterministic movement step (friction, accel, jump, crouch, collision) |
+| `src/shared/Movement/MovementSim.luau` | Deterministic movement step (braking, acceleration, jump, crouch, collision) |
 | `src/shared/Movement/StopAnalyzer.luau` | Detects and measures stops; shared by the lab and the tests |
 | `src/shared/Movement/RobloxWorld.luau` | Blockcast / overlap world adapter |
 | `src/shared/PlayerSim.luau` | Movement and weapons stepped together (since system 2) |
@@ -189,20 +216,23 @@ Roblox differences from the reference that matter:
 | F3 | HUD: speed (m/s and studs/s), % of max, ACCURATE / MOVING ERROR, flags, tick, ping, pending inputs, corrections |
 | always | Movement-error crosshair (same idea as the reference's option) and a W A S D / Shift / Ctrl / Space key overlay |
 | always | Speed graph: 2.5 s of speed, coloured by accuracy, with the deadzone line |
-| F4 | Counter-Strafe Lab: per-stop timing, slide, "overhold" coaching, averages vs ReferenceData, live tuning box, cm/360 check |
+| F4 | Counter-Strafe Lab: per-stop timing, slide, "overhold" coaching, averages vs ReferenceData (Riot's stop times for the rifles), live tuning box, cm/360 check |
 | F6 | Recorder: per-tick CSV printed to Output for spreadsheet comparison |
 | F7 | Ghost: box at the last authoritative server position |
 | F8 | Zero the cm/360 counter |
 | 1 / 2 / 3 | Primary / secondary / knife (weapon speed comes from the equipped weapon) |
 | 4 / 6 | Give a Vandal / Operator to compare rifle and sniper movement (see system 2) |
 
-Live tuning: in the lab box, type `groundFriction 10` and Enter. The server applies it and pushes it
+Live tuning: in the lab box, type `groundFriction 3` and Enter. The server applies it and pushes it
 to every client so prediction stays in sync. `reset` clears overrides.
 
 ## 8. Refinement loop
 
-1. Measure release time and counter-strafe time for the rifle (section 3), enter them in ReferenceData.
-2. Solve friction and acceleration with the formulas above, try them live in the lab, then commit them
+1. Riot's stop times are in ReferenceData for the rifles. Measure the start time (standing to full
+   speed, and how long the movement-error crosshair stays closed after pressing a key) and the
+   stop times at today's 27.5% deadzone, and enter them.
+2. If the start doesn't match, give the model a separate start acceleration; otherwise re-fit
+   friction and acceleration with the formulas above, try them live in the lab, then commit them
    to MovementConfig with status changed to `community` (our own measurement) and the clip as source.
 3. Repeat for walk/crouch speed, jump airtime and apex.
 4. Re-run `luau tests/run.luau` and update the table in section 4.
