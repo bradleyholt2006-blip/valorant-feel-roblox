@@ -75,7 +75,7 @@ export type Verdict = {
 	blockedAt: number,
 	multiplier: number, -- damage multiplier the server applied for walls
 	walls: { WallReport }, -- the walls the server's shot met before its end point
-	damage: number?,
+	damage: number?, -- the shot's damage after range and walls, before the target's health caps it
 	killed: boolean?,
 	hitPoint: vector?, -- where the shot hit the rewound target, metres
 	rewind: number, -- seconds the server went back

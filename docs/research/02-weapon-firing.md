@@ -175,7 +175,8 @@ between the two neighbouring tick counts. The remainder carries over, so the ave
   capped for the tag duration. The victim's client finds out from the next ack and reconciles.
 - **The client guesses only for looks.** Tracers and impact marks use the client's own trace
   against what was on screen, so they appear instantly. Hit markers, damage numbers and the kill
-  feed only come from the server.
+  feed only come from the server. A damage number is the shot's damage after range and walls, not
+  the health it took, so a Vandal headshot reads 160 on a 150 HP dummy.
 - **Practice dummies are real players.** They run the same `PlayerSim` at 128 Hz with scripted
   inputs (static, strafing, crouching), replicate like players and are drawn by the client straight
   from their hitboxes, so what you see is exactly what can be hit.
