@@ -39,6 +39,9 @@ cm/360 counter, F10 hitbox overlay, Backspace clear impact marks, counters and t
 4-8 give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only).
 In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, B Network Buffering,
 K rewind cap 140 / 200 ms / off.
+Scripted playtests (Studio only): a tool that can press keys but can't move the mouse aims by
+setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
+`VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
 
 ## Tests
 

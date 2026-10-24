@@ -37,7 +37,7 @@ local CombatHud = {}
 CombatHud.damageNumbers = true
 
 local function nameOf(id: number): string
-	if id >= PlayerCodec.DUMMY_BASE then
+	if PlayerCodec.isDummy(id) then
 		return string.format("Dummy %d", id - PlayerCodec.DUMMY_BASE)
 	end
 	for _, player in Players:GetPlayers() do
