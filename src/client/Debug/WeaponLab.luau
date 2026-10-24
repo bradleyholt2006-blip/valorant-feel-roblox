@@ -57,7 +57,7 @@ local function shortName(id: number?): string
 	if id == nil then
 		return "-"
 	end
-	if id >= PlayerCodec.DUMMY_BASE then
+	if PlayerCodec.isDummy(id) then
 		return string.format("D%d", id - PlayerCodec.DUMMY_BASE)
 	end
 	return string.format("P%d", id % 1000)

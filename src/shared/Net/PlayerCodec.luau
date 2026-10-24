@@ -302,11 +302,18 @@ local SNAP_ENTRY = 4 + 12 + 2 + 2 + 1 + 1
 PlayerCodec.SNAPSHOT_HEADER = SNAP_HEADER
 PlayerCodec.SNAPSHOT_ENTRY = SNAP_ENTRY
 
--- Entity ids: players use UserId mod 2^32; dummies use DUMMY_BASE + n.
+-- Entity ids: players use UserId mod 2^32; dummies use DUMMY_BASE + n, for n
+-- up to DUMMY_LIMIT. The range is bounded because Studio's local test
+-- players have UserIds -1, -2, ..., which land at the very top of it.
 PlayerCodec.DUMMY_BASE = 4294901760 -- 0xFFFF0000
+PlayerCodec.DUMMY_LIMIT = 4096
 
 function PlayerCodec.entityIdForUser(userId: number): number
 	return userId % 2 ^ 32
+end
+
+function PlayerCodec.isDummy(id: number): boolean
+	return id > PlayerCodec.DUMMY_BASE and id <= PlayerCodec.DUMMY_BASE + PlayerCodec.DUMMY_LIMIT
 end
 
 -- Applies the same float32 rounding a pose gets on the wire, so the server's

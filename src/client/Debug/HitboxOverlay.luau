@@ -301,7 +301,7 @@ local function render()
 	local renderTime = RemoteEntities.renderTime()
 	local seen: { [number]: boolean } = {}
 	for _, id in RemoteEntities.ids() do
-		if id >= PlayerCodec.DUMMY_BASE or not RemoteEntities.isPresent(id) then
+		if PlayerCodec.isDummy(id) or not RemoteEntities.isPresent(id) then
 			continue
 		end
 		local pose = RemoteEntities.sample(id, renderTime)

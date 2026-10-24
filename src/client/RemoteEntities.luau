@@ -108,7 +108,7 @@ local function playerFor(id: number): Player?
 end
 
 local function isDummy(id: number): boolean
-	return id >= PlayerCodec.DUMMY_BASE
+	return PlayerCodec.isDummy(id)
 end
 
 local function countSequence(seq: number)

@@ -18,6 +18,7 @@ local WeaponLab = require(script.Debug.WeaponLab)
 local SprayLab = require(script.Debug.SprayLab)
 local HitRegLab = require(script.Debug.HitRegLab)
 local HitboxOverlay = require(script.Debug.HitboxOverlay)
+local TestAim = require(script.Debug.TestAim)
 
 -- Our HUD replaces Roblox's health bar, and number keys belong to weapons.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
@@ -39,6 +40,8 @@ WeaponLab.start(PlayerController)
 SprayLab.start(PlayerController)
 HitRegLab.start(PlayerController)
 HitboxOverlay.start()
+-- Studio only: aim set by attributes, for scripted playtests.
+TestAim.start(PlayerController)
 
 -- F2 pages through the labs: Weapon Lab, Spray Lab, Hit Reg Lab, off.
 local labs = { WeaponLab, SprayLab, HitRegLab }

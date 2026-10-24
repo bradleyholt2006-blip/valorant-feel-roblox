@@ -135,4 +135,16 @@ do
 	check("a snapshot fits an unreliable packet", PlayerCodec.SNAPSHOT_HEADER + PlayerCodec.SNAPSHOT_ENTRY * PlayerCodec.MAX_POSES_PER_SNAPSHOT <= 900)
 end
 
+do
+	-- Studio's local test players (UserIds -1, -2, ...) must not read as dummies.
+	local studioPlayers = PlayerCodec.isDummy(PlayerCodec.entityIdForUser(-1)) or PlayerCodec.isDummy(PlayerCodec.entityIdForUser(-2))
+	check(
+		"dummies and Studio's test players get separate entity ids",
+		PlayerCodec.isDummy(PlayerCodec.DUMMY_BASE + 1)
+			and PlayerCodec.isDummy(PlayerCodec.DUMMY_BASE + 17)
+			and not studioPlayers
+			and not PlayerCodec.isDummy(PlayerCodec.entityIdForUser(123456789))
+	)
+end
+
 return nil
