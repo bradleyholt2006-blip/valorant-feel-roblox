@@ -245,7 +245,10 @@ Written and tested outside Studio (offline Luau tests plus `luau-lsp` type check
 session can confirm:
 
 - Mouse buttons reach the game with the default PlayerModule's controls disabled, and right-click
-  isn't taken by the camera scripts.
+  isn't taken by the camera scripts. The first Studio run found the PlayerModule in StarterPlayer,
+  not PlayerScripts, in a place using Roblox's Input Action System player scripts
+  (`Workspace.PlayerScriptsUseInputActionSystem`, every place's default from 2027). The client
+  waited for it forever, so the client now looks in both places and starts without it.
 - The viewmodel and muzzle flash sit right in front of a scriptable camera at 103 degrees.
 - The `VFCharacters` collision group keeps character parts out of both the client's and the
   server's shot traces.

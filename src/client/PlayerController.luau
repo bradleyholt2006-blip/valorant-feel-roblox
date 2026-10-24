@@ -14,6 +14,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local StarterPlayer = game:GetService("StarterPlayer")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -395,9 +396,38 @@ function PlayerController.requestWeapon(id: string)
 	end
 end
 
+-- Roblox's default controls would also drive the character, so they are
+-- switched off. Their PlayerModule is in PlayerScripts with the legacy player
+-- scripts, and in StarterPlayer with the ones built on the Input Action
+-- System (Workspace.PlayerScriptsUseInputActionSystem: opt-in since July
+-- 2026, every place's default from 2027), which may not have GetControls.
+-- The anchored root and zero WalkSpeed already keep the defaults from moving
+-- the character, so this is best effort and never holds up the start.
+local function disableDefaultControls()
+	local playerScripts = localPlayer:WaitForChild("PlayerScripts")
+	local deadline = os.clock() + 10
+	local found: Instance? = nil
+	repeat
+		found = playerScripts:FindFirstChild("PlayerModule") or StarterPlayer:FindFirstChild("PlayerModule")
+		if found == nil then
+			task.wait(0.1)
+		end
+	until found ~= nil or os.clock() > deadline
+	if found == nil or not found:IsA("ModuleScript") then
+		return
+	end
+	local playerModule = found :: ModuleScript
+	local ok, problem = pcall(function()
+		local controls = (require(playerModule) :: any):GetControls()
+		controls:Disable()
+	end)
+	if not ok then
+		warn("[VF] Roblox's default controls are still on: " .. tostring(problem))
+	end
+end
+
 function PlayerController.start()
-	local playerModule = require(localPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: ModuleScript) :: any
-	playerModule:GetControls():Disable()
+	task.spawn(disableDefaultControls)
 
 	CameraController.start()
 	InputSampler.start()
