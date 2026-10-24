@@ -9,6 +9,12 @@
 --   * an angled wall for wall-slide checks
 --   * a target lane down -Z with stripes every 10 m to 50 m, a backstop, a
 --     waist-high cover and practice dummy spawn points
+--   * a wallbang lane: wood, concrete and metal walls 0.10 / 0.20 / 0.40 m
+--     thick with a dummy behind each, and the 0.20 m concrete wall again
+--     turned 45 degrees
+--
+-- Everything here is SmoothPlastic, which bullets can't go through, except
+-- the wallbang walls (Combat/RobloxLevel maps materials to penetration).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -135,13 +141,66 @@ function TestRange.buildIfMissing()
 		{ x = 0, z = -50, mode = "static" },
 		{ x = 8, z = -22, mode = "static" },
 	}
-	for i, spot in dummySpots do
-		local marker = part(spawns, string.format("Dummy%02d", i), Vector3.new(0.5, 0.02, 0.5), Vector3.new(spot.x, 0.01, spot.z), accent)
-		marker.CanCollide = false
-		marker.CanQuery = false
-		marker.Transparency = 0.6
-		marker:SetAttribute("Mode", spot.mode)
+	local function marker(x: number, z: number, mode: string)
+		local index = #spawns:GetChildren() + 1
+		local m = part(spawns, string.format("Dummy%02d", index), Vector3.new(0.5, 0.02, 0.5), Vector3.new(x, 0.01, z), accent)
+		m.CanCollide = false
+		m.CanQuery = false
+		m.Transparency = 0.6
+		m:SetAttribute("Mode", mode)
 	end
+	for _, spot in dummySpots do
+		marker(spot.x, spot.z, spot.mode)
+	end
+
+	-- Wallbang lane, left of the spawn: walls 2.4 m tall with their faces on
+	-- z = -20 and a dummy 1.5 m behind each, a line 10 m in front to shoot
+	-- from and a backstop. F10 labels what each wall cost the bullet.
+	local wallZ = -20
+	local function wallTag(x: number, text: string)
+		local tag = part(root, "WallbangTag", Vector3.new(1.3, 0.01, 0.4), Vector3.new(x, 0.006, wallZ + 1.2), grey)
+		tag.CanCollide = false
+		sign(tag, text)
+	end
+	local kinds = {
+		{ name = "wood", material = Enum.Material.Wood, color = Color3.fromRGB(150, 105, 65) },
+		{ name = "concrete", material = Enum.Material.Concrete, color = Color3.fromRGB(165, 165, 160) },
+		{ name = "metal", material = Enum.Material.Metal, color = Color3.fromRGB(130, 136, 146) },
+	}
+	local x = -32
+	for _, kind in kinds do
+		for _, t in { 0.1, 0.2, 0.4 } do
+			local wall = part(
+				root,
+				string.format("Wallbang_%s_%.2fm", kind.name, t),
+				Vector3.new(1.4, 2.4, t),
+				Vector3.new(x, 1.2, wallZ - t / 2),
+				kind.color
+			)
+			wall.Material = kind.material
+			wallTag(x, string.format("%s %.2f m", kind.name, t))
+			marker(x, wallZ - 1.5, "static")
+			x += 2
+		end
+	end
+	-- The 0.20 m concrete wall turned 45 degrees: 0.28 m along a straight shot.
+	local turned = part(
+		root,
+		"Wallbang_concrete_0.20m_45deg",
+		Vector3.new(1.4, 2.4, 0.2),
+		Vector3.new(-35.5, 1.2, wallZ - 0.5),
+		kinds[2].color,
+		CFrame.Angles(0, math.rad(45), 0)
+	)
+	turned.Material = Enum.Material.Concrete
+	wallTag(-35.5, "concrete 0.20 m at 45")
+	marker(-35.5, wallZ - 1.8, "static")
+	part(root, "WallbangBackstop", Vector3.new(24, 3, 0.5), Vector3.new(-26, 1.5, wallZ - 4.25), light)
+	local line = part(root, "WallbangLine", Vector3.new(22, 0.01, 0.05), Vector3.new(-26, 0.005, wallZ + 10), accent)
+	line.CanCollide = false
+	local lineTag = part(root, "WallbangLineTag", Vector3.new(1.2, 0.01, 0.4), Vector3.new(-37.5, 0.006, wallZ + 10), grey)
+	lineTag.CanCollide = false
+	sign(lineTag, "10 m")
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "Spawn"

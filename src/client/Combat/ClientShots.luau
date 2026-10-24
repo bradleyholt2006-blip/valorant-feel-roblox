@@ -2,10 +2,11 @@
 -- The local player's shots: the client's instant guess and the server's
 -- verdict, side by side.
 --
--- When the local simulation fires, the shot is traced right away against the
--- level and against every target as it was drawn on screen when the trigger
--- was sampled (the input's viewTime). That guess drives the tracer and a
--- small client-side spark with no delay. The server's verdict (ShotResult)
+-- When the local simulation fires, the shot is traced right away through the
+-- level (walls it goes through included, Penetration) and against every
+-- target as it was drawn on screen when the trigger was sampled (the input's
+-- viewTime). That guess drives the tracer, the bullet holes and a small
+-- client-side spark with no delay. The server's verdict (ShotResult)
 -- arrives a round trip later and is the only thing that applies damage or
 -- shows a hit confirm, as in the reference ("shot results are entirely
 -- server authoritative", Riot, "The State of Hit Registration").
@@ -14,7 +15,6 @@
 -- ray, their poses and the snapshots those came from. When the two disagree
 -- the record says why (Cause); the Hit Reg Lab counts the reasons.
 
-local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -22,7 +22,8 @@ local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local ShotResolver = require(Shared.Combat.ShotResolver)
-local RobloxWorld = require(Shared.Movement.RobloxWorld)
+local Penetration = require(Shared.Combat.Penetration)
+local RobloxLevel = require(Shared.Combat.RobloxLevel)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -36,10 +37,24 @@ export type Outcome = {
 	region: string?,
 	distance: number, -- metres from the eye to the end point
 	point: vector, -- metres
-	normal: vector?, -- surface normal when level geometry stopped the shot
-	blockedAt: number, -- metres to the level along the shot
+	normal: vector?, -- surface normal when level geometry stopped the shot at a face
+	blockedAt: number, -- metres along the shot to where the level stopped it
+	multiplier: number, -- damage left at the end point after walls
+	penetration: Penetration.Trace, -- the shot through the level, walls past the end point included
 	damage: number?,
 	killed: boolean?,
+}
+
+-- A wall as the server reports it in a verdict.
+export type WallReport = {
+	material: string,
+	name: string?,
+	entry: number,
+	exit: number?,
+	thickness: number,
+	used: number,
+	multiplier: number,
+	continues: boolean,
 }
 
 -- A target as one side tested it: its pose at the shot's time and the
@@ -58,6 +73,8 @@ export type Verdict = {
 	point: vector,
 	normal: vector?,
 	blockedAt: number,
+	multiplier: number, -- damage multiplier the server applied for walls
+	walls: { WallReport }, -- the walls the server's shot met before its end point
 	damage: number?,
 	killed: boolean?,
 	hitPoint: vector?, -- where the shot hit the rewound target, metres
@@ -73,7 +90,7 @@ export type Verdict = {
 --   shooter   the server's shot started or pointed elsewhere (a correction)
 --   gone      a target one side tested wasn't there on the other (dead, respawned, left)
 --   snapshot  the target came from different snapshots (one was lost, late or held)
---   world     the level stopped the shot at a different distance
+--   world     the level stopped the shot at a different distance, or its walls cost different damage
 --   pose      same snapshots but a different pose: a bug
 --   edge      none of the above: a hair's-breadth difference, also worth a report
 export type Cause = "agree" | "capped" | "shooter" | "gone" | "snapshot" | "world" | "pose" | "edge"
@@ -121,17 +138,20 @@ local function newStats()
 end
 ClientShots.stats = newStats()
 
-local params = RaycastParams.new()
-params.FilterType = Enum.RaycastFilterType.Exclude
-params.CollisionGroup = RobloxWorld.CHARACTER_GROUP
-params.RespectCanCollide = true
+-- The level as shots see it (also used to draw other players' bullet holes).
+ClientShots.level = RobloxLevel.new()
 
--- Same rules as the server's trace: level geometry first, then hitboxes.
+-- Same rules as the server's trace: through the level first, then hitboxes.
 -- Also returns the targets near the ray, as tested.
-function ClientShots.trace(origin: vector, dir: vector, viewTime: number, ignoreId: number?): (Outcome, { [number]: Tested })
-	local maxRange = WeaponConfig.MaxRange
-	local result = Workspace:Raycast(Units.toStuds(origin), Units.toStuds(dir * maxRange), params)
-	local blockedAt = if result then result.Distance * Units.METRES_PER_STUD else maxRange
+function ClientShots.trace(
+	origin: vector,
+	dir: vector,
+	viewTime: number,
+	ignoreId: number?,
+	class: WeaponConfig.PenetrationClass
+): (Outcome, { [number]: Tested })
+	local penetration = Penetration.trace(ClientShots.level, origin, dir, class, WeaponConfig.MaxRange)
+	local blockedAt = penetration.stop
 	local targets: { ShotResolver.Target } = {}
 	local tested: { [number]: Tested } = {}
 	for _, entry in RemoteEntities.lookups(viewTime) do
@@ -147,13 +167,26 @@ function ClientShots.trace(origin: vector, dir: vector, viewTime: number, ignore
 	end
 	local hit = ShotResolver.resolve(origin, dir, targets, blockedAt, ignoreId)
 	if hit then
-		return { targetId = hit.targetId, region = hit.region, distance = hit.distance, point = hit.point, blockedAt = blockedAt }, tested
+		return {
+			targetId = hit.targetId,
+			region = hit.region,
+			distance = hit.distance,
+			point = hit.point,
+			blockedAt = blockedAt,
+			multiplier = Penetration.multiplierAt(penetration, hit.distance),
+			penetration = penetration,
+		},
+			tested
 	end
+	local last = penetration.walls[#penetration.walls]
+	local atFace = penetration.stopped and last ~= nil and last.thickness == 0
 	return {
 		distance = blockedAt,
 		point = origin + dir * blockedAt,
-		normal = if result then Units.asVector(result.Normal) else nil,
+		normal = if atFace then last.normal else nil,
 		blockedAt = blockedAt,
+		multiplier = Penetration.multiplierAt(penetration, blockedAt),
+		penetration = penetration,
 	}, tested
 end
 
@@ -164,7 +197,8 @@ local function movingAt(id: number, time: number): boolean
 end
 
 local function onShot(shot: WeaponSim.Shot, input: PlayerCodec.WireInput)
-	local predicted, tested = ClientShots.trace(shot.origin, shot.direction, input.viewTime, PlayerController.entityId)
+	local class: WeaponConfig.PenetrationClass = WeaponConfig.get(shot.weapon).penetration
+	local predicted, tested = ClientShots.trace(shot.origin, shot.direction, input.viewTime, PlayerController.entityId, class)
 	local moving = false
 	for id in tested do
 		moving = moving or movingAt(id, input.viewTime)
@@ -201,6 +235,28 @@ end
 
 local function asVector(v: any): vector?
 	return if typeof(v) == "Vector3" then Units.asVector(v) else nil
+end
+
+local function parseWalls(list: any): { WallReport }
+	local out: { WallReport } = {}
+	if typeof(list) ~= "table" then
+		return out
+	end
+	for _, w in list do
+		if typeof(w) == "table" and typeof(w.material) == "string" and typeof(w.entry) == "number" and typeof(w.used) == "number" then
+			table.insert(out, {
+				material = w.material,
+				name = if typeof(w.name) == "string" then w.name else nil,
+				entry = w.entry,
+				exit = if typeof(w.exit) == "number" then w.exit else nil,
+				thickness = if typeof(w.thickness) == "number" then w.thickness else 0,
+				used = w.used,
+				multiplier = if typeof(w.multiplier) == "number" then w.multiplier else 1,
+				continues = w.continues == true,
+			})
+		end
+	end
+	return out
 end
 
 local function parseTested(list: any): { [number]: Tested }
@@ -285,7 +341,7 @@ local function classify(r: Record, v: Verdict): Cause
 			return "pose"
 		end
 	end
-	if math.abs(v.blockedAt - r.predicted.blockedAt) > 0.01 then
+	if math.abs(v.blockedAt - r.predicted.blockedAt) > 0.01 or math.abs(v.multiplier - r.predicted.multiplier) > 1e-3 then
 		return "world"
 	end
 	return "edge"
@@ -310,6 +366,8 @@ local function onVerdict(v: any)
 		distance = if typeof(v.distance) == "number" then v.distance else vector.magnitude(point - record.shot.origin),
 		point = point,
 		blockedAt = if typeof(v.blockedAt) == "number" then v.blockedAt else record.predicted.blockedAt,
+		multiplier = if typeof(v.multiplier) == "number" then v.multiplier else 1,
+		walls = parseWalls(v.walls),
 		damage = v.damage,
 		killed = v.killed,
 		hitPoint = asVector(v.hitPoint),

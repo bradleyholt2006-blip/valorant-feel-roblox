@@ -12,6 +12,10 @@
 --     agreement rate. The server rewinds targets to what you saw, so they
 --     should agree on moving targets too; when they don't, the log says why
 --     (the Hit Reg Lab, F2 third page, counts the reasons)
+--   * wall penetration: the weapon's class, the damage left after one wall
+--     of each material and thickness in the wallbang lane, the walls the
+--     last shot went through (client and server), and any reference
+--     wallbang measurements next to what we predict for the same wall
 --   * time-to-kill table against 150 HP (100 health + heavy shields)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,6 +26,7 @@ local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
+local Penetration = require(Shared.Combat.Penetration)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 
 local Ui = require(script.Parent.Ui)
@@ -31,6 +36,9 @@ local ClientShots = require(script.Parent.Parent.Combat.ClientShots)
 local DT = 1 / MovementConfig.TickRate.value
 local LOG_ROWS = 10
 local TARGET_HP = 150
+local LANE_THICKNESSES = { 0.1, 0.2, 0.4 } -- the wallbang lane's walls (TestRange)
+local LANE_MATERIALS: { Penetration.Material } = { "soft", "medium", "hard" }
+local MATERIAL_NAMES = { soft = "wood", medium = "concrete", hard = "metal" }
 
 local WeaponLab = {}
 
@@ -65,6 +73,27 @@ local function describe(o: { targetId: number?, region: string?, distance: numbe
 	return string.format("%s %s", shortName(o.targetId), o.region or "?")
 end
 
+local function multiplierText(m: number?): string
+	return if m then string.format("x%.2f", m) else "stops"
+end
+
+-- The walls a shot went through up to its end, one line.
+local function wallsText(walls: { Penetration.Wall }, upTo: number): string
+	local parts = {}
+	for _, wall in walls do
+		if wall.entry > upTo + 1e-3 then
+			break
+		end
+		local what = wall.name or wall.material
+		if wall.exit == nil and wall.thickness == 0 then
+			table.insert(parts, what .. " stops")
+		else
+			table.insert(parts, string.format("%s %.2fm %.0f%%%s", what, wall.thickness, wall.used * 100, if wall.exit then "" else " stops inside"))
+		end
+	end
+	return table.concat(parts, " > ")
+end
+
 local function refText(entry: any, value: number?, unit: string, scale: number): string
 	local measured = entry
 	if measured == nil then
@@ -77,8 +106,8 @@ end
 function WeaponLab.start(controller: any)
 	local gui = Ui.screen("VFWeaponLab", 22)
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(660, 470),
-		Position = UDim2.new(1, -672, 0, 120),
+		Size = UDim2.fromOffset(740, 590),
+		Position = UDim2.new(1, -752, 0, 110),
 		Visible = false,
 	})
 	panelFrame = panel
@@ -255,7 +284,7 @@ function WeaponLab.start(controller: any)
 			pending,
 			stats.unmatchedVerdicts
 		))
-		table.insert(lines, "   #  weapon    client         server          dmg   rtt  rewind")
+		table.insert(lines, "   #  weapon    client         server          dmg  walls    rtt  rewind")
 		local records = ClientShots.records
 		for i = #records, math.max(#records - LOG_ROWS + 1, 1), -1 do
 			local r = records[i]
@@ -266,13 +295,15 @@ function WeaponLab.start(controller: any)
 					then string.format('<font color="#%s">ok</font>', Ui.hex(Ui.GOOD))
 					else string.format('<font color="#%s">DIFF %s</font>', Ui.hex(Ui.BAD), r.cause or "")
 			end
+			local multiplier = if v then v.multiplier else r.predicted.multiplier
 			table.insert(lines, string.format(
-				"%4d  %-8s  %-13s  %-14s  %3s  %5s  %6s  %s",
+				"%4d  %-8s  %-13s  %-14s  %3s  %5s  %5s  %6s  %s",
 				r.shot.shotNumber,
 				r.shot.weapon,
 				describe(r.predicted),
 				describe(v),
 				if v and v.damage then tostring(v.damage) else "",
+				if multiplier < 1 then string.format("x%.2f", multiplier) else "",
 				if r.verdictAt then string.format("%.0fms", (r.verdictAt - r.firedAt) * 1000) else "",
 				if v then string.format("%.0fms%s", v.rewind * 1000, if v.clamped then "!" else "") else "",
 				mark
@@ -282,6 +313,88 @@ function WeaponLab.start(controller: any)
 			table.insert(lines, "")
 		end
 		table.insert(lines, "")
+
+		-- Wall penetration ----------------------------------------------------------
+		if def.fireMode ~= "none" then
+			local class: WeaponConfig.PenetrationClass = def.penetration
+			local pen = WeaponConfig.Penetration
+			local limits = {}
+			for _, material: Penetration.Material in LANE_MATERIALS do
+				local limit = Penetration.limit(class, material)
+				table.insert(limits, string.format("%s %s", material, if limit > 0 then string.format("%.2f m", limit) else "--"))
+			end
+			table.insert(lines, string.format(
+				"<b>penetration</b>  %s (%s)  gets through up to %s",
+				class,
+				pen.classSource.status,
+				table.concat(limits, ", ")
+			))
+			table.insert(lines, string.format(
+				'<font color="#%s">  limits %s, entry cost %.0f%% of the budget (%s), damage x(1 - %.2f x budget spent) (%s)</font>',
+				Ui.hex(Ui.DIM),
+				pen.limitsSource.status,
+				pen.entryCost.value * 100,
+				pen.entryCost.status,
+				pen.damageLoss.value,
+				pen.damageLoss.status
+			))
+			local header = string.format("  %-37s", "damage left, one lane wall square on:")
+			for _, thickness in LANE_THICKNESSES do
+				header ..= string.format("  %.2f m", thickness)
+			end
+			table.insert(lines, header)
+			for _, material: Penetration.Material in LANE_MATERIALS do
+				local row = string.format("  %-37s", string.format("  %s (%s)", material, MATERIAL_NAMES[material]))
+				for _, thickness in LANE_THICKNESSES do
+					row ..= string.format("  %6s", multiplierText(Penetration.oneWall(class, material, thickness)))
+				end
+				table.insert(lines, row)
+			end
+			-- The newest shot of this weapon that met a wall on the way.
+			local last: ClientShots.Record? = nil
+			for i = #records, 1, -1 do
+				local r = records[i]
+				local walls = r.predicted.penetration.walls
+				if r.shot.weapon == def.id and #walls > 0 and walls[1].entry <= r.predicted.distance then
+					last = r
+					break
+				end
+			end
+			if last then
+				local v = last.verdict
+				local server = "..."
+				if v then
+					server = string.format("x%.2f%s", v.multiplier, if v.damage then string.format(", %d dmg", v.damage) else "")
+				end
+				table.insert(lines, string.format(
+					"  last shot  %s = x%.2f   server %s",
+					wallsText(last.predicted.penetration.walls, last.predicted.distance),
+					last.predicted.multiplier,
+					server
+				))
+			else
+				table.insert(lines, "  last shot  -- (shoot a wall in the wallbang lane)")
+			end
+			local refs: { ReferenceData.Wallbang } = ref.wallbangs or {}
+			if #refs == 0 then
+				table.insert(lines, string.format('<font color="#%s">  ref: no wallbangs measured</font>', Ui.hex(Ui.DIM)))
+			end
+			for _, wallbang in refs do
+				local material: Penetration.Material = wallbang.material :: any
+				local ours = Penetration.oneWall(class, material, wallbang.thickness, wallbang.angle)
+				table.insert(lines, string.format(
+					"  ref %-18s %s %.2f m %2.0f deg: %s n=%d   ours %s",
+					wallbang.wall,
+					wallbang.material,
+					wallbang.thickness,
+					wallbang.angle,
+					multiplierText(wallbang.fraction),
+					wallbang.n,
+					multiplierText(ours)
+				))
+			end
+			table.insert(lines, "")
+		end
 
 		-- Time to kill -------------------------------------------------------------
 		if def.fireMode ~= "none" then

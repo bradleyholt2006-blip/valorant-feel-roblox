@@ -185,8 +185,8 @@ Roblox differences from the reference that matter here:
 - Remote entities are drawn about 25-30 ms in the past (60 Hz snapshots) against the reference's
   7.8 ms. Since system 4 the server rewinds targets to what the shooter saw; the weapon lab counts
   how often its verdict and the client's guess agree.
-- No animation on hitboxes, and no wall penetration yet (each weapon's penetration class is
-  recorded for later).
+- No animation on hitboxes. Wall penetration, using each weapon's penetration class, is system 5
+  ([05-wall-penetration.md](05-wall-penetration.md)).
 - Not in this system: the Classic's burst alt-fire, knife attacks, abilities, the buy phase.
 
 ## 6. Implementation map

@@ -5,13 +5,20 @@
 -- averaged, `source` says where it came from (clip name, date, fps).
 --
 -- Keyed by weapon id. The Counter-Strafe Lab reads the movement fields, the
--- Weapon Lab the weapon fields and the Spray Lab the spread and recoil
--- fields, and each shows our numbers next to these.
+-- Weapon Lab the weapon and wallbang fields and the Spray Lab the spread and
+-- recoil fields, and each shows our numbers next to these.
 
 export type Measurement = { value: number, n: number, source: string }
 
 -- A spray's bullets as {right, up} degrees from the aim, bullet 1 first.
 export type SprayPattern = { points: { { number } }, n: number, source: string }
+
+-- Damage through one wall as a share of the same hit in the open (same
+-- dummy, region and range). `material` is the wall's class here ("soft",
+-- "medium" or "hard"), `thickness` our best guess at the wall in metres and
+-- `angle` how far off square on the shot was, in degrees. Leave `fraction`
+-- nil for a wall the weapon doesn't get through.
+export type Wallbang = { wall: string, material: string, thickness: number, angle: number, fraction: number?, n: number, source: string }
 
 export type Entry = {
 	-- Movement (seconds / metres)
@@ -29,6 +36,8 @@ export type Entry = {
 	-- Spread and recoil (degrees)
 	firstShotError: Measurement?, -- radius holding most single taps at a wall from a fixed distance
 	sprayPattern: SprayPattern?, -- full spray at a wall, mouse untouched, averaged over sprays
+	-- Wall penetration
+	wallbangs: { Wallbang }?, -- docs/research/05-wall-penetration.md, "Measurement protocol"
 }
 
 -- Riot timed stops from a full run on the Phantom (Riot_Classick on
