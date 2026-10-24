@@ -397,10 +397,22 @@ local function onCharacter(character: Model)
 			d.LocalTransparencyModifier = 1
 		end
 	end
-	for _, d in character:GetDescendants() do
-		hide(d)
+	-- And keep it hidden: Roblox's camera scripts set LocalTransparencyModifier
+	-- on the character the camera follows too, and in Studio the first
+	-- character after joining came back with all of it at 0 (a respawned one
+	-- stayed hidden).
+	local function keepHidden(d: Instance)
+		if d:IsA("BasePart") or d:IsA("Decal") then
+			hide(d)
+			d:GetPropertyChangedSignal("LocalTransparencyModifier"):Connect(function()
+				hide(d)
+			end)
+		end
 	end
-	character.DescendantAdded:Connect(hide)
+	for _, d in character:GetDescendants() do
+		keepHidden(d)
+	end
+	character.DescendantAdded:Connect(keepHidden)
 end
 
 -- Asks the server to change a tuning parameter (Studio / place owner only).
