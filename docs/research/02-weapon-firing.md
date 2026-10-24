@@ -180,6 +180,12 @@ between the two neighbouring tick counts. The remainder carries over, so the ave
 - **Practice dummies are real players.** They run the same `PlayerSim` at 128 Hz with scripted
   inputs (static, strafing, crouching), replicate like players and are drawn by the client straight
   from their hitboxes, so what you see is exactly what can be hit.
+- **Other players are drawn the same way for now.** The two-player test showed Roblox's default
+  avatar standing 1.43 m tall inside hitboxes made for a 1.75 m agent, so its head was below the
+  head box and a shot at it hit the body. Until there are agent models, each client draws other
+  players as their three hitboxes (a yellow head on a red body and legs, with their name and
+  health over it) and hides their Roblox avatar, including accessories and the name Roblox puts
+  over it. Animating avatars waits for those models.
 
 Roblox differences from the reference that matter here:
 
@@ -253,6 +259,8 @@ session can confirm:
 - The viewmodel and muzzle flash sit right in front of a scriptable camera at 103 degrees.
 - The `VFCharacters` collision group keeps character parts out of both the client's and the
   server's shot traces.
+- Other players' avatars stay hidden, accessories that load late included, and only their blocks
+  and label show.
 - Humanoid death and auto-respawn with an anchored root and `BreakJointsOnDeath` off.
 
 The [Studio test session](../studio-checklist.md) walks through these, with what to expect.

@@ -8,7 +8,8 @@ Built one system at a time:
 
 1. **First-person movement and counter-strafing** - [research and design](docs/research/01-movement.md)
 2. **Weapon firing**: fire modes, fire rate, ammo, reload, draw, ADS and scopes, damage, health and
-   shields, hit slow, server-side hit resolution, practice dummies - [research and design](docs/research/02-weapon-firing.md)
+   shields, hit slow, server-side hit resolution, practice dummies, and other players drawn as
+   their hitboxes until there are agent models - [research and design](docs/research/02-weapon-firing.md)
 3. **Spread and recoil**: firing error by bullet, recovery and tap efficiency, movement error by
    state, jump landing, aim-down-sights, recoil climb and sideways drift, seeded per-shot spread
    the server and client agree on - [research and design](docs/research/03-spread-recoil.md)

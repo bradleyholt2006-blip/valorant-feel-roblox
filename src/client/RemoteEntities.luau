@@ -13,6 +13,10 @@
 --
 -- Dummies have no server-side parts: the client draws them straight from
 -- their analytic hitboxes, so what you see is exactly what can be hit.
+-- Until there are agent models, other players are drawn the same way, in
+-- red, and their Roblox avatar is hidden on this client: it is shorter than
+-- the hitboxes (a default avatar stands 1.43 m against the boxes' 1.75 m),
+-- so a shot at its head would hit the body.
 --
 -- Where each entity is drawn every frame also goes into a MotionMeter, for
 -- the Hit Reg Lab's motion line.
@@ -67,18 +71,30 @@ function RemoteEntities.healthOf(id: number): { health: number, shield: number }
 	return RemoteEntities.health[id] or { health = WeaponConfig.Health.maxHealth.value, shield = WeaponConfig.Health.heavyShield.value }
 end
 
-local REGION_COLORS: { [string]: Color3 } = {
+local DUMMY_COLORS: { [string]: Color3 } = {
 	head = Color3.fromRGB(240, 200, 80),
 	body = Color3.fromRGB(80, 140, 230),
 	legs = Color3.fromRGB(50, 90, 170),
+}
+local PLAYER_COLORS: { [string]: Color3 } = {
+	head = Color3.fromRGB(240, 200, 80),
+	body = Color3.fromRGB(215, 80, 65),
+	legs = Color3.fromRGB(145, 45, 40),
 }
 
 local FLASH_COLOR = Color3.new(1, 1, 1)
 local FLASH_TIME = 0.08
 
-type Visual = { model: Model, parts: { [string]: BasePart }, label: TextLabel, flashUntil: { [string]: number } }
+type Visual = {
+	model: Model,
+	parts: { [string]: BasePart },
+	colors: { [string]: Color3 },
+	label: TextLabel,
+	flashUntil: { [string]: number },
+}
 local visuals: { [number]: Visual } = {}
-local visualFolder: Folder? = nil
+local dummyFolder: Folder? = nil
+local playerFolder: Folder? = nil
 
 -- The snapshot time remote entities are drawn at this frame (before the
 -- first snapshot, the server's time).
@@ -226,12 +242,16 @@ function RemoteEntities.motion(id: number): MotionMeter.Reading?
 	return if meter then MotionMeter.read(meter) else nil
 end
 
+local function folderFor(id: number): Folder
+	return (if isDummy(id) then dummyFolder else playerFolder) :: Folder
+end
+
 local function makeVisual(id: number): Visual
-	local folder = visualFolder :: Folder
+	local colors: { [string]: Color3 } = if isDummy(id) then DUMMY_COLORS else PLAYER_COLORS
 	local model = Instance.new("Model")
 	model.Name = RemoteEntities.nameOf(id)
 	local parts: { [string]: BasePart } = {}
-	for region, color in REGION_COLORS do
+	for region, color in colors do
 		local p = Instance.new("Part")
 		p.Name = region
 		p.Anchored = true
@@ -245,7 +265,7 @@ local function makeVisual(id: number): Visual
 		parts[region] = p
 	end
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(90, 20)
+	billboard.Size = UDim2.fromOffset(if isDummy(id) then 90 else 200, 20)
 	billboard.StudsOffset = Vector3.new(0, 1.2, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Adornee = parts.head
@@ -259,11 +279,41 @@ local function makeVisual(id: number): Visual
 	label.Text = ""
 	label.Parent = billboard
 	billboard.Parent = model
-	model.Parent = folder
-	return { model = model, parts = parts, label = label, flashUntil = {} }
+	model.Parent = folderFor(id)
+	return { model = model, parts = parts, colors = colors, label = label, flashUntil = {} }
 end
 
--- Lights up the region of a dummy the server says was hit.
+-- Hides another player's Roblox avatar on this client, with anything added
+-- to it later (accessories load after the character) and the name Roblox
+-- shows over it: their blocks and label stand in for both.
+local function hideAvatar(character: Model)
+	local function hide(d: Instance)
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = 1
+		elseif d:IsA("Decal") then
+			d.LocalTransparencyModifier = 1
+		elseif d:IsA("Humanoid") then
+			d.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		end
+	end
+	for _, d in character:GetDescendants() do
+		hide(d)
+	end
+	character.DescendantAdded:Connect(hide)
+end
+
+-- Every character another player gets is hidden from the moment it appears.
+local function watchPlayer(player: Player)
+	if player == Players.LocalPlayer then
+		return
+	end
+	player.CharacterAdded:Connect(hideAvatar)
+	if player.Character then
+		hideAvatar(player.Character)
+	end
+end
+
+-- Lights up the region of a dummy or player the server says was hit.
 function RemoteEntities.flashRegion(id: number, region: string)
 	local visual = visuals[id]
 	if visual then
@@ -299,27 +349,33 @@ local function onRender()
 		elseif meter then
 			MotionMeter.clear(meter)
 		end
-		if isDummy(id) then
-			local visual = visuals[id] or makeVisual(id)
-			visuals[id] = visual
-			visual.model.Parent = if pose then visualFolder else nil
-			if pose then
-				RemoteEntities.placeBoxes(visual.parts, pose)
-				for region, part in visual.parts do
-					part.Color = if (visual.flashUntil[region] or 0) > now then FLASH_COLOR else REGION_COLORS[region]
-				end
-				local hp = RemoteEntities.healthOf(id)
-				visual.label.Text = string.format("%d + %d", hp.health, hp.shield)
+		local player = if isDummy(id) then nil else playerFor(id)
+		if not isDummy(id) and not player then
+			-- They left.
+			histories[id] = nil
+			meters[id] = nil
+			local gone = visuals[id]
+			if gone then
+				gone.model:Destroy()
+				visuals[id] = nil
 			end
 			continue
 		end
-		local player = playerFor(id)
-		if not player then
-			histories[id] = nil
-			meters[id] = nil
-			continue
+		local visual = visuals[id] or makeVisual(id)
+		visuals[id] = visual
+		visual.model.Parent = if pose then folderFor(id) else nil
+		if pose then
+			RemoteEntities.placeBoxes(visual.parts, pose)
+			for region, part in visual.parts do
+				part.Color = if (visual.flashUntil[region] or 0) > now then FLASH_COLOR else visual.colors[region]
+			end
+			local hp = RemoteEntities.healthOf(id)
+			local health = string.format("%d + %d", hp.health, hp.shield)
+			visual.label.Text = if player then player.DisplayName .. "  " .. health else health
 		end
-		local character = player.Character
+		-- Keep the hidden character where the blocks are, for anything that
+		-- reads its position.
+		local character = player and player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if character and root and pose then
 			local offset = CharacterRig.rootOffset(character, root)
@@ -329,10 +385,18 @@ local function onRender()
 end
 
 function RemoteEntities.start()
-	local folder = Instance.new("Folder")
-	folder.Name = "VFDummies"
-	folder.Parent = Workspace
-	visualFolder = folder
+	local dummies = Instance.new("Folder")
+	dummies.Name = "VFDummies"
+	dummies.Parent = Workspace
+	dummyFolder = dummies
+	local players = Instance.new("Folder")
+	players.Name = "VFPlayers"
+	players.Parent = Workspace
+	playerFolder = players
+	Players.PlayerAdded:Connect(watchPlayer)
+	for _, player in Players:GetPlayers() do
+		watchPlayer(player)
+	end
 	local remotes = Remotes.get()
 	NetSim.on(remotes.Snapshot, onSnapshot)
 	NetSim.on(remotes.Combat, function(event: any)

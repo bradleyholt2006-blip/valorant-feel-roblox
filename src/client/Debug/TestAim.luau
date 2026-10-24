@@ -10,7 +10,9 @@
 --   VFTestAimPoint          Vector3 in metres: look at that world point
 --   VFTestAimEntity         entity id: track that entity as it is drawn on
 --                           screen (dummy n is PlayerCodec.DUMMY_BASE + n,
---                           drawn as Workspace.VFDummies.Dummy_n)
+--                           drawn as Workspace.VFDummies.Dummy_n; a player
+--                           is their UserId mod 2^32, drawn as
+--                           Workspace.VFPlayers.<their name>)
 --   VFTestAimRegion         "head", "body" (the default) or "legs"
 --
 -- VFTestAimEntity wins over VFTestAimPoint, which wins over the angles.

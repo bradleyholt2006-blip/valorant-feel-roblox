@@ -200,6 +200,8 @@ Roblox differences from the reference that matter:
 - Snapshots go out at 60 Hz, not 128 Hz, so other players are drawn about 25-30 ms in the past
   (measured; system 4) rather than 7.8 ms.
 - Player-vs-player collision is off for now (characters ignore each other).
+- Other players are drawn as blocks on their hitboxes for now, with their Roblox avatars hidden
+  (system 2), so how a Humanoid animates with an anchored root waits for agent models.
 
 ### Collision
 
@@ -305,7 +307,6 @@ Roblox definitions). Things only a Studio session can confirm:
   exactly: wedges, cylinders and meshes still go by their bounding box, so the player may stop short
   of a rotated one, and the pushout before each move can't see them. The course only uses blocks.
 - Whether `GetMouseDelta` needs the extra division by Roblox's sensitivity setting (cm/360 check).
-- Humanoid animation behaviour with an anchored root.
 - The first Studio run showed a 76 mm correction on spawning. The client and the server each read
   the spawn point off their own copy of the new character, at different moments, so the two
   simulations started apart. The server now stores its spawn point on the character (the
