@@ -90,7 +90,7 @@ for _, id in { "knife", "classic", "vandal", "operator" } do
 	local release = measureStop(0)
 	local counter = measureStop(B.Left)
 
-	print(string.format("[%s] max %.2f m/s, accurate below %.2f m/s (%.0f%%)", id, maxSpeed, threshold, frac * 100))
+	print(string.format("[%s] max %.2f m/s, accurate below %.3f m/s (%.1f%%)", id, maxSpeed, threshold, frac * 100))
 	print("    start -> 95% speed:        " .. fmt(tTo95, "ms", 1000))
 	print("    start -> inaccurate:       " .. fmt(tToInaccurate, "ms", 1000))
 	if release then
@@ -154,7 +154,7 @@ do
 end
 
 do
-	local threshold = 5.40 * 0.30
+	local threshold = 5.40 * cfg.deadzoneFraction
 	local function stopTime(buttons: number): number?
 		local s = spawn(floor)
 		run(s, floor, B.Right, 256)

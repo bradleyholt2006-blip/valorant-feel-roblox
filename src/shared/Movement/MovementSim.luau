@@ -332,9 +332,10 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	return s
 end
 
--- Accuracy deadzone check used by the debug HUD and the weapon system.
+-- Accuracy deadzone check for the debug tools; the same strict test as
+-- PlayerSim.isAccurate, which the weapons use.
 function MovementSim.isAccurate(s: State, weaponMaxSpeed: number, accurateFraction: number): boolean
-	return s.grounded and MovementSim.horizontalSpeed(s) <= weaponMaxSpeed * accurateFraction + 1e-6
+	return s.grounded and MovementSim.horizontalSpeed(s) < weaponMaxSpeed * accurateFraction - 1e-3
 end
 
 return MovementSim

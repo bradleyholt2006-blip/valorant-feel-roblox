@@ -4,11 +4,14 @@
 -- Leave a value nil until it has been measured. `n` is the number of trials
 -- averaged, `source` says where it came from (clip name, date, fps).
 --
--- Keyed by weapon id. The Counter-Strafe Lab reads the movement fields and
--- the Weapon Lab reads the weapon fields, and both show our numbers next to
--- these with the difference.
+-- Keyed by weapon id. The Counter-Strafe Lab reads the movement fields, the
+-- Weapon Lab the weapon fields and the Spray Lab the spread and recoil
+-- fields, and each shows our numbers next to these.
 
 export type Measurement = { value: number, n: number, source: string }
+
+-- A spray's bullets as {right, up} degrees from the aim, bullet 1 first.
+export type SprayPattern = { points: { { number } }, n: number, source: string }
 
 export type Entry = {
 	-- Movement (seconds / metres)
@@ -22,6 +25,9 @@ export type Entry = {
 	fireInterval: Measurement?, -- muzzle flash to muzzle flash while holding fire
 	reloadTime: Measurement?, -- reload start -> ammo counter refills
 	equipTime: Measurement?, -- switch key -> first shot with fire held
+	-- Spread and recoil (degrees)
+	firstShotError: Measurement?, -- radius holding most single taps at a wall from a fixed distance
+	sprayPattern: SprayPattern?, -- full spray at a wall, mouse untouched, averaged over sprays
 }
 
 local ReferenceData: { [string]: Entry } = {

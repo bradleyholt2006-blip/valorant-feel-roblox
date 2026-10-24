@@ -53,7 +53,8 @@ Weapon numbers:
 | --- | --- | --- | --- |
 | Vandal | auto, 9.75 rps, 25 + 75, reload 2.5 s, draw 1.0 s, 160 / 40 / 34 at every range, 80% speed | Community | [metabot](https://metabot.gg/en/valorant/weapon/vandal/overview), [Liquipedia](https://liquipedia.net/valorant/Vandal) |
 | Phantom | auto, 11 rps, 30 rounds, reload 2.5 s, draw 1.0 s, 80% speed | Community | [metabot](https://metabot.gg/en/valorant/weapon/phantom/overview) |
-| Phantom damage | 156 / 39 / 33 close, 140 / 35 / 30 far | Community | metabot (boundary 20 m); [Hotspawn](https://www.hotspawn.com/?p=91749) (15 m); [Inven Global, 2020](https://www.invenglobal.com/valorant/articles/11131/valorant-weapon-guide-the-phantom) (15 m, plus 124 / 31 / 26 past 30 m) |
+| Phantom body damage and falloff | "Now does 39 damage per bullet from 0-20m and 35 damage per bullet 20m+" | Confirmed | Patch 9.10, as quoted by [Sportskeeda](https://www.sportskeeda.com/valorant/new-valorant-regen-shield-weapon-changes-explained). Older guides ([Hotspawn](https://www.hotspawn.com/?p=91749), [Inven Global, 2020](https://www.invenglobal.com/valorant/articles/11131/valorant-weapon-guide-the-phantom)) give the pre-9.10 bands: 15 m, and 124 / 31 / 26 past 30 m |
+| Phantom head and leg damage | 156 / 33 to 20 m, 140 / 30 past it | Community | metabot |
 | Operator fire rate | 0.6 rps (was 0.75) | Confirmed | [Patch 1.09](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-1-09) |
 | Operator leg damage | 120 (was 127) | Confirmed | Patch 1.09 |
 | Operator scoped move speed | 72% (was 76%) | Confirmed | Patch 1.09 |
@@ -61,16 +62,16 @@ Weapon numbers:
 | Operator | 5 rounds, reload 3.7 s, draw 1.5 s, 255 / 150 head / body, 76% speed | Community | [metabot](https://metabot.gg/en/valorant/weapon/operator/overview), [Liquipedia](https://liquipedia.net/valorant/Operator) |
 | Classic | semi, 6.75 rps, 12 rounds, reload 1.75 s, draw 0.75 s, 78 / 26 / 22 to 30 m then 66 / 22 / 19, 85% speed | Community | [metabot](https://metabot.gg/en/valorant/weapon/classic/overview) |
 | Sheriff | semi, 4 rps, 6 rounds, reload 2.25 s, draw 1.0 s, 160 / 55 / 47 to 30 m then 145 / 50 / 43, 80% speed | Community | [metabot](https://metabot.gg/en/valorant/weapon/sheriff/overview) |
-| Deadzone (all weapons) | accurate below 30% of max speed (was 25%) | Confirmed | [Patch 0.50](https://playvalorant.com/en-gb/news/game-updates/valorant-patch-notes-0-50/) |
+| Deadzone (every other weapon) | accurate below 27.5% of max speed | Confirmed | [Patch 0.50](https://playvalorant.com/en-gb/news/game-updates/valorant-patch-notes-0-50/) raised it from 25% to 30%; [Patch 3.0](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-3-0/): "Weapon Deadzones changed from 30% >>> 27.5%" |
 | Rifle ADS | 1.25x zoom, fire rate x0.9 (Phantom 11 to 9.9) | Community | [PC Gamer](https://pcgamer.com/valorant-guns-damage-recoil-guide), Inven Global |
 | Vandal ADS fire rate | 8.32 rps | Community, conflicting | Liquipedia lists 8.32 next to 9.75 hip; PC Gamer lists 8.32 next to an older 9.25 hip |
 | Operator zoom | 2.5x and 5x | Community | PC Gamer; the Fandom wiki confirms two zoom levels |
 | Health and shields | 100 health, light 25, heavy 50 | Community | Wikis |
-| Tagging | 72.5% slow "for a brief period" | Community | [Fandom, Weapons](https://valorant.fandom.com/wiki/Weapons) |
+| Tagging | 72.5% slow "for a brief period" | Confirmed | [Patch 3.0](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-3-0/): "Bullet tagging changed from 75% slow >>> 72.5% slow"; duration from [Fandom, Weapons](https://valorant.fandom.com/wiki/Weapons) |
 
-**Conflicts worth settling with a measurement:** the Phantom's falloff boundary (15 m or 20 m, and
-whether a third band still exists past 30 m), and the Vandal's ADS fire rate (0.9 x 9.75 = 8.78, or
-8.32). We use 20 m and x0.9 for now.
+**Conflict worth settling with a measurement:** the Vandal's ADS fire rate (0.9 x 9.75 = 8.78, or
+8.32). We use x0.9 for now. The Phantom's falloff boundary, which the guides disagreed on, is
+settled by Patch 9.10: two bands split at 20 m.
 
 **Not found publicly:** reserve ammo for the Phantom and sidearms, the knife's draw time, rifle
 ADS movement speed, how long tagging lasts, whether a click during a draw or a cooldown is buffered,
@@ -89,7 +90,7 @@ in `src/client/Debug/ReferenceData.luau` (fields `fireInterval`, `reloadTime`, `
 | Reload time | Frames from the reload key to the ammo counter refilling | `reloadTime` |
 | Draw time | Hold fire, press the switch key; frames until the first muzzle flash | `equipTime` |
 | Click buffering | Click once during the draw (or a pistol's cooldown) and see whether it fires when ready | semi-auto behaviour |
-| Falloff boundary | Phantom headshots on a bot with heavy shields at 14, 16, 19 and 21 m (the Range's distance markers); a one-shot kill means the close band | Phantom `damage` bands |
+| Falloff check | Phantom headshots on a bot with heavy shields a few steps either side of the Range's 20 m marker; a one-shot kill means the close band. Patch 9.10 gives the body split at 20 m, so this checks that the head values (community) split there too | Phantom head `damage` bands |
 | Scoped speed | Time to cross two distance markers while scoped / ADS | `ads.moveMultiplier` |
 | Tag duration | In a custom game, have a friend tag you while you hold a strafe key; frames from the hit to full speed again, against the HUD speed of a known weapon | `tagDuration`, `tagSpeedMultiplier` |
 | Hitbox edges | Scoped Operator shots (no first-shot spread when scoped) at a still bot from a marked distance, stepping the crosshair off the head edge by a few pixels; with the zoomed FOV that gives an angle and so a size | `Hitboxes` sizes |
@@ -104,16 +105,16 @@ All values live in `src/shared/Weapons/WeaponConfig.luau`, each with its status 
 | Parameter | Value | Status |
 | --- | --- | --- |
 | Operator fire rate, leg damage, scoped speed, deadzone | 0.6 rps, 120, 72%, 15% | Confirmed |
-| Deadzone, every other weapon | 30% | Confirmed |
+| Deadzone, every other weapon | 27.5% | Confirmed |
 | Fire rates, magazines, reloads, draw times, speeds, damage | table above | Community |
-| Phantom falloff boundary | 20 m | Community (disputed) |
+| Phantom falloff boundary and body damage | 20 m, 39 then 35 | Confirmed |
 | Rifle ADS | 1.25x, fire rate x0.9 | Community |
 | Rifle ADS move speed | 76% | Estimate |
 | Sheriff ADS | 1.25x, fire rate x1.0, move 76% | Estimate |
 | Operator scoped fire rate | x1.0 | Estimate |
 | Reserve ammo | Vandal 75 (community); Phantom 60, Operator 10, Classic 36, Sheriff 24 | Estimate |
 | Knife draw time | 0.75 s | Estimate |
-| Tagging | 72.5% slow (community) for 0.15 s (estimate) | Mixed |
+| Tagging | 72.5% slow (confirmed) for 0.15 s (estimate) | Mixed |
 | Health and shields | 100 + 50 heavy (25 light) | Community |
 | Hitboxes (standing, width x height x depth) | head 0.24 x 0.26 x 0.24 m centred at 1.62 m, body 0.44 x 0.64 x 0.28 m, legs 0.34 x 0.85 x 0.26 m; crouched versions blend in with the crouch | Estimate |
 
@@ -216,9 +217,9 @@ Roblox differences from the reference that matter here:
 
 | Key | Tool |
 | --- | --- |
-| F2 | Weapon lab: weapon stats with their status, live timers, measured fire rate over the last burst, reload and draw-to-shot times against ReferenceData, a shot log of client guess vs server verdict with round trip and agreement rate, and a time-to-kill table |
+| F2 | Weapon lab (first page; the second is the spray lab from system 3): weapon stats with their status, live timers, measured fire rate over the last burst, reload and draw-to-shot times against ReferenceData, a shot log of client guess vs server verdict with round trip and agreement rate, and a time-to-kill table |
 | F10 | Hitbox overlay through walls: other players' hitboxes; per shot, the ray, the boxes the client tested, the client's end point (yellow) and the server's (blue), red when they disagree |
-| always | Impact marks stay on walls (newest 80), so a spray leaves its pattern for system 3 |
+| always | Impact marks stay on walls (newest 80), so a spray leaves its pattern (system 3 adds the spray lab and a cone ring on the crosshair) |
 | Backspace | Clear impact marks and the shot log |
 | 4-8 | Give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only) |
 | 1 / 2 / 3 | Primary / secondary / knife |
@@ -230,8 +231,8 @@ at 15 and 30 m, a crouching one at 20 m and one behind waist-high cover at 22 m.
 
 1. Measure fire interval, reload and draw time for each weapon (section 3) and enter them in
    ReferenceData; the lab shows the difference live.
-2. Settle the two conflicts (Phantom falloff, Vandal ADS rate) and update WeaponConfig with the
-   status changed and the clip as the source.
+2. Settle the Vandal's ADS fire rate and update WeaponConfig with the status changed and the clip
+   as the source.
 3. Measure tag duration and the hitbox edges; update `tagDuration` and `Hitboxes`.
 4. Shoot the static dummies: the lab's agreement should be 100%. Against the strafing dummies it
    won't be until system 4; note the rate with Studio's incoming replication lag at 0 and 100 ms as

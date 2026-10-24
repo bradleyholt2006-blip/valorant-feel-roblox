@@ -21,9 +21,11 @@ local function input(buttons: number, slot: number?, yaw: number?, pitch: number
 	return { seq = 0, buttons = buttons, slot = slot or 1, yaw = yaw or 0, pitch = pitch or 0, viewTime = 0 }
 end
 
+-- Settles a fresh player on the floor and waits out the spawn landing's
+-- accuracy penalty, so the first shot is a clean standing shot.
 local function newPlayer(loadout: { string }?): PlayerSim.State
 	local s = PlayerSim.new(vector.create(0, 0.02, 0), loadout)
-	for _ = 1, 16 do
+	for _ = 1, 40 do
 		PlayerSim.step(s, input(0, s.weapons.equipped), cfg, floor, DT)
 	end
 	return s
@@ -266,7 +268,7 @@ do
 	local s = newPlayer({ "operator", "classic", "knife" })
 	check("Operator deadzone is 15% (patch 1.09)", near(PlayerSim.deadzoneSpeed(s, cfg), 6.75 * 0.76 * 0.15, 1e-9))
 	local r = newPlayer()
-	check("rifle deadzone is 30% of 5.40 m/s (patch 0.50)", near(PlayerSim.deadzoneSpeed(r, cfg), 1.62, 1e-9))
+	check("rifle deadzone is 27.5% of 5.40 m/s (patch 3.0)", near(PlayerSim.deadzoneSpeed(r, cfg), 1.485, 1e-9))
 end
 
 do
@@ -285,9 +287,12 @@ do
 	local s = newPlayer()
 	local shot = PlayerSim.step(s, input(B.Fire, 1, math.pi / 2, 0), cfg, floor, DT)
 	check("shot leaves from the eye", shot ~= nil and near(shot.origin.y - s.movement.position.y, cfg.standEyeHeight, 1e-5), if shot then tostring(shot.origin) else "no shot")
-	check("yaw pi/2 fires along -X", shot ~= nil and near(shot.direction.x, -1, 1e-9) and near(shot.direction.z, 0, 1e-9))
+	check("yaw pi/2 aims along -X", shot ~= nil and near(shot.aim.x, -1, 1e-6) and near(shot.aim.z, 0, 1e-6))
+	-- The bullet itself leaves somewhere inside the first-shot cone (system 3).
+	local off = if shot then math.deg(math.acos(math.clamp(vector.dot(shot.aim, shot.direction), -1, 1))) else 99
+	check("first standing shot stays inside the 0.25 degree cone", shot ~= nil and off <= 0.25 + 1e-3, string.format("%.4f deg", off))
 	local pitched = PlayerSim.step(newPlayer(), input(B.Fire, 1, 0, math.rad(30)), cfg, floor, DT)
-	check("pitch 30 degrees up fires at sin(30) upward", pitched ~= nil and near(pitched.direction.y, 0.5, 1e-9))
+	check("pitch 30 degrees up aims at sin(30) upward", pitched ~= nil and near(pitched.aim.y, 0.5, 1e-6))
 end
 
 do

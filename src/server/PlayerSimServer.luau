@@ -58,6 +58,13 @@ local PlayerSimServer = {}
 local records: { [Player]: Record } = {}
 local world = RobloxWorld.new()
 local onShot: ShotHandler = function() end
+-- Seeds each life's spray randomness. The owner learns it from the first ack,
+-- so its prediction draws the same bullets the server does.
+local seeds = Random.new()
+
+local function newSim(r: Record): PlayerSim.State
+	return PlayerSim.new(r.spawnFeet, table.clone(r.sim.weapons.loadout), seeds:NextInteger(0, 2 ^ 31 - 1))
+end
 
 local function setupCollisionGroup()
 	local group = RobloxWorld.CHARACTER_GROUP
@@ -82,10 +89,6 @@ local function placeRoot(r: Record)
 	root.CFrame = CFrame.new(feet + Vector3.new(0, r.rootOffset, 0)) * CFrame.Angles(0, r.yaw, 0)
 end
 
-local function loadoutOf(r: Record): { string }
-	return table.clone(r.sim.weapons.loadout)
-end
-
 local function onCharacter(r: Record, character: Model)
 	local root = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
 	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
@@ -100,7 +103,7 @@ local function onCharacter(r: Record, character: Model)
 	r.rootOffset = CharacterRig.rootOffset(character, root)
 	local feet = Units.toMetres(root.Position - Vector3.new(0, r.rootOffset, 0))
 	r.spawnFeet = feet + vector.create(0, 0.05, 0)
-	r.sim = PlayerSim.new(r.spawnFeet, loadoutOf(r))
+	r.sim = newSim(r)
 	r.queue = {}
 	r.tokens = 0
 	r.character = character
@@ -238,7 +241,7 @@ local function simulate(r: Record, dt: number)
 		end
 	end
 	if r.sim.movement.position.y < KILL_HEIGHT then
-		r.sim = PlayerSim.new(r.spawnFeet, loadoutOf(r))
+		r.sim = newSim(r)
 		r.entity.sim = r.sim
 		r.ackDirty = true
 	end

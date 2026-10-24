@@ -3,6 +3,9 @@
 --   * crosshair whose arms spread with movement error, like the reference
 --     game's "Movement error" crosshair option, so footage can be compared
 --     side by side
+--   * a circle showing the true cone of fire of the next shot, drawn where
+--     that bullet would go (recoil included), like the reference's "Show
+--     firing error" crosshair option
 --   * stats panel: speed, % of max, accuracy state, flags, netcode health
 --   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
 --   * ghost box at the last authoritative server position (toggle F7)
@@ -16,9 +19,13 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local MovementSim = require(Shared.Movement.MovementSim)
+local PlayerSim = require(Shared.PlayerSim)
+local WeaponSim = require(Shared.Weapons.WeaponSim)
+local Accuracy = require(Shared.Weapons.Accuracy)
 local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Ui)
+local CameraController = require(script.Parent.Parent.CameraController)
 
 local B = MovementSim.Buttons
 
@@ -52,10 +59,22 @@ function DebugHud.start(controller: any)
 		})
 		table.insert(arms, { frame = arm, dir = dir })
 	end
+	local cone = Ui.frame(crosshair, {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(8, 8),
+	})
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = cone
+	local ring = Instance.new("UIStroke")
+	ring.Thickness = 1
+	ring.Transparency = 0.2
+	ring.Color = Ui.GOOD
+	ring.Parent = cone
 
 	-- Stats panel ------------------------------------------------------------
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(330, 236),
+		Size = UDim2.fromOffset(330, 252),
 		Position = UDim2.fromOffset(12, 12),
 	})
 	local stats = Ui.label(panel, {
@@ -161,6 +180,32 @@ function DebugHud.start(controller: any)
 		end
 		dot.BackgroundColor3 = if accurate then Ui.GOOD else Ui.BAD
 
+		-- Cone of the next shot, centred where its bullet would go: the recoil
+		-- minus the part the camera already shows.
+		local sim: PlayerSim.State? = controller.sim
+		local coneText = ""
+		cone.Visible = visible and sim ~= nil
+		if sim then
+			local def = PlayerSim.def(sim)
+			local w = sim.weapons
+			local scoped = w.scoped > 0 and def.ads ~= nil
+			local now = sim.movement.tick / MovementConfig.TickRate.value
+			local bullet, sway = Accuracy.next(def, w, now, 1 / MovementConfig.TickRate.value, WeaponSim.fireInterval(def, w.scoped))
+			local ctx = PlayerSim.accuracyContext(sim, lastInput, cfg, 1 / MovementConfig.TickRate.value)
+			local nextCone = Accuracy.cone(def, ctx, bullet, scoped)
+			local up, right = Accuracy.recoil(def, ctx, bullet, sway, scoped)
+			local viewport = Workspace.CurrentCamera.ViewportSize
+			local pixelsPerTan = viewport.X / 2 / math.tan(math.rad(CameraController.zoomedFov(CameraController.zoom)) / 2)
+			local cx = math.tan(math.rad(right) + CameraController.kickYaw) * pixelsPerTan
+			local cy = -math.tan(math.rad(up) - CameraController.kickPitch) * pixelsPerTan
+			local r = math.max(math.tan(math.rad(nextCone.radius)) * pixelsPerTan, 1)
+			cone.Size = UDim2.fromOffset(r * 2, r * 2)
+			cone.Position = UDim2.fromOffset(cx - r, cy - r)
+			local firstShot = Accuracy.cone(def, ctx, 1, scoped).radius - nextCone.movement - nextCone.landing
+			ring.Color = if nextCone.radius <= firstShot + 1e-6 then Ui.GOOD elseif nextCone.movement + nextCone.landing > 0 then Ui.BAD else Ui.NEUTRAL
+			coneText = string.format("cone    %5.2f deg  bullet %.2f  %s%s", nextCone.radius, bullet, ctx.moveState, if ctx.landing then " +land" else "")
+		end
+
 		for _, cell in keyCells do
 			local down = bit32.band(lastInput, cell.flag) ~= 0
 			cell.frame.BackgroundColor3 = if down then Ui.NEUTRAL else Ui.PANEL
@@ -184,15 +229,16 @@ function DebugHud.start(controller: any)
 		stats.Text = table.concat({
 			string.format("<b>%s</b>  %s", controller.profile().name, stateText),
 			string.format("speed   %5.2f m/s  %5.1f st/s", speed, speed * Units.STUDS_PER_METRE),
-			string.format("of max  %5.1f%%   deadzone %.0f%% (%.2f m/s)", speed / info.maxSpeed * 100, info.accurateFraction * 100, threshold),
+			string.format("of max  %5.1f%%   deadzone %.1f%% (%.2f m/s)", speed / info.maxSpeed * 100, info.accurateFraction * 100, threshold),
 			string.format("vert    %5.2f m/s", s.velocity.y),
 			string.format("state   %s", flags),
 			string.format("pos     %.2f %.2f %.2f m", s.position.x, s.position.y, s.position.z),
+			coneText,
 			"",
 			string.format("tick    %d Hz   fps %.0f   ping %.0f ms", MovementConfig.TickRate.value, fps, ping),
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
-			string.format('<font color="#%s">F2 weapons  F3 hud  F4 lab  F6 record  F7 ghost  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
+			string.format('<font color="#%s">F2 weapon / spray labs  F3 hud  F4 lab  F6 record  F7 ghost  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 
 		local serverSim = controller.serverSim

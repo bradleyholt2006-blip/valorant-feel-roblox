@@ -14,6 +14,7 @@
 -- Shared simulation modules use require-by-string, which resolves the same way
 -- in Roblox ("./" = siblings) and in the offline Luau tests (same directory).
 local WeaponConfig = require("./WeaponConfig")
+local Accuracy = require("./Accuracy")
 
 export type State = {
 	loadout: { string }, -- [slot] = weapon id, "" for empty
@@ -27,8 +28,11 @@ export type State = {
 	fireHeld: boolean,
 	altHeld: boolean,
 	lastShotTime: number,
-	sprayIndex: number, -- shots in the current spray, recovered over time (system 3)
-	shotCounter: number, -- total shots this life; seeds shot randomness
+	sprayIndex: number, -- shots in the current spray; fractional once partly recovered
+	shotCounter: number, -- total shots this life; picks each shot's random numbers
+	seed: number, -- per-life random seed, chosen by the server
+	recoilYaw: number, -- sideways drift (degrees, + = right) the next bullet starts from
+	swayDir: number, -- drift direction: -1, 1, or 0 before the drift starts
 }
 
 export type Shot = {
@@ -37,11 +41,19 @@ export type Shot = {
 	slot: number,
 	weapon: string,
 	shotNumber: number,
-	sprayIndex: number,
+	sprayIndex: number, -- bullets before this one in the spray, after recovery
+	bullet: number, -- sprayIndex + 1: the bullet number the curves are read at
 	origin: vector, -- eye position, metres
 	yaw: number,
 	pitch: number,
-	direction: vector,
+	aim: vector, -- where the crosshair pointed
+	direction: vector, -- where the bullet went: aim + recoil + cone offset
+	recoilPitch: number, -- degrees up
+	recoilYaw: number, -- degrees right
+	cone: Accuracy.Cone,
+	offset: number, -- degrees from the cone's centre
+	offsetAngle: number, -- radians around the centre, 0 = right
+	moveState: Accuracy.MoveState,
 	scoped: number,
 }
 
@@ -53,13 +65,15 @@ local Buttons = {
 
 local EPS = 1e-9
 
+local STILL: Accuracy.Context = { moveState = "still", crouched = false, landing = false }
+
 local WeaponSim = {}
 
 local function has(buttons: number, flag: number): boolean
 	return bit32.band(buttons, flag) ~= 0
 end
 
-function WeaponSim.newState(loadout: { string }?): State
+function WeaponSim.newState(loadout: { string }?, seed: number?): State
 	local ids = loadout or WeaponConfig.DefaultLoadout
 	local s: State = {
 		loadout = { ids[1] or "", ids[2] or "", ids[3] or "" },
@@ -75,6 +89,9 @@ function WeaponSim.newState(loadout: { string }?): State
 		lastShotTime = -math.huge,
 		sprayIndex = 0,
 		shotCounter = 0,
+		seed = (seed or 0) % 2 ^ 32,
+		recoilYaw = 0,
+		swayDir = 0,
 	}
 	for slot = 1, 3 do
 		WeaponSim.give(s, slot, s.loadout[slot])
@@ -96,6 +113,8 @@ local function draw(s: State, t: number)
 	s.reloadEndTime = 0 -- switching cancels a reload
 	s.scoped = 0
 	s.sprayIndex = 0
+	s.recoilYaw = 0
+	s.swayDir = 0
 	s.lastShotTime = -math.huge
 	s.nextFireTime = 0
 end
@@ -152,8 +171,9 @@ local function canReload(s: State, def: WeaponConfig.WeaponDef): boolean
 end
 
 -- Advance one tick. `t` is the simulation time of this tick, `origin` the eye
--- position after this tick's movement. Returns the shot fired this tick, if any.
-function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vector, tick: number): Shot?
+-- position after this tick's movement and `ctx` what the shooter is doing
+-- (for the cone and recoil). Returns the shot fired this tick, if any.
+function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vector, tick: number, ctx: Accuracy.Context?): Shot?
 	local buttons: number = input.buttons
 	local fire = has(buttons, Buttons.Fire)
 	local alt = has(buttons, Buttons.AltFire)
@@ -194,6 +214,14 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 	local trigger = fire and (def.fireMode == "auto" or (def.fireMode == "semi" and not s.fireHeld))
 	if trigger and not equipping and s.reloadEndTime == 0 and s.ammo[slot] > 0 and t >= s.nextFireTime - EPS then
 		local interval = WeaponSim.fireInterval(def, s.scoped)
+		-- How much of the spray recovered since the last shot decides which
+		-- bullet of the spray this is.
+		local factor = Accuracy.recoveryFactor(def.accuracy, interval, t - s.lastShotTime, dt)
+		local spray = s.sprayIndex * factor
+		local sway = s.recoilYaw * factor
+		if factor == 0 then
+			s.swayDir = 0 -- a fresh spray drifts whichever way it likes
+		end
 		-- Holding the trigger through the cooldown keeps the exact cadence
 		-- (shots land on ticks, the remainder carries over); otherwise the
 		-- cooldown restarts from now.
@@ -205,20 +233,36 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 		s.ammo[slot] -= 1
 		s.shotCounter += 1
 		s.lastShotTime = t
+
+		local context = ctx or STILL
+		local scoped = s.scoped > 0 and def.ads ~= nil
+		local bullet = spray + 1
+		local cone = Accuracy.cone(def, context, bullet, scoped)
+		local recoilPitch, recoilYaw = Accuracy.recoil(def, context, bullet, sway, scoped)
+		local offset, angle = Accuracy.offset(s.seed, s.shotCounter, cone.radius, cone.power)
 		shot = {
 			tick = tick,
 			time = t,
 			slot = slot,
 			weapon = def.id,
 			shotNumber = s.shotCounter,
-			sprayIndex = s.sprayIndex,
+			sprayIndex = spray,
+			bullet = bullet,
 			origin = origin,
 			yaw = input.yaw,
 			pitch = input.pitch,
-			direction = vector.create(0, 0, -1), -- filled in by PlayerSim
+			aim = Accuracy.aim(input.yaw, input.pitch),
+			direction = Accuracy.direction(input.yaw, input.pitch, recoilPitch, recoilYaw, offset, angle),
+			recoilPitch = recoilPitch,
+			recoilYaw = recoilYaw,
+			cone = cone,
+			offset = offset,
+			offsetAngle = angle,
+			moveState = context.moveState,
 			scoped = s.scoped,
 		}
-		s.sprayIndex += 1
+		s.sprayIndex = bullet
+		s.recoilYaw, s.swayDir = Accuracy.advanceSway(def.recoil, bullet, sway, s.swayDir, s.seed, s.shotCounter)
 	end
 
 	-- 6. Auto-reload once the magazine is empty and the last shot's cooldown is over.

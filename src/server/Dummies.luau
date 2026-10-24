@@ -58,7 +58,7 @@ local function buttonsFor(d: Dummy): number
 end
 
 local function spawnDummy(d: Dummy)
-	d.sim = PlayerSim.new(d.spawnFeet, { "vandal", "", "" })
+	d.sim = PlayerSim.new(d.spawnFeet, { "vandal", "", "" }, d.entity.id)
 	d.entity.sim = d.sim
 	d.alive = true
 	d.ticks = 0

@@ -8,6 +8,7 @@ local H = require("./Harness")
 
 require("./movement")
 require("./weapons")
+require("./accuracy")
 require("./combat")
 require("./net")
 
