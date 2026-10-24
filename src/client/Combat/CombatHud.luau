@@ -21,6 +21,7 @@ local Units = require(Shared.Units)
 local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local ClientShots = require(script.Parent.ClientShots)
+local NetSim = require(script.Parent.Parent.NetSim)
 local Ui = require(script.Parent.Parent.Debug.Ui)
 
 local DT = 1 / MovementConfig.TickRate.value
@@ -219,7 +220,7 @@ function CombatHud.start()
 		end
 	end)
 
-	Remotes.get().Combat.OnClientEvent:Connect(function(event: any)
+	NetSim.on(Remotes.get().Combat, function(event: any)
 		if typeof(event) ~= "table" or event.kind ~= "damage" or not event.killed then
 			return
 		end

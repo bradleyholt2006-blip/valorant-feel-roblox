@@ -157,7 +157,7 @@ cap and into the deadzone. Both are gone with the model in section 5.
            reconcile: compare, rewind, replay                                                    │
                                                 snapshot{server time, all poses} (unreliable)   │
  other clients: RemoteEntities interpolate ◄────────────────────────────────────────────────────┘
-               50 ms in the past
+               on a render clock about 25 ms behind (system 4)
 ```
 
 - **One simulation, two places.** `MovementSim` is a pure function of (state, input, config, world).
@@ -181,14 +181,16 @@ cap and into the deadzone. Both are gone with the model in section 5.
 - **Reconciliation.** The client stores its predicted state per input. When an ack disagrees by more
   than 2 mm or 1 cm/s, it rewinds to the server state, replays unacknowledged inputs, and blends the
   visual error out over about 100 ms so the camera doesn't snap.
-- **Remote players** are interpolated from timestamped snapshots at a fixed delay. Knowing exactly
-  how far in the past others are drawn is what hit registration will rewind by in system 4.
+- **Remote players** are interpolated from timestamped snapshots on a render clock that measures
+  how late snapshots arrive. Every input carries the time of the frame on screen, which is what the
+  server rewinds targets to for hit registration (system 4, `docs/research/04-hit-registration.md`).
 
 Roblox differences from the reference that matter:
 
 - The server's Heartbeat runs at 60 Hz, so the server sub-steps the 128 Hz simulation. Inputs are
   still simulated at 128 Hz on both sides; only the network batching differs.
-- Snapshots go out at 60 Hz, not 128 Hz, so the remote-player delay is 50 ms rather than 7.8 ms.
+- Snapshots go out at 60 Hz, not 128 Hz, so other players are drawn about 25-30 ms in the past
+  (measured; system 4) rather than 7.8 ms.
 - Player-vs-player collision is off for now (characters ignore each other).
 
 ## 6. Implementation map

@@ -1,7 +1,7 @@
 --!strict
 -- Server entry point. Order inside each Heartbeat matters: dummies advance,
--- then player inputs (and their shots) run against those positions, then the
--- frame's poses are broadcast.
+-- then player inputs run (their shots rewind targets through the snapshots
+-- sent so far), then the frame's snapshot goes out and joins that history.
 
 local RunService = game:GetService("RunService")
 
@@ -16,9 +16,10 @@ TestRange.buildIfMissing()
 Tuning.start()
 PlayerSimServer.start(CombatServer.onShot)
 Dummies.start()
+table.insert(Replication.listeners, CombatServer.record)
 
 RunService.Heartbeat:Connect(function(dt)
 	Dummies.step(dt)
 	PlayerSimServer.step(dt)
-	Replication.step(dt)
+	Replication.step()
 end)

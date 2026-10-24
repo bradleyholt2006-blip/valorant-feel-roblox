@@ -8,10 +8,10 @@
 --     burst, next to the configured rate and any footage measurement
 --   * reload and draw-to-first-shot times, measured the same way
 --   * shot log: what the client predicted each shot hit vs what the server
---     decided, with the round trip and an agreement rate. Against static
---     dummies they should always agree; against moving targets the server
---     currently tests where they are now, not where you saw them, which is
---     the gap lag compensation (system 4) closes
+--     decided, with the round trip, how far the server rewound and an
+--     agreement rate. The server rewinds targets to what you saw, so they
+--     should agree on moving targets too; when they don't, the log says why
+--     (the Hit Reg Lab, F2 third page, counts the reasons)
 --   * time-to-kill table against 150 HP (100 health + heavy shields)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -55,7 +55,7 @@ local function shortName(id: number?): string
 	return string.format("P%d", id % 1000)
 end
 
-local function describe(o: ClientShots.Outcome?): string
+local function describe(o: { targetId: number?, region: string?, distance: number }?): string
 	if not o then
 		return "..."
 	end
@@ -77,8 +77,8 @@ end
 function WeaponLab.start(controller: any)
 	local gui = Ui.screen("VFWeaponLab", 22)
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(600, 470),
-		Position = UDim2.new(1, -612, 0, 120),
+		Size = UDim2.fromOffset(660, 470),
+		Position = UDim2.new(1, -672, 0, 120),
 		Visible = false,
 	})
 	panelFrame = panel
@@ -255,7 +255,7 @@ function WeaponLab.start(controller: any)
 			pending,
 			stats.unmatchedVerdicts
 		))
-		table.insert(lines, "   #  weapon    client         server          dmg   rtt")
+		table.insert(lines, "   #  weapon    client         server          dmg   rtt  rewind")
 		local records = ClientShots.records
 		for i = #records, math.max(#records - LOG_ROWS + 1, 1), -1 do
 			local r = records[i]
@@ -264,16 +264,17 @@ function WeaponLab.start(controller: any)
 			if v then
 				mark = if r.agree
 					then string.format('<font color="#%s">ok</font>', Ui.hex(Ui.GOOD))
-					else string.format('<font color="#%s">DIFF</font>', Ui.hex(Ui.BAD))
+					else string.format('<font color="#%s">DIFF %s</font>', Ui.hex(Ui.BAD), r.cause or "")
 			end
 			table.insert(lines, string.format(
-				"%4d  %-8s  %-13s  %-14s  %3s  %5s  %s",
+				"%4d  %-8s  %-13s  %-14s  %3s  %5s  %6s  %s",
 				r.shot.shotNumber,
 				r.shot.weapon,
 				describe(r.predicted),
 				describe(v),
 				if v and v.damage then tostring(v.damage) else "",
 				if r.verdictAt then string.format("%.0fms", (r.verdictAt - r.firedAt) * 1000) else "",
+				if v then string.format("%.0fms%s", v.rewind * 1000, if v.clamped then "!" else "") else "",
 				mark
 			))
 		end

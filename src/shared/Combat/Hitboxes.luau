@@ -73,6 +73,34 @@ local function toLocal(v: vector, yaw: number): vector
 	return vector.create(v.x * c - v.z * s, v.y, v.x * s + v.z * c)
 end
 
+-- The inverse of toLocal (box local space -> world).
+local function toWorld(v: vector, yaw: number): vector
+	local c, s = math.cos(yaw), math.sin(yaw)
+	return vector.create(v.x * c + v.z * s, v.y, v.z * c - v.x * s)
+end
+
+-- Where a point sits in a box, as fractions of its half size along the box's
+-- own axes (-1 to 1 inside). A hit confirm keeps these to stay on the same
+-- spot of a character that moves, turns or crouches.
+function Hitboxes.boxFraction(box: Box, point: vector): vector
+	local l = toLocal(point - box.center, box.yaw)
+	return vector.create(l.x / box.half.x, l.y / box.half.y, l.z / box.half.z)
+end
+
+function Hitboxes.boxPoint(box: Box, fraction: vector): vector
+	return box.center + toWorld(fraction * box.half, box.yaw)
+end
+
+-- The box of one region of a pose.
+function Hitboxes.region(pose: Pose, region: Region): Box?
+	for _, box in Hitboxes.build(pose) do
+		if box.region == region then
+			return box
+		end
+	end
+	return nil
+end
+
 -- Ray (origin, unit dir) vs one oriented box. Returns entry distance or nil.
 function Hitboxes.rayBox(origin: vector, dir: vector, box: Box, maxDistance: number): number?
 	local o = toLocal(origin - box.center, box.yaw)

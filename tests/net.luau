@@ -132,7 +132,7 @@ do
 	end
 	check("snapshots decode to exactly the quantised poses the server keeps", ok)
 	check("snapshot rounding stays under a millimetre", near(decoded[1].position.x, 1.23456, 1e-3) and near(decoded[1].position.z, -30.987, 1e-3))
-	check("a snapshot fits an unreliable packet", 9 + 22 * PlayerCodec.MAX_POSES_PER_SNAPSHOT <= 900)
+	check("a snapshot fits an unreliable packet", PlayerCodec.SNAPSHOT_HEADER + PlayerCodec.SNAPSHOT_ENTRY * PlayerCodec.MAX_POSES_PER_SNAPSHOT <= 900)
 end
 
 return nil

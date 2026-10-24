@@ -22,22 +22,24 @@ local ShotResolver = {}
 
 local CENTER_OFFSET = vector.create(0, 0.9, 0)
 
+-- Broad phase: whether the ray passes through a target's bounding sphere
+-- before `limit` metres. Only these targets get box tests, and the debug
+-- tools compare these between client and server.
+function ShotResolver.nearRay(origin: vector, dir: vector, pose: Hitboxes.Pose, limit: number): boolean
+	local toCenter = pose.position + CENTER_OFFSET - origin
+	local along = vector.dot(toCenter, dir)
+	if along < -Hitboxes.BOUND_RADIUS or along > limit + Hitboxes.BOUND_RADIUS then
+		return false
+	end
+	return vector.magnitude(toCenter - dir * along) <= Hitboxes.BOUND_RADIUS
+end
+
 -- Nearest target hit before `blockedAt` metres (world geometry), or nil.
 function ShotResolver.resolve(origin: vector, dir: vector, targets: { Target }, blockedAt: number, ignoreId: number?): Result?
 	local best: Result? = nil
 	local limit = blockedAt
 	for _, target in targets do
-		if target.id == ignoreId then
-			continue
-		end
-		-- Broad phase: skip targets whose bounding sphere the ray misses.
-		local toCenter = target.pose.position + CENTER_OFFSET - origin
-		local along = vector.dot(toCenter, dir)
-		if along < -Hitboxes.BOUND_RADIUS or along > limit + Hitboxes.BOUND_RADIUS then
-			continue
-		end
-		local closest = toCenter - dir * along
-		if vector.magnitude(closest) > Hitboxes.BOUND_RADIUS then
+		if target.id == ignoreId or not ShotResolver.nearRay(origin, dir, target.pose, limit) then
 			continue
 		end
 		local hit = Hitboxes.raycast(origin, dir, Hitboxes.build(target.pose), limit)
