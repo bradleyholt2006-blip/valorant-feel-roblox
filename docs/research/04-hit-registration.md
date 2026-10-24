@@ -116,10 +116,10 @@ both miss); "as seen" means the server tested the pose that was actually on scre
 | --- | --- | --- | --- | --- | --- |
 | None (Studio) | 100% | 100% | 40 / 48 ms | 0 | 0% |
 | 40 ms each way, 0-3 ms jitter | 100% | 100% | 124 / 133 ms | 0 | 0% |
-| The same, no lag compensation | 29.5% | 29.5% | 0 | all | 0% |
+| The same, no lag compensation | 30.1% | 30.1% | 0 | all | 0% |
 | The same, 3% of snapshots lost | 100% | 99.7% | 124 / 133 ms | 0 | 1.6% |
 | 75 ms each way (past the cap) | 52.6% | 52.6% | 140 / 140 ms | all | 0% |
-| 40 ms each way, the old fixed 50 ms delay | 99.7% | 95.2% | 106 / 115 ms | 0 | 44.9% |
+| 40 ms each way, the old fixed 50 ms delay | 100% | 95.2% | 106 / 115 ms | 0 | 44.9% |
 
 Aimed at the middle of the body or the head instead, as a player tracking the strafer does (and
 the Studio checklist's H6 to H8), agreement on shots at the moving strafer:
@@ -127,9 +127,9 @@ the Studio checklist's H6 to H8), agreement on shots at the moving strafer:
 | Network | Body | Head | Rewind mean | Capped |
 | --- | --- | --- | --- | --- |
 | 40 ms each way, 0-5 ms jitter, 2% of snapshots lost (H6) | 100% | 100% | 127 ms | 0 |
-| The same, no lag compensation (H7) | 26.1% | 21.3% | 0 | all |
-| None (Studio), no lag compensation | 100% | 81.7% | 0 | all |
-| 80 ms each way, 0-5 ms jitter, 2% lost (H8, past the cap) | 43.1% | 22.7% | 140 ms (207 asked for) | all |
+| The same, no lag compensation (H7) | 26.1% | 21.7% | 0 | all |
+| None (Studio), no lag compensation | 100% | 82.5% | 0 | all |
+| 80 ms each way, 0-5 ms jitter, 2% lost (H8, past the cap) | 43.9% | 23.0% | 140 ms (207 asked for) | all |
 
 Without the full rewind, whether a shot agrees depends on where in the strafe it lands. The dummy
 spends most of each 0.6 s strafe slowing down and speeding up, and near a turn it has hardly

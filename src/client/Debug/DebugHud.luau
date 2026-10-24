@@ -6,7 +6,9 @@
 --   * a circle showing the true cone of fire of the next shot, drawn where
 --     that bullet would go (recoil included), like the reference's "Show
 --     firing error" crosshair option
---   * stats panel: speed, % of max, accuracy state, flags, netcode health
+--   * stats panel: speed, % of max, accuracy state, flags, the last jump
+--     (airtime, distance, how far it bent, speed leaving and landing),
+--     netcode health
 --   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
 --   * ghost box at the last authoritative server position (toggle G while the
 --     HUD is on; not F7, which Studio takes for Start)
@@ -20,6 +22,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local MovementSim = require(Shared.Movement.MovementSim)
+local JumpAnalyzer = require(Shared.Movement.JumpAnalyzer)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local Accuracy = require(Shared.Weapons.Accuracy)
@@ -77,7 +80,7 @@ function DebugHud.start(controller: any)
 
 	-- Stats panel ------------------------------------------------------------
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(330, 270),
+		Size = UDim2.fromOffset(330, 320),
 		Position = UDim2.fromOffset(12, 12),
 	})
 	local stats = Ui.label(panel, {
@@ -130,11 +133,15 @@ function DebugHud.start(controller: any)
 	local lastInput = 0
 	local lastState: MovementSim.State? = nil
 	local lastInfo: any = nil
+	local jumps = JumpAnalyzer.new(1)
+	local lastJump: JumpAnalyzer.Jump? = nil
 
 	table.insert(controller.tickListeners, function(info: any)
 		lastInput = info.input.buttons
 		lastState = info.state
 		lastInfo = info
+		local m = info.state
+		lastJump = JumpAnalyzer.tick(jumps, info.time, m.position, m.velocity, m.grounded, info.input.yaw) or lastJump
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
@@ -234,6 +241,20 @@ function DebugHud.start(controller: any)
 			if bit32.band(lastInput, B.Walk) ~= 0 then "walk" else "",
 			if landPenalty then "LAND" else "",
 		}, " ")
+		-- The last time in the air: sideways is from where you faced when you
+		-- left the ground, and the speeds are along the ground.
+		local jumpLines = { "jump    --", "", "" }
+		local j = lastJump
+		if j then
+			local function way(x: number): string
+				return if x >= 0 then "right" else "left"
+			end
+			jumpLines = {
+				string.format("jump    %.2f s  %.2f m  %.2f m %s", j.airtime, j.distance, math.abs(j.side), way(j.side)),
+				string.format("        path bent %.0f\u{B0} %s", math.abs(j.bend), way(j.bend)),
+				string.format("        speed %.2f > %.2f m/s, top %.2f", j.takeoffSpeed, j.landingSpeed, j.peakSpeed),
+			}
+		end
 		stats.Text = table.concat({
 			string.format("<b>%s</b>  %s", controller.profile().name, stateText),
 			string.format("speed   %5.2f m/s  %5.1f st/s", speed, speed * Units.STUDS_PER_METRE),
@@ -242,6 +263,9 @@ function DebugHud.start(controller: any)
 			string.format("state   %s", flags),
 			string.format("pos     %.2f %.2f %.2f m", s.position.x, s.position.y, s.position.z),
 			coneText,
+			jumpLines[1],
+			jumpLines[2],
+			jumpLines[3],
 			"",
 			string.format("tick    %d Hz   fps %.0f", MovementConfig.TickRate.value, fps),
 			string.format("rtt     %.0f ms   ping %.0f ms%s", net.rttSmooth * 1000, ping, simText),

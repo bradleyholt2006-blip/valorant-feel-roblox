@@ -60,8 +60,25 @@ MovementConfig.Params = {
 	),
 	brakingDeceleration = p(20.48, "estimate", "Unreal's default (equal to maxAcceleration)"),
 
-	airAcceleration = p(1.5, "estimate", "Air control is weak in the reference; tune from strafe-jump footage"),
-	airWishSpeedCap = p(0.8, "estimate", "Caps air wish speed (m/s) so air strafing can't build speed"),
+	-- Air movement (see MovementSim): Counter-Strike's air acceleration, so
+	-- holding A or D while turning the mouse bends the path the way it does
+	-- there, under the limit Valorant players report, that strafing and
+	-- bunny hopping never beat running.
+	airAcceleration = p(
+		12,
+		"estimate",
+		"Counter-Strike's sv_airaccelerate (12 in CS:GO and CS2): input adds up to 12 x the wish speed per second. Check against footage of air stops and strafes"
+	),
+	airWishSpeedCap = p(
+		0.57,
+		"estimate",
+		"Quake's and Source's cap of 30 units/s on the speed input adds along itself (Valve: maps are about 16 units to the foot, so 1.9 cm a unit). A standing jump drifts at this speed"
+	),
+	airSpeedLimit = p(
+		1,
+		"community",
+		"Times the wish speed. Input in the air can't push the speed past it, or past what it already was: Valorant players report air strafing and bunny hopping don't beat running (Unreal forum, guides). Counter-Strike has no such limit"
+	),
 
 	gravity = p(15.0, "estimate", "Derive from airtime + apex: g = 8*h / t^2"),
 	jumpApexHeight = p(0.85, "estimate", "Feet rise when jumping in place; measure against crates of known height"),
@@ -93,6 +110,7 @@ export type Values = {
 	brakingDeceleration: number,
 	airAcceleration: number,
 	airWishSpeedCap: number,
+	airSpeedLimit: number,
 	gravity: number,
 	jumpApexHeight: number,
 	stepHeight: number,
