@@ -19,7 +19,8 @@
 --   * peeker's advantage by Riot's formula, from this client's own numbers
 --
 -- Keys while the page is open: [ and ] latency -/+10 ms each way, J jitter,
--- L packet loss, B Network Buffering, K rewind cap (140 ms, 200 ms, off).
+-- L packet loss, B Network Buffering, K rewind cap (140 ms, 200 ms, 0: no lag
+-- compensation).
 -- Backspace clears the counters and the shot log.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -145,7 +146,7 @@ function HitRegLab.start(controller: any)
 		-- Cap ------------------------------------------------------------------
 		table.insert(lines, string.format(
 			"<b>Hit Reg Lab</b>  rewind cap %s   reference %s (Patch 6.02), %s at launch",
-			if maxRewind > 0 then ms(maxRewind) else colored(Ui.BAD, "OFF"),
+			if maxRewind > 0 then ms(maxRewind) else colored(Ui.BAD, "0 ms (no lag compensation)"),
 			ms(NetConfig.maxRewind.value),
 			ms(ref.maxRewindAtLaunch.value)
 		))
@@ -233,8 +234,8 @@ function HitRegLab.start(controller: any)
 				ms(maxRewind - ref.interpDelay.value - ref.serverFrame.value)
 			)))
 		else
-			table.insert(lines, colored(Ui.BAD, "  cap off: no lag compensation, the server tests targets where they are now"))
-			table.insert(lines, "")
+			table.insert(lines, colored(Ui.BAD, "  cap 0: no lag compensation, the server tests targets where they are now,"))
+			table.insert(lines, colored(Ui.BAD, "  so every shot counts as capped"))
 		end
 		table.insert(lines, "")
 
@@ -294,7 +295,7 @@ function HitRegLab.start(controller: any)
 		table.insert(lines, dim("  the round trip stands in for both one-way lags and the server frame"))
 		table.insert(lines, "")
 		table.insert(lines, dim("[ ] latency -/+10 ms each way   J jitter   L loss   B buffering"))
-		table.insert(lines, dim("K rewind cap 140 / 200 / off   Backspace clear   F2 next page"))
+		table.insert(lines, dim("K rewind cap 140 / 200 / 0 ms   Backspace clear   F2 next page"))
 		body.Text = table.concat(lines, "\n")
 	end
 
