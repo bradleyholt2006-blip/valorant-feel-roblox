@@ -6,6 +6,7 @@ local MovementConfig = require("../src/shared/Movement/MovementConfig")
 local PlayerSim = require("../src/shared/PlayerSim")
 local WeaponSim = require("../src/shared/Weapons/WeaponSim")
 local PlayerCodec = require("../src/shared/Net/PlayerCodec")
+local InputQueue = require("../src/shared/Net/InputQueue")
 local FakeWorld = require("./FakeWorld")
 local H = require("./Harness")
 
@@ -157,6 +158,136 @@ do
 	check("snapshots decode to exactly the quantised poses the server keeps", ok)
 	check("snapshot rounding stays under a millimetre", near(decoded[1].position.x, 1.23456, 1e-3) and near(decoded[1].position.z, -30.987, 1e-3))
 	check("a snapshot fits an unreliable packet", PlayerCodec.SNAPSHOT_HEADER + PlayerCodec.SNAPSHOT_ENTRY * PlayerCodec.MAX_POSES_PER_SNAPSHOT <= 900)
+end
+
+do
+	-- The server's input queue, fed by a client that samples 128 inputs a
+	-- second and sends them in 60 Hz packets over an ordered network, and run
+	-- by 60 Hz server frames.
+	type Options = {
+		rate: number?, -- inputs the client makes a second
+		delay: ((number) -> number)?, -- network delay of a packet sent at this time
+		stall: { number }?, -- the server runs no frames between these times
+		hold: { number }?, -- packets sent between these times arrive at the second
+	}
+	type Frame = { time: number, ran: number, waiting: number }
+	type Result = { sent: number, ran: number, dropped: number, frames: { Frame }, queue: InputQueue.Queue<{ seq: number }> }
+
+	local function serve(seconds: number, opts: Options): Result
+		local rate = opts.rate or MovementConfig.TickRate.value
+		local packets: { { at: number, inputs: { { seq: number } } } } = {}
+		local sent, lastArrival = 0, 0
+		for frame = 1, math.floor(seconds * 60) do
+			local t = frame / 60
+			local batch = {}
+			while sent < math.floor(t * rate) do
+				sent += 1
+				table.insert(batch, { seq = sent })
+			end
+			local arrival = t + (if opts.delay then opts.delay(t) else 0.03)
+			if opts.hold and t >= opts.hold[1] and t < opts.hold[2] then
+				arrival = math.max(arrival, opts.hold[2])
+			end
+			lastArrival = math.max(lastArrival, arrival) -- reliable events arrive in order
+			table.insert(packets, { at = lastArrival, inputs = batch })
+		end
+
+		local q = InputQueue.new()
+		local result: Result = { sent = sent, ran = 0, dropped = 0, frames = {}, queue = q }
+		local nextPacket, last = 1, 0
+		for frame = 1, math.floor(seconds * 60) do
+			local t = frame / 60 + 0.004
+			if opts.stall and t >= opts.stall[1] and t < opts.stall[2] then
+				continue
+			end
+			while packets[nextPacket] and packets[nextPacket].at <= t do
+				for _, input in packets[nextPacket].inputs do
+					if InputQueue.push(q, input) then
+						result.dropped += 1
+					end
+				end
+				nextPacket += 1
+			end
+			InputQueue.refill(q, t - last)
+			local ran = 0
+			while InputQueue.take(q) do
+				ran += 1
+			end
+			InputQueue.endFrame(q, t - last)
+			last = t
+			result.ran += ran
+			table.insert(result.frames, { time = t, ran = ran, waiting = #q.inputs })
+		end
+		return result
+	end
+
+	-- The most inputs left waiting at the end of a frame after `from` seconds.
+	local function backlog(r: Result, from: number): number
+		local most = 0
+		for _, f in r.frames do
+			if f.time >= from then
+				most = math.max(most, f.waiting)
+			end
+		end
+		return most
+	end
+
+	local steady = serve(10, {})
+	check(
+		"a steady client's inputs run as they arrive",
+		steady.dropped == 0 and steady.ran >= steady.sent - 6 and backlog(steady, 1) <= 1 and steady.queue.catchUp == InputQueue.CATCH_UP_MAX,
+		string.format("ran %d of %d, backlog %d", steady.ran, steady.sent, backlog(steady, 1))
+	)
+
+	local seed = 7
+	local jittery = serve(10, {
+		delay = function()
+			seed = (seed * 1103515245 + 12345) % 2 ^ 31
+			return 0.02 + 0.1 * seed / 2 ^ 31
+		end,
+	})
+	check(
+		"network jitter up to 100 ms is absorbed without a catch-up",
+		jittery.dropped == 0 and jittery.ran >= jittery.sent - 20 and jittery.queue.catchUp == InputQueue.CATCH_UP_MAX,
+		string.format("ran %d of %d, catch-up left %.1f", jittery.ran, jittery.sent, jittery.queue.catchUp)
+	)
+
+	-- A half-second server stall (a script hogging the server, a screen
+	-- capture in Studio) leaves more inputs queued than the bank covers.
+	local stalled = serve(6, { stall = { 2, 2.5 } })
+	check(
+		"a backlog after a server stall drains within half a second",
+		backlog(stalled, 3) <= InputQueue.DRAIN_TARGET and stalled.ran >= stalled.sent - stalled.dropped - 6,
+		string.format("backlog %d after 3 s", backlog(stalled, 3))
+	)
+	local catchUp = InputQueue.CATCH_UP_MAX
+	InputQueue.CATCH_UP_MAX = 0
+	local undrained = serve(6, { stall = { 2, 2.5 } })
+	InputQueue.CATCH_UP_MAX = catchUp
+	check(
+		"without the catch-up the same stall leaves the backlog for good",
+		backlog(undrained, 3) >= 6,
+		string.format("backlog %d after 3 s", backlog(undrained, 3))
+	)
+
+	local fast = serve(20, { rate = 1.1 * MovementConfig.TickRate.value })
+	local allowed = 20 * MovementConfig.TickRate.value + InputQueue.MAX_BURST + InputQueue.CATCH_UP_MAX + 20 * InputQueue.CATCH_UP_RATE
+	check(
+		"a client sending 10% too many inputs still runs at real time",
+		fast.ran <= allowed and fast.dropped > 0,
+		string.format("ran %d, allowed %d, dropped %d", fast.ran, allowed, fast.dropped)
+	)
+
+	local held = serve(6, { hold = { 2, 2.5 } })
+	local most = 0
+	for _, f in held.frames do
+		most = math.max(most, f.ran)
+	end
+	check(
+		"held-back packets run at most a bank's worth in one frame",
+		most <= InputQueue.MAX_BURST + 1 and backlog(held, 3.5) <= InputQueue.DRAIN_TARGET,
+		string.format("%d in one frame", most)
+	)
 end
 
 do

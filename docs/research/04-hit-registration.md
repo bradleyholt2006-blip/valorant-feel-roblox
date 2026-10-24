@@ -163,7 +163,8 @@ entities ever moving backwards.
   between 140 ms ago and now (a time from the future is checked at now). A shooter whose view is
   older than the cap is checked against the world at the cap, so they start to miss moving targets
   instead of hitting players who have already reached cover. The shooter and dead or unspawned
-  entities are left out.
+  entities are left out. Time an input spends queued on the server adds to its shot's rewind, so the
+  server drains a backlog that stands (see Server authority in `01-movement.md`).
 - **Shots in order.** The server used to run each player's whole input queue in turn, so a player
   late in the list could fire after a player who had already killed them. It now takes one input
   from each player per round, so shots are resolved in about tick order and a lethal shot is

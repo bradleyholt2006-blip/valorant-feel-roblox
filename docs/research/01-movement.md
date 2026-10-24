@@ -178,6 +178,11 @@ cap and into the deadzone. Both are gone with the model in section 5.
 - **Server authority.** The server owns position. A token bucket limits each player to 128 ticks per
   real second (no speed hacks), the queue is capped at about 190 ms (no banking time), inputs are
   validated on decode, and tuning changes are accepted only in Studio or from the place owner.
+  Inputs arrive as fast as the bucket refills, so a backlog bigger than its 125 ms bank would never
+  shrink by itself. The first Studio run showed one: after the server froze while a probe ran, it
+  stayed about 100 ms behind the player for the rest of the session, and every shot rewound at the
+  cap. A backlog that stands for 0.25 s now drains at one extra input a frame, from an allowance
+  that refills at only 1 tick a second, so a client can't use it to run faster than real time.
 - **Reconciliation.** The client stores its predicted state per input. When an ack disagrees by more
   than 2 mm or 1 cm/s, it rewinds to the server state, replays unacknowledged inputs, and blends the
   visual error out over about 100 ms so the camera doesn't snap.
@@ -249,6 +254,7 @@ the course's ramps, angled wall and jump boxes.
 | `src/shared/PlayerSim.luau` | Movement and weapons stepped together (since system 2) |
 | `src/shared/Net/PlayerCodec.luau` | Buffer encoding of inputs, acks and snapshots |
 | `src/server/PlayerSimServer.luau` | Authority, validation, acks |
+| `src/shared/Net/InputQueue.luau` | Each player's input queue: the real-time budget, the cap and the backlog drain |
 | `src/server/Tuning.luau` | Live tuning overrides, pushed to every client |
 | `src/server/Replication.luau` | Snapshots of every entity |
 | `src/server/TestRange.luau` | Measurement course built when the place has no `Map` |
