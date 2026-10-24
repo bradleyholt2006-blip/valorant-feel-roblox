@@ -1,7 +1,8 @@
 --!strict
 -- Penetration.Level made of axis-aligned boxes with materials, for offline
 -- tests. Same rules as the Roblox adapter: a box the ray starts inside is
--- never hit, and the exit is only reported within the depth asked for.
+-- never hit, and the exit is only reported within the depth asked for (and
+-- Penetration.EXIT_TOLERANCE).
 
 local Penetration = require("../src/shared/Combat/Penetration")
 
@@ -88,7 +89,7 @@ end
 function FakeLevel:exit(origin: vector, dir: vector, surface: Penetration.Surface, depth: number): (number?, vector?)
 	local box = surface.key :: Box
 	local _, tExit, _, exitAxis = slab(origin, dir, box)
-	if exitAxis == 0 or tExit - surface.distance > depth + 1e-9 then
+	if exitAxis == 0 or tExit - surface.distance > depth + Penetration.EXIT_TOLERANCE then
 		return nil, nil
 	end
 	local d = (dir :: any)[AXES[exitAxis]]

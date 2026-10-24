@@ -26,8 +26,10 @@ local Units = require("../Units")
 
 local M = Units.METRES_PER_STUD
 
--- The back cast starts this far past the deepest point the bullet reaches,
--- and stops this far short of the entry face, so it never meets that face.
+-- The back cast starts this far past the deepest point the bullet reaches, so
+-- it finds a back face exactly there, and stops this far short of the entry
+-- face, so it never meets that face. A back face it finds within the slack is
+-- past the bullet's reach, so it doesn't count.
 local EXIT_SLACK = 0.001
 local ENTRY_GAP = 0.0005
 
@@ -132,7 +134,11 @@ function RobloxLevel:exit(origin: vector, dir: vector, surface: Penetration.Surf
 	if not result then
 		return nil, nil
 	end
-	return surface.distance + back - result.Distance * M, Units.asVector(result.Normal)
+	local exit = surface.distance + back - result.Distance * M
+	if exit - surface.distance > depth + Penetration.EXIT_TOLERANCE then
+		return nil, nil
+	end
+	return exit, Units.asVector(result.Normal)
 end
 
 -- Traces through parts of known size somewhere out of the way and checks the
@@ -154,6 +160,7 @@ function RobloxLevel.selfTest(): (boolean, string)
 	slab(Enum.Material.Wood, 0.2, 0)
 	slab(Enum.Material.Concrete, 1.0, 5)
 	slab(Enum.Material.SmoothPlastic, 0.1, 10)
+	slab(Enum.Material.Metal, Penetration.limit("high", "hard"), 15)
 	folder.Parent = Workspace
 	task.wait() -- let the new parts reach the spatial index
 
@@ -194,13 +201,28 @@ function RobloxLevel.selfTest(): (boolean, string)
 			string.format("plastic: stopped %s at %.3f m, expected at its face", tostring(plastic.stopped), plastic.stop)
 		)
 	end
+	-- Metal exactly as thick as a High bullet can go: through square on, but
+	-- not 2.25 degrees down, the drop from eye height to a chest 11.5 m away.
+	local drop = math.rad(2.25)
+	local square = Penetration.trace(level, vector.create(15, 600, 0), forward, "high", 4)
+	local angled = Penetration.trace(level, vector.create(15, 600, 0), vector.create(0, -math.sin(drop), -math.cos(drop)), "high", 4)
+	if square.stopped or not angled.stopped then
+		table.insert(
+			problems,
+			string.format(
+				"metal at the High limit: stopped %s square on and %s 2.25 degrees down, expected false and true",
+				tostring(square.stopped),
+				tostring(angled.stopped)
+			)
+		)
+	end
 	folder:Destroy()
 	if #problems > 0 then
 		return false, "penetration self-test FAILED: " .. table.concat(problems, "; ")
 	end
 	return true,
 		string.format(
-			"penetration self-test passed: wood measured %.3f m, concrete stopped %.3f m in, plastic stops",
+			"penetration self-test passed: wood measured %.3f m, concrete stopped %.3f m in, plastic stops, metal at the limit only square on",
 			woodThickness,
 			concrete.stop - 1
 		)

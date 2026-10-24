@@ -539,6 +539,9 @@ do
 		part ~= nil and not part.fromFullSpeed and averaged == 1,
 		if part then string.format("began at %.2f m/s", part.startSpeed) else "no second stop"
 	)
+	analyzer:clear()
+	local _, after = analyzer:average("release", "distance")
+	check("clearing the analyzer forgets every stop (the lab's Backspace)", #analyzer.history == 0 and after == 0)
 end
 
 return nil

@@ -38,7 +38,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | G | Ghost box where the server has you (while the HUD is on) |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | F10 | Hitbox and wall overlay |
-| Backspace | Clear impact marks, the shot log, the lab counters and the spray plot |
+| Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops while it's open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
 | 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic |
 
@@ -63,7 +63,7 @@ and 50 shields) and comes back 2 s after it dies.
 ## 1. Start-up
 
 - **S1 Self-test.** Within a second of pressing Play, the Output window shows
-  `[VF] penetration self-test passed: wood measured 0.200 m, concrete stopped 0.250 m in, plastic stops`.
+  `[VF] penetration self-test passed: wood measured 0.200 m, concrete stopped 0.250 m in, plastic stops, metal at the limit only square on`.
   A `FAILED` line says which of our assumptions about Roblox raycasts didn't hold; copy it.
 - **S2 No errors.** There is no red text in the Output window. If there is any, copy all of it and
   send it before going on, because most later checks need the scripts running.
@@ -92,9 +92,9 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
 - **M1 Speeds.** Run along the sprint lane. The HUD's `speed` tops out at 5.40 m/s with the Vandal,
   5.74 with the Classic (2) and 6.75 with the knife (3). With the Vandal, walking (Shift) gives
   3.29 m/s and crouching (Ctrl) 1.89 m/s.
-- **M2 Stops.** Press F4 for the Counter-Strafe Lab. With the Vandal, strafe along the sprint lane
-  at full speed with A or D and stop: ten times by tapping the opposite key, ten times by letting
-  go. The averages should come out at about:
+- **M2 Stops.** Press F4 for the Counter-Strafe Lab, and Backspace to clear any stops already in
+  it. With the Vandal, strafe along the sprint lane at full speed with A or D and stop: ten times
+  by tapping the opposite key, ten times by letting go. The averages should come out at about:
   - `counter x10  accurate 102ms` and `stopped 164ms (ref 160ms, ...)`
   - `release x10  accurate 102ms` and `stopped 156ms (ref 170ms, ...)`
   - a slide of about 31 cm for both.
@@ -243,7 +243,8 @@ the dummy's boxes through the wall.
   from eye height to the dummy's chest comes down about 2 degrees, which makes each wall a fraction
   of a millimetre thicker along the ray. Square on and dead level, 0.20 m wood and 0.10 m concrete
   would do exactly 118.5 and round to 119. 0.20 m metal is exactly the Operator's limit, so only a
-  level shot gets through it (38). The turned wall moves by about 1 for each half degree off 45.
+  shot within about a degree of square on gets through it (38), and the 2 degree drop to the chest
+  stops it. The turned wall moves by about 1 for each half degree off 45.
 
   The damage adds up, so a dummy can die partway through; give it 2 s to come back before the next
   shot. **Send:** any numbers that differ.

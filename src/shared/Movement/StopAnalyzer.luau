@@ -142,6 +142,12 @@ function StopAnalyzer.tick(self: Analyzer, time: number, position: vector, veloc
 	self.lastSpeed = speed
 end
 
+-- Forgets every logged stop, and the one in progress.
+function StopAnalyzer.clear(self: Analyzer)
+	table.clear(self.history)
+	self.active = nil
+end
+
 -- Mean of a numeric field over the stops from full speed, filtered by method.
 function StopAnalyzer.average(self: Analyzer, method: StopMethod, field: "timeToAccurate" | "timeToZero" | "distance"): (number?, number)
 	local sum, n = 0, 0

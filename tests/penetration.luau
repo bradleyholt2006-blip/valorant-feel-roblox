@@ -115,6 +115,24 @@ do
 end
 
 do
+	-- Metal exactly as thick as a High bullet can go (0.20 m), shot from the
+	-- level and from a little above: the P1 Operator cell.
+	local function down(degrees: number): Penetration.Trace
+		local level = FakeLevel.new()
+		level:wall("hard", 5, Penetration.limit("high", "hard"))
+		local a = math.rad(degrees)
+		return Penetration.trace(level, ORIGIN, vector.create(0, -math.sin(a), -math.cos(a)), "high", RANGE)
+	end
+	local square = down(0)
+	check(
+		"High gets through metal exactly at its limit square on, keeping a quarter of its damage",
+		not square.stopped and near(Penetration.multiplierAt(square, RANGE), 1 - LOSS, 1e-6)
+	)
+	check("and a degree off square", not down(1).stopped)
+	check("but not 2.25 degrees down, from eye height to a chest 11.5 m away", down(2.25).stopped)
+end
+
+do
 	local agree = true
 	for _, class in { "none", "low", "medium", "high" } :: { Class } do
 		for _, material in { "soft", "medium", "hard", "solid" } :: { Material } do

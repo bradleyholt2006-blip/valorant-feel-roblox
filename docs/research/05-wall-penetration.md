@@ -117,8 +117,10 @@ What the rules give for one wall hit square on (from `luau tests/run.luau`):
 | High | hard | x0.76 | x0.59 | x0.25 | stops | stops |
 
 Low gets through no medium or hard wall, and Medium no hard one. High's x0.25 through 0.20 m of
-hard is exactly at its limit: only a shot dead level and square on gets through, and anything at
-an angle stops. Body / head damage through one wall:
+hard is exactly at its limit: only a shot within about a degree of square on gets through, and
+anything steeper stops. (A level may report an exit up to 0.05 mm past the bullet's reach,
+`Penetration.EXIT_TOLERANCE`, so that rounding doesn't decide a wall at the limit.) Body / head
+damage through one wall:
 
 | Weapon | Open | 0.10 m wood | 0.20 m concrete | 0.10 m metal |
 | --- | --- | --- | --- | --- |
@@ -189,9 +191,10 @@ an angle stops. Body / head damage through one wall:
 - **Exits by casting back.** Roblox rays don't report where they leave a part, so the exit is
   found by casting back toward the shooter, against that part alone, from as deep as the bullet
   can reach. A ray that starts inside a part doesn't hit it, so no hit means the part is thicker
-  than the bullet can go. That is exact for blocks, wedges and cylinders; a ray that leaves a
-  concave union or mesh and enters it again counts only one stretch, so penetrable walls should
-  be built from parts. A self-test at server start measures parts of known size and prints the
+  than the bullet can go. The cast starts 1 mm deeper than that, so it finds a back face exactly
+  at the reach, and a back face it finds in that last millimetre doesn't count. That is exact for
+  blocks, wedges and cylinders; a ray that leaves a concave union or mesh and enters it again
+  counts only one stretch, so penetrable walls should be built from parts. A self-test at server start measures parts of known size and prints the
   result in the Output window.
 - **No ricochets, no wall damage.** Bullets that stop just stop; walls don't break.
 
@@ -245,8 +248,9 @@ an angle stops. Body / head damage through one wall:
 Written and tested outside Studio (offline Luau tests plus `luau-lsp` type checking). Only a Studio
 session can confirm:
 
-- Roblox rays that start inside a part don't hit it, and the back cast's normal faces out of the
-  exit face (the self-test checks both).
+- Roblox rays that start inside a part don't hit it, the back cast's normal faces out of the
+  exit face, and metal exactly at High's limit lets a bullet through square on but not 2.25
+  degrees off (the self-test checks all three).
 - The self-test's parts are found by raycasts one frame after they are added.
 - Holes, dust and sparks are visible and sit on the right faces, other players' holes appear in
   the same places, and every F10 wall label turns white against the server.
