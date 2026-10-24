@@ -250,3 +250,5 @@ session can confirm:
 - The `VFCharacters` collision group keeps character parts out of both the client's and the
   server's shot traces.
 - Humanoid death and auto-respawn with an anchored root and `BreakJointsOnDeath` off.
+
+The [Studio test session](../studio-checklist.md) walks through these, with what to expect.

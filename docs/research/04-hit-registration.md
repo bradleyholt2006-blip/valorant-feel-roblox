@@ -275,3 +275,5 @@ session can confirm:
   snapshots).
 - Agreement is about 100% against the strafing dummies with no simulated latency, and the
   overlay's white boxes match the dummies.
+
+The [Studio test session](../studio-checklist.md) walks through these, with what to expect.

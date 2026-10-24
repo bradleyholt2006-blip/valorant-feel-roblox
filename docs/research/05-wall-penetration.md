@@ -249,3 +249,5 @@ session can confirm:
 - The self-test's parts are found by raycasts one frame after they are added.
 - Holes, dust and sparks are visible and sit on the right faces, other players' holes appear in
   the same places, and every F10 wall label turns white against the server.
+
+The [Studio test session](../studio-checklist.md) walks through these, with what to expect.
