@@ -1,10 +1,12 @@
 --!strict
--- One player's full deterministic simulation: movement + weapons + hit slow.
+-- One player's full deterministic simulation: movement + weapons + hit slow,
+-- and the spike's plant and defuse (system 12).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
--- player's future (equipped weapon, ammo, reload timer, tag slow) lives here
--- so reconciliation can rewind and replay all of it together.
+-- player's future (equipped weapon, ammo, reload timer, tag slow, a plant
+-- under way) lives here so reconciliation can rewind and replay all of it
+-- together.
 
 -- Require-by-string: "./" is this module's siblings in Roblox and this file's
 -- directory in the offline tests.
@@ -12,10 +14,13 @@ local MovementSim = require("./Movement/MovementSim")
 local WeaponSim = require("./Weapons/WeaponSim")
 local WeaponConfig = require("./Weapons/WeaponConfig")
 local Accuracy = require("./Weapons/Accuracy")
+local Spike = require("./Spike/Spike")
+local SpikeSim = require("./Spike/SpikeSim")
 
 export type State = {
 	movement: MovementSim.State,
 	weapons: WeaponSim.State,
+	spike: SpikeSim.State,
 	tagUntilTick: number,
 	tagMultiplier: number,
 }
@@ -35,6 +40,7 @@ function PlayerSim.new(feet: vector, loadout: { string }?, seed: number?): State
 	return {
 		movement = MovementSim.newState(feet),
 		weapons = WeaponSim.newState(loadout, seed),
+		spike = SpikeSim.new(),
 		tagUntilTick = 0,
 		tagMultiplier = 1,
 	}
@@ -44,6 +50,7 @@ function PlayerSim.copy(s: State): State
 	return {
 		movement = MovementSim.copy(s.movement),
 		weapons = WeaponSim.copy(s.weapons),
+		spike = SpikeSim.copy(s.spike),
 		tagUntilTick = s.tagUntilTick,
 		tagMultiplier = s.tagMultiplier,
 	}
@@ -120,13 +127,33 @@ function PlayerSim.eye(s: State, cfg: any): vector
 	return s.movement.position + vector.create(0, MovementSim.eyeHeight(s.movement, cfg), 0)
 end
 
+-- Whether a plant or a defuse has the player rooted.
+function PlayerSim.rooted(s: State): boolean
+	return s.spike.channel ~= SpikeSim.NONE
+end
+
 -- Advance one tick. Returns the bullets fired this tick, if any (one round's:
--- several for a shotgun), and the knife swing that started, if one did.
-function PlayerSim.step(s: State, input: any, cfg: any, world: any, dt: number): ({ WeaponSim.Shot }?, WeaponSim.Swing?)
-	MovementSim.step(s.movement, input, cfg, PlayerSim.maxSpeed(s, cfg), world, dt)
+-- several for a shotgun), the knife swing that started, if one did, and what
+-- happened with the spike, if anything. `objective` is what this player can
+-- do with the spike now (Spike.NONE when nothing).
+function PlayerSim.step(s: State, input: any, cfg: any, world: any, dt: number, objective: Spike.Context?): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?)
+	-- The plant and the defuse go first: the tick they start on, they root.
+	local t = (s.movement.tick + 1) * dt
+	local act = SpikeSim.step(s.spike, s.movement, s.weapons, input, t, s.movement.tick + 1, PlayerSim.eye(s, cfg), objective or Spike.NONE)
+	local moveInput = input
+	if PlayerSim.rooted(s) then
+		moveInput = table.clone(input)
+		moveInput.buttons = SpikeSim.movementButtons(s.spike, input.buttons)
+	end
+	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt)
 	local tick = s.movement.tick
+	-- A defuse has the weapon put away.
+	if s.spike.channel == SpikeSim.DEFUSING then
+		return nil, nil, act
+	end
 	local ctx = PlayerSim.accuracyContext(s, input.buttons, cfg, dt)
-	return WeaponSim.step(s.weapons, input, tick * dt, dt, PlayerSim.eye(s, cfg), tick, ctx)
+	local shots, swing = WeaponSim.step(s.weapons, input, tick * dt, dt, PlayerSim.eye(s, cfg), tick, ctx)
+	return shots, swing, act
 end
 
 -- Hit slow, applied by the server between ticks. Speed is clamped at once and

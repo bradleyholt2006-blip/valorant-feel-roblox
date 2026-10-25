@@ -29,6 +29,9 @@
 -- level it leaves a cut at once (Patch 4.01: "Knifing walls now has instant
 -- feedback when slicing up walls"), and others' swings leave theirs; its hit
 -- confirm comes with the server's verdict, as a bullet's does.
+--
+-- The spike (system 12) is held low and tipped toward the ground while it's
+-- planted, and a defuse puts the weapon away until it ends.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -40,6 +43,7 @@ local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
+local SpikeSim = require(Shared.Spike.SpikeSim)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local Penetration = require(Shared.Combat.Penetration)
 local Remotes = require(Shared.Net.Remotes)
@@ -91,6 +95,7 @@ type Viewmodel = { weapon: string, shape: Shape, parts: { { part: Part, offset: 
 local viewmodel: Viewmodel? = nil
 local kick = 0
 local adsBlend = 0
+local plantBlend = 0 -- 0 to 1: the spike held low, going down, while planting
 local flash: Part? = nil
 local flashUntil = 0
 
@@ -174,16 +179,26 @@ local function holdCFrame(sim: PlayerSim.State, frameDt: number): (CFrame, boole
 	if def.melee then
 		swingOffset, swingTurn = swingPose(w.combo, t - w.lastShotTime)
 	end
+	-- Planting: the spike held out low and tipped toward the ground.
+	local planting = if sim.spike.channel == SpikeSim.PLANTING then 1 else 0
+	plantBlend += (planting - plantBlend) * math.min(frameDt * 8, 1)
 
 	local hold = HIP + (ADS - HIP) * adsBlend
-	local offset = hold + vector.create(0, -0.22 * equipLeft - 0.08 * reloadDip, 0.03 * kick) + swingOffset
-	local angles = CFrame.Angles(math.rad(5 * kick) - math.rad(50) * equipLeft - math.rad(15) * reloadDip, 0, math.rad(35) * reloadDip)
+	local offset = hold
+		+ vector.create(0, -0.22 * equipLeft - 0.08 * reloadDip - 0.12 * plantBlend, 0.03 * kick - 0.06 * plantBlend)
+		+ swingOffset
+	local angles = CFrame.Angles(
+		math.rad(5 * kick) - math.rad(50) * equipLeft - math.rad(15) * reloadDip - math.rad(30) * plantBlend,
+		0,
+		math.rad(35) * reloadDip
+	)
 	return CFrame.new(Units.toStuds(offset)) * angles * swingTurn, hidden
 end
 
 local function updateViewmodel(frameDt: number)
 	local sim = PlayerController.sim
-	if not sim or not PlayerController.alive then
+	-- Defusing, the weapon is put away.
+	if not sim or not PlayerController.alive or sim.spike.channel == SpikeSim.DEFUSING then
 		local current = viewmodel
 		if current then
 			current.model.Parent = nil

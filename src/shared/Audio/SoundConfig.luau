@@ -35,8 +35,16 @@ export type Curve = { points: { { number } }, status: Status, source: string }
 export type Asset = {
 	id: number,
 	title: string, -- its name on the Creator Store
-	peak: number, -- its loudest sample, 0-1 (measured), which evens it out (Level)
+	-- How loud it plays straight to you (the Self and UI buses), 0-1: the
+	-- loudest either channel gets (measured), which evens it out (Level). A
+	-- mono take is spread over both channels, each getting 0.707 of it; a
+	-- stereo one keeps its own.
+	peak: number,
 	start: number, -- seconds of quiet at its start that are skipped (measured)
+	-- A stereo take out in the world, where it's summed to mono first: its
+	-- downmix's peak, which each channel gets straight ahead (measured). A
+	-- mono take plays at its `peak` there too.
+	worldPeak: number?,
 }
 export type Sound = {
 	assets: { Asset },
@@ -115,6 +123,25 @@ SoundConfig.Curves = {
 	suppressed = curve({ { 0, 1 }, { 4, 1 }, { 20, 0.5 }, { 50, 0.2 }, { 70, 0 } }, "estimate", "A suppressed shot carries a third as far as a rifle's"),
 	-- A knife's swings and strikes: heard close by, not across the map.
 	melee = curve({ { 0, 1 }, { 2, 1 }, { 6, 0.6 }, { 10, 0.25 }, { 12, 0 } }, "estimate", "Shorter than a reload's; no published radius"),
+	-- The spike (system 12). Planting and defusing carry a long way: heard
+	-- at 60 m, measured with in-game pings (community), so the side that's
+	-- not doing it hears it from across a site.
+	device = curve(
+		{ { 0, 1 }, { 5, 1 }, { 25, 0.6 }, { 50, 0.3 }, { 60, 0 } },
+		"community",
+		"note.com (yuyujan11_valo, 2023): plant and defuse sounds heard at 60 m, measured with in-game pings; the shape between is ours"
+	),
+	-- Its beeping carries further: it's how everyone near a site keeps
+	-- track of the clock, out past the blast's 35 m.
+	beep = curve({ { 0, 1 }, { 5, 1 }, { 20, 0.6 }, { 35, 0.35 }, { 50, 0 } }, "estimate", "Heard past the blast's edge, so a player who's running clear still hears it; no published radius"),
+	-- And the blast, like gunfire, across the map.
+	blast = curve({ { 0, 1 }, { 10, 1 }, { 40, 0.7 }, { 100, 0.4 }, { 200, 0 } }, "estimate", "Heard map-wide, as a gunshot is"),
+	-- The spike dropped: heard faintly out to about 50 m.
+	drop = curve(
+		{ { 0, 1 }, { 3, 1 }, { 15, 0.5 }, { 35, 0.15 }, { 50, 0 } },
+		"community",
+		"note.com (yuyujan11_valo, 2023): the drop heard at '50 m?', very quietly there; the shape between is ours"
+	),
 }
 
 -- Walls -------------------------------------------------------------------------
@@ -171,8 +198,8 @@ local function sound(volume: number, pitchJitter: number, voices: number, assets
 	return { assets = assets, volume = volume, pitch = pitch or 1, pitchJitter = pitchJitter, voices = voices, source = LIBRARY }
 end
 
-local function asset(id: number, title: string, peak: number, start: number?): Asset
-	return { id = id, title = title, peak = peak, start = start or 0 }
+local function asset(id: number, title: string, peak: number, start: number?, worldPeak: number?): Asset
+	return { id = id, title = title, peak = peak, start = start or 0, worldPeak = worldPeak }
 end
 
 local function cue(at: number, sound: string): Cue
@@ -180,124 +207,174 @@ local function cue(at: number, sound: string): Cue
 end
 
 -- Picked by title and by Pro Sound Effects' own description of each
--- recording, and measured from their waveforms in Studio (peak, and where
--- the sound starts: docs/research/08-sound.md, section 6). Volumes and
--- pitches are estimates, to be set by ear. All courtesy of Pro Sound
--- Effects.
+-- recording, and measured in Studio: where the sound starts from its
+-- waveform, and its peaks as it plays, on each path, from analyzers wired
+-- to it (docs/research/08-sound.md, section 6). Volumes and pitches are
+-- estimates, to be set by ear. All courtesy of Pro Sound Effects.
 SoundConfig.Sounds = {
 	-- Feet. No single footstep on a hard floor turned up, so steps are foot
 	-- stomps, and a landing is the same stomps lower and heavier.
 	step = sound(0.8, 0.06, 6, {
-		asset(9114523345, "Foot Stomp 3 (SFX)", 0.26),
-		asset(9114523358, "Foot Stomp 4 (SFX)", 0.30),
-		asset(9114523612, "Foot Stomp 6 (SFX)", 0.55),
-		asset(9114523629, "Foot Stomp 7 (SFX)", 0.21),
+		asset(9114523345, "Foot Stomp 3 (SFX)", 0.183),
+		asset(9114523358, "Foot Stomp 4 (SFX)", 0.217),
+		asset(9114523612, "Foot Stomp 6 (SFX)", 0.393),
+		asset(9114523629, "Foot Stomp 7 (SFX)", 0.178),
 	}),
 	land = sound(1, 0.04, 3, {
-		asset(9114523612, "Foot Stomp 6 (SFX)", 0.55),
-		asset(9114523358, "Foot Stomp 4 (SFX)", 0.30),
+		asset(9114523612, "Foot Stomp 6 (SFX)", 0.393),
+		asset(9114523358, "Foot Stomp 4 (SFX)", 0.217),
 	}, 0.82),
 	softLand = sound(0.45, 0.04, 2, {
-		asset(9114523345, "Foot Stomp 3 (SFX)", 0.26),
-		asset(9114523629, "Foot Stomp 7 (SFX)", 0.21),
+		asset(9114523345, "Foot Stomp 3 (SFX)", 0.183),
+		asset(9114523629, "Foot Stomp 7 (SFX)", 0.178),
 	}, 0.9),
 	jump = sound(1, 0.05, 2, {
-		asset(9116199047, "Knife Wipe Fast Swipes On Trousers 4 (SFX)", 0.03),
+		asset(9116199047, "Knife Wipe Fast Swipes On Trousers 4 (SFX)", 0.029),
 	}),
 	-- Shots. The library has an assault rifle and a big sniper rifle; the
 	-- Phantom's suppressed rifle is a suppressed pistol.
 	rifle = sound(1, 0.02, 10, {
-		asset(9114550557, "Galil Assault Rifle 1 (SFX)", 0.77),
+		asset(9114550557, "Galil Assault Rifle 1 (SFX)", 0.784, 0, 0.776),
 	}),
 	suppressed = sound(0.7, 0.03, 10, {
-		asset(9119135215, "Silenced Pistol 1 (SFX)", 0.73),
-		asset(9119134567, "Silenced Pistol 5 (SFX)", 0.75),
-		asset(9119135228, "Silenced Pistol 3 (SFX)", 0.75),
-		asset(9119134978, "Silenced Pistol 7 (SFX)", 0.75),
+		asset(9119135215, "Silenced Pistol 1 (SFX)", 0.770, 0, 0.73),
+		asset(9119134567, "Silenced Pistol 5 (SFX)", 0.770, 0, 0.75),
+		asset(9119135228, "Silenced Pistol 3 (SFX)", 0.771, 0, 0.75),
+		asset(9119134978, "Silenced Pistol 7 (SFX)", 0.769, 0, 0.75),
 	}),
 	sniper = sound(1, 0.01, 3, {
-		asset(9118174271, "Rifle Single Shots 7 (SFX)", 0.54),
-		asset(9118174539, "Rifle Single Shots 8 (SFX)", 0.53),
+		asset(9118174271, "Rifle Single Shots 7 (SFX)", 0.398),
+		asset(9118174539, "Rifle Single Shots 8 (SFX)", 0.394),
 	}),
 	revolver = sound(1, 0.02, 4, {
-		asset(9119296692, "Smith Wesson 357 Magnum 2 (SFX)", 0.47),
-		asset(9119296944, "Smith Wesson 357 Magnum 4 (SFX)", 0.51),
-		asset(9119297250, "Smith Wesson 357 Magnum 8 (SFX)", 0.53),
+		asset(9119296692, "Smith Wesson 357 Magnum 2 (SFX)", 0.620, 0, 0.509),
+		asset(9119296944, "Smith Wesson 357 Magnum 4 (SFX)", 0.610, 0, 0.51),
+		asset(9119297250, "Smith Wesson 357 Magnum 8 (SFX)", 0.614, 0, 0.53),
 	}),
 	-- A .45 magnum pistol, raised a little to sound lighter: the library's
 	-- 9 mm pistol shots are all silenced.
 	pistol = sound(0.85, 0.03, 6, {
-		asset(9117400585, "Pistol Single Shots 2 (SFX)", 0.54),
+		asset(9117400585, "Pistol Single Shots 2 (SFX)", 0.385),
 	}, 1.08),
 	dry = sound(0.6, 0.02, 2, {
-		asset(9117029050, "Moviola Toggle Switch Single Clicks Sharp 14 (SFX)", 0.38),
-		asset(9120102194, "Toggle Switch Metal Industrial Equipment 10 (SFX)", 0.31, 0.02),
+		asset(9117029050, "Moviola Toggle Switch Single Clicks Sharp 14 (SFX)", 0.268),
+		asset(9120102194, "Toggle Switch Metal Industrial Equipment 10 (SFX)", 0.239, 0.02),
 	}),
 	-- Reload parts (SoundConfig.Weapons puts them in order)
 	magOut = sound(0.7, 0.03, 3, {
-		asset(9113104176, "Ammo Magazine 1 (SFX)", 0.68, 0.04),
+		asset(9113104176, "Ammo Magazine 1 (SFX)", 0.583, 0.04),
 	}),
 	magIn = sound(0.8, 0.03, 3, {
-		asset(9113104517, "Ammo Magazine 2 (SFX)", 0.72, 0.22),
+		asset(9113104517, "Ammo Magazine 2 (SFX)", 0.546, 0.22),
 	}),
 	rack = sound(0.8, 0.03, 3, {
-		asset(9117889191, "Ppsh Burp Gun 7 (SFX)", 0.23, 1.7),
+		asset(9117889191, "Ppsh Burp Gun 7 (SFX)", 0.188, 1.7),
 	}),
 	boltOpen = sound(0.8, 0.03, 2, {
-		asset(9113027869, "470 Rifle 1 (SFX)", 0.14, 0.27),
-		asset(9113027964, "470 Rifle 3 (SFX)", 0.33, 0.63),
+		asset(9113027869, "470 Rifle 1 (SFX)", 0.166, 0.27),
+		asset(9113027964, "470 Rifle 3 (SFX)", 0.269, 0.63),
 	}),
 	latch = sound(0.7, 0.03, 2, {
-		asset(9116722545, "Metal Latches 1 (SFX)", 0.47),
+		asset(9116722545, "Metal Latches 1 (SFX)", 0.334),
 	}, 1.15),
 	-- A shell or a single round going in: the magazine's click, smaller.
 	shell = sound(0.6, 0.05, 3, {
-		asset(9113104517, "Ammo Magazine 2 (SFX)", 0.72, 0.22),
+		asset(9113104517, "Ammo Magazine 2 (SFX)", 0.546, 0.22),
 	}, 1.35),
 	-- Draws
 	drawRifle = sound(0.6, 0.03, 2, {
-		asset(9116362481, "Machine Gun Movement 2 (SFX)", 0.60, 0.08),
+		asset(9116362481, "Machine Gun Movement 2 (SFX)", 0.472, 0.08),
 	}),
 	drawPistol = sound(0.6, 0.03, 2, {
-		asset(9114701864, "Gun From Holster 1 (SFX)", 0.72, 0.05),
+		asset(9114701864, "Gun From Holster 1 (SFX)", 0.553, 0.05),
 	}),
 	knife = sound(0.7, 0.03, 2, {
-		asset(9116190984, "Knife Fast Scraping Draws Pull Out 1 (SFX)", 0.10),
-		asset(9116190959, "Knife Fast Scraping Draws Pull Out 17 (SFX)", 0.19, 0.2),
+		asset(9116190984, "Knife Fast Scraping Draws Pull Out 1 (SFX)", 0.113),
+		asset(9116190959, "Knife Fast Scraping Draws Pull Out 17 (SFX)", 0.180, 0.2),
 	}),
 	-- The knife's swings and strikes (system 10): sharp sword swishes for
 	-- the slash, heavy arm-swing whooshes for the stab, a knife into flesh
 	-- for a hit, and a blade striking a metal rod, a little lower, for a
 	-- wall (the library has no blade striking stone).
 	slash = sound(0.7, 0.05, 3, {
-		asset(9126014013, "Swish Med High End Sharp Swords Fast Punches (SFX)", 0.66, 0.15),
-		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.42, 0.22),
+		asset(9126014013, "Swish Med High End Sharp Swords Fast Punches (SFX)", 0.468, 0.15),
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
 	}),
 	stab = sound(0.8, 0.04, 2, {
-		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.63, 0.11),
-		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.70, 0.15),
+		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.483, 0.11),
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
 	}),
 	knifeHit = sound(0.8, 0.04, 3, {
-		asset(9114487207, "Flesh Stab 9 (SFX)", 0.19, 0.12),
-		asset(9114487004, "Flesh Stab 5 (SFX)", 0.15, 0.07),
+		asset(9114487207, "Flesh Stab 9 (SFX)", 0.320, 0.12),
+		asset(9114487004, "Flesh Stab 5 (SFX)", 0.355, 0.07),
 	}),
 	knifeWall = sound(0.6, 0.05, 3, {
-		asset(9113449513, "Blade Hits Metal Rod On Knife Impacts 9 (SFX)", 0.56),
-		asset(9113449377, "Blade Hits Metal Rod On Knife Impacts 5 (SFX)", 0.54),
+		asset(9113449513, "Blade Hits Metal Rod On Knife Impacts 9 (SFX)", 0.504),
+		asset(9113449377, "Blade Hits Metal Rod On Knife Impacts 5 (SFX)", 0.498),
 	}, 0.9),
 	-- Hits
 	hitBody = sound(0.6, 0.03, 4, {
-		asset(9113518281, "Body Hits Thuds 1 (SFX)", 0.48),
-		asset(9113518286, "Body Hits Thuds 2 (SFX)", 0.68),
-		asset(9113518280, "Body Hits Thuds 3 (SFX)", 0.51),
-		asset(9113518397, "Body Hits Thuds 4 (SFX)", 0.63),
+		asset(9113518281, "Body Hits Thuds 1 (SFX)", 0.345),
+		asset(9113518286, "Body Hits Thuds 2 (SFX)", 0.484),
+		asset(9113518280, "Body Hits Thuds 3 (SFX)", 0.462),
+		asset(9113518397, "Body Hits Thuds 4 (SFX)", 0.448),
 	}),
 	headshot = sound(0.8, 0.02, 3, {
-		asset(9125362418, "Anvil Hits Ringing Metal Clinks Some Muted 3 (SFX)", 0.42),
+		asset(9125362418, "Anvil Hits Ringing Metal Clinks Some Muted 3 (SFX)", 0.495),
 	}),
 	kill = sound(0.8, 0, 2, {
-		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.13, 0.09),
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
 	}),
+	-- The spike (system 12). Its beep: one short high tone, 0.15 s.
+	spikeBeep = sound(0.7, 0, 6, {
+		asset(9119142417, "Single Tone Single High Pitch Beep Tones 1 (SFX)", 0.271),
+	}),
+	-- Planting: "Arming and Setting Off, Home Alarm System, Console Beeps",
+	-- from its first beep: a run of beeps 3.4 s long, inside the 4 s plant.
+	spikePlant = sound(0.8, 0, 4, {
+		asset(9113084401, "Alarm Beeps 8 (SFX)", 0.120, 0.65),
+	}),
+	-- Defusing: fast even beeps, replayed from the start as they run out
+	-- (SoundConfig.Spike.defuseLoop), for as long as the defuse goes on.
+	spikeDefuse = sound(0.6, 0, 4, {
+		asset(9119761110, "Synth Beeps Constant Fast Tracker Scanner 1 (SFX)", 0.370, 0.21),
+	}),
+	-- Defused: "Metallic Tone Descending in Pitch".
+	spikeDefused = sound(0.9, 0, 2, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}),
+	-- The blast: "Individual Explosion Booms, Long Rolling Tails, Sharp
+	-- Impact, Some Rumble".
+	spikeBlast = sound(1, 0, 2, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}),
+	-- Dropped: "to Concrete, Solid Metal Thud, Rattle".
+	spikeDrop = sound(0.7, 0.03, 2, {
+		asset(9125679182, "Metal Object Drop To Concrete Solid Metal Thud 2 (SFX)", 0.710, 0.3, 0.682),
+	}),
+	-- Picked up: a latch, as it's stowed.
+	spikePickup = sound(0.6, 0.03, 2, {
+		asset(9116722545, "Metal Latches 1 (SFX)", 0.334),
+	}),
+}
+
+-- The spike's sounds (system 12): its beeps, its defuse, its blast and its
+-- drop from where it is, and the plant's or the defuse's beeping from
+-- whoever is doing it, theirs on the Self bus and others' out in the world.
+SoundConfig.Spike = {
+	beep = "spikeBeep",
+	plant = "spikePlant",
+	defuse = "spikeDefuse",
+	defused = "spikeDefused",
+	blast = "spikeBlast",
+	drop = "spikeDrop",
+	pickup = "spikePickup",
+	-- Where spikeDefuse's run of beeps ends (seconds into the take), to play
+	-- it again from its start.
+	defuseLoop = p(4.38, "measured", "Synth Beeps Constant Fast Tracker Scanner 1: its beeps run from 0.22 s to 4.38 s"),
+	-- Once its half is saved, a defuse sounds higher: 'the audio cue given
+	-- when defusing changes to a higher pitch' (the VALORANT Wiki).
+	halfPitch = p(1.25, "estimate", "A defuse from the half, times its pitch before"),
 }
 
 -- Which sounds each weapon makes, by WeaponConfig id. The library has five
@@ -357,6 +434,9 @@ SoundConfig.Weapons = {
 	ares = gun("rifle", 0.94, BOX, "drawRifle"),
 	odin = gun("rifle", 0.86, BOX, "drawRifle"),
 	knife = { draw = "knife", curve = "melee", slash = "slash", stab = "stab", hit = "knifeHit", wall = "knifeWall" },
+	-- The spike in hand (system 12): only its draw; its plant, defuse and
+	-- beeps are SoundConfig.Spike's.
+	spike = { draw = "drawRifle", curve = "melee" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

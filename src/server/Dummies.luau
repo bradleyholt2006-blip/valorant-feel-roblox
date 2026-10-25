@@ -81,6 +81,7 @@ local function currentPose(d: Dummy): PlayerCodec.Pose
 		quiet = StepTracker.isQuiet(buttonsFor(d), m.crouched),
 		reloading = WeaponSim.isReloading(w),
 		weapon = WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		channel = 0,
 	}
 end
 

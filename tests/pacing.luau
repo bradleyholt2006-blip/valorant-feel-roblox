@@ -67,6 +67,7 @@ local function poseAt(time: number): PlayerCodec.Pose
 		quiet = false,
 		reloading = false,
 		weapon = 0,
+		channel = 0,
 	}
 end
 
@@ -299,6 +300,7 @@ local function pose(id: number, m: any): PlayerCodec.Pose
 		quiet = false,
 		reloading = false,
 		weapon = 0,
+		channel = 0,
 	}
 end
 

@@ -10,8 +10,11 @@
 --     netcode health
 --   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
 --   * ghost box at the last authoritative server position (toggle G while the
---     HUD is on; not F7, which Studio takes for Start)
+--     HUD is on and the spike isn't in hand, when G drops it; not F7, which
+--     Studio takes for Start)
 --   * whether the look (Visuals) is on, and the enemy outline colour
+--   * the spike: where it is, the time left once planted, a saved half, and
+--     how far your plant or defuse has got
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,17 +28,46 @@ local MovementSim = require(Shared.Movement.MovementSim)
 local JumpAnalyzer = require(Shared.Movement.JumpAnalyzer)
 local PlayerSim = require(Shared.PlayerSim)
 local Accuracy = require(Shared.Weapons.Accuracy)
+local Spike = require(Shared.Spike.Spike)
+local SpikeSim = require(Shared.Spike.SpikeSim)
 local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Ui)
 local CameraController = require(script.Parent.Parent.CameraController)
 local CrosshairView = require(script.Parent.Parent.CrosshairView)
+local ClientSpike = require(script.Parent.Parent.ClientSpike)
 local NetSim = require(script.Parent.Parent.NetSim)
 local Visuals = require(script.Parent.Parent.Visuals)
 
 local B = MovementSim.Buttons
 
 local DebugHud = {}
+
+-- The spike, as this client has it, and your plant or defuse under way.
+local function spikeLine(sim: PlayerSim.State?): string
+	local view = ClientSpike.view()
+	if view.layout == "" then
+		return "none here"
+	end
+	local state = view.state
+	local text = state
+	local at = view.position
+	if state == "carried" then
+		local who = Players:GetPlayerByUserId(view.carrier)
+		text = if view.carrier == Players.LocalPlayer.UserId then "carried by you" else "carried by " .. (if who then who.Name else "?")
+	elseif state == "dropped" and at then
+		text = string.format("on the ground at %.1f %.1f m", at.x, at.z)
+	elseif state == "planted" then
+		local left = Spike.Params.detonateTime.value - (Workspace:GetServerTimeNow() - view.plantedAt)
+		text = string.format("planted at %s  %.1f s left%s", view.site, math.max(left, 0), if view.halfSaved then "  half saved" else "")
+	end
+	if sim and sim.spike.channel ~= SpikeSim.NONE then
+		local t = sim.movement.tick / MovementConfig.TickRate.value
+		local doing = if sim.spike.channel == SpikeSim.PLANTING then "planting" else "defusing"
+		text ..= string.format("  %s %.0f%%", doing, SpikeSim.fraction(sim.spike, t) * 100)
+	end
+	return text
+end
 
 function DebugHud.start(controller: any)
 	local gui = Ui.screen("VFDebugHud", 20)
@@ -154,7 +186,7 @@ function DebugHud.start(controller: any)
 			visible = not visible
 			panel.Visible = visible
 			keys.Visible = visible
-		elseif input.KeyCode == Enum.KeyCode.G and visible then
+		elseif input.KeyCode == Enum.KeyCode.G and visible and not (controller.sim and SpikeSim.inHand(controller.sim.weapons)) then
 			ghostVisible = not ghostVisible
 			-- Placed before it's shown, so it never shows a frame at the origin.
 			ghost.Parent = if ghostVisible and placeGhost() then Workspace else nil
@@ -266,6 +298,7 @@ function DebugHud.start(controller: any)
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
 			string.format("look    %s (V)   enemy %s (N)", if Visuals.on then "on" else "off", Visuals.enemyColourName()),
+			string.format("spike   %s", spikeLine(controller.sim)),
 			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes  P arena  O settings</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 

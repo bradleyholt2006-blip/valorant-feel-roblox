@@ -388,8 +388,8 @@ do
 		if not (C :: any)[sounds.curve] then
 			table.insert(missing, id .. ": curve " .. sounds.curve)
 		end
-		if (id == "knife") ~= (sounds.reload == nil) then
-			table.insert(missing, id .. ": " .. (if sounds.reload then "a knife doesn't reload" else "no reload"))
+		if (WeaponConfig.get(id).fireMode == "none") ~= (sounds.reload == nil) then
+			table.insert(missing, id .. ": " .. (if sounds.reload then "the knife and the spike don't reload" else "no reload"))
 		end
 		local swings = sounds.slash ~= nil and sounds.stab ~= nil and sounds.hit ~= nil and sounds.wall ~= nil
 		if (WeaponConfig.get(id).melee ~= nil) ~= swings then
@@ -407,7 +407,7 @@ do
 	for name, sound in SoundConfig.Sounds do
 		local fine = #sound.assets > 0 and sound.voices >= 1 and sound.volume > 0 and sound.pitchJitter >= 0 and sound.pitchJitter < 0.2
 		for _, a in sound.assets do
-			fine = fine and a.id > 0 and a.id % 1 == 0 and #a.title > 0 and a.peak > 0 and a.peak <= 1 and a.start >= 0
+			fine = fine and a.id > 0 and a.id % 1 == 0 and #a.title > 0 and a.peak > 0 and a.peak <= 1 and a.start >= 0 and (a.worldPeak == nil or (a.worldPeak > 0 and a.worldPeak <= 1))
 		end
 		if not fine then
 			table.insert(bad, name)
@@ -415,6 +415,23 @@ do
 	end
 	table.sort(bad)
 	check("every sound has a library asset with its measured peak, voices and a volume", #bad == 0, table.concat(bad, ", "))
+
+	-- A recording used by more than one sound plays the same in each.
+	local peaks: { [number]: string } = {}
+	local differ = {}
+	for name, sound in SoundConfig.Sounds do
+		for _, a in sound.assets do
+			local key = string.format("%.3f %.3f", a.peak, a.worldPeak or a.peak)
+			local was = peaks[a.id]
+			if was and was ~= key then
+				table.insert(differ, name .. " " .. a.id)
+			end
+			peaks[a.id] = key
+		end
+	end
+	check("a recording in two sounds has the same peaks in both", #differ == 0, table.concat(differ, ", "))
+	local direct, world = SoundMath.assetGain(0.620), SoundMath.assetGain(0.509)
+	check("a stereo take is turned up more for the world, where it plays lower", world > direct, string.format("%.2f, %.2f", direct, world))
 end
 
 return nil

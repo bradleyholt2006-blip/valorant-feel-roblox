@@ -136,12 +136,12 @@ function PlayerCodec.decodeInputs(b: any): { WireInput }?
 	local out = table.create(len // INPUT_SIZE)
 	while c.o < len do
 		local seq = r32(c)
-		local buttons = bit32.band(r16(c), 1023)
+		local buttons = bit32.band(r16(c), 4095)
 		local slot = r8(c)
 		local yaw = unpackAngle(r16(c))
 		local pitch = ri16(c) / 10000
 		local viewTime = rf64(c)
-		if slot < 1 or slot > 3 or viewTime ~= viewTime then
+		if slot < 1 or slot > 4 or viewTime ~= viewTime then
 			return nil
 		end
 		table.insert(out, { seq = seq, buttons = buttons, slot = slot, yaw = yaw, pitch = pitch, viewTime = viewTime })
@@ -151,9 +151,12 @@ end
 
 -- Ack: everything PlayerSim needs to resume from this state ------------------
 
+local SLOTS = 4 -- the three weapons and the spike (WeaponSim.SLOTS)
+
 local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
-	+ 3 + 3 + 6 + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 -- weapons
+	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 -- weapons
+	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -181,13 +184,13 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w32(c, ago(m.tick, m.lastJumpTick))
 	w32(c, ago(m.tick, m.lastLandTick))
 
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		w8(c, WeaponConfig.IndexOf[w.loadout[slot]] or 0)
 	end
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		w8(c, math.clamp(w.ammo[slot], 0, 255))
 	end
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		w16(c, math.clamp(w.reserve[slot], 0, 65535))
 	end
 	w8(c, w.equipped)
@@ -206,6 +209,13 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, w.burstNext)
 	wf64(c, w.spin)
 	w8(c, w.combo)
+
+	local k = s.spike
+	w8(c, k.channel)
+	wf64(c, k.channelStart)
+	wf64(c, k.channelEnd)
+	w8(c, (if k.halfStart then 1 else 0) + (if k.dropHeld then 2 else 0) + (if k.holdOver then 4 else 0))
+	w8(c, k.lastSlot)
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -246,13 +256,13 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	}
 
 	local loadout, ammo, reserve = {}, {}, {}
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		loadout[slot] = WeaponConfig.Ids[r8(c)] or ""
 	end
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		ammo[slot] = r8(c)
 	end
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		reserve[slot] = r16(c)
 	end
 	local equipped = r8(c)
@@ -294,11 +304,27 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		combo = combo,
 	}
 
+	local channel = r8(c)
+	local channelStart = rf64(c)
+	local channelEnd = rf64(c)
+	local kflags = r8(c)
+	local lastSlot = r8(c)
+	local spike = {
+		channel = channel,
+		channelStart = channelStart,
+		channelEnd = channelEnd,
+		halfStart = bit32.band(kflags, 1) ~= 0,
+		dropHeld = bit32.band(kflags, 2) ~= 0,
+		holdOver = bit32.band(kflags, 4) ~= 0,
+		lastSlot = lastSlot,
+	}
+
 	local tagUntilTick = r32(c)
 	local tagMultiplier = rf64(c)
 	return seq, {
 		movement = movement,
 		weapons = weapons,
+		spike = spike,
 		tagUntilTick = tagUntilTick,
 		tagMultiplier = tagMultiplier,
 	}
@@ -320,6 +346,9 @@ export type Pose = {
 	quiet: boolean,
 	reloading: boolean,
 	weapon: number,
+	-- Planting (1) or defusing (2) the spike, or neither (0), for the sounds
+	-- and the look (system 12).
+	channel: number,
 }
 
 local SNAP_HEADER = 8 + 2 + 1 -- server time, sequence number, pose count
@@ -359,6 +388,7 @@ function PlayerCodec.quantizePose(pose: Pose): Pose
 		quiet = pose.quiet,
 		reloading = pose.reloading,
 		weapon = pose.weapon,
+		channel = pose.channel,
 	}
 end
 
@@ -377,7 +407,14 @@ function PlayerCodec.encodeSnapshot(serverTime: number, poses: { Pose }, seq: nu
 		w16(c, packAngle(pose.yaw))
 		wi16(c, packPitch(pose.pitch))
 		w8(c, math.floor(math.clamp(pose.crouchAlpha, 0, 1) * 255 + 0.5))
-		w8(c, (if pose.grounded then 1 else 0) + (if pose.alive then 2 else 0) + (if pose.quiet then 4 else 0) + (if pose.reloading then 8 else 0))
+		w8(
+			c,
+			(if pose.grounded then 1 else 0)
+				+ (if pose.alive then 2 else 0)
+				+ (if pose.quiet then 4 else 0)
+				+ (if pose.reloading then 8 else 0)
+				+ 16 * math.clamp(pose.channel, 0, 3)
+		)
 		w8(c, pose.weapon)
 	end
 	return c.b
@@ -412,6 +449,7 @@ function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose }, number)
 			quiet = bit32.band(flags, 4) ~= 0,
 			reloading = bit32.band(flags, 8) ~= 0,
 			weapon = weapon,
+			channel = bit32.extract(flags, 4, 2),
 		})
 	end
 	return serverTime, poses, seq

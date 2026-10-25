@@ -187,14 +187,15 @@ played. One catch: `AudioSearchParams.AudioSubType` defaults to `Music`, so unti
 
 | Sound | Plays for | Recording (asset id) | Pro Sound Effects' description | Peak | Skips |
 | --- | --- | --- | --- | --- | --- |
-| `slash` | a slash, yours and others' | Swish Med High End Sharp Swords Fast Punches (9126014013), Swishes Thin Fast Singles Knife 4 (9119696677) | "Swish, Medium High End, Sharp, Swords, Fast Punches"; "Swishes, Thin and Fast, Singles, Knife" | 0.66, 0.42 | 0.15 s, 0.22 s |
-| `stab` | a stab | Whoosh Heavy Punches 1 (9120728815), Whoosh Thick Quick Multiple Variations 2 (9120742716) | "Whoosh, Tennis Racket, Heavy Punches, Arm Swings, Midrange"; "Whoosh, Thick, Quick, Dreamy Flash" | 0.63, 0.70 | 0.11 s, 0.15 s |
-| `knifeHit` | your knife's hit on a body, and others' | Flesh Stab 9, 5 (9114487207, 9114487004) | "Flesh Stab, Wet, With Knife" | 0.19, 0.15 | 0.12 s, 0.07 s |
-| `knifeWall` | the blade striking the level, at 0.9 speed | Blade Hits Metal Rod On Knife Impacts 9, 5 (9113449513, 9113449377) | "Blade Hit, Metal Rod on Knife Impact, Some With Short Slide or Scrape, Sharpen, Sword" | 0.56, 0.54 | - |
+| `slash` | a slash, yours and others' | Swish Med High End Sharp Swords Fast Punches (9126014013), Swishes Thin Fast Singles Knife 4 (9119696677) | "Swish, Medium High End, Sharp, Swords, Fast Punches"; "Swishes, Thin and Fast, Singles, Knife" | 0.47, 0.32 | 0.15 s, 0.22 s |
+| `stab` | a stab | Whoosh Heavy Punches 1 (9120728815), Whoosh Thick Quick Multiple Variations 2 (9120742716) | "Whoosh, Tennis Racket, Heavy Punches, Arm Swings, Midrange"; "Whoosh, Thick, Quick, Dreamy Flash" | 0.48, 0.74 (stereo; 0.70 in the world) | 0.11 s, 0.15 s |
+| `knifeHit` | your knife's hit on a body, and others' | Flesh Stab 9, 5 (9114487207, 9114487004) | "Flesh Stab, Wet, With Knife" | 0.32, 0.36 | 0.12 s, 0.07 s |
+| `knifeWall` | the blade striking the level, at 0.9 speed | Blade Hits Metal Rod On Knife Impacts 9, 5 (9113449513, 9113449377) | "Blade Hit, Metal Rod on Knife Impact, Some With Short Slide or Scrape, Sharpen, Sword" | 0.50, 0.50 | - |
 
-Each swish is a burst of 50 to 160 ms with a near-silent tail. The Flesh Stabs are quiet takes,
-turned up 2.6 and 3.3 times to the level, inside `MaxGain`; the library's other ten Flesh Stabs
-peak at 0.10 or less. No blade striking stone or tile turned up, only metal on metal, so the
+Each swish is a burst of 50 to 160 ms with a near-silent tail. The peaks are as each recording
+plays (08-sound section 6). The Flesh Stabs were first read from too few of their samples, as
+0.19 and 0.15, and so were turned up 2.6 and 3.3 times and played 4.5 to 7.5 dB over the level;
+as they play they peak at 0.32 and 0.36. The library's other ten Flesh Stabs read 0.10 or less. No blade striking stone or tile turned up, only metal on metal, so the
 walls' strike plays a little lower. A head hit plays the headshot sound instead of `knifeHit`, as
 a gun's does.
 

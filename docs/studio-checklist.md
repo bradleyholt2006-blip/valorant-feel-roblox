@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the eleven research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twelve research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about an hour and three quarters. Doing it in parts is fine; keep the order.
+It takes about two hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -27,7 +27,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    the plugin.
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
-   need one and then two. Section 11 needs headphones. Section 15 needs one.
+   need one and then two. Section 11 needs headphones. Section 15 needs one, and section 16 one
+   and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -35,7 +36,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F3 | HUD panel (on at the start) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
-| G | Ghost box where the server has you (while the HUD is on) |
+| G | Ghost box where the server has you (while the HUD is on); with the spike in hand, G drops it instead |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
 | Y | Practice dummies' footsteps on and off (while the Sound Lab is open; off at the start) |
@@ -46,22 +47,25 @@ Fill in the results block at the end of this page and reply with it, plus:
 | P | The arena on and off |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
+| 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
 | B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting) |
 | O | The settings menu: your sensitivity and crosshair |
-| 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
+| 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
 
 Every gun is in the buy menu. A gun can also come from an attribute, which is how scripted checks
 do it: with the game running, select your player under Players in the Explorer, add a string
 attribute `VFTestGive` and set it to the gun's id (`classic`, `shorty`, `frenzy`, `ghost`,
 `bandit`, `sheriff`, `stinger`, `spectre`, `bucky`, `judge`, `bulldog`, `guardian`, `phantom`,
-`vandal`, `warden`, `marshal`, `outlaw`, `operator`, `ares` or `odin`). You get it as 4 to 8 would
+`vandal`, `warden`, `marshal`, `outlaw`, `operator`, `ares` or `odin`). You get it as 5 to 9 would
 give it, and the attribute clears itself, ready for the next one. `VFTestBuy` does the same as a
 click in the buy menu, for a gun or a shield (`light`, `regen`, `heavy`), and sells it back with
 a `-` in front (`-odin`); `VFTestMenu` set to true or false opens or closes the menu; and a number
-attribute `VFTestSlot` set to 1, 2 or 3 draws that slot as its key would. A number attribute
-`VFTestButtons` holds buttons down while it's set, without the mouse: 128 is the left button
-(fire, or the knife's slash) and 256 the right (zoom, or the stab). `VFTestSettingsMenu` set to
+attribute `VFTestSlot` set to 1, 2, 3 or 4 draws that slot as its key would. `VFTestGive` set to
+`spike` hands you the course's spike. A number attribute `VFTestButtons` holds buttons down while
+it's set, without the mouse or keys: 128 is the left button (fire, or the knife's slash), 256 the
+right (zoom, or the stab), 1024 is 4 held (the spike's plant and defuse), 2048 is G, 32 crouches
+and 1 is W; add them to hold several. `VFTestSettingsMenu` set to
 true or false opens or closes the settings menu, and a string attribute `VFTestSetting` enters a
 setting as its box in the menu would: `sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or
 `crosshair=` and a code.
@@ -80,6 +84,9 @@ Where things are, from the spawn, looking down the target lane:
 - **Behind on the left:** three steps, 0.20, 0.35 and 0.50 m tall.
 - **Behind on the right:** the crouch tunnel, and further right three ramps at 30, 45 and 50
   degrees.
+- **4 m behind:** a grey tile marked `SPIKE`, where the spike waits.
+- **26 m behind:** the spike's two sites, amber squares 6 m across marked A (behind on the left,
+  with a low wall across it) and B (behind on the right), 10 m apart, with dummy 18 between them.
 
 Dummies are box figures: a yellow head, a blue body and dark blue legs. Each has 150 HP (100 health
 and 50 shields) and comes back 2 s after it dies.
@@ -175,8 +182,8 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
 From [02-weapon-firing.md](research/02-weapon-firing.md). Press F2 once for the Weapon Lab.
 
 - **W1 Fire rate.** Hold fire with the Vandal at the back wall: the lab reads
-  `fire rate 9.72 rps ... expect 9.75  within 1 tick`, and the Phantom (5) reads 10.98. The Sheriff
-  (7), the Classic (8) and the Operator (6) fire once per click, and a click during the cooldown
+  `fire rate 9.72 rps ... expect 9.75  within 1 tick`, and the Phantom (6) reads 10.98. The Sheriff
+  (8), the Classic (9) and the Operator (7) fire once per click, and a click during the cooldown
   doesn't count. So clicking as fast as you can should come out a little under 4.00, 6.75 and 0.60
   (the lab says `OFF`), but never over. **Send:** the fire rate line for each weapon.
 - **W2 Reload and draw.** Fire a few shots and press R. The lab should read `reload 2500ms` for the
@@ -204,7 +211,7 @@ From [02-weapon-firing.md](research/02-weapon-firing.md). Press F2 once for the 
   air above it, which would mean your own body is getting in the way of your shots. No part of
   your Roblox avatar shows when you look down, straight after pressing Play as well as after a
   respawn.
-- **W7 Operator scope.** With the Operator (6), mouse 2 cycles through 2.5x, 5x and off. Scoped
+- **W7 Operator scope.** With the Operator (7), mouse 2 cycles through 2.5x, 5x and off. Scoped
   shots land exactly on the crosshair. Unscoped shots spread widely (5 degrees).
 
 ## 5. Spread and recoil
@@ -251,7 +258,11 @@ Reg Lab and F10 for the overlay. Backspace clears the lab's counters between ste
   more times. Agreement stays at about 100%, the rewind mean is about 120 to 135 ms, `capped` is
   0, and the `hit confirm` mean is close to the round trip shown in the network section.
 - **H6 Jitter and loss.** Press J once (0 to 5 ms of jitter) and L once (2% loss) and shoot 20
-  more times. Agreement is still about 100%. The odd `snapshot` difference is fine.
+  more times. Agreement is still about 100%. The odd `snapshot` difference is fine. The jitter
+  takes the round trip to about 110 ms, and with the render delay that's about 140 ms, so most
+  shots now reach the cap: in BRINK 16 of 20 read `capped` and the overlay drew a blue box beside
+  the yellow one on 17. The cap leaves out a few milliseconds of strafe, a few centimetres, so
+  agreement holds.
 - **H7 No lag compensation.** Leave the latency, jitter and loss on. Press K twice: the lab's
   rewind cap reads `0 ms (no lag compensation)`, so the server tests the strafer where it is now
   instead of where you saw it. Press Backspace and shoot the strafer 20 times at the body, then
@@ -263,8 +274,9 @@ Reg Lab and F10 for the overlay. Backspace clears the lab's counters between ste
   put the cap back at 140 ms.
 - **H8 Past the cap.** Press `]` four more times (80 ms each way). Then, as in H7, press Backspace
   and shoot 20 times at the body, then Backspace and 20 times at the head, with uneven gaps.
-  Every shot is `capped`: the server goes back the full 140 ms, which still leaves about 65 ms
-  between what you saw and what it tests. Agreement on moving targets is a bit under half for body
+  Every shot is `capped`: the server goes back the full 140 ms, which still leaves the rest of
+  the round trip and the render delay between what you saw and what it tests (in BRINK, 190 ms
+  and 33 ms: about 83 ms). Agreement on moving targets is a bit under half for body
   shots (4 to 12 of 20 is within chance) and about a fifth for head shots (1 to 7). Then press `[`
   eight times, J twice and L twice to switch everything off. The HUD's red `sim` text goes away.
 - **H9 Smooth movement.** Aim at the strafing dummy at 15 m and keep it within 10 degrees of the
@@ -283,8 +295,8 @@ and 0.40 m thick. The signs on the floor say which is which. A dummy stands 1.5 
 of each wall. Aim at the middle of a wall at chest height: after the first shot, the overlay shows
 the dummy's boxes through the wall.
 
-- **P1 Damage through walls.** Shoot each wall once at body height with the Classic (8), the Vandal
-  (4) and the Operator (6, scoped). In the open at this range, a body shot does 26 with the
+- **P1 Damage through walls.** Shoot each wall once at body height with the Classic (9), the Vandal
+  (5) and the Operator (7, scoped). In the open at this range, a body shot does 26 with the
   Classic, 40 with the Vandal and 150 with the Operator. Through the walls, the floating numbers
   should be:
 
@@ -408,7 +420,7 @@ see it once you're in it. Keep the HUD on.
   in the place pokes into the arena, and you can't jump out of it. **Send:** a screenshot from your
   room's opening, and whether the hall feels too big, about right or too small for a 1v1.
 - **A3 Waiting.** While you're alone there's no barrier: you can walk out of your room straight
-  away, B opens the buy menu, and 4 to 8 give you any weapon.
+  away, B opens the buy menu, and 5 to 9 give you any weapon.
 - **A4 Off and on.** Press P: the Output window shows `[VF] Arena off`, you're back at the course's
   spawn, the score bar and banner are gone, and the dummies still have red outlines. Press P again
   and you're back in the NORTH room, facing the hall. Then hold W and press P twice more, so each
@@ -423,8 +435,8 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   window's Explorer, Teams holds North and South, with one player on each.
 - **A6 The buy phase.** During the countdown, each room has a see-through orange or teal barrier
   across its open side. You can't walk through it, and a shot at it stops on it. B opens the buy
-  menu and 4 to 8 change weapons. At 0 the barrier disappears, you can walk out, the menu closes
-  if it was open, and until the next buy phase B does nothing and 4 to 8 change nothing, not even
+  menu and 5 to 9 change weapons. At 0 the barrier disappears, you can walk out, the menu closes
+  if it was open, and until the next buy phase B does nothing and 5 to 9 change nothing, not even
   the weapon in your hands.
 - **A7 Seeing each other.** Each player sees the other with the red enemy outline, never through
   walls. Standing anywhere in your own room, you can't see into the other one.
@@ -466,9 +478,13 @@ it wasn't.
   hears. Step off it onto the floor: the heard thud again. Spawning is silent: press P twice (the
   arena on, then off) and you appear without a sound. Nothing else plays with any of these:
   Roblox's own character sounds are off.
-- **N4 Shots.** Fire each weapon (4 to 8 give the Vandal, Phantom, Operator, Sheriff and Classic).
+- **N4 Shots.** Fire each weapon (5 to 9 give the Vandal, Phantom, Operator, Sheriff and Classic).
   Each has its own sound. The Phantom's is the quietest and dullest, and the Operator's the
-  biggest. Hold fire with the Vandal: each shot is distinct and none is cut into a click.
+  biggest. Hold fire with the Vandal: each shot is distinct and none is cut into a click. With the
+  Sound Lab open (F2 four times), the Self meter's held peak for one shot reads about 0.50 for the
+  Vandal, the Operator and the Sheriff, 0.43 for the Classic and 0.35 for the Phantom: every
+  recording is evened out as it plays now, mono and stereo alike (08-sound section 6), so the
+  Sheriff is no longer the loudest nor the Operator and the Classic too quiet.
   **Send:** any shot that sounds too loud or too quiet next to the others, and any sound at all
   that doesn't sound like what it's for (the [table of sounds](research/08-sound.md) says what
   each one is).
@@ -476,19 +492,20 @@ it wasn't.
   magazine out, a magazine in and a bolt or slide, the last one about as the ammo refills; the
   Sheriff's opens and closes its cylinder, and the Operator works its bolt. Press R again and
   switch weapons halfway through: the reload stops at once. Every switch plays a draw sound, and
-  the knife's is a blade. Giving yourself a gun for the other slot (7 while holding a rifle)
+  the knife's is a blade. Giving yourself a gun for the other slot (8 while holding a rifle)
   plays its draw once.
 - **N6 Dry fire.** An empty magazine reloads itself while there's ammo in reserve, so take a fresh
-  Vandal (4) and hold fire until it stops reloading (100 rounds, about 18 s). Then click: one dry
-  click per click. Press 4 again for a full one.
+  Vandal (5) and hold fire until it stops reloading (100 rounds, about 18 s). Then click: one dry
+  click per click. Press 5 again for a full one.
 - **N7 Hits.** Shoot a dummy in the body: a thud. In the head: a sharper, higher hit. Kill one: the
   kill sound as well. Kill several in one life: each kill sound is a little higher than the last,
   up to the fifth, and after you die it starts low again.
 - **N8 Dummies' steps.** Press Y. The strafing dummy 15 m ahead starts making running steps, heard
   from where it is, with a blue ring at each one. The one at 30 m isn't heard: its steps show as
   `not heard: out of range`, with grey rings. Walk back from the 15 m one until the lab shows its
-  steps at more than 20 m: they stop being heard there, and up to the edge they stay about as loud
-  as close up. Press Y again to turn them off.
+  steps at more than 20 m: they stop being heard there. Up to then they follow the footstep curve:
+  as loud as close up to 2 m, 0.8 of that at 10 m and about half at 19 m (in BRINK 0.59-0.61 at
+  15-16 m and 0.45-0.51 at 18.5 m). Press Y again to turn them off.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9. Turn the
 arena on (P in window 1), keep the Sound Lab open in window 1, and play through a buy phase.
@@ -705,7 +722,7 @@ HUD's `xhair` line has the real ones.
   `Aiming down sights: its own crosshair, cyan.` Zoom with the Vandal (mouse 2): it turns cyan
   and the `xhair` line reads `A`. Enter `0;P;c;1;A;c;5` (no `s;1`): the menu reads `the same
   crosshair`, and zoomed it stays green and reads `P`.
-- **X8 The scope.** With the Operator (6), scope in: the crosshair goes and a small red dot, 2 px
+- **X8 The scope.** With the Operator (7), scope in: the crosshair goes and a small red dot, 2 px
   and a little see-through, sits on the scope's cross; the `xhair` line reads `S`. Enter JUNiOR's
   code `0;s;1;P;c;5;o;1;f;0;m;1;0l;2;0v;2;0g;1;0o;0;0a;1;0f;0;1b;0;S;c;5;s;0.7;o;1`: scoped, the
   dot is cyan, 1 px and solid. Unscoped, a small cyan plus, four 2 by 2 lines meeting in the
@@ -717,6 +734,87 @@ HUD's `xhair` line has the real ones.
   API access): `Not kept between sessions here: Studio can't use data stores in this place (the
   switch is in Game Settings, Security)`, and everything else still works. Don't change the
   switch for this check. **Send:** the bottom line after a change.
+
+## 16. The spike
+
+From [12-spike.md](research/12-spike.md). One player on the course with the HUD on (F3), then two.
+Turn round from the spawn to face the sites (`VFTestYaw` 180): A is on your right, with its low
+wall, and B on your left. The HUD's `spike` line and Workspace's attributes (`VFSpike`,
+`VFSpikeCarrier`, `VFSpikePosition` in metres, `VFSpikePlantedAt`, `VFSpikeHalf`, `VFSpikeSite`,
+`VFSpikeEndedAt`, `VFSpikeLayout`) say where the spike is and what it's doing. There's one spike:
+each check leaves it planted, gone off or defused, and a new one is back on its tile 5 s after it
+goes off or is defused. Without keys, `VFTestGive` `spike` hands it to you, `VFTestSlot` 4 draws
+it and `VFTestButtons` holds 4 (1024), G (2048) or crouch (32).
+
+- **D1 Waiting.** On Play, the spike lies on its tile 4 m behind the spawn: a dark squat case with
+  a dim blue band, with `SPIKE` in red over it, seen through walls. The HUD reads `spike   on the
+  ground at 0.0 4.0 m`, and `VFSpike` is `dropped`, `VFSpikeLayout` `course`, `VFSpikePosition`
+  (0, 0, 4) and `VFSpikeCarrier` 0. With the arena on (P) it reads `none here`, and with the arena
+  off again the spike is back on its tile.
+- **D2 Picking it up.** Walk back over the tile: a metal latch as you reach it, the spike leaves
+  the floor, `SPIKE  [4]` shows in red at the bottom right and the HUD reads `spike   carried by
+  you`. `VFSpike` is `carried`, `VFSpikeCarrier` your UserId and `VFSpikePosition` gone. Press 4:
+  the spike comes up in hand in about half a second, a dark case with a red band. 1 puts the Vandal
+  back, and 4 draws it again.
+- **D3 Not here.** With the spike in hand, outside the sites, hold 4: nothing starts and no
+  prompt shows. Jump and hold 4 in the air over a site: nothing starts until you land, when the
+  plant starts.
+- **D4 Planting.** Walk into site A's front half (between the spawn and its wall) holding the
+  Vandal: `HOLD 4 TO PLANT` in red under the crosshair. Hold 4: the spike is drawn, then a red bar
+  fills under the prompt, labelled `PLANTING`, with a run of arming beeps, and the spike in hand
+  tips toward the ground. W and Space do nothing, but the view still turns and Ctrl still
+  crouches. Let go at about 2 s: the bar goes, the beeps stop, nothing is planted, and the spike is
+  still in hand. Hold 4 for the whole 4 s: `SPIKE PLANTED` in red across the screen, the spike on
+  the floor a little in front of you, the Vandal drawn again, and `HOLD 4 TO DEFUSE` in cyan; keep
+  holding and no defuse starts, until you let go and hold 4 again (then let go: D5 needs the spike
+  to count down). The HUD reads `spike   planted at A  44.9 s left`, counting down, `SPIKE  A`
+  flashes red at the top of the screen as it beeps, once a second, and a faint white circle 3.2 m
+  across lies round it. `VFSpike` is `planted`, `VFSpikeSite` `A`, and `VFSpikePosition` is 0.35
+  m from where your feet were, the way you faced. **Send:** the HUD's spike line and the
+  position, with where you stood.
+- **D5 The countdown.** Watch and listen from beside it: one beep and flash a second until `20.0
+  s left`, then two a second, four from `10.0 s left` and eight from `5.0 s left`. At `7.0 s left`
+  a white sphere about 8 m across closes in round the spike over a second, to about 2.4 m, and
+  stays. Walk back to the spawn before it goes off. **Send:** the seconds left at each change.
+- **D6 The blast.** At the spawn, 27 m from A, when the HUD reaches `0.0 s left`: `SPIKE
+  DETONATED` in red, a deep explosion, and a black sphere grows from the spike to 35 m in half a
+  second, then fades over a second and a half. It reaches you: you die, the view goes dark as it
+  passes, and the kill feed reads `[Spike]  <your name>`, with no name in front. Dummy 18, between
+  the sites, dies too (`[Spike]  Dummy 18`). Dummy 1, 10 m down the target lane at (0, 0, -10),
+  dies only if it's within 35 m of `VFSpikePosition`: about 34 to 36 m, depending on where in A it
+  went down. Dummy 4, at 30 m (56 m away), lives. `VFSpike` is `detonated`, and 5 s later the
+  spike is back on its tile (`dropped`). **Send:** Dummy 1's distance and whether it died.
+- **D7 Defusing.** Take the spike to site B and plant it. Let go, then hold 4 again by it: the
+  Vandal goes, a cyan bar fills from the left labelled `DEFUSING`, with a white mark at its middle,
+  the spike's band turns red and its cap rises, and steady fast beeps play. Fire does nothing. Let
+  go at about 5 s: the bar goes, the HUD adds `half saved`, the cap sits halfway, `VFSpikeHalf` is
+  true and the prompt reads `HOLD 4 TO DEFUSE  (half saved)`. Hold again: the bar starts at its
+  middle, labelled `DEFUSING  from the half`, the beeps a little higher, and 3.5 s later `SPIKE
+  DEFUSED` in cyan, a falling tone, the beeping stops and the Vandal comes back. `VFSpike` is
+  `defused`. **Send:** the time a whole defuse and one from the half took, if you timed them.
+- **D8 Out of sight.** Take the spike to site A's low wall. Stand with your back to the wall on
+  its far side (away from the spawn), facing away from it, and plant: the spike goes down about
+  0.7 m behind the wall. Walk round to the near side, stand against the wall facing the spike,
+  standing up, and hold 4: the defuse starts, over the wall. Crouch while holding 4: as you go
+  down, the defuse stops (the bar goes, the beeping stops, the band goes back to blue). Stand up still
+  holding 4: a new defuse starts, from the beginning unless the first got past the half. Then let
+  it finish, or let it go off away from it.
+- **D9 Dropping.** Pick it up, draw it (4) and press G in the open: a metal thud, and the spike
+  lands about 1.2 m in front of your feet. Walk onto it and you have it again. Face the low wall
+  from half a metre away and press G: it lands at your feet, just short of the wall, never in it
+  or through it, and you don't pick it straight back up standing there: step away and back onto
+  it, and you do. Press G with the Vandal out: nothing. Hold 4 in a site and press G while
+  planting: nothing is dropped.
+
+Then two players, as in section 9, on the course.
+
+- **D10 Together.** Player 1 picks up the spike: player 2's HUD reads `carried by Player1`.
+  Player 1 plants at A: player 2 hears the arming beeps from where player 1 is, sees `SPIKE
+  PLANTED` and the planted spike with its circle, and hears the beeps from the spike. Player 2
+  defuses it: player 1 hears the defuse's beeping from there, and sees the spike's band turn red
+  and its cap rise. Then player 1 picks up the next spike and player 2 kills them: the spike drops
+  where player 1 died, with a thud, and player 2 can pick it up. Plant it once more and let it go
+  off with both standing at the spawn: both die.
 
 ## Results
 
@@ -758,6 +856,12 @@ X1 bottom line: ___
 X5 view ___ px wide: run +___ px, walk +___, crouch-walk +___, air +___
 X6 spray: fire +___ px at the last bullet; the top lines gone by bullet ___
 X9 after a change: ___; after playing again: ___
+D4 spike line after the plant: ___; position ___, feet were at ___
+D5 faster at ___, ___ and ___ s left; the white sphere at ___ s left
+D6 died at the spawn: yes / no; Dummy 18: died / lived; Dummy 1 ___ m away: died / lived
+D7 a whole defuse ___ s; from the half ___ s
+D8 crouching stopped the defuse: yes / no
+D9 dropped ___ m ahead; against the wall it landed ___ m short of it
 Didn't look right (IDs and what you saw):
 ```
 
@@ -826,3 +930,10 @@ Didn't look right (IDs and what you saw):
 | 11 | The scope shows only the sniper dot, and aiming down sights uses the `A` crosshair when it should | X7, X8 |
 | 11 | The settings are kept when the place can use data stores, and the menu says why not when it can't | X9 |
 | 11 | The sensitivity turns the view by the expected amount | X2, C3 |
+| 12 | The spike can be found, picked up by running over it, drawn with 4 and dropped with G, and lands on the ground short of walls | D1, D2, D9 |
+| 12 | Holding 4 plants it in a site and defuses it, with the bar and the prompts, rooted, without the view or the bar jumping from a correction | D3, D4, D7 |
+| 12 | The beeps keep time, faster at 25, 35 and 40 seconds, and come from the spike | D5 |
+| 12 | A defuse stops when its defuser crouches out of sight of the spike | D8 |
+| 12 | The blast kills everyone within 35 m, through walls, and no one further | D6, D10 |
+| 12 | Another player sees the spike, its tells and the blast, and hears the plant and the defuse from where they are | D10 |
+| 12 | The sounds are at sensible levels next to the others | D4, D5, D6, D7, N4 |

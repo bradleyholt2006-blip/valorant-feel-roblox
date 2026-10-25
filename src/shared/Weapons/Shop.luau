@@ -48,10 +48,10 @@ Shop.SHIELD_ATTRIBUTE = "VFShield"
 Shop.BOUGHT_ATTRIBUTE = "VFBought"
 
 -- The item with this id, if it's on sale: any gun but not the knife, which
--- everyone has, and the shields.
+-- everyone has, or the spike, which is never sold, and the shields.
 function Shop.item(id: string): Item?
 	local def = WeaponConfig.Defs[id]
-	if def and def.category ~= "melee" then
+	if def and def.category ~= "melee" and def.category ~= "spike" then
 		return { id = id, kind = "weapon", name = def.name, price = def.price.value, slot = tostring(def.slot) }
 	end
 	local shield = WeaponConfig.Shields[id]

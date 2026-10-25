@@ -163,7 +163,7 @@ What the numbers give (from `luau tests/run.luau`):
  Heartbeat, after the frame's snapshot ──► Arena.step ──► ArenaRules.step ──► who to spawn
  PlayerSimServer
    spawnPicker      a new life starts in its side's room, facing the hall
-   loadoutRule      buying (the menu, and 4 to 8) is open in the buy phase, and while waiting
+   loadoutRule      buying (the menu, and 5 to 9) is open in the buy phase, and while waiting
    deathListeners   a death ──► ArenaRules.died ──► is the round over?
  on every change ──► the arena model's attributes (Phase, Round, Score1, Score2, ...) ──► ArenaHud
                  ──► the barriers: up in the buy phase, gone otherwise
@@ -290,7 +290,7 @@ that:
   sees the change a moment later. Pushing on a barrier as it drops can give a small correction,
   because your prediction still has it up for that moment.
 - **The buy menu.** B opens it during the buy phase and while waiting, for everyone in the arena;
-  the debug keys 4 to 8 work at the same times. A new match puts everyone back on the starting
+  the debug keys 5 to 9 work at the same times. A new match puts everyone back on the starting
   kit ([09-arsenal](09-arsenal.md)).
 
 ### Building B and C

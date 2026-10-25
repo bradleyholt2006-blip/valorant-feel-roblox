@@ -4,6 +4,8 @@
 -- the snapshots sent so far), then the frame's snapshot goes out and joins
 -- that history.
 -- All three work to the same server time, the one the snapshot carries.
+-- The spike moves on after the moves that planted, defused or picked it up,
+-- so its blast is in the frame's snapshot.
 -- Regen Shields refill after the shots. The arena's rounds move on last, so
 -- a round that ends in this frame's shots respawns its players after the
 -- frame's snapshot.
@@ -23,6 +25,7 @@ local Dummies = require(script.Dummies)
 local Replication = require(script.Replication)
 local ShopServer = require(script.ShopServer)
 local SettingsServer = require(script.SettingsServer)
+local SpikeServer = require(script.SpikeServer)
 
 TestRange.buildIfMissing()
 Arena.buildIfMissing()
@@ -32,12 +35,14 @@ ShopServer.start()
 SettingsServer.start()
 Dummies.start()
 Arena.start()
+SpikeServer.start()
 table.insert(Replication.listeners, CombatServer.record)
 
 RunService.Heartbeat:Connect(function(dt)
 	local now = Workspace:GetServerTimeNow()
 	Dummies.step(now)
 	PlayerSimServer.step(dt, now)
+	SpikeServer.step(now)
 	CombatServer.step(now, dt)
 	Replication.step(now)
 	Arena.step(now)

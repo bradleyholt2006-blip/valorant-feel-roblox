@@ -12,6 +12,9 @@
 --   * a wallbang lane: wood, concrete and metal walls 0.10 / 0.20 / 0.40 m
 --     thick with a dummy behind each, and the 0.20 m concrete wall again
 --     turned 45 degrees
+--   * the spike's two sites behind the spawn (system 12), A and B marked on
+--     the floor with a low wall across A, where the spike waits, and a dummy
+--     between the sites for the blast
 --
 -- Everything here is SmoothPlastic, which bullets can't go through, except
 -- the wallbang walls (Combat/RobloxLevel maps materials to penetration).
@@ -19,7 +22,9 @@
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Units = require(ReplicatedStorage:WaitForChild("Shared").Units)
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Units = require(Shared.Units)
+local Spike = require(Shared.Spike.Spike)
 
 local S = Units.STUDS_PER_METRE
 
@@ -196,6 +201,41 @@ function TestRange.buildIfMissing()
 	wallTag(-35.5, "concrete 0.20 m at 45")
 	marker(-35.5, wallZ - 1.8, "static")
 	part(root, "WallbangBackstop", Vector3.new(24, 3, 0.5), Vector3.new(-26, 1.5, wallZ - 4.25), light)
+
+	-- The spike's sites (Spike.CourseSites), each plant area a tile on the
+	-- floor with its letter and its edges marked, where the spike waits
+	-- (Spike.CourseStart), and a dummy between the sites that the blast
+	-- reaches from either.
+	local amber = Color3.fromRGB(240, 180, 60)
+	for _, zone in Spike.CourseSites do
+		local c, h = zone.center, zone.half
+		local turn = CFrame.Angles(0, zone.yaw, 0)
+		local floorY = c.y - h.y
+		local area = part(root, "Site" .. zone.site, Vector3.new(h.x * 2, 0.01, h.z * 2), Vector3.new(c.x, floorY + 0.005, c.z), amber, turn)
+		area.CanCollide = false
+		area.CanQuery = false
+		area.Transparency = 0.75
+		sign(area, zone.site)
+		for _, edge in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+			local along = edge[1] == 0
+			local size = if along then Vector3.new(h.x * 2, 0.012, 0.06) else Vector3.new(0.06, 0.012, h.z * 2)
+			local offset = turn:VectorToWorldSpace(Vector3.new(edge[1] * h.x, 0, edge[2] * h.z))
+			local stripe = part(root, "SiteEdge" .. zone.site, size, Vector3.new(c.x, floorY + 0.006, c.z) + offset, amber, turn)
+			stripe.CanCollide = false
+			stripe.CanQuery = false
+		end
+	end
+	-- A low wall across site A, 0.5 m behind its middle: a defuser on its
+	-- near side sees a spike planted 0.75 m beyond it over the top standing,
+	-- and not crouched.
+	local siteA = Spike.CourseSites[1].center
+	part(root, "SiteCoverA", Vector3.new(2, 0.8, 0.2), Vector3.new(siteA.x, 0.4, siteA.z + 0.5), light)
+	local start = Spike.CourseStart
+	local spikeTag = part(root, "SpikeStart", Vector3.new(0.9, 0.01, 0.9), Vector3.new(start.x, start.y + 0.005, start.z), grey)
+	spikeTag.CanCollide = false
+	spikeTag.CanQuery = false
+	sign(spikeTag, "SPIKE")
+	marker(0, 30, "static")
 	local line = part(root, "WallbangLine", Vector3.new(22, 0.01, 0.05), Vector3.new(-26, 0.005, wallZ + 10), accent)
 	line.CanCollide = false
 	local lineTag = part(root, "WallbangLineTag", Vector3.new(1.2, 0.01, 0.4), Vector3.new(-37.5, 0.006, wallZ + 10), grey)

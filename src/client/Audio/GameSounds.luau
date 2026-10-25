@@ -21,6 +21,10 @@
 --            your client has it strike; its hit with the server's verdict,
 --            the blade going in for a body or the headshot sound for a head.
 --            Others hear a swing, and what it struck, within a short way
+--   spike    the beeping of a plant or a defuse from whoever is doing it,
+--            yours on the Self bus and others' where they are, and a latch
+--            as you pick it up; the spike's own beeps, defuse, blast and
+--            drop are SpikeView's, out in the world through playWorld
 --
 -- Your steps come from your predicted ticks, others' from their poses as
 -- they are drawn (RemoteEntities), so they line up with where they're
@@ -43,6 +47,7 @@ local Remotes = require(Shared.Net.Remotes)
 local SoundConfig = require(Shared.Audio.SoundConfig)
 local SoundMath = require(Shared.Audio.SoundMath)
 local StepTracker = require(Shared.Audio.StepTracker)
+local Spike = require(Shared.Spike.Spike)
 local Units = require(Shared.Units)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 
@@ -59,6 +64,7 @@ local DT = 1 / MovementConfig.TickRate.value
 local F, L = SoundConfig.Footsteps, SoundConfig.Landing
 local FEET = vector.create(0, 0.1, 0) -- a step sounds just above the feet
 local CHEST = vector.create(0, 1.2, 0) -- a reload at the weapon
+local DEVICE = vector.create(0, 0.4, 0) -- a plant or a defuse, low down at the spike
 local LOG_SIZE = 14
 GameSounds.FEET = FEET
 
@@ -221,6 +227,47 @@ local function cancelReload(r: Reload?)
 	end
 end
 
+-- The spike -------------------------------------------------------------------------
+
+-- A plant or a defuse under way, as heard: which (SpikeSim's channel: 1 a
+-- plant, 2 a defuse), when it started, whether it's a defuse from the half,
+-- and its beeping: the voice playing it and when that started.
+type Channel = { kind: number, start: number, half: boolean, voice: SoundEngine.Voice?, playedAt: number? }
+
+local function newChannel(kind: number, start: number, half: boolean): Channel
+	return { kind = kind, start = start, half = half, voice = nil, playedAt = nil }
+end
+
+-- The plant's beeping, or the defuse's, higher from the half.
+local function cueOf(c: Channel): (string, number?)
+	if c.kind == 1 then
+		return SoundConfig.Spike.plant, nil
+	end
+	return SoundConfig.Spike.defuse, if c.half then SoundConfig.Spike.halfPitch.value else nil
+end
+
+-- Whether `c`'s beeping should start (again) at `now`: as it starts, and for
+-- a defuse each time its run of beeps comes to an end.
+local function cueDue(c: Channel, now: number): boolean
+	local at = c.playedAt
+	if at == nil then
+		return true
+	end
+	if c.kind ~= 2 then
+		return false
+	end
+	local def = SoundConfig.Sounds[SoundConfig.Spike.defuse]
+	local run = SoundConfig.Spike.defuseLoop.value - def.assets[1].start
+	local _, pitch = cueOf(c)
+	return now - at >= run / (def.pitch * (pitch or 1))
+end
+
+local function stopCue(c: Channel?)
+	if c then
+		SoundEngine.stop(c.voice)
+	end
+end
+
 -- You -----------------------------------------------------------------------------
 
 local ownSteps = StepTracker.new()
@@ -229,6 +276,8 @@ local lastWeapons: WeaponState? = nil
 local ownReload: Reload? = nil
 local lastDrawAt = -math.huge -- simulation time of the last draw sound
 local kills = 0
+local ownChannel: Channel? = nil
+local carried = false -- the spike, as of the last tick
 
 local function onTick(info: any)
 	local s = info.sim
@@ -294,6 +343,34 @@ local function onTick(info: any)
 			own(shotSounds.shot, nil, shotSounds.pitch) -- one sound a round, however many pellets
 		end
 	end
+
+	-- The spike: picked up, and planted or defused.
+	local carrying = w.loadout[4] == "spike"
+	if carrying and not carried then
+		own(SoundConfig.Spike.pickup)
+	end
+	carried = carrying
+	local spike = s.spike
+	if spike.channel ~= 0 then
+		local old = ownChannel
+		local c: Channel = if old and old.kind == spike.channel and old.start == spike.channelStart
+			then old
+			else newChannel(spike.channel, spike.channelStart, spike.halfStart)
+		if c ~= old then
+			stopCue(old)
+		end
+		ownChannel = c
+		if cueDue(c, now) then
+			SoundEngine.stop(c.voice)
+			local sound, pitch = cueOf(c)
+			c.voice = own(sound, nil, pitch)
+			c.playedAt = now
+		end
+	else
+		-- Let go of, done or cut short: its beeping stops.
+		stopCue(ownChannel)
+		ownChannel = nil
+	end
 end
 
 -- Your knife swings: the whoosh, and the blade striking the level where your
@@ -319,6 +396,9 @@ local function onSpawn()
 	ownReload = nil
 	lastDrawAt = -math.huge
 	kills = 0
+	stopCue(ownChannel)
+	ownChannel = nil
+	carried = false
 end
 
 local function onVolley(volley: ClientShots.Volley)
@@ -348,6 +428,7 @@ type Remote = {
 	reloading: boolean,
 	weapon: number,
 	reload: Reload?,
+	channel: Channel?, -- a plant or a defuse under way
 }
 local remotes: { [number]: Remote } = {}
 
@@ -371,6 +452,8 @@ local function onFrame()
 			StepTracker.reset(r.steps)
 			cancelReload(r.reload)
 			r.reload, r.reloading = nil, false
+			stopCue(r.channel)
+			r.channel = nil
 			continue
 		end
 		local who = RemoteEntities.nameOf(id)
@@ -422,10 +505,39 @@ local function onFrame()
 			end
 		end
 		r.reloading, r.weapon = pose.reloading, pose.weapon
+
+		-- Planting or defusing: its beeping, low down where they are. A defuse
+		-- from the half is one that starts with the half saved.
+		if pose.channel ~= 0 then
+			local old = r.channel
+			local c: Channel = if old and old.kind == pose.channel
+				then old
+				else newChannel(pose.channel, renderTime, Workspace:GetAttribute(Spike.HALF) == true)
+			if c ~= old then
+				stopCue(old)
+			end
+			r.channel = c
+			if cueDue(c, renderTime) then
+				SoundEngine.stop(c.voice)
+				c.playedAt = renderTime
+				local at = pose.position + DEVICE
+				local sound, pitch = cueOf(c)
+				if silenced then
+					c.voice = nil
+					muted(sound, who, at, "buy phase")
+				else
+					c.voice = GameSounds.playWorld(sound, at, who, { pitch = pitch })
+				end
+			end
+		else
+			stopCue(r.channel)
+			r.channel = nil
+		end
 	end
 	for id, r in remotes do
 		if not seen[id] then
 			cancelReload(r.reload)
+			stopCue(r.channel)
 			remotes[id] = nil
 		end
 	end
@@ -518,6 +630,16 @@ function GameSounds.start()
 	for _, sound in { "hitBody", "headshot", "kill" } do
 		SoundEngine.prepare(sound, "ui")
 	end
+	local spike = SoundConfig.Spike
+	for _, sound in { spike.plant, spike.defuse } do
+		SoundEngine.prepare(sound, "world", C.device.points)
+		SoundEngine.prepare(sound, "self")
+	end
+	SoundEngine.prepare(spike.pickup, "self")
+	SoundEngine.prepare(spike.beep, "world", C.beep.points)
+	SoundEngine.prepare(spike.defused, "world", C.beep.points)
+	SoundEngine.prepare(spike.blast, "world", C.blast.points)
+	SoundEngine.prepare(spike.drop, "world", C.drop.points)
 
 	table.insert(PlayerController.tickListeners, onTick)
 	table.insert(PlayerController.spawnListeners, onSpawn)

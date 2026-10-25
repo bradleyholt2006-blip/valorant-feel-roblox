@@ -78,6 +78,7 @@ local function blend(a: PlayerCodec.Pose, b: PlayerCodec.Pose, t: number): Playe
 		quiet = b.quiet,
 		reloading = b.reloading,
 		weapon = b.weapon,
+		channel = b.channel,
 	}
 end
 

@@ -29,6 +29,10 @@ InputSampler.Bindings = {
 	{ flag = B.Fire, mouse = { Enum.UserInputType.MouseButton1 } },
 	{ flag = B.AltFire, mouse = { Enum.UserInputType.MouseButton2 } },
 	{ flag = B.Reload, keys = { Enum.KeyCode.R } },
+	-- The spike (system 12): 4 is the reference's "Equip Spike" and "Use
+	-- Spike" both, held to plant or defuse; G its "Drop Equipped Item".
+	{ flag = B.Use, keys = { Enum.KeyCode.Four } },
+	{ flag = B.Drop, keys = { Enum.KeyCode.G } },
 } :: { Binding }
 
 local latched = 0
