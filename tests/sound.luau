@@ -318,6 +318,9 @@ do
 	check("a switch always makes its draw sound, however soon", SoundMath.drawHeard(true, 0))
 	check("the slot in hand drawn again just after a draw is the same draw", not SoundMath.drawHeard(false, 0.02))
 	check("a weapon given into the hand later is drawn with a sound", SoundMath.drawHeard(false, gap) and SoundMath.drawHeard(false, math.huge))
+	check("a click on an empty gun clicks dry", SoundMath.dryHeard(true, false, 0, true))
+	check("the click that fires the last round doesn't", not SoundMath.dryHeard(true, true, 0, true))
+	check("nor does holding the trigger, a reload or a draw", not SoundMath.dryHeard(false, false, 0, true) and not SoundMath.dryHeard(true, false, 0, false))
 end
 
 do

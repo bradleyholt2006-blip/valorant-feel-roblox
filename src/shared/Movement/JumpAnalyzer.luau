@@ -31,7 +31,7 @@ type Flight = {
 
 export type Analyzer = {
 	flight: Flight?,
-	last: { time: number, position: vector, yaw: number }?,
+	last: { time: number, position: vector, yaw: number, grounded: boolean }?,
 	history: { Jump },
 	maxHistory: number,
 }
@@ -48,8 +48,11 @@ function JumpAnalyzer.new(maxHistory: number?): Analyzer
 	return { flight = nil, last = nil, history = {}, maxHistory = maxHistory or 20 }
 end
 
+-- Forgets everything, the last tick included: after a respawn the next
+-- tick is somewhere else, and isn't a take-off.
 function JumpAnalyzer.clear(a: Analyzer)
 	a.flight = nil
+	a.last = nil
 	table.clear(a.history)
 end
 
@@ -63,12 +66,12 @@ end
 -- it landed on this tick.
 function JumpAnalyzer.tick(a: Analyzer, time: number, position: vector, velocity: vector, grounded: boolean, yaw: number): Jump?
 	local last = a.last
-	a.last = { time = time, position = position, yaw = yaw }
+	a.last = { time = time, position = position, yaw = yaw, grounded = grounded }
 	local h = ground(velocity)
 	local speed = vector.magnitude(h)
 	local flight = a.flight
 	if flight == nil then
-		if grounded or last == nil then
+		if grounded or last == nil or not last.grounded then
 			return nil
 		end
 		-- Left the ground on this tick: measured from where the last tick on it ended.

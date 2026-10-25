@@ -123,6 +123,13 @@ function SoundMath.drawHeard(switched: boolean, sinceLastDraw: number): boolean
 	return switched or sinceLastDraw >= SoundConfig.RedrawGap.value
 end
 
+-- Whether a trigger press clicks dry: a fresh press on an empty gun that
+-- fired nothing. The press that fires the last round leaves the gun empty
+-- too, for the tick before the automatic reload starts, but it fired.
+function SoundMath.dryHeard(pressed: boolean, fired: boolean, ammo: number, ready: boolean): boolean
+	return pressed and not fired and ammo == 0 and ready
+end
+
 -- The kill sound's playback speed for the nth kill of a life.
 function SoundMath.killPitch(kills: number): number
 	return 1 + SoundConfig.KillPitchStep.value * (math.clamp(kills, 1, 5) - 1)

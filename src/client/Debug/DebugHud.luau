@@ -145,6 +145,11 @@ function DebugHud.start(controller: any)
 		local m = info.state
 		lastJump = JumpAnalyzer.tick(jumps, info.time, m.position, m.velocity, m.grounded, info.input.yaw) or lastJump
 	end)
+	-- A new life starts somewhere else: its first ticks aren't a jump.
+	table.insert(controller.spawnListeners, function()
+		JumpAnalyzer.clear(jumps)
+		lastJump = nil
+	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if processed then

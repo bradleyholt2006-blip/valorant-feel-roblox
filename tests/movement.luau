@@ -655,6 +655,20 @@ do
 	check("strafing left bends the path left as far", near(left.bend, -right.bend, 1e-3), string.format("%.2f / %.2f deg", left.bend, right.bend))
 	check("holding W doesn't steer while you look where you're going", math.abs(forwardTurn.bend) < 1, string.format("%.2f deg", forwardTurn.bend))
 
+	-- A respawn: the HUD clears the analyzer, and the new life starts 5 cm up,
+	-- far from where the last one ended. Settling onto the floor isn't a jump.
+	do
+		local a = JumpAnalyzer.new()
+		local zero = vector.create(0, 0, 0)
+		JumpAnalyzer.tick(a, 0, vector.create(99, 0, -15), zero, true, 0)
+		JumpAnalyzer.clear(a)
+		local settled = nil
+		for i = 1, 20 do
+			settled = JumpAnalyzer.tick(a, i * DT, vector.create(0, if i < 10 then 0.05 else 0, 0), zero, i >= 10, 0) or settled
+		end
+		check("after a respawn, settling onto the floor isn't measured as a jump", settled == nil and #a.history == 0)
+	end
+
 	local fastest = strafeHops(10)
 	check("strafe hops never beat running speed", fastest <= RIFLE + 1e-3, string.format("%.3f m/s", fastest))
 	local gained = strafeHops(10, CS)
