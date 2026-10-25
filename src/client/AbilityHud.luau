@@ -10,6 +10,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
@@ -25,6 +26,9 @@ local AbilityHud = {}
 local DT = 1 / MovementConfig.TickRate.value
 local SLOT_W, SLOT_H, GAP = 54, 54, 4
 local PIP_H, PIP_GAP = 4, 2
+local NAME_W, NAME_H = SLOT_W - 4, 18
+local NAME_FONT = Enum.Font.GothamBold
+local NAME_SIZES = { 9, 8, 7, 6 }
 -- Where the bar's middle is, from the screen's: halfway between CombatHud's
 -- health (to 130 px left of the middle) and ammo (from 110 px right).
 local CENTRE = -10
@@ -59,27 +63,39 @@ local function newSlot(parent: Frame, index: number): Slot
 		Position = UDim2.fromOffset(18, 4),
 		Size = UDim2.fromOffset(SLOT_W - 23, 12),
 	})
-	-- The name on up to two lines, made smaller if a word is too long for
-	-- the slot ("CLOUDBURST").
+	-- The name on up to two lines, at the size nameSize picks for it.
 	local name = Ui.label(frame, {
-		Font = Enum.Font.GothamBold,
-		TextScaled = true,
+		Font = NAME_FONT,
+		TextSize = NAME_SIZES[1],
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Position = UDim2.fromOffset(2, 18),
-		Size = UDim2.fromOffset(SLOT_W - 4, 18),
+		Size = UDim2.fromOffset(NAME_W, NAME_H),
 	})
-	local fit = Instance.new("UITextSizeConstraint")
-	fit.MaxTextSize = 9
-	fit.MinTextSize = 6
-	fit.Parent = name
 	local pipRow = Ui.frame(frame, {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(5, SLOT_H - PIP_H - 7),
 		Size = UDim2.fromOffset(SLOT_W - 10, PIP_H),
 	})
 	return { frame = frame, stroke = stroke, key = key, name = name, note = note, pipRow = pipRow, pips = {} }
+end
+
+-- The largest size at which a name fits its two lines with no word split
+-- across them: TextScaled would rather split one ("CLOUDBURS", "T") than go
+-- smaller.
+local function nameSize(text: string): number
+	local free = Vector2.new(1000, 1000)
+	for _, size in NAME_SIZES do
+		local fits = TextService:GetTextSize(text, size, NAME_FONT, Vector2.new(NAME_W, 1000)).Y <= NAME_H
+		for word in string.gmatch(text, "%S+") do
+			fits = fits and TextService:GetTextSize(word, size, NAME_FONT, free).X < NAME_W
+		end
+		if fits then
+			return size
+		end
+	end
+	return NAME_SIZES[#NAME_SIZES]
 end
 
 -- Sets a slot's pips: `count` of them, the first `lit` lit.
@@ -132,7 +148,11 @@ function AbilityHud.start()
 		for index, slot in slots do
 			local def = AbilitySim.def(kit, index)
 			local playable = def ~= nil and AbilitySim.playable(def.id)
-			slot.name.Text = if def then string.upper(def.name) else ""
+			local text = if def then string.upper(def.name) else ""
+			if slot.name.Text ~= text then
+				slot.name.Text = text
+				slot.name.TextSize = nameSize(text)
+			end
 			slot.name.TextColor3 = if playable then Ui.TEXT else Ui.DIM
 			slot.frame.BackgroundTransparency = if playable then 0.25 else 0.6
 			local lit = false
