@@ -169,6 +169,18 @@ function CombatServer.setShield(entity: Entities.Entity, kind: string, kept: Hea
 	Remotes.get().Combat:FireAllClients(event)
 end
 
+-- Full health and a fresh shield of the kind worn for a living entity
+-- (deathmatch's health packs, system 26), and tells clients.
+function CombatServer.heal(entity: Entities.Entity)
+	if not entity.health.alive then
+		return
+	end
+	Health.heal(entity.health)
+	local event = Entities.vitals(entity)
+	event.kind = "shield"
+	Remotes.get().Combat:FireAllClients(event)
+end
+
 -- The walls a shot met before `distance`, for the shooter's debug tools.
 local function describeWalls(trace: Penetration.Trace, distance: number): { { [string]: any } }
 	local out = {}

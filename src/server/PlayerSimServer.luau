@@ -427,6 +427,19 @@ function PlayerSimServer.holding(player: Player, slot: number): (string?, number
 	return w.loadout[slot], w.equipped
 end
 
+-- Reloads the gun in a living player's hand at once (deathmatch's kills and
+-- health packs, system 26): `most` rounds at the most, or as many as fill
+-- it (WeaponSim.reloadNow).
+function PlayerSimServer.reloadInHand(player: Player, most: number?)
+	local r = records[player]
+	if not r or not r.alive then
+		return
+	end
+	local w = r.sim.weapons
+	WeaponSim.reloadNow(w, w.equipped, most)
+	r.ackDirty = true
+end
+
 -- From the player's next life, a starting kit in place of whatever they
 -- had, as a new match starts: `kit`'s weapons by slot and `shield` ("" for
 -- none), or by default WeaponConfig.DefaultLoadout and DefaultShield.

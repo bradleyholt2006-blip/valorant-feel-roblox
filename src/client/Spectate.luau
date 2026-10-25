@@ -5,10 +5,12 @@
 -- spectating: 'dead players can only watch their teammates in first person',
 -- switching between them with the 'left and right mouse button' (the
 -- Counter-Strike Wiki; community). Anyone not on a side, waiting in line for
--- a place, may watch anyone. After a death, yours or the watched player's,
--- the view stays where it was for a moment, and once nobody you may watch is
--- alive it holds there, as Counter-Strike's cameras stay 'frozen at the last
--- viewed position of the last player'.
+-- a place, may watch anyone; in deathmatch (system 26), where each side is
+-- one player, the dead watch nobody, and are back in a moment. After a
+-- death, yours or the watched player's, the view stays where it was for a
+-- moment, and once nobody you may watch is alive it holds there, as
+-- Counter-Strike's cameras stay 'frozen at the last viewed position of the
+-- last player'.
 --
 -- Near the bottom, who you're watching and when you play: the next round,
 -- or once a place opens; not while the Play menu is open (system 24), with
@@ -50,14 +52,6 @@ local me = Players.LocalPlayer
 local holdUntil = 0
 local held: View? = nil -- the last view drawn, held once nobody's left to watch
 
-local function ordinal(n: number): string
-	local suffix = "th"
-	if n % 100 < 11 or n % 100 > 13 then
-		suffix = if n % 10 == 1 then "st" elseif n % 10 == 2 then "nd" elseif n % 10 == 3 then "rd" else "th"
-	end
-	return tostring(n) .. suffix
-end
-
 -- Who you may watch now, in the order the arena's tiles have them: your
 -- side's living players, or anyone alive if you aren't on a side or have
 -- nothing to look at yet (you joined as your side's last fell).
@@ -94,15 +88,16 @@ local function viewOf(player: Player): View?
 	return { eye = Units.toStuds(pose.position + vector.create(0, eye, 0)), yaw = pose.yaw, pitch = pose.pitch }
 end
 
--- When you play next, as the line under the name says it. Gun game has no
--- rounds: the dead come back in a moment (system 23).
+-- When you play next, as the line under the name says it. Gun game and
+-- deathmatch have no rounds: the dead come back in a moment (systems 23 and
+-- 26).
 local function whenYouPlay(phase: any, mode: any): string
 	local line = me:GetAttribute(ArenaConfig.LINE)
 	if typeof(line) == "number" then
-		return string.format("You're %s in line: you play once a place opens", ordinal(line))
+		return string.format("You're %s in line: you play once a place opens", Ui.ordinal(line))
 	elseif me:GetAttribute(MatchConfig.ALIVE) == true then
 		return "" -- spawning now
-	elseif phase == "waiting" or mode == "gungame" then
+	elseif phase == "waiting" or mode == "gungame" or mode == "deathmatch" then
 		return "You come back in a moment"
 	end
 	return "You play from the next round"

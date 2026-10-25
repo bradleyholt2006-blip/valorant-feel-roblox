@@ -17,7 +17,8 @@
 --     (Jett's: two). A kill with a single Blade Storm knife brings all its
 --     knives back (PlayerSim.killedWith, system 19)
 --   * in gun game (system 23) there are none: every life starts with an
---     empty kit, and nothing fills it
+--     empty kit, and nothing fills it. Nor in deathmatch (system 26), where
+--     the kit is no agent's at all, so Jett's glide is gone too
 -- Each cast is told to every client (the Ability remote) for its sound and
 -- look, when the frame on their screen reaches it, but Blade Storm's knives
 -- drawn again, which others see in hand. The caster's own client has
@@ -51,6 +52,9 @@ AbilityServer.refill = true
 -- Whether there are no abilities at all (gun game, as the reference's
 -- Escalation has 'No Agent-specific abilities').
 AbilityServer.off = false
+-- The agent whose kit every life has: Jett's, or none at all in deathmatch
+-- (AbilityConfig.NO_AGENT), with no passive either.
+AbilityServer.agent = AbilityConfig.DEFAULT_AGENT
 -- How long the course waits, once nothing's under way, before it fills a
 -- kit again (ours).
 AbilityServer.REFILL_DELAY = 1.5
@@ -84,9 +88,12 @@ function AbilityServer.roundStarted(player: Player, kind: "match" | "half" | "ro
 	change(player, if kind == "match" then AbilitySim.reset elseif kind == "half" then AbilitySim.newHalf else AbilitySim.newRound)
 end
 
--- A new kit, as the spike rounds or the course start.
+-- A new kit, as the spike rounds or the course start: the agent's.
 function AbilityServer.reset(player: Player)
-	change(player, AbilitySim.reset)
+	change(player, function(kit)
+		kit.agent = AbilityServer.agent
+		AbilitySim.reset(kit)
+	end)
 end
 
 -- Whether a charge of the ability `id` can be bought into a player's kit.
@@ -161,17 +168,18 @@ function AbilityServer.start()
 		}
 		Remotes.get().Ability:FireAllClients(event)
 	end)
-	-- Every life on the course and in Skirmish starts with every charge,
-	-- and on the course with the ultimate's points full; in gun game, with
-	-- none.
+	-- Every life is the agent's, and on the course and in Skirmish starts
+	-- with every charge, and on the course with the ultimate's points full;
+	-- in gun game and deathmatch, with none.
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
-		if AbilityServer.off then
-			change(player, AbilitySim.empty)
-		elseif not AbilityServer.economy then
-			change(player, function(kit)
+		change(player, function(kit)
+			kit.agent = AbilityServer.agent
+			if AbilityServer.off then
+				AbilitySim.empty(kit)
+			elseif not AbilityServer.economy then
 				AbilitySim.fill(kit, AbilityServer.refill)
-			end)
-		end
+			end
+		end)
 	end)
 	table.insert(CombatServer.killListeners, function(attacker, victim, weapon, mode)
 		local by = if attacker then attacker.player else nil

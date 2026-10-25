@@ -75,6 +75,21 @@
 -- attributes (GunGameConfig), and the match's ladder of guns and who leads
 -- as the arena model's Ladder and Leader.
 --
+-- Deathmatch (system 26, DeathmatchRules) is played on the spike rounds'
+-- maps, with the same vote between matches, everyone for themselves: on no
+-- team, so anyone can hurt anyone, and each a side of their own in the
+-- record. Each life starts wherever DeathmatchSpawns picks, which asks
+-- Roblox what each living player can see (a raycast from eye to eye against
+-- the map's parts), on the guns of the last life (the default kit as a
+-- match starts) and always in Heavy Armor. Every gun is free while alive,
+-- and nothing else is sold (ShopServer.sells); there are no abilities and
+-- no glide (AbilityServer's kits are no agent's), and nothing goes on the
+-- ground. Every kill reloads the gun in the killer's hands, and every death
+-- leaves a health pack (a green cross in Workspace.VFHealthPacks) that heals
+-- whoever walks over it first and reloads their gun. Each player's place
+-- goes to clients as a player attribute (DeathmatchConfig.PLACE), and the
+-- leader as the arena model's Leader.
+--
 -- The Play menu (system 24, ModeServers): with Arena.menuFirst, as on a live
 -- server, nobody joins what's played until they press PLAY for it
 -- (Arena.play, and PlayConfig.PLAYING on the player); until then they're in
@@ -84,9 +99,9 @@
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
 -- off. So do Workspace's attributes, set from the server, which is how
 -- scripted checks do it, and which tell clients what's on: VFArenaOn,
--- VFArenaMode ("skirmish", "gungame" or "spike") and VFMatchFormat (a key of
--- MatchConfig.Formats). The phase and the score go to clients as attributes
--- on the arena's model, whichever is played.
+-- VFArenaMode ("skirmish", "gungame", "deathmatch" or "spike") and
+-- VFMatchFormat (a key of MatchConfig.Formats). The phase and the score go
+-- to clients as attributes on the arena's model, whichever is played.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -95,9 +110,13 @@ local Teams = game:GetService("Teams")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local ArenaRules = require(Shared.Arena.ArenaRules)
+local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
+local DeathmatchRules = require(Shared.Arena.DeathmatchRules)
+local DeathmatchSpawns = require(Shared.Arena.DeathmatchSpawns)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local GunGameRules = require(Shared.Arena.GunGameRules)
 local MapVote = require(Shared.Match.MapVote)
@@ -126,7 +145,7 @@ local Arena = {}
 -- (system 24), rather than as they join the server. ModeServers sets it.
 Arena.menuFirst = false
 
-export type Mode = "skirmish" | "spike" | "gungame"
+export type Mode = "skirmish" | "spike" | "gungame" | "deathmatch"
 
 -- Each side's team and colours: the arena room's floor, its barrier and the
 -- team. In the spike rounds the teams go by their colours, as their spawns
@@ -172,6 +191,9 @@ local ROLE_COLOURS: { [string]: { floor: Color3, barrier: Color3 } } = {
 	attack = { floor = Color3.fromRGB(140, 88, 80), barrier = Color3.fromRGB(255, 120, 90) },
 	defend = { floor = Color3.fromRGB(72, 112, 135), barrier = Color3.fromRGB(90, 200, 255) },
 }
+-- Deathmatch's health packs.
+local PACK_GREEN = Color3.fromRGB(90, 230, 120)
+local PACKS = "VFHealthPacks"
 
 local model: Model? = nil -- the arena's, which carries the state of play
 local barriers: { BasePart } = {} -- the arena's
@@ -183,6 +205,7 @@ local mode: Mode? = nil
 local skirmish: ArenaRules.State? = nil
 local match: MatchRules.State? = nil
 local gun: GunGameRules.State? = nil
+local dm: DeathmatchRules.State? = nil
 local teams: { Team } = {}
 local published = -1
 local queued: { [Player]: boolean } = {} -- spawns asked for and not started yet
@@ -194,6 +217,14 @@ local killedWith: { [Player]: string } = {}
 -- Who's pressed PLAY for what's played here, with Arena.menuFirst (system
 -- 24).
 local chosen: { [Player]: boolean } = {}
+-- Deathmatch's: where each player last fell, in the map's own metres, until
+-- their next life starts; each map's places a life can start, and what sees
+-- what on it, once they're first asked for; and the health packs' models,
+-- by their ids.
+local diedAt: { [Player]: vector } = {}
+local spotsOf: { [string]: { DeathmatchSpawns.Spot } } = {}
+local seeingOn: { [string]: DeathmatchSpawns.Sees } = {}
+local packModels: { [number]: Model } = {}
 -- The round the ground was last cleared for, and in the spike rounds the
 -- spike and the kits were last set for.
 local seenMatch, seenRound = 0, 0
@@ -363,6 +394,7 @@ local RECORD = {
 	ArenaConfig.VOTE,
 	GunGameConfig.LEVEL,
 	GunGameConfig.PROTECTED,
+	DeathmatchConfig.PLACE,
 }
 
 local function playerFor(id: number): Player?
@@ -370,11 +402,13 @@ local function playerFor(id: number): Player?
 end
 
 -- From the player's next life, the starting kit of what's played: Skirmish's
--- (WeaponConfig's default) or the spike rounds' (the Classic and the knife,
--- no shield).
+-- (WeaponConfig's default), the spike rounds' (the Classic and the knife,
+-- no shield) or deathmatch's (Skirmish's, in Heavy Armor).
 local function startingKit(player: Player)
 	if mode == "spike" then
 		PlayerSimServer.resetKit(player, MatchConfig.StartingKit, "")
+	elseif mode == "deathmatch" then
+		PlayerSimServer.resetKit(player, nil, DeathmatchConfig.SHIELD)
 	else
 		PlayerSimServer.resetKit(player)
 	end
@@ -387,8 +421,8 @@ end
 -- takes a moment to load the character, and what they buy meanwhile is held
 -- for the new life (ShopServer).
 local function spawn(ids: { number })
-	local s, m, g = skirmish, match, gun
-	local matchNumber = if s then s.match elseif m then m.match else nil
+	local s, m, g, d = skirmish, match, gun, dm
+	local matchNumber = if s then s.match elseif m then m.match elseif d then d.match else nil
 	for _, id in ids do
 		local player = playerFor(id)
 		if not player then
@@ -433,35 +467,101 @@ local function seat(sides: Roster.Sides?, vote: MapVote.Vote?)
 	end
 end
 
+-- A health pack where it lies (deathmatch): a green cross a little above
+-- the floor, lit, that nothing collides with, hits or queries.
+local function newPack(feet: vector): Model
+	local root = Instance.new("Model")
+	root.Name = "HealthPack"
+	local centre = feet + vector.create(0, 0.45, 0)
+	for i, size in { vector.create(0.5, 0.14, 0.14), vector.create(0.14, 0.5, 0.14), vector.create(0.14, 0.14, 0.5) } do
+		local p = newPart("Cross", size, centre, 0)
+		marking(p)
+		p.Material = Enum.Material.Neon
+		p.Color = PACK_GREEN
+		p.Parent = root
+		if i == 1 then
+			local light = Instance.new("PointLight")
+			light.Color = PACK_GREEN
+			light.Range = 8
+			light.Brightness = 1.5
+			light.Parent = p
+		end
+	end
+	return root
+end
+
+-- The health packs' models as deathmatch has the packs: one for each on the
+-- floor, and none once it's gone.
+local function syncPacks()
+	local d = dm
+	local lying: { [number]: boolean } = {}
+	if d then
+		local origin = SpikeMaps.Maps[d.map].origin
+		for _, pack in d.packs do
+			lying[pack.id] = true
+			if not packModels[pack.id] then
+				local folder = Workspace:FindFirstChild(PACKS)
+				if not folder then
+					folder = Instance.new("Folder")
+					folder.Name = PACKS
+					folder.Parent = Workspace
+				end
+				local made = newPack(origin + pack.position)
+				made.Parent = folder
+				packModels[pack.id] = made
+			end
+		end
+	end
+	for id, made in packModels do
+		if not lying[id] then
+			made:Destroy()
+			packModels[id] = nil
+		end
+	end
+end
+
 -- Tells clients the phase and the score, moves the barriers, and tells the
 -- spike who attacks and whether it can be planted, when they've changed.
 local function publish()
-	local s, m, g = skirmish, match, gun
-	local version = if s then s.version elseif m then m.version elseif g then g.version else -1
+	local s, m, g, d = skirmish, match, gun, dm
+	local version = if s then s.version elseif m then m.version elseif g then g.version elseif d then d.version else -1
 	if version == published then
 		return
 	end
 	published = version
 	local state = s or m
 	-- The maps (systems 22 and 25): the arena's in Skirmish and gun game, and
-	-- the spike rounds' own.
-	local map = if s then s.map elseif g then g.map elseif m then m.map else nil
-	local maps = if s then s.maps elseif g then g.maps elseif m then m.maps else nil
-	local vote = if s then s.vote elseif g then g.vote elseif m then m.vote else nil
+	-- the spike rounds' own in the spike rounds and deathmatch.
+	local map = if s then s.map elseif g then g.map elseif m then m.map elseif d then d.map else nil
+	local maps = if s then s.maps elseif g then g.maps elseif m then m.maps elseif d then d.maps else nil
+	local vote = if s then s.vote elseif g then g.vote elseif m then m.vote elseif d then d.vote else nil
 	local root = model
 	if root then
 		root:SetAttribute("Mode", mode)
-		root:SetAttribute("Phase", if state then state.phase elseif g then g.phase else nil)
+		root:SetAttribute("Phase", if state then state.phase elseif g then g.phase elseif d then d.phase else nil)
 		root:SetAttribute("Round", if state then state.round else nil)
-		-- In gun game, each side's highest level.
+		-- In gun game, each side's highest level; nothing in deathmatch.
 		root:SetAttribute("Score1", if state then state.score[1] elseif g then g.score[1] else nil)
 		root:SetAttribute("Score2", if state then state.score[2] elseif g then g.score[2] else nil)
 		root:SetAttribute("RoundWinner", if state then state.roundWinner else nil)
-		root:SetAttribute("MatchWinner", if state then state.matchWinner elseif g then g.matchWinner else nil)
-		root:SetAttribute("PhaseEndsAt", if state then state.phaseEndsAt elseif g then g.phaseEndsAt else nil)
+		-- In deathmatch, the side of whoever won: theirs alone.
+		root:SetAttribute(
+			"MatchWinner",
+			if state
+				then state.matchWinner
+				elseif g then g.matchWinner
+				elseif d and d.winner then DeathmatchRules.sideOf(d, d.winner)
+				else nil
+		)
+		root:SetAttribute("PhaseEndsAt", if state then state.phaseEndsAt elseif g then g.phaseEndsAt elseif d then d.phaseEndsAt else nil)
 		root:SetAttribute(
 			"WinScore",
-			if m then m.format.winScore.value elseif s then ArenaConfig.Rules.winScore.value elseif g then #g.ladder else nil
+			if m
+				then m.format.winScore.value
+				elseif s then ArenaConfig.Rules.winScore.value
+				elseif g then #g.ladder
+				elseif d then DeathmatchConfig.Rules.killTarget.value
+				else nil
 		)
 		-- The spike rounds' own: the format (a key of MatchConfig.Formats), the
 		-- side attacking, and how the round just played was won.
@@ -479,17 +579,26 @@ local function publish()
 		root:SetAttribute("VoteMaps", if vote then table.concat(vote.options, ",") else nil)
 		root:SetAttribute("Votes", if vote then table.concat(MapVote.tally(vote), ",") else nil)
 		-- Gun game's own (system 23): the match's guns, a level each
-		-- ("vandal,phantom,..."), and whoever's furthest up, or won.
+		-- ("vandal,phantom,..."), and whoever's furthest up, or won; in
+		-- deathmatch whoever leads, or won.
 		root:SetAttribute("Ladder", if g then table.concat(g.ladder, ",") else nil)
-		root:SetAttribute("Leader", if g then g.winner or GunGameRules.leader(g) else nil)
+		root:SetAttribute(
+			"Leader",
+			if g then g.winner or GunGameRules.leader(g) elseif d then d.winner or DeathmatchRules.leader(d) else nil
+		)
 	end
-	if map and not m then
+	if map and (s or g) then
 		showMap(map)
 	end
 	-- Everyone's team and vote, and the record of everyone playing.
-	local sides: Roster.Sides? = if state then state elseif g then g else nil
+	local sides: Roster.Sides? = if state then state elseif g then g elseif d then d else nil
 	seat(sides, vote)
-	local members: { [number]: Roster.Member }? = if s then s.members elseif m then m.members elseif g then g.members else nil
+	local members: { [number]: Roster.Member }? = if s
+		then s.members
+		elseif m then m.members
+		elseif g then g.members
+		elseif d then d.members
+		else nil
 	if members then
 		for id, member in members do
 			local player = playerFor(id)
@@ -507,9 +616,12 @@ local function publish()
 				player:SetAttribute(MatchConfig.START_CREDITS, member.startCredits)
 			elseif g then
 				player:SetAttribute(GunGameConfig.LEVEL, GunGameRules.levelOf(g, id))
+			elseif d then
+				player:SetAttribute(DeathmatchConfig.PLACE, DeathmatchRules.placeOf(d, id))
 			end
 		end
 	end
+	syncPacks()
 	raise(barriers, s ~= nil and ArenaRules.barriersUp(s))
 	for key, raised in mapBarriers do
 		raise(raised, m ~= nil and m.map == key and MatchRules.barriersUp(m))
@@ -561,13 +673,15 @@ end
 local function join(player: Player)
 	local id = player.UserId
 	local ids: { number }
-	local s, m, g = skirmish, match, gun
+	local s, m, g, d = skirmish, match, gun, dm
 	if s then
 		ids = ArenaRules.join(s, id, now())
 	elseif m then
 		ids = MatchRules.join(m, id, now())
 	elseif g then
 		ids = GunGameRules.join(g, id, now())
+	elseif d then
+		ids = DeathmatchRules.join(d, id, now())
 	else
 		return
 	end
@@ -579,13 +693,15 @@ end
 local function leave(player: Player)
 	local id = player.UserId
 	local ids: { number }
-	local s, m, g = skirmish, match, gun
+	local s, m, g, d = skirmish, match, gun, dm
 	if s then
 		ids = ArenaRules.leave(s, id, now())
 	elseif m then
 		ids = MatchRules.leave(m, id, now())
 	elseif g then
 		ids = GunGameRules.leave(g, id, now())
+	elseif d then
+		ids = DeathmatchRules.leave(d, id, now())
 	else
 		return
 	end
@@ -625,7 +741,7 @@ local function stop()
 	if was == nil then
 		return
 	end
-	mode, skirmish, match, gun = nil, nil, nil, nil
+	mode, skirmish, match, gun, dm = nil, nil, nil, nil, nil
 	if was == "spike" then
 		spikeMap = nil
 		SpikeServer.stopRounds()
@@ -642,7 +758,10 @@ local function stop()
 	AbilityServer.economy = false
 	AbilityServer.refill = true
 	AbilityServer.off = false
+	AbilityServer.agent = AbilityConfig.DEFAULT_AGENT
 	table.clear(killedWith)
+	table.clear(diedAt)
+	syncPacks()
 	for _, player in Players:GetPlayers() do
 		AbilityServer.reset(player)
 		player.Team = nil
@@ -667,19 +786,24 @@ local function begin(wanted: Mode, format: string)
 		skirmish = ArenaRules.new()
 	elseif wanted == "gungame" then
 		gun = GunGameRules.new()
+	elseif wanted == "deathmatch" then
+		dm = DeathmatchRules.new()
 	else
 		match = MatchRules.new(format)
 	end
 	table.clear(kitMatch)
 	seenMatch, seenRound = 0, 0
 	GroundGunsServer.clear()
-	for side, info in SIDES do
-		local team = Instance.new("Team")
-		team.Name = if wanted == "spike" then info.colour else info.name
-		team.TeamColor = info.team
-		team.AutoAssignable = false
-		team.Parent = Teams
-		teams[side] = team
+	-- Deathmatch has no teams: everyone can hurt everyone.
+	if wanted ~= "deathmatch" then
+		for side, info in SIDES do
+			local team = Instance.new("Team")
+			team.Name = if wanted == "spike" then info.colour else info.name
+			team.TeamColor = info.team
+			team.AutoAssignable = false
+			team.Parent = Teams
+			teams[side] = team
+		end
 	end
 	if wanted == "spike" then
 		local first = (match :: MatchRules.State).map
@@ -691,8 +815,9 @@ local function begin(wanted: Mode, format: string)
 	end
 	AbilityServer.economy = wanted == "spike"
 	AbilityServer.refill = false
-	AbilityServer.off = wanted == "gungame"
-	GroundGunsServer.drops = wanted ~= "gungame"
+	AbilityServer.off = wanted == "gungame" or wanted == "deathmatch"
+	AbilityServer.agent = if wanted == "deathmatch" then AbilityConfig.NO_AGENT else AbilityConfig.DEFAULT_AGENT
+	GroundGunsServer.drops = wanted ~= "gungame" and wanted ~= "deathmatch"
 	-- The rounds decide when everyone spawns.
 	Players.CharacterAutoLoads = false
 	published = -2
@@ -709,7 +834,7 @@ local function apply()
 	local wanted: Mode? = nil
 	if Workspace:GetAttribute(ArenaConfig.ON) == true then
 		local named = Workspace:GetAttribute(ArenaConfig.MODE)
-		wanted = if named == "spike" then "spike" elseif named == "gungame" then "gungame" else "skirmish"
+		wanted = if named == "spike" or named == "gungame" or named == "deathmatch" then named else "skirmish"
 	end
 	local asked = Workspace:GetAttribute(MatchConfig.FORMAT)
 	local format = if typeof(asked) == "string" and MatchConfig.Formats[asked] then asked else MatchConfig.DEFAULT_FORMAT
@@ -720,11 +845,12 @@ local function apply()
 	stop()
 	if wanted then
 		begin(wanted, format)
-		local m2, s2, g2 = match, skirmish, gun
+		local m2, s2, g2, d2 = match, skirmish, gun, dm
 		local what = if m2
 			then string.format("the spike rounds, %s, on %s", m2.format.name, SpikeMaps.Maps[m2.map].NAME)
 			elseif s2 then ArenaLayout.Maps[s2.map].name
 			elseif g2 then "gun game, " .. ArenaLayout.Maps[g2.map].name
+			elseif d2 then "deathmatch, on " .. SpikeMaps.Maps[d2.map].NAME
 			else "Skirmish"
 		print(string.format("[VF] Arena on: %s", what))
 	else
@@ -789,6 +915,72 @@ local function arm(player: Player)
 	end
 end
 
+-- Reloads the gun in a player's hands at once, as deathmatch does with
+-- each kill and each health pack: the Ares and the Odin 30 rounds at the
+-- most.
+local function reload(player: Player)
+	local _, slot = PlayerSimServer.holding(player, 1)
+	local id = if slot then PlayerSimServer.holding(player, slot) else nil
+	PlayerSimServer.reloadInHand(player, DeathmatchRules.reloadFor(id))
+end
+
+-- Whoever alive stands over a health pack takes it (deathmatch): full health
+-- and a fresh Heavy Armor, and their gun reloaded.
+local function pickUps(d: DeathmatchRules.State, time: number)
+	if #d.packs == 0 then
+		return
+	end
+	local origin = SpikeMaps.Maps[d.map].origin
+	for id, member in d.members do
+		local player = if member.alive then playerFor(id) else nil
+		local sim = if player and PlayerSimServer.isAlive(player) then PlayerSimServer.getSim(player) else nil
+		if player and sim and DeathmatchRules.pickUp(d, id, sim.movement.position - origin, time) then
+			local entity = PlayerSimServer.entityOf(player)
+			if entity then
+				CombatServer.heal(entity)
+			end
+			reload(player)
+		end
+	end
+end
+
+-- A spike map's places a life can start in deathmatch, worked out the first
+-- time they're asked for.
+local function spotsFor(key: string): { DeathmatchSpawns.Spot }
+	local spots = spotsOf[key]
+	if not spots then
+		spots = DeathmatchSpawns.spots(SpikeMaps.Maps[key])
+		spotsOf[key] = spots
+	end
+	return spots
+end
+
+-- What sees what on a spike map, for deathmatch's spawns: whether the eye of
+-- someone standing at one place (in the map's own metres) has a clear line
+-- to the eye of someone standing at another, past the map's walls and
+-- cover. Only the map's parts are in the way: nobody's body, and none of
+-- what queries go through (its markings, its lowered barriers).
+local function seesFor(key: string): DeathmatchSpawns.Sees
+	local sees = seeingOn[key]
+	if sees then
+		return sees
+	end
+	local plan = SpikeMaps.Maps[key]
+	local folder = Workspace:FindFirstChild(MatchConfig.MODEL)
+	local built = if folder then folder:FindFirstChild(plan.NAME) else nil
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = if built then { built } else {}
+	local function clear(a: vector, b: vector): boolean
+		local eye = vector.create(0, Tuning.config().standEyeHeight, 0)
+		local from = Units.toStuds(plan.origin + a + eye)
+		local to = Units.toStuds(plan.origin + b + eye)
+		return Workspace:Raycast(from, to - from, params) == nil
+	end
+	seeingOn[key] = clear
+	return clear
+end
+
 -- Someone has pressed PLAY for what's played here (system 24): they join
 -- it, now if it's on, or as it starts.
 function Arena.play(player: Player)
@@ -799,15 +991,20 @@ end
 
 -- Whether someone is in what's played: on a side, or waiting in line.
 function Arena.has(player: Player): boolean
-	local s, m, g = skirmish, match, gun
-	local sides: Roster.Sides? = if s then s elseif m then m elseif g then g else nil
+	local s, m, g, d = skirmish, match, gun, dm
+	local sides: Roster.Sides? = if s then s elseif m then m elseif g then g elseif d then d else nil
 	return sides ~= nil and (sides.members[player.UserId] ~= nil or Roster.placeInLine(sides, player.UserId) ~= nil)
 end
 
 -- How many are in what's played, on a side (not waiting in line).
 function Arena.playing(): number
-	local s, m, g = skirmish, match, gun
-	local members: { [number]: Roster.Member }? = if s then s.members elseif m then m.members elseif g then g.members else nil
+	local s, m, g, d = skirmish, match, gun, dm
+	local members: { [number]: Roster.Member }? = if s
+		then s.members
+		elseif m then m.members
+		elseif g then g.members
+		elseif d then d.members
+		else nil
 	local n = 0
 	if members then
 		for _ in members do
@@ -820,7 +1017,7 @@ end
 -- The rounds' clock, once a server frame.
 function Arena.step(time: number)
 	local ids: { number }
-	local s, m, g = skirmish, match, gun
+	local s, m, g, d = skirmish, match, gun, dm
 	if s then
 		ids = ArenaRules.step(s, time)
 		publishLoadouts(s.members)
@@ -831,6 +1028,15 @@ function Arena.step(time: number)
 		ids = GunGameRules.step(g, time)
 		publishLoadouts(g.members)
 		publishProtection(g, time)
+	elseif d then
+		local before = d.match
+		ids = DeathmatchRules.step(d, time)
+		if d.match ~= before then
+			-- Where anyone fell last match is no matter now.
+			table.clear(diedAt)
+		end
+		pickUps(d, time)
+		publishLoadouts(d.members)
 	else
 		return
 	end
@@ -858,19 +1064,21 @@ function Arena.start()
 			return
 		end
 		Workspace:SetAttribute(MatchConfig.SKIP, nil)
-		local s, m, g = skirmish, match, gun
+		local s, m, g, d = skirmish, match, gun, dm
 		if s then
 			ArenaRules.skip(s, now())
 		elseif m then
 			MatchRules.skip(m, now())
 		elseif g then
 			GunGameRules.skip(g, now())
+		elseif d then
+			DeathmatchRules.skip(d, now())
 		end
 		publish()
 	end)
 	-- A vote for the next map, by its number in the list.
 	Remotes.get().Vote.OnServerEvent:Connect(function(player, option)
-		local s, m, g = skirmish, match, gun
+		local s, m, g, d = skirmish, match, gun, dm
 		if typeof(option) ~= "number" then
 			return
 		end
@@ -878,13 +1086,15 @@ function Arena.start()
 			then ArenaRules.vote(s, player.UserId, option)
 			elseif g then GunGameRules.vote(g, player.UserId, option)
 			elseif m then MatchRules.vote(m, player.UserId, option)
+			elseif d then DeathmatchRules.vote(d, player.UserId, option)
 			else false
 		if counted then
 			publish()
 		end
 	end)
 	-- P asks for the next of: "skirmish", "gungame", a format of the spike
-	-- rounds, or "off" (true and false are the arena on and off).
+	-- rounds, or "off" (true and false are the arena on and off). It takes
+	-- "deathmatch" too, which P never asks for: the Play menu has it.
 	Remotes.get().Arena.OnServerEvent:Connect(function(player, asked)
 		if not Tuning.canTune(player) then
 			return
@@ -894,8 +1104,8 @@ function Arena.start()
 		elseif asked == true or asked == "skirmish" then
 			Workspace:SetAttribute(ArenaConfig.MODE, "skirmish")
 			Workspace:SetAttribute(ArenaConfig.ON, true)
-		elseif asked == "gungame" then
-			Workspace:SetAttribute(ArenaConfig.MODE, "gungame")
+		elseif asked == "gungame" or asked == "deathmatch" then
+			Workspace:SetAttribute(ArenaConfig.MODE, asked)
 			Workspace:SetAttribute(ArenaConfig.ON, true)
 		elseif typeof(asked) == "string" and MatchConfig.Formats[asked] then
 			Workspace:SetAttribute(MatchConfig.FORMAT, asked)
@@ -906,7 +1116,7 @@ function Arena.start()
 
 	PlayerSimServer.spawnPicker = function(player: Player): PlayerSimServer.SpawnPoint?
 		local id = player.UserId
-		local s, m, g = skirmish, match, gun
+		local s, m, g, d = skirmish, match, gun, dm
 		-- The arena's rooms, in Skirmish and gun game.
 		local sides: Roster.Sides? = if s then s elseif g then g else nil
 		if sides then
@@ -927,11 +1137,25 @@ function Arena.start()
 			local spots = plan.spots(if MatchRules.attacking(m, id) then "attack" else "defend")
 			local chosen = spots[(spot - 1) % #spots + 1]
 			return { feet = plan.origin + chosen.feet, yaw = chosen.yaw }
+		elseif d and d.members[id] then
+			-- Anywhere on the map nobody alive sees (DeathmatchSpawns).
+			local plan = SpikeMaps.Maps[d.map]
+			local enemies = {}
+			for other, member in d.members do
+				local them = if other ~= id and member.alive then playerFor(other) else nil
+				local sim = if them and PlayerSimServer.isAlive(them) then PlayerSimServer.getSim(them) else nil
+				if sim then
+					table.insert(enemies, sim.movement.position - plan.origin)
+				end
+			end
+			local chosen = DeathmatchSpawns.choose(spotsFor(d.map), enemies, diedAt[player], seesFor(d.map), math.random)
+			diedAt[player] = nil
+			return { feet = plan.origin + chosen.feet, yaw = chosen.yaw }
 		end
 		return nil
 	end
 	PlayerSimServer.loadoutRule = function(player: Player): boolean?
-		local s, m, g = skirmish, match, gun
+		local s, m, g, d = skirmish, match, gun, dm
 		if s then
 			return ArenaRules.canPick(s, player.UserId)
 		elseif m then
@@ -939,8 +1163,14 @@ function Arena.start()
 		elseif g then
 			-- Gun game's guns come with its levels.
 			return false
+		elseif d then
+			return DeathmatchRules.canPick(d, player.UserId)
 		end
 		return nil
+	end
+	-- Deathmatch sells its guns alone.
+	ShopServer.sells = function(kind: string): boolean
+		return dm == nil or DeathmatchConfig.FOR_SALE[kind] == true
 	end
 	-- What a purchase costs, in the spike rounds.
 	ShopServer.pay = function(player: Player, amount: number): boolean
@@ -954,7 +1184,7 @@ function Arena.start()
 	end
 	-- Every hit between players goes in the record.
 	table.insert(CombatServer.damageListeners, function(attacker, victim, amount: number)
-		local s, m, g = skirmish, match, gun
+		local s, m, g, d = skirmish, match, gun, dm
 		local by = if attacker then attacker.player else nil
 		local hurt = victim.player
 		if not by or not hurt then
@@ -966,6 +1196,8 @@ function Arena.start()
 			MatchRules.damaged(m, by.UserId, hurt.UserId, amount)
 		elseif g then
 			GunGameRules.damaged(g, by.UserId, hurt.UserId, amount)
+		elseif d then
+			DeathmatchRules.damaged(d, by.UserId, hurt.UserId, amount)
 		end
 	end)
 	-- What each kill was made with, for gun game's knife kills; the kill
@@ -977,7 +1209,7 @@ function Arena.start()
 		end
 	end)
 	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
-		local s, m, g = skirmish, match, gun
+		local s, m, g, d = skirmish, match, gun, dm
 		local weapon = killedWith[player]
 		killedWith[player] = nil
 		if s then
@@ -995,13 +1227,29 @@ function Arena.start()
 				arm(killer)
 			end
 			publish()
+		elseif d then
+			-- A health pack where they fell, on the floor, and the next life
+			-- away from here.
+			local sim = PlayerSimServer.getSim(player)
+			local origin = SpikeMaps.Maps[d.map].origin
+			local feet = if sim then sim.movement.position - origin else nil
+			local floor = if feet then vector.create(feet.x, 0, feet.z) else nil
+			if floor then
+				diedAt[player] = floor
+			end
+			DeathmatchRules.died(d, player.UserId, now(), if killer then killer.UserId else nil, floor)
+			-- Every kill reloads the gun in the killer's hands.
+			if killer then
+				reload(killer)
+			end
+			publish()
 		end
 	end)
-	-- G does nothing in gun game, as its client doesn't send it (ArenaHud);
-	-- should a drop come anyway, the gun goes straight back where it was, as
-	-- it was (GroundGunsServer leaves it off the ground).
+	-- G does nothing in gun game and deathmatch, as their clients don't send
+	-- it (ArenaHud); should a drop come anyway, the gun goes straight back
+	-- where it was, as it was (GroundGunsServer leaves it off the ground).
 	table.insert(PlayerSimServer.dropListeners, function(player: Player, dropped: WeaponSim.Dropped)
-		if gun then
+		if gun or dm then
 			PlayerSimServer.give(player, dropped.slot, dropped.id, dropped.ammo, dropped.reserve)
 		end
 	end)
@@ -1038,6 +1286,7 @@ function Arena.start()
 		loadouts[player] = nil
 		killedWith[player] = nil
 		chosen[player] = nil
+		diedAt[player] = nil
 		leave(player)
 	end)
 

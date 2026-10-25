@@ -158,6 +158,14 @@ Built one system at a time:
     everyone votes for the next, as in Skirmish. The tests check every map the same way: every
     room reached, no sightline from one spawn into the other, barriers that hold each side in, and
     the defenders at each site first - [research and design](docs/research/25-spike-maps.md)
+26. **Deathmatch**: the reference's FFA Deathmatch on the spike rounds' three maps, a sixth mode on
+    the Play menu. Up to 14 play, each for themselves, and the first to 40 kills wins, or whoever
+    has the most after 9 minutes. The dead are back in 1.5 s wherever no enemy sees them or is
+    near, close to the fight and away from where they fell, facing open floor. Every death leaves
+    a health pack for 10 s that heals in full and reloads, and every kill reloads the killer's
+    gun. Every gun is free at any time, every life wears Heavy Armor, and there are no abilities,
+    so no glide. The victory screen shows everyone in their places, then the vote for the next
+    map - [research and design](docs/research/26-deathmatch.md)
 
 ## Running it
 
@@ -176,8 +184,8 @@ Built one system at a time:
    the spike rounds, on three maps of their own with the same vote, P again their shorter
    Swiftplay format, and P again puts everyone back on the course. A live server opens on the
    Play menu, and only once you press PLAY are you in a match; in Studio M opens the menu, where
-   PLAY for another mode switches the server to it, as P does. PLAY's teleports between servers
-   only work once the place is published.
+   PLAY for another mode switches the server to it, as P does. Deathmatch is only on the menu.
+   PLAY's teleports between servers only work once the place is published.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
@@ -185,8 +193,9 @@ Controls: WASD, Shift walk, Ctrl crouch, Space jump, mouse 1 fire, mouse 2 zoom 
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
-during the buy phase and while waiting for an opponent), Tab held the scoreboard (the arena and
-the spike rounds), mouse 1 and 2, while you're down in either, the next or the last teammate to watch,
+during the buy phase and while waiting for an opponent; in deathmatch any time, guns alone), Tab
+held the scoreboard (the arena and the spike rounds), mouse 1 and 2, while you're down in either,
+the next or the last teammate to watch,
 a click on a map card, during the vote after a match, your vote for the next map,
 M the Play menu (a click picks a mode's card, and PLAY plays it),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
@@ -195,7 +204,7 @@ that are left; with a gun drawn, X draws the knives again). Space held in the ai
 Drift). The spike rounds charge credits; the course and the arena are free. On the course a spent
 charge comes back 1.5 s after it's done, and the ultimate's points are full at every life and fill
 again 1.5 s after Blade Storm ends; in the arena every life starts with every charge, and gun
-game has no abilities.
+game and deathmatch have no abilities.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's

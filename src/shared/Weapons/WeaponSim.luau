@@ -282,6 +282,26 @@ function WeaponSim.refill(s: State, slot: number)
 	end
 end
 
+-- A reload of `slot` done at once, between ticks (deathmatch's, system 26,
+-- with each kill and each health pack): its magazine takes as many rounds
+-- from the reserve as it needs, `most` at the most, as a reload would, and
+-- a reload of it under way is over.
+function WeaponSim.reloadNow(s: State, slot: number, most: number?)
+	local id = s.loadout[slot]
+	if id == "" then
+		return
+	end
+	local def = WeaponConfig.get(id)
+	local take = math.min(def.magazine.value - s.ammo[slot], s.reserve[slot], most or math.huge)
+	if take > 0 then
+		s.ammo[slot] += take
+		s.reserve[slot] -= take
+	end
+	if slot == s.equipped then
+		s.reloadEndTime = 0
+	end
+end
+
 -- The ultimate's weapon gone: all thrown, or the ultimate over. If it was
 -- in hand, the slot it came from is drawn, or the first that holds
 -- something.
