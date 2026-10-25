@@ -26,6 +26,11 @@ Built one system at a time:
    colour grading and soft bloom, a subtle vignette, a red outline on enemies (blue on allies) that
    grows with distance, the reference's four enemy colours for colour blindness, and no character
    shadows - [research and design](docs/research/06-visuals.md)
+7. **The arena**: a whitebox of Skirmish A, the reference's small-fight layout, measured from
+   Riot's minimap, played by Skirmish's rules: two sides on Roblox teams, a buy phase held behind
+   each spawn's barrier, rounds that end when a side is wiped out, first to 10, with a score bar
+   and banners, and round restarts that respawn living players cleanly -
+   [research and design](docs/research/07-arena.md)
 
 ## Running it
 
@@ -35,13 +40,18 @@ Built one system at a time:
    built automatically. Look straight ahead from the spawn to face the lane; the wallbang lane is
    to the left. In a place made from the Baseplate template, delete its `Baseplate` and
    `SpawnLocation` first.
-4. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
+4. The arena is built beside the course, off to its right. P turns it on for everyone in the
+   server: you spawn in your side's room and wait there for an opponent, and anyone who joins
+   plays for the other side. P again puts everyone back on the course.
+5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife.
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
+Arena: P turns it on and off (Studio or place owner only). In the arena, the debug keys 4-8
+(below) give anyone a weapon during the buy phase, and while waiting for an opponent.
 Debug: F2 weapon lab, then spray lab and hit reg lab on further presses, F3 HUD (with the next
 shot's cone on the crosshair and the last jump measured; G with the HUD on shows the server
 ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
@@ -58,8 +68,8 @@ setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimP
 ## Tests
 
 The shared simulation (movement, weapons, spread and recoil, hitboxes, wire formats, pose
-history, render clock, move pacing, lag compensation and wall penetration) and the look's maths
-are pure Luau and run outside Roblox:
+history, render clock, move pacing, lag compensation and wall penetration), the look's maths,
+and the arena's rules and map are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
@@ -70,11 +80,12 @@ and how far air strafing bends a jump; fire rate, magazine and time-to-kill per 
 recoil by bullet, and tapping recovery, per weapon; client and server agreement on a strafing
 target through a simulated network; how evenly other players and dummies are drawn, paced and
 not; damage left through walls by class, material and thickness; the vignette across the screen
-and the outline's tint by distance) and runs the test suites. CI
-also type-checks everything with `luau-lsp` and Roblox definitions.
+and the outline's tint by distance; the arena's size and how much of it each spawn can see) and
+runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox definitions.
 
 ## Rules for this project
 
 - No game memory access, no anti-cheat circumvention, no extracted assets.
-- Every gameplay number carries a status: confirmed, community or estimate, with its source.
+- Every gameplay number carries a status: confirmed, community, measured (ours, from a public
+  source) or estimate, with its source.
 - Gameplay is server-authoritative; clients predict.

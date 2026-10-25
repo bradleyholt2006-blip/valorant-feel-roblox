@@ -249,7 +249,10 @@ local function onAck(payload: buffer)
 	local ackSeq, serverSim = PlayerCodec.decodeAck(payload)
 	local stats = PlayerController.stats
 	if ackSeq < stats.lastAckSeq then
-		return -- out of order (unreliable channel)
+		return -- out of order (unreliable channel), or from an earlier life
+	end
+	if ackSeq > seq then
+		return -- from a life the server has started and our new character hasn't reached us yet
 	end
 	stats.lastAckSeq = ackSeq
 	PlayerController.serverSim = serverSim
@@ -381,6 +384,18 @@ local function onCharacter(character: Model)
 	local feet = spawnFeet(character, r)
 	if localPlayer.Character ~= character then
 		return -- a newer character arrived while we waited
+	end
+	-- This life's inputs start where the server says, past anything sent for
+	-- the last one, so acks from before it are old.
+	local firstSeq = character:GetAttribute(CharacterRig.FIRST_SEQ)
+	if typeof(firstSeq) == "number" then
+		seq = firstSeq - 1
+		PlayerController.stats.lastAckSeq = firstSeq - 1
+	end
+	local yaw = character:GetAttribute(CharacterRig.SPAWN_YAW)
+	if typeof(yaw) == "number" then
+		CameraController.yaw = yaw
+		CameraController.pitch = 0
 	end
 	local loadout = if sim then table.clone(sim.weapons.loadout) else nil
 	sim = PlayerSim.new(feet, loadout)

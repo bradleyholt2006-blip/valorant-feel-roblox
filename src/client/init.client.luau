@@ -11,6 +11,7 @@ local Visuals = require(script.Visuals)
 local ClientShots = require(script.Combat.ClientShots)
 local WeaponEffects = require(script.Combat.WeaponEffects)
 local CombatHud = require(script.Combat.CombatHud)
+local ArenaHud = require(script.ArenaHud)
 local DebugHud = require(script.Debug.DebugHud)
 local SpeedGraph = require(script.Debug.SpeedGraph)
 local CounterStrafeLab = require(script.Debug.CounterStrafeLab)
@@ -34,6 +35,8 @@ PlayerController.start()
 ClientShots.start()
 WeaponEffects.start()
 CombatHud.start()
+-- The arena's score and round banners, and P to turn it on or off.
+ArenaHud.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)
@@ -58,8 +61,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
--- Debug weapon give (Studio / place owner only) until there is a buy phase.
--- The weapon goes into its slot with full ammo and is drawn.
+-- Debug weapon give (Studio / place owner only, and anyone in the arena's buy
+-- phase) until there is a buy menu. The weapon goes into its slot with full
+-- ammo and is drawn.
 local giveKeys: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.Four] = "vandal",
 	[Enum.KeyCode.Five] = "phantom",

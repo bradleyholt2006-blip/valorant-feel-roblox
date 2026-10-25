@@ -25,6 +25,12 @@ InputQueue.DRAIN_TARGET = 1 -- inputs a frame may end with without counting as a
 InputQueue.DRAIN_DELAY = 0.25 -- seconds a backlog must stand before it is drained
 InputQueue.CATCH_UP_MAX = 24 -- extra ticks a drain can run before the allowance is spent
 InputQueue.CATCH_UP_RATE = 1 -- extra ticks a second the allowance refills (0.8% of real time)
+-- Seqs from the last input a life ran to the first of the next life. The
+-- client keeps sending for the old life until the new character reaches it,
+-- seconds at most, far fewer than this, so when the server starts a life
+-- while the player is alive (a round restart), the old life's inputs still
+-- on their way all fall below the new start and are dropped.
+InputQueue.LIFE_GAP = 2 ^ 16
 
 export type Queue<T> = {
 	inputs: { T },

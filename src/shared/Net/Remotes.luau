@@ -18,7 +18,8 @@ local definitions: { [string]: string } = {
 	ShotResult = "RemoteEvent", -- server -> shooter, the verdict for each of their shots
 	ShotFx = "UnreliableRemoteEvent", -- server -> others, tracers for someone else's shot
 	Combat = "RemoteEvent", -- server -> all, damage / death / respawn events
-	Loadout = "RemoteEvent", -- client -> server, debug weapon give (Studio / owner only)
+	Loadout = "RemoteEvent", -- client -> server, debug weapon give (Studio / owner only; anyone in the arena's buy phase)
+	Arena = "RemoteEvent", -- client -> server, turn the arena on or off (Studio / owner only)
 }
 
 export type Remotes = {
@@ -30,6 +31,7 @@ export type Remotes = {
 	ShotFx: UnreliableRemoteEvent,
 	Combat: RemoteEvent,
 	Loadout: RemoteEvent,
+	Arena: RemoteEvent,
 }
 
 local cached: Remotes? = nil
