@@ -336,6 +336,7 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or ga.regained ~= sa.regained
 		or ga.kills ~= sa.kills
 		or ga.points ~= sa.points
+		or ga.need ~= sa.need
 		or ga.held ~= sa.held
 		or ga.readyFrom ~= sa.readyFrom
 		or ga.readyUntil ~= sa.readyUntil

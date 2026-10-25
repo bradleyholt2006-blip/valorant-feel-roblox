@@ -36,5 +36,6 @@ require("./gungame")
 require("./play")
 require("./deathmatch")
 require("./teamdeathmatch")
+require("./tdmpickups")
 
 H.finish()

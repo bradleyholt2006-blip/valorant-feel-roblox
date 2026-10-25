@@ -174,6 +174,14 @@ Built one system at a time:
     or until they fire or leave it, and the room burns anyone who stays after that, as the other
     side's does at once. Then the victory screen, `DRAW` for a tie, and the vote for the next map -
     [research and design](docs/research/27-team-deathmatch.md)
+28. **Team Deathmatch's pickups**: four weapon spawners on each map, each with a gun of the stage's
+    at random and limited rounds, lent in place of your loadout's until it's spent or G destroys
+    it; two Recovery Orbs, which mend health and shield over 6 s, leave a zone that mends allies
+    who walk in, and come back after 30 s; and two Ultimate Orbs, up together every so often, worth
+    10 points each. Abilities recharge over time, each at its own rate and kept through a death,
+    and Blade Storm needs 60 points, 3 a kill. The tests hold every pickup out on the floor and
+    about as quick a run from either side's spawn -
+    [research and design](docs/research/28-tdm-pickups.md)
 
 ## Running it
 

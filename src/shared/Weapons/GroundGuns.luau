@@ -6,7 +6,8 @@
 -- wiki). Anyone can pick one up, either side: by walking over it, when its
 -- slot is empty, or with F while looking at it, swapping it for the gun in
 -- that slot, which drops in its place. A gun keeps its rounds on the ground,
--- and the ground is cleared as each round starts.
+-- and the ground is cleared as each round starts. Team Deathmatch's weapon
+-- spawners (system 28) put theirs here too, each marked with its spawner.
 --
 -- Same status convention as MovementConfig (docs/research/15-ground-guns.md).
 -- No Roblox APIs here: the server says where a gun comes to rest.
@@ -28,6 +29,9 @@ export type Gun = {
 	position: vector, -- metres: where it rests on the ground
 	yaw: number, -- the way its muzzle points
 	at: number, -- server time it was dropped
+	-- The weapon spawner it stands on, by its number in the map's list, if
+	-- it's one's (Team Deathmatch, system 28).
+	spawner: number?,
 }
 
 export type State = {
@@ -59,6 +63,7 @@ GroundGuns.MODEL = "VFGroundGuns"
 GroundGuns.WEAPON = "Weapon"
 GroundGuns.AMMO = "Ammo"
 GroundGuns.RESERVE = "Reserve"
+GroundGuns.SPAWNER = "Spawner"
 
 function GroundGuns.new(): State
 	return { guns = {}, nextId = 1, version = 0 }
@@ -86,15 +91,34 @@ function GroundGuns.deathSlot(loadout: { string }): number?
 	return nil
 end
 
--- Puts a gun on the ground. With too many there, the oldest goes.
-function GroundGuns.add(s: State, weapon: string, ammo: number, reserve: number, position: vector, yaw: number, at: number): Gun
-	local gun = { id = s.nextId, weapon = weapon, ammo = ammo, reserve = reserve, position = position, yaw = yaw, at = at }
+-- Puts a gun on the ground, on the weapon spawner `spawner` if it's one's.
+-- With too many there, the oldest dropped goes: never a spawner's.
+function GroundGuns.add(
+	s: State,
+	weapon: string,
+	ammo: number,
+	reserve: number,
+	position: vector,
+	yaw: number,
+	at: number,
+	spawner: number?
+): Gun
+	local gun: Gun = {
+		id = s.nextId,
+		weapon = weapon,
+		ammo = ammo,
+		reserve = reserve,
+		position = position,
+		yaw = yaw,
+		at = at,
+		spawner = spawner,
+	}
 	s.nextId += 1
 	s.guns[gun.id] = gun
 	local count, oldest = 0, nil :: number?
-	for id in s.guns do
+	for id, other in s.guns do
 		count += 1
-		if oldest == nil or id < oldest then
+		if other.spawner == nil and (oldest == nil or id < oldest) then
 			oldest = id
 		end
 	end

@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-seven
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-eight
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,7 +28,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, section 25 three and then one, and sections 26 to 31 two.
+   one and then two, section 25 three and then one, sections 26 to 31 two, and section 32 two
+   or three.
 
 | Key | What it does |
 | --- | --- |
@@ -36,7 +37,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F3 | HUD panel (on at the start in Studio, off on a live server) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
-| G | Drops the gun or the spike in hand (not in gun game or either deathmatch); with the knife in hand and the HUD on, the ghost box where the server has you |
+| G | Drops the gun or the spike in hand (not in gun game or either deathmatch, but for a Team Deathmatch spawner's gun, which it destroys); with the knife in hand and the HUD on, the ghost box where the server has you |
 | F | Picks up the gun on the ground you're looking at, swapping it for yours |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
@@ -1673,6 +1674,64 @@ Start a Local Server with 2 players, as in section 9. Both start on the course.
   times with no kills: the match starts, runs through its stages and ends level, and both windows
   read `DRAW` in white. **Send:** a screenshot of window 1.
 
+## 32. Team Deathmatch's pickups
+
+From [28-tdm-pickups.md](research/28-tdm-pickups.md). A quick play of what changed, with two
+players, or three for the zone in TP4. Section 5 of the research doc has where each map's pickups
+stand. On Outpost the spawners are at A choke, at B choke and either side of the block in the
+middle of mid, the Recovery Orbs at the sites' fronts by the chokes, and the Ultimate Orbs near the
+ends of A main and B main. `VFMatchSkip`, as in section 31, ends the pre-game and then moves the
+match on a stage at a time.
+
+Start a Local Server with 2 players, as in section 9, and start Team Deathmatch from the Play menu
+as in TD1.
+
+- **TP1 The pre-game.** While `MATCH STARTS IN` counts down, the Explorer's Workspace has
+  `VFPickups`, with `SpawnerPad1` to `SpawnerPad4`, a `SpawnerRing` for each, `RecoveryOrb1` and
+  `RecoveryOrb2`, `UltimateOrb1` and `UltimateOrb2`, and a `Mark` for each orb. The rings are dim
+  grey, nothing lies on the pads, and the orbs are see-through. On the ability bar E's pip is lit
+  and C's and Q's are dark, C counting down in its top right corner from about 15 and Q from about
+  22, dimmed; X reads `0/60` with ten pips. As C's count reaches 0 its first pip lights, and it
+  counts from 29 to the second. In window 1, press B and pick STINGER for stage 2.
+- **TP2 A spawner's gun.** Run `VFMatchSkip` once. Every ring lights white with a gun on its pad,
+  a Shorty, a Sheriff or a Stinger, and both green orbs glow over their marks; the gold ones stay
+  see-through. Player 1 runs out to a pad. A Stinger is taken by walking over it, into slot 1,
+  which the first stage leaves empty. A Shorty or a Sheriff isn't, as slot 2 has your sidearm:
+  look at it and the prompt reads `F  SWAP FOR SHORTY` or `F  SWAP FOR SHERIFF`; press F and it's
+  in your hands in the sidearm's place, and the sidearm isn't left on the pad. Either way the ring
+  dims, the line under the bar adds `G back to your loadout`, and player 1's `VFLent` reads
+  `stinger,`, `,shorty` or `,sheriff`. **Send:** a screenshot of a lit pad with its gun.
+- **TP3 G, and running out.** With the lent gun in hand, press G: it's gone, with nothing on the
+  ground, `G back to your loadout` goes with it, you hold your loadout's guns as before, and
+  `VFLent` is unset. Thirty seconds after the take the ring lights again, with another gun of the
+  stage's on the pad. Take a Shorty or a Sheriff, the quickest to empty, and fire it until it's
+  empty, magazine and reserve: as its last round goes, your sidearm is back in its place.
+- **TP4 A Recovery Orb.** Player 2 shoots player 1 two or three times and player 1 shoots player 2
+  once, neither killing the other. Player 1 runs over a green orb: it goes out, a green glow 6 m
+  across lies on the floor where it was, and player 1's health and shield climb back evenly to
+  their most over 6 s (with the Classic, 100 and 25). Player 2 walks into the glow while it lasts:
+  nothing mends them, as it's the other side's. The glow goes 6 s after the take, and the orb is
+  back 30 s after it. With a third player on player 1's side (a Local Server with 3 players), hurt
+  them too and have them walk into the glow within its 6 s: they're mended the same way, once.
+- **TP5 Ultimate Orbs.** Thirty seconds after the match went live, both gold orbs light up
+  together. Player 1 runs over one: it goes out, and the ability bar's X reads `10/60` with one pip
+  lit. Player 1 kills player 2: `13/60`, two pips lit, and player 2's X stays at `0/60`. The other
+  gold orb stays up until it's taken, and 60 s after they first came up both are up again.
+- **TP6 Abilities through a death.** Player 1 throws a cloud with C: a pip goes dark, and C counts
+  down from 29; at 0 the pip lights again. Player 1 throws another, lifts with Q (counting from
+  44), and dies, to player 2 or to their room's burn. The next life has the same pips lit, and
+  the counts carry on where they were. **Send:** a screenshot of the ability bar just after the
+  respawn.
+- **TP7 A new stage.** Player 1 takes a Stinger from a pad, waiting for one if none has it, and
+  fires 10 rounds out of their room. Run `VFMatchSkip`: stage 2. Every pad has one of stage 2's
+  guns at once, a Bucky, a Spectre, a Bulldog or a Marshal, the empty ones too. Player 1's Stinger
+  stays in their hands, with `G back to your loadout`, until `NEW LOADOUT IN` runs out; then it's
+  stage 2's own Stinger, full, 20 in the magazine and 60 in reserve, and `VFLent` is unset.
+- **TP8 The end, and the next match.** Run `VFMatchSkip` until the match ends: every ring dims
+  with nothing on its pad, the orbs go out, and `VFLent` is unset on both players. After the vote,
+  in the next pre-game on the map voted for, its pads are dim and empty, and both kits start over:
+  E's pip lit, C and Q dark and counting down from about 15 and 22, and X at `0/60`.
+
 ## Results
 
 ```
@@ -1782,6 +1841,14 @@ TD5 player 2 a force field: yes / no; their label stayed at 100 + 25: yes / no; 
 TD6 the Stinger in hand ___ s into the stage, drawn by itself: yes / no; player 2's Sheriff at once: yes / no
 TD7 window 2's title: ___; MATCH MVP on ___
 TD8 the next map: ___; the drawn match's title: ___
+TP1 anything missing from VFPickups: ___; C's count started at ___, Q's at ___
+TP2 the first pad's gun: ___, taken by walking over / with F; the sidearm left on the pad: yes / no
+TP3 anything left on the ground by G: yes / no; the pad's next gun ___ s after the take; spent, the sidearm back: yes / no
+TP4 before the orb: health ___, shield ___; 6 s after: health ___, shield ___; player 2 mended: yes / no; the ally mended: yes / no / not tried; the orb back ___ s after
+TP5 the gold orbs up ___ s into the match; X after the orb ___, after the kill ___
+TP6 C's pip back ___ s after the throw; the counts carried over the death: yes / no
+TP7 the stage-2 guns on the pads: ___; the Stinger after the handover: magazine ___, reserve ___
+TP8 the next pre-game's counts: C ___, Q ___; X ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1953,3 +2020,10 @@ Didn't look right (IDs and what you saw):
 | 27 | A respawn is a force field to others and can't be hurt until it fires or leaves the room | TD3, TD5 |
 | 27 | Staying in your room 15 s, or going into the other side's, burns, with the HUD's warning, and a death there reads `SPAWN ROOM` in the kill feed | TD4, TD5 |
 | 27 | A match's end: `VICTORY` and `DEFEAT`, or `DRAW` for a tie, then the vote of the spike rounds' maps, and the next pre-game on the winner | TD7, TD8 |
+| 28 | The pads, rings and orbs on each map, out on the floor, none in a wall or a spawn room | TP1, TP2, TP8 |
+| 28 | A spawner's gun walked over into an empty slot, or taken with F in place of the gun in its slot, without the old gun going down; the ring dims, and 30 s later another gun lies on it | TP2, TP3 |
+| 28 | G with a lent gun in hand destroys it, and the loadout's gun is back; so does spending it | TP3 |
+| 28 | A Recovery Orb taken mends over 6 s, and an ally who walks into its zone is mended too | TP4 |
+| 28 | The Ultimate Orbs up 30 s into the match, 10 points each on the ability bar's X | TP5 |
+| 28 | The abilities as a match starts, their countdowns, and their charges kept through a death | TP1, TP6, TP8 |
+| 28 | A new stage's guns on every spawner, and its loadout in place of a gun lent in the last | TP7 |

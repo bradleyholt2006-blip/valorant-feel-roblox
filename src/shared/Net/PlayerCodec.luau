@@ -159,7 +159,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 5 + 8 * 6 -- the ability kit
+	+ 1 + 3 + 6 + 8 * 6 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -236,6 +236,7 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, math.clamp(a.regained, 0, 255))
 	w8(c, math.clamp(a.kills, 0, 255))
 	w8(c, math.clamp(a.points, 0, 255))
+	w8(c, math.clamp(a.need, 0, 255))
 	-- The kit's keys, a bit a slot (their buttons are the input's top four).
 	w8(c, bit32.rshift(a.held, 12))
 	w8(c, if a.storm then 1 else 0)
@@ -359,6 +360,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local regained = r8(c)
 	local kills = r8(c)
 	local points = r8(c)
+	local need = r8(c)
 	local held = bit32.lshift(r8(c), 12)
 	local storm = r8(c) ~= 0
 	local readyFrom = rf64(c)
@@ -373,6 +375,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		regained = regained,
 		kills = kills,
 		points = points,
+		need = need,
 		held = held,
 		readyFrom = readyFrom,
 		readyUntil = readyUntil,

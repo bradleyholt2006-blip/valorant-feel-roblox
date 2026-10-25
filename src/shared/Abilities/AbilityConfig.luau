@@ -12,7 +12,9 @@
 -- buy phase. E is the signature, with a free charge every round. X is the
 -- ultimate, cast once its points are full: a point for each kill, death,
 -- plant, defuse and ultimate orb. An agent can also have a passive, which
--- takes no slot or key of its own: Jett's Drift (system 20).
+-- takes no slot or key of its own: Jett's Drift (system 20). Team Deathmatch
+-- has a kit of its own (system 28): abilities that recharge over time, and
+-- ultimates that cost more, from kills and Ultimate Orbs.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -64,6 +66,10 @@ AbilityConfig.KEYS = { "C", "Q", "E", "X" }
 -- The player attribute the server keeps each kit in, as AbilitySim.summary
 -- writes it.
 AbilityConfig.KIT_ATTRIBUTE = "VFKit"
+-- And the one it keeps each kit's recharge in, where abilities recharge
+-- over time (system 28): when C, Q and E each next has a charge back, in
+-- server time, 0 for none coming ("0,812.5,0").
+AbilityConfig.RECHARGE_ATTRIBUTE = "VFRecharge"
 
 local SHACKNEWS = "Shacknews' default key bindings"
 AbilityConfig.KeySources = {
@@ -83,6 +89,50 @@ AbilityConfig.Points = {
 	defuse = p(1, "community", GFINITY .. ": 'Defusing the spike will get you one Ultimate Point'"),
 	orb = p(1, "community", GFINITY .. ": 'Collecting an Ultimate Orb will get you one Ultimate Point'"),
 }
+
+-- A mode's own kit (system 28): what a kill, a death and an Ultimate Orb are
+-- worth in ultimate points, what each ultimate needs, by its id, and how
+-- long each ability takes to bring a spent charge back, by its id; and what
+-- each match starts with: the signature's full charges, and every charge
+-- short of its most that far towards coming back, a share of its time.
+export type ModeKit = {
+	kill: Param,
+	death: Param,
+	orb: Param,
+	ultimate: { [string]: Param },
+	cooldowns: { [string]: Param },
+	signatureStart: Param,
+	headStart: Param,
+}
+
+local TDM_WIKI = "VALORANT Wiki (Weird Gloop), 'Team Deathmatch'"
+
+-- Team Deathmatch's, as the VALORANT Wiki has it: 'After casting abilities,
+-- they will recharge over time, with recharge rates varying depending on
+-- the type of ability.' A charge at a time, and charges kept through a
+-- death, are ours: the wiki and Riot ('Abilities will recharge over time
+-- once depleted') say neither.
+AbilityConfig.TeamDeathmatch = {
+	kill = p(3, "community", TDM_WIKI .. ": 'points gained from kills (3 points)'"),
+	death = p(0, "estimate", "Ours: " .. TDM_WIKI .. " has a mode's points come from kills and Ultimate Orbs alone"),
+	orb = p(10, "community", TDM_WIKI .. ": an Ultimate Orb 'Grants 10 points towards the player's ultimate charge'"),
+	ultimate = {
+		bladestorm = p(60, "community", TDM_WIKI .. "'s ultimate costs: Jett's Blade Storm, 60 points"),
+	},
+	cooldowns = {
+		cloudburst = p(29, "community", TDM_WIKI .. "'s cooldowns: Jett's Cloudburst, 29 s"),
+		updraft = p(44, "community", TDM_WIKI .. "'s cooldowns: Jett's Updraft, 44 s"),
+		tailwind = p(44, "community", TDM_WIKI .. "'s cooldowns: Jett's Tailwind, 44 s"),
+	},
+	signatureStart = p(1, "community", TDM_WIKI .. ": 'Most agents start the match with one full charge of their signature ability'"),
+	headStart = p(
+		0.5,
+		"community",
+		TDM_WIKI
+			.. ": '(plus 50% progress on the next charge if their signature has more than one charge available) and 50%"
+			.. " progress towards the first charge of their basic abilities.'"
+	),
+} :: ModeKit
 
 local P704 = "Patch 7.04"
 local P300 = "Patch 3.0"

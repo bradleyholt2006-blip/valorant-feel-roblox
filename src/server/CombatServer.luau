@@ -194,6 +194,18 @@ function CombatServer.heal(entity: Entities.Entity)
 	Remotes.get().Combat:FireAllClients(event)
 end
 
+-- Some health and shield back for a living entity, each up to its most
+-- (Team Deathmatch's Recovery Orbs, system 28), and tells clients if it
+-- changed.
+function CombatServer.mend(entity: Entities.Entity, health: number, shield: number)
+	if not Health.mend(entity.health, health, shield) then
+		return
+	end
+	local event = Entities.vitals(entity)
+	event.kind = "shield"
+	Remotes.get().Combat:FireAllClients(event)
+end
+
 -- The walls a shot met before `distance`, for the shooter's debug tools.
 local function describeWalls(trace: Penetration.Trace, distance: number): { { [string]: any } }
 	local out = {}

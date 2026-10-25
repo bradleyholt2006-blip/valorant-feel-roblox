@@ -221,12 +221,12 @@ function PlayerSim.step(
 end
 
 -- A kill this player made with `weapon`, fired in `mode` (a shot's, nil for
--- a swing), applied by the server between ticks: the kit's point and the
--- signature's count (AbilitySim.killed), and for a single Blade Storm knife
--- all the knives back (system 19); its burst's kills bring none back
--- (Patch 3.06).
-function PlayerSim.killedWith(s: State, weapon: string, mode: string?)
-	AbilitySim.killed(s.abilities)
+-- a swing), applied by the server between ticks: the kit's point, or the
+-- mode's `points`, and the signature's count (AbilitySim.killed), and for a
+-- single Blade Storm knife all the knives back (system 19); its burst's
+-- kills bring none back (Patch 3.06).
+function PlayerSim.killedWith(s: State, weapon: string, mode: string?, points: number?)
+	AbilitySim.killed(s.abilities, points)
 	if mode == "hip" and weapon ~= "" and s.weapons.loadout[WeaponSim.ULT] == weapon then
 		WeaponSim.refill(s.weapons, WeaponSim.ULT)
 	end
