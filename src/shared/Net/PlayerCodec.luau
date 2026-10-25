@@ -302,10 +302,16 @@ export type Pose = {
 	crouchAlpha: number,
 	grounded: boolean,
 	alive: boolean,
+	-- For the sound others hear (system 8): walking or crouching, so their
+	-- steps make no sound; reloading; and the weapon in hand, by its
+	-- WeaponConfig index (0 for none).
+	quiet: boolean,
+	reloading: boolean,
+	weapon: number,
 }
 
 local SNAP_HEADER = 8 + 2 + 1 -- server time, sequence number, pose count
-local SNAP_ENTRY = 4 + 12 + 2 + 2 + 1 + 1
+local SNAP_ENTRY = 4 + 12 + 2 + 2 + 1 + 1 + 1
 PlayerCodec.SNAPSHOT_HEADER = SNAP_HEADER
 PlayerCodec.SNAPSHOT_ENTRY = SNAP_ENTRY
 
@@ -338,6 +344,9 @@ function PlayerCodec.quantizePose(pose: Pose): Pose
 		crouchAlpha = math.floor(math.clamp(pose.crouchAlpha, 0, 1) * 255 + 0.5) / 255,
 		grounded = pose.grounded,
 		alive = pose.alive,
+		quiet = pose.quiet,
+		reloading = pose.reloading,
+		weapon = pose.weapon,
 	}
 end
 
@@ -356,7 +365,8 @@ function PlayerCodec.encodeSnapshot(serverTime: number, poses: { Pose }, seq: nu
 		w16(c, packAngle(pose.yaw))
 		wi16(c, packPitch(pose.pitch))
 		w8(c, math.floor(math.clamp(pose.crouchAlpha, 0, 1) * 255 + 0.5))
-		w8(c, (if pose.grounded then 1 else 0) + (if pose.alive then 2 else 0))
+		w8(c, (if pose.grounded then 1 else 0) + (if pose.alive then 2 else 0) + (if pose.quiet then 4 else 0) + (if pose.reloading then 8 else 0))
+		w8(c, pose.weapon)
 	end
 	return c.b
 end
@@ -378,6 +388,7 @@ function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose }, number)
 		local pitch = ri16(c) / 10000
 		local crouchAlpha = r8(c) / 255
 		local flags = r8(c)
+		local weapon = r8(c)
 		table.insert(poses, {
 			id = id,
 			position = position,
@@ -386,6 +397,9 @@ function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose }, number)
 			crouchAlpha = crouchAlpha,
 			grounded = bit32.band(flags, 1) ~= 0,
 			alive = bit32.band(flags, 2) ~= 0,
+			quiet = bit32.band(flags, 4) ~= 0,
+			reloading = bit32.band(flags, 8) ~= 0,
+			weapon = weapon,
 		})
 	end
 	return serverTime, poses, seq

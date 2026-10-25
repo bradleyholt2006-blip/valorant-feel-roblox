@@ -5,6 +5,7 @@
 local MovementConfig = require("../src/shared/Movement/MovementConfig")
 local PlayerSim = require("../src/shared/PlayerSim")
 local WeaponSim = require("../src/shared/Weapons/WeaponSim")
+local WeaponConfig = require("../src/shared/Weapons/WeaponConfig")
 local PlayerCodec = require("../src/shared/Net/PlayerCodec")
 local InputQueue = require("../src/shared/Net/InputQueue")
 local FakeWorld = require("./FakeWorld")
@@ -146,14 +147,37 @@ end
 
 do
 	local poses: { PlayerCodec.Pose } = {
-		{ id = PlayerCodec.DUMMY_BASE + 3, position = vector.create(1.23456, 0.5, -30.987), yaw = math.pi, pitch = -0.3, crouchAlpha = 0.37, grounded = true, alive = true },
-		{ id = PlayerCodec.entityIdForUser(123456789012), position = vector.create(-5, 2, 7), yaw = 7.5, pitch = 0.1, crouchAlpha = 1, grounded = false, alive = true },
+		{
+			id = PlayerCodec.DUMMY_BASE + 3,
+			position = vector.create(1.23456, 0.5, -30.987),
+			yaw = math.pi,
+			pitch = -0.3,
+			crouchAlpha = 0.37,
+			grounded = true,
+			alive = true,
+			quiet = false,
+			reloading = true,
+			weapon = WeaponConfig.IndexOf.vandal,
+		},
+		{
+			id = PlayerCodec.entityIdForUser(123456789012),
+			position = vector.create(-5, 2, 7),
+			yaw = 7.5,
+			pitch = 0.1,
+			crouchAlpha = 1,
+			grounded = false,
+			alive = true,
+			quiet = true,
+			reloading = false,
+			weapon = 0,
+		},
 	}
 	local time, decoded = PlayerCodec.decodeSnapshot(PlayerCodec.encodeSnapshot(987.25, poses))
 	local ok = time == 987.25 and #decoded == 2
 	for i, d in decoded do
 		local q = PlayerCodec.quantizePose(poses[i])
 		ok = ok and d.id == poses[i].id and d.position == q.position and d.yaw == q.yaw and d.pitch == q.pitch and d.crouchAlpha == q.crouchAlpha and d.grounded == q.grounded
+		ok = ok and d.alive == q.alive and d.quiet == q.quiet and d.reloading == q.reloading and d.weapon == q.weapon
 	end
 	check("snapshots decode to exactly the quantised poses the server keeps", ok)
 	check("snapshot rounding stays under a millimetre", near(decoded[1].position.x, 1.23456, 1e-3) and near(decoded[1].position.z, -30.987, 1e-3))

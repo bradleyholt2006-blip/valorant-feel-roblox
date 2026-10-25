@@ -31,6 +31,12 @@ Built one system at a time:
    each spawn's barrier, rounds that end when a side is wiped out, first to 10, with a score bar
    and banners, and round restarts that respawn living players cleanly -
    [research and design](docs/research/07-arena.md)
+8. **Sound**: running footsteps heard by others out to a flat 20 m edge, never walking or
+   crouching ones; landings heard unless they come up onto something higher; gunshots from where
+   they were fired, dulled by distance and muffled through walls; reloads played in parts as
+   they go, draws and dry fire; hit, headshot and kill sounds; nothing from the other side in the
+   buy phase. The sounds are Pro Sound Effects' recordings from the Creator Store's free library -
+   [research and design](docs/research/08-sound.md)
 
 ## Running it
 
@@ -52,7 +58,7 @@ Look: V turns it off and on again (lighting, vignette and outlines), to compare 
 own lighting; N cycles the enemy outline colour.
 Arena: P turns it on and off (Studio or place owner only). In the arena, the debug keys 4-8
 (below) give anyone a weapon during the buy phase, and while waiting for an opponent.
-Debug: F2 weapon lab, then spray lab and hit reg lab on further presses, F3 HUD (with the next
+Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (with the next
 shot's cone on the crosshair and the last jump measured; G with the HUD on shows the server
 ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
 CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot, 4-8 give
@@ -61,15 +67,20 @@ alone because Studio takes them for Start and Run.
 In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, B Network Buffering,
 K rewind cap 140 / 200 / 0 ms (0 is no lag compensation); its motion line measures how evenly the
 player or dummy nearest the crosshair moves.
+In the sound lab: `[` / `]` footstep radius (this client only), Y practice dummies' footsteps
+(off by default), H the rings sounds draw on the floor, Backspace clears its log.
 Scripted playtests (Studio only): a tool that can press keys but can't move the mouse aims by
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
 `VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
+`VFTestMute` on the local player silences the game's sound while the sound lab's meters still
+read.
 
 ## Tests
 
 The shared simulation (movement, weapons, spread and recoil, hitboxes, wire formats, pose
 history, render clock, move pacing, lag compensation and wall penetration), the look's maths,
-and the arena's rules and map are pure Luau and run outside Roblox:
+the arena's rules and map, and the sound's rules (footsteps, landings, distance curves, walls in
+the way, reload parts) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
@@ -80,8 +91,9 @@ and how far air strafing bends a jump; fire rate, magazine and time-to-kill per 
 recoil by bullet, and tapping recovery, per weapon; client and server agreement on a strafing
 target through a simulated network; how evenly other players and dummies are drawn, paced and
 not; damage left through walls by class, material and thickness; the vignette across the screen
-and the outline's tint by distance; the arena's size and how much of it each spawn can see) and
-runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox definitions.
+and the outline's tint by distance; the arena's size and how much of it each spawn can see; the
+footstep curve, steps per second by weapon, and the filters for walls and distance) and runs the
+test suites. CI also type-checks everything with `luau-lsp` and Roblox definitions.
 
 ## Rules for this project
 

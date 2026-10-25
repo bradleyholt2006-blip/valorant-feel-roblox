@@ -12,6 +12,7 @@ local ClientShots = require(script.Combat.ClientShots)
 local WeaponEffects = require(script.Combat.WeaponEffects)
 local CombatHud = require(script.Combat.CombatHud)
 local ArenaHud = require(script.ArenaHud)
+local GameSounds = require(script.Audio.GameSounds)
 local DebugHud = require(script.Debug.DebugHud)
 local SpeedGraph = require(script.Debug.SpeedGraph)
 local CounterStrafeLab = require(script.Debug.CounterStrafeLab)
@@ -19,6 +20,7 @@ local Recorder = require(script.Debug.Recorder)
 local WeaponLab = require(script.Debug.WeaponLab)
 local SprayLab = require(script.Debug.SprayLab)
 local HitRegLab = require(script.Debug.HitRegLab)
+local SoundLab = require(script.Debug.SoundLab)
 local HitboxOverlay = require(script.Debug.HitboxOverlay)
 local TestAim = require(script.Debug.TestAim)
 
@@ -37,6 +39,8 @@ WeaponEffects.start()
 CombatHud.start()
 -- The arena's score and round banners, and P to turn it on or off.
 ArenaHud.start()
+-- Footsteps, landings, gunshots, reloads, draws and hit sounds.
+GameSounds.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)
@@ -45,12 +49,13 @@ Recorder.start(PlayerController)
 WeaponLab.start(PlayerController)
 SprayLab.start(PlayerController)
 HitRegLab.start(PlayerController)
+SoundLab.start(PlayerController)
 HitboxOverlay.start()
 -- Studio only: aim set by attributes, for scripted playtests.
 TestAim.start(PlayerController)
 
--- F2 pages through the labs: Weapon Lab, Spray Lab, Hit Reg Lab, off.
-local labs = { WeaponLab, SprayLab, HitRegLab }
+-- F2 pages through the labs: Weapon Lab, Spray Lab, Hit Reg Lab, Sound Lab, off.
+local labs = { WeaponLab, SprayLab, HitRegLab, SoundLab }
 local labPage = 0
 UserInputService.InputBegan:Connect(function(input, processed)
 	if not processed and input.KeyCode == Enum.KeyCode.F2 then

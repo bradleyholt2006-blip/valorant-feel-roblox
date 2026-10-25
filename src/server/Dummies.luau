@@ -24,6 +24,8 @@ local PlayerCodec = require(Shared.Net.PlayerCodec)
 local MovePacer = require(Shared.Net.MovePacer)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
+local WeaponSim = require(Shared.Weapons.WeaponSim)
+local StepTracker = require(Shared.Audio.StepTracker)
 
 local Entities = require(script.Parent.Entities)
 local Tuning = require(script.Parent.Tuning)
@@ -67,7 +69,7 @@ end
 
 -- The dummy's pose as the simulation has it now.
 local function currentPose(d: Dummy): PlayerCodec.Pose
-	local m = d.sim.movement
+	local m, w = d.sim.movement, d.sim.weapons
 	return {
 		id = d.entity.id,
 		position = m.position,
@@ -76,6 +78,9 @@ local function currentPose(d: Dummy): PlayerCodec.Pose
 		crouchAlpha = m.crouchAlpha,
 		grounded = m.grounded,
 		alive = true,
+		quiet = StepTracker.isQuiet(buttonsFor(d), m.crouched),
+		reloading = WeaponSim.isReloading(w),
+		weapon = WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 	}
 end
 

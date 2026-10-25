@@ -56,7 +56,18 @@ H.section("Pacing tests")
 
 -- An entity moving at 5.4 m/s along x: its pose at a time on its timeline.
 local function poseAt(time: number): PlayerCodec.Pose
-	return { id = 9, position = vector.create(time * 5.4, 0, -10), yaw = 0, pitch = 0, crouchAlpha = 0, grounded = true, alive = true }
+	return {
+		id = 9,
+		position = vector.create(time * 5.4, 0, -10),
+		yaw = 0,
+		pitch = 0,
+		crouchAlpha = 0,
+		grounded = true,
+		alive = true,
+		quiet = false,
+		reloading = false,
+		weapon = 0,
+	}
 end
 
 type Frame = { now: number, shown: number, newest: number, x: number }
@@ -277,7 +288,18 @@ local HALF = 2 -- seconds each way
 local PLAYER, PACED_PLAYER, DUMMY, PACED_DUMMY = 1, 2, 3, 4
 
 local function pose(id: number, m: any): PlayerCodec.Pose
-	return { id = id, position = m.position, yaw = math.pi, pitch = 0, crouchAlpha = m.crouchAlpha, grounded = m.grounded, alive = true }
+	return {
+		id = id,
+		position = m.position,
+		yaw = math.pi,
+		pitch = 0,
+		crouchAlpha = m.crouchAlpha,
+		grounded = m.grounded,
+		alive = true,
+		quiet = false,
+		reloading = false,
+		weapon = 0,
+	}
 end
 
 local function watch(case: Case): Watch

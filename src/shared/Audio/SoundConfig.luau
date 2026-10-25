@@ -1,0 +1,290 @@
+--!strict
+-- Sound (system 8): who hears what, how far, how walls change it, and the
+-- sounds themselves. Same status convention as ArenaLayout:
+--   "confirmed" - stated by Riot (patch notes, dev blog, a developer's post)
+--   "community" - published by a wiki, guide or community measurement
+--   "estimate"  - ours; to be tuned (docs/research/08-sound.md)
+--   "measured"  - ours, measured from a public source (here, the waveforms
+--                 of the Roblox library sounds we play)
+--
+-- Riot publishes the aims and rules of its sound, not its numbers. Its audio
+-- director: "We optimize for making sure footsteps are heard, as opposed to
+-- optimizing for portraying distance", on "an attenuation curve that is
+-- somewhat flat, versus one that drops off a lot over distance" (Ask VALORANT
+-- #6). And what a player does is either heard by enemies or not, which the
+-- community has listed. So the rules are confirmed or community, and the
+-- distances and volumes that carry them out are estimates.
+--
+-- The sounds are Pro Sound Effects' recordings in the Creator Store's free
+-- library (Roblox added over 100,000 of them in 2022, free to use in any
+-- experience), picked by name and checked by their waveforms: where each
+-- one starts and how loud it peaks. None is the reference's.
+--
+-- Distances are metres, volumes 0-1 before each sound's own volume. No
+-- requires, so it runs in Studio and in the offline tests.
+
+export type Status = "confirmed" | "community" | "estimate" | "measured"
+export type Param = { value: number, status: Status, source: string }
+-- Volume by distance: straight lines between { metres, volume } points, and
+-- flat past the last one, as Roblox's AudioEmitter draws a custom curve.
+export type Curve = { points: { { number } }, status: Status, source: string }
+
+-- One sound: the library assets it picks from (one per play, in turn), how
+-- loud, its pitch and how much that varies from play to play, and how many
+-- can play at once before the oldest is cut.
+export type Asset = {
+	id: number,
+	title: string, -- its name on the Creator Store
+	peak: number, -- its loudest sample, 0-1 (measured), which evens it out (Level)
+	start: number, -- seconds of quiet at its start that are skipped (measured)
+}
+export type Sound = {
+	assets: { Asset },
+	volume: number,
+	pitch: number, -- playback speed: below 1 is lower and heavier
+	pitchJitter: number, -- each play's speed varies by +- this, at random
+	voices: number,
+	source: string,
+}
+-- A part of a reload (a magazine out, a magazine in, a bolt), played when
+-- the reload is this far through, 0-1 of the weapon's reload time.
+export type Cue = { at: number, sound: string }
+
+local function p(value: number, status: Status, source: string): Param
+	return { value = value, status = status, source = source }
+end
+
+local function curve(points: { { number } }, status: Status, source: string): Curve
+	return { points = points, status = status, source = source }
+end
+
+local SoundConfig = {}
+
+-- Footsteps -------------------------------------------------------------------
+
+-- Running is heard; walking (Shift) and crouching are not (community: the
+-- r/VALORANT beta breakdown by RoyGallant, via Dexerto and MeinMMO; the
+-- in-game walk key's whole purpose). Footsteps play by distance covered on
+-- the ground, a step each stride.
+SoundConfig.Footsteps = {
+	radius = p(
+		20,
+		"estimate",
+		"Riot (Ask VALORANT #6): 'The footstep radius is set up to give players who hear enemy footsteps time to use an ability and re-equip a weapon before they are in danger'. About 1.75 s of that (a rifle's 1.0 s equip and an ability) at rifle running speed (5.40 m/s) is 9.5 m, plus a 10 m fight"
+	),
+	stride = p(1.8, "estimate", "Metres between steps: three a second at rifle running speed, about a runner's cadence"),
+	firstStep = p(1.2, "estimate", "Metres of a stride counted as already covered when a player sets off from standing, so their first step comes 0.6 m on"),
+	idleTime = p(0.15, "estimate", "Seconds without moving that count as standing"),
+	teleport = p(2, "estimate", "Metres between two samples that count as a respawn or a correction, not as walking"),
+	-- Your own steps are quieter than others', so they don't cover anyone
+	-- else's: footsteps are for hearing enemies.
+	ownVolume = p(0.35, "estimate", "Your own steps against an enemy's next to you"),
+}
+
+-- Landing after a jump or a fall. Heard when you land on the level you left
+-- or lower; jumping up onto a higher surface, a crate, is silent (community,
+-- RoyGallant via Dexerto and MeinMMO). Jumping itself is not heard by others.
+SoundConfig.Landing = {
+	minFall = p(0.3, "estimate", "Metres fallen from the highest point in the air a landing needs to be heard"),
+	maxRise = p(0.1, "estimate", "Metres above where it left the ground a landing can be and still be heard"),
+	ownVolume = p(0.55, "estimate", "Your own landing against an enemy's next to you"),
+}
+
+-- Distance curves --------------------------------------------------------------
+
+SoundConfig.Curves = {
+	-- Flat, as Riot describes it, and cut at the radius: 'Anyone outside of
+	-- this white circle can't hear you' (ONE Esports on the minimap's sound
+	-- circle), faded over the last metre so it doesn't click.
+	footstep = curve(
+		{ { 0, 1 }, { 2, 1 }, { 10, 0.8 }, { 19, 0.5 }, { 20, 0 } },
+		"estimate",
+		"Riot: 'an attenuation curve that is somewhat flat' (Ask VALORANT #6); a player found 'little if any sound drop-off' to the edge of the range (Dexerto)"
+	),
+	-- Reloads show on the minimap's sound circle too (Patch 1.0: 'ability
+	-- sounds, reloads, spike interactions and more'), so they have an edge.
+	reload = curve({ { 0, 1 }, { 2, 1 }, { 8, 0.7 }, { 14, 0.45 }, { 15, 0 } }, "estimate", "Quieter and shorter than footsteps; no published radius"),
+	-- Gunfire carries across a map.
+	gunshot = curve(
+		{ { 0, 1 }, { 5, 1 }, { 30, 0.6 }, { 80, 0.3 }, { 150, 0.15 }, { 200, 0 } },
+		"estimate",
+		"Heard map-wide; louder up close than footsteps' flat curve, since a shot says where it came from"
+	),
+	-- The Phantom's built-in suppressor: 'hard to hear' (community: MeinMMO,
+	-- after RoyGallant).
+	suppressed = curve({ { 0, 1 }, { 4, 1 }, { 20, 0.5 }, { 50, 0.2 }, { 70, 0 } }, "estimate", "A suppressed shot carries a third as far as a rifle's"),
+}
+
+-- Walls -------------------------------------------------------------------------
+
+-- Sound through walls is filtered: Riot's audio director names occlusion,
+-- 'filtering change based on objects between the emitter and the listener'
+-- (Ask VALORANT, Apr 12). Ours casts from your camera to the sound through
+-- the level and filters by how much is in the way.
+SoundConfig.Occlusion = {
+	thin = p(0.2, "estimate", "Metres of wall that are 'thin'"),
+	thick = p(2, "estimate", "Metres of wall that are 'thick'"),
+	thinCutoff = p(1500, "estimate", "Hz: a low-pass this low through a thin wall"),
+	thickCutoff = p(500, "estimate", "Hz: and this low through a thick one, in between by the log of the thickness"),
+	thinGain = p(0.7, "estimate", "Volume through a thin wall"),
+	thickGain = p(0.35, "estimate", "Volume through a thick wall"),
+	maxPieces = p(4, "estimate", "Pieces of the level the cast passes through at most"),
+}
+
+-- Gunshots lose their top end with distance, as the air takes it.
+SoundConfig.Air = {
+	near = p(10, "estimate", "Metres before a gunshot starts to dull"),
+	far = p(150, "estimate", "Metres by which it is at the far cutoff"),
+	farCutoff = p(4000, "estimate", "Hz: a low-pass this low at the far distance, in between by the log of the distance"),
+}
+
+-- Mixing ------------------------------------------------------------------------
+
+SoundConfig.OPEN_CUTOFF = 20000 -- Hz: the filter's frequency when nothing is in the way
+
+-- Every asset is turned up or down to the same peak before its sound's own
+-- volume, so no take is louder than the next and the volumes below compare
+-- sounds, not recordings.
+SoundConfig.Level = p(0.5, "estimate", "Peak every asset is evened out to, leaving room for sounds that overlap")
+SoundConfig.MaxGain = p(4, "estimate", "Most an asset is turned up to reach it (12 dB), so a quiet take's noise stays down")
+
+-- During the buy phase you can't hear the other side (community: Tracker
+-- Network, 'Which sounds can your enemies hear').
+SoundConfig.MuteEnemiesInBuyPhase = true
+
+-- Kills in a life step each kill sound up in pitch, like the reference's
+-- kill sounds, which change with each kill in a round.
+SoundConfig.KillPitchStep = p(0.06, "estimate", "Playback speed added per kill after the first, up to the fifth")
+
+-- The sounds ---------------------------------------------------------------------
+
+local LIBRARY = "Pro Sound Effects, in the Creator Store's free library"
+
+local function sound(volume: number, pitchJitter: number, voices: number, assets: { Asset }, pitch: number?): Sound
+	return { assets = assets, volume = volume, pitch = pitch or 1, pitchJitter = pitchJitter, voices = voices, source = LIBRARY }
+end
+
+local function asset(id: number, title: string, peak: number, start: number?): Asset
+	return { id = id, title = title, peak = peak, start = start or 0 }
+end
+
+local function cue(at: number, sound: string): Cue
+	return { at = at, sound = sound }
+end
+
+-- Picked by title and by Pro Sound Effects' own description of each
+-- recording, and measured from their waveforms in Studio (peak, and where
+-- the sound starts: docs/research/08-sound.md, section 6). Volumes and
+-- pitches are estimates, to be set by ear. All courtesy of Pro Sound
+-- Effects.
+SoundConfig.Sounds = {
+	-- Feet. No single footstep on a hard floor turned up, so steps are foot
+	-- stomps, and a landing is the same stomps lower and heavier.
+	step = sound(0.8, 0.06, 6, {
+		asset(9114523345, "Foot Stomp 3 (SFX)", 0.26),
+		asset(9114523358, "Foot Stomp 4 (SFX)", 0.30),
+		asset(9114523612, "Foot Stomp 6 (SFX)", 0.55),
+		asset(9114523629, "Foot Stomp 7 (SFX)", 0.21),
+	}),
+	land = sound(1, 0.04, 3, {
+		asset(9114523612, "Foot Stomp 6 (SFX)", 0.55),
+		asset(9114523358, "Foot Stomp 4 (SFX)", 0.30),
+	}, 0.82),
+	softLand = sound(0.45, 0.04, 2, {
+		asset(9114523345, "Foot Stomp 3 (SFX)", 0.26),
+		asset(9114523629, "Foot Stomp 7 (SFX)", 0.21),
+	}, 0.9),
+	jump = sound(1, 0.05, 2, {
+		asset(9116199047, "Knife Wipe Fast Swipes On Trousers 4 (SFX)", 0.03),
+	}),
+	-- Shots. The library has an assault rifle and a big sniper rifle; the
+	-- Phantom's suppressed rifle is a suppressed pistol.
+	rifle = sound(1, 0.02, 10, {
+		asset(9114550557, "Galil Assault Rifle 1 (SFX)", 0.77),
+	}),
+	suppressed = sound(0.7, 0.03, 10, {
+		asset(9119135215, "Silenced Pistol 1 (SFX)", 0.73),
+		asset(9119134567, "Silenced Pistol 5 (SFX)", 0.75),
+		asset(9119135228, "Silenced Pistol 3 (SFX)", 0.75),
+		asset(9119134978, "Silenced Pistol 7 (SFX)", 0.75),
+	}),
+	sniper = sound(1, 0.01, 3, {
+		asset(9118174271, "Rifle Single Shots 7 (SFX)", 0.54),
+		asset(9118174539, "Rifle Single Shots 8 (SFX)", 0.53),
+	}),
+	revolver = sound(1, 0.02, 4, {
+		asset(9119296692, "Smith Wesson 357 Magnum 2 (SFX)", 0.47),
+		asset(9119296944, "Smith Wesson 357 Magnum 4 (SFX)", 0.51),
+		asset(9119297250, "Smith Wesson 357 Magnum 8 (SFX)", 0.53),
+	}),
+	-- A .45 magnum pistol, raised a little to sound lighter: the library's
+	-- 9 mm pistol shots are all silenced.
+	pistol = sound(0.85, 0.03, 6, {
+		asset(9117400585, "Pistol Single Shots 2 (SFX)", 0.54),
+	}, 1.08),
+	dry = sound(0.6, 0.02, 2, {
+		asset(9117029050, "Moviola Toggle Switch Single Clicks Sharp 14 (SFX)", 0.38),
+		asset(9120102194, "Toggle Switch Metal Industrial Equipment 10 (SFX)", 0.31, 0.02),
+	}),
+	-- Reload parts (SoundConfig.Weapons puts them in order)
+	magOut = sound(0.7, 0.03, 3, {
+		asset(9113104176, "Ammo Magazine 1 (SFX)", 0.68, 0.04),
+	}),
+	magIn = sound(0.8, 0.03, 3, {
+		asset(9113104517, "Ammo Magazine 2 (SFX)", 0.72, 0.22),
+	}),
+	rack = sound(0.8, 0.03, 3, {
+		asset(9117889191, "Ppsh Burp Gun 7 (SFX)", 0.23, 1.7),
+	}),
+	boltOpen = sound(0.8, 0.03, 2, {
+		asset(9113027869, "470 Rifle 1 (SFX)", 0.14, 0.27),
+		asset(9113027964, "470 Rifle 3 (SFX)", 0.33, 0.63),
+	}),
+	latch = sound(0.7, 0.03, 2, {
+		asset(9116722545, "Metal Latches 1 (SFX)", 0.47),
+	}, 1.15),
+	-- Draws
+	drawRifle = sound(0.6, 0.03, 2, {
+		asset(9116362481, "Machine Gun Movement 2 (SFX)", 0.60, 0.08),
+	}),
+	drawPistol = sound(0.6, 0.03, 2, {
+		asset(9114701864, "Gun From Holster 1 (SFX)", 0.72, 0.05),
+	}),
+	knife = sound(0.7, 0.03, 2, {
+		asset(9116190984, "Knife Fast Scraping Draws Pull Out 1 (SFX)", 0.10),
+		asset(9116190959, "Knife Fast Scraping Draws Pull Out 17 (SFX)", 0.19, 0.2),
+	}),
+	-- Hits
+	hitBody = sound(0.6, 0.03, 4, {
+		asset(9113518281, "Body Hits Thuds 1 (SFX)", 0.48),
+		asset(9113518286, "Body Hits Thuds 2 (SFX)", 0.68),
+		asset(9113518280, "Body Hits Thuds 3 (SFX)", 0.51),
+		asset(9113518397, "Body Hits Thuds 4 (SFX)", 0.63),
+	}),
+	headshot = sound(0.8, 0.02, 3, {
+		asset(9125362418, "Anvil Hits Ringing Metal Clinks Some Muted 3 (SFX)", 0.42),
+	}),
+	kill = sound(0.8, 0, 2, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.13, 0.09),
+	}),
+}
+
+-- Which sounds each weapon makes, by WeaponConfig id. Reloads play in parts
+-- as they go, at fractions of the weapon's reload time (estimates: Riot
+-- publishes how long a reload takes, not when its parts sound). The last
+-- part's recording is skipped to just before its click, so the click comes
+-- on its time, before the reload ends.
+local MAGAZINE = { cue(0.12, "magOut"), cue(0.55, "magIn"), cue(0.82, "rack") }
+local BOLT = { cue(0.08, "boltOpen"), cue(0.5, "magIn"), cue(0.82, "rack") }
+local CYLINDER = { cue(0.1, "latch"), cue(0.5, "magIn"), cue(0.82, "latch") }
+
+SoundConfig.Weapons = {
+	vandal = { shot = "rifle", reload = MAGAZINE, draw = "drawRifle", curve = "gunshot" },
+	phantom = { shot = "suppressed", reload = MAGAZINE, draw = "drawRifle", curve = "suppressed" },
+	operator = { shot = "sniper", reload = BOLT, draw = "drawRifle", curve = "gunshot" },
+	sheriff = { shot = "revolver", reload = CYLINDER, draw = "drawPistol", curve = "gunshot" },
+	classic = { shot = "pistol", reload = MAGAZINE, draw = "drawPistol", curve = "gunshot" },
+	knife = { shot = nil, reload = nil, draw = "knife", curve = "gunshot" },
+} :: { [string]: { shot: string?, reload: { Cue }?, draw: string, curve: string } }
+
+return SoundConfig
