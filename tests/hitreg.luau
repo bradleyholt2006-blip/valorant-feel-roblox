@@ -207,6 +207,27 @@ do
 		string.format("most %.1f ms, starved %s", joined.maxDelay * 1000, pct(joined.starved, joined.frames))
 	)
 
+	-- As measured in Studio: the 2 s held back come over 0.6 s, and the
+	-- next 2 s in clumps a fifth of a second apart, catching up as they go.
+	-- Entities hold their poses between the clumps; once they stop, the
+	-- delay is measured.
+	local function loadingLatency(sent: number): number
+		if sent < 2 then
+			return 2 - 0.7 * sent
+		elseif sent < 4 then
+			local behind = 0.3 * (4 - sent)
+			return math.ceil((sent + behind) / 0.2) * 0.2 - sent + 0.04
+		end
+		return 0.04
+	end
+	local loading = clockStats(InterpClock.new(), 9, loadingLatency, 2, 9)
+	local loaded = clockStats(InterpClock.new(), 9, loadingLatency, 5, 9)
+	check(
+		"nor does one whose snapshots come in clumps for 2 s more while it finishes loading",
+		loading.maxDelay < 0.035 and loaded.delay < 2 / 60 and loaded.starved / loaded.frames < 0.02,
+		string.format("most %.1f ms, then %.1f ms, starved %s", loading.maxDelay * 1000, loaded.delay * 1000, pct(loaded.starved, loaded.frames))
+	)
+
 	local stall = clockStats(InterpClock.new(), 8, function()
 		return 0.04
 	end, 5, 8, function(now)
