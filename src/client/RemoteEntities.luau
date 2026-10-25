@@ -63,12 +63,28 @@ RemoteEntities.buffering = 1
 RemoteEntities.stats = { snapshots = 0, lost = 0, late = 0 }
 local lastSeq: number? = nil
 
--- Last known health per entity, from combat events.
-RemoteEntities.health = {} :: { [number]: { health: number, shield: number } }
+-- What combat events say of an entity's health: its shield's kind as
+-- `armor` (a WeaponConfig.Shields id, or "") and a Regen Shield's pool left.
+export type Vitals = { health: number, shield: number, armor: string, pool: number }
 
--- Health for display: entities we have no event for yet are at full spawn health.
-function RemoteEntities.healthOf(id: number): { health: number, shield: number }
-	return RemoteEntities.health[id] or { health = WeaponConfig.Health.maxHealth.value, shield = WeaponConfig.Health.heavyShield.value }
+-- Last known health per entity, from combat events.
+RemoteEntities.health = {} :: { [number]: Vitals }
+
+-- Health for display: entities we have no event for yet are at full spawn
+-- health, in the shield everyone starts in.
+function RemoteEntities.healthOf(id: number): Vitals
+	local known = RemoteEntities.health[id]
+	if known then
+		return known
+	end
+	local kind = WeaponConfig.DefaultShield
+	return { health = WeaponConfig.Health.maxHealth.value, shield = WeaponConfig.Shields[kind].points.value, armor = kind, pool = 0 }
+end
+
+-- Whole points for display: a split hit leaves fractions, and anything left
+-- counts as a point.
+function RemoteEntities.points(value: number): number
+	return math.ceil(value - 1e-9)
 end
 
 local DUMMY_COLORS: { [string]: Color3 } = {
@@ -371,7 +387,7 @@ local function onRender()
 				part.Color = if (visual.flashUntil[region] or 0) > now then FLASH_COLOR else visual.colors[region]
 			end
 			local hp = RemoteEntities.healthOf(id)
-			local health = string.format("%d + %d", hp.health, hp.shield)
+			local health = string.format("%d + %d", RemoteEntities.points(hp.health), RemoteEntities.points(hp.shield))
 			visual.label.Text = if player then player.DisplayName .. "  " .. health else health
 		end
 		-- Keep the hidden character where the blocks are, for anything that
@@ -401,8 +417,13 @@ function RemoteEntities.start()
 	local remotes = Remotes.get()
 	NetSim.on(remotes.Snapshot, onSnapshot)
 	NetSim.on(remotes.Combat, function(event: any)
-		if typeof(event) == "table" and (event.kind == "damage" or event.kind == "spawn") then
-			RemoteEntities.health[event.target] = { health = event.health, shield = event.shield }
+		if typeof(event) == "table" and (event.kind == "damage" or event.kind == "spawn" or event.kind == "shield") then
+			RemoteEntities.health[event.target] = {
+				health = tonumber(event.health) or 0,
+				shield = tonumber(event.shield) or 0,
+				armor = if typeof(event.armor) == "string" then event.armor else "",
+				pool = tonumber(event.pool) or 0,
+			}
 		end
 	end)
 	RunService:BindToRenderStep("VFRemoteEntities", Enum.RenderPriority.Camera.Value + 2, onRender)

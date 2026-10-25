@@ -92,7 +92,9 @@ local function spawnDummy(d: Dummy)
 	MovePacer.reset(d.pacer)
 	d.shown = nil
 	Health.reset(d.entity.health)
-	Remotes.get().Combat:FireAllClients({ kind = "spawn", target = d.entity.id, health = d.entity.health.health, shield = d.entity.health.shield })
+	local event = Entities.vitals(d.entity)
+	event.kind = "spawn"
+	Remotes.get().Combat:FireAllClients(event)
 end
 
 local function addDummy(index: number, feet: vector, mode: string)
@@ -103,7 +105,7 @@ local function addDummy(index: number, feet: vector, mode: string)
 		kind = "dummy",
 		name = string.format("Dummy %d (%s)", index, mode),
 		player = nil,
-		health = Health.new(hp.maxHealth.value, hp.heavyShield.value),
+		health = Health.new(hp.maxHealth.value, WeaponConfig.DefaultShield),
 		sim = nil,
 		pose = function(): PlayerCodec.Pose?
 			if not d.alive then

@@ -31,6 +31,7 @@ export type State = {
 	members: { [number]: Member },
 	joins: number,
 	score: { number }, -- by side
+	match: number, -- counts the matches, from 1, so the server knows a new one has started
 	round: number, -- the round being played, or just played (0 before the first)
 	phaseEndsAt: number, -- buy, roundOver and matchOver: when the next phase starts
 	roundWinner: number?, -- the side that won the round just played
@@ -48,6 +49,7 @@ function ArenaRules.new(): State
 		members = {},
 		joins = 0,
 		score = { 0, 0 },
+		match = 1,
 		round = 0,
 		phaseEndsAt = 0,
 		roundWinner = nil,
@@ -73,6 +75,7 @@ end
 
 local function newMatch(s: State)
 	s.score = { 0, 0 }
+	s.match += 1
 	s.round = 0
 	s.matchWinner = nil
 end
@@ -242,9 +245,9 @@ function ArenaRules.barriersUp(s: State): boolean
 	return s.phase == "buy"
 end
 
--- Whether someone may pick a weapon now (the debug keys, until there's a buy
--- menu): in the buy phase, as in the reference, and any time while there's
--- nobody to play against.
+-- Whether someone may buy now (the buy menu, and the debug keys): in the buy
+-- phase, as in the reference, and any time while there's nobody to play
+-- against.
 function ArenaRules.canPick(s: State, id: number): boolean
 	return s.members[id] ~= nil and (s.phase == "buy" or s.phase == "waiting")
 end

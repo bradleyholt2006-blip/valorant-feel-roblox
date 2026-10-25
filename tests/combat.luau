@@ -82,18 +82,18 @@ do
 end
 
 do
-	local hp = Health.new(100, 50)
+	local hp = Health.new(100, "heavy")
 	local r1 = Health.apply(hp, 40)
-	check("shields absorb damage first", r1.shieldDamage == 40 and hp.health == 100 and hp.shield == 10)
+	check("Heavy Armor takes 66% of a hit and health the rest", near(r1.shieldDamage, 26.4, 1e-9) and near(hp.shield, 23.6, 1e-9) and near(hp.health, 86.4, 1e-9))
 	local r2 = Health.apply(hp, 40)
-	check("damage spills from shield into health", r2.shieldDamage == 10 and r2.healthDamage == 30 and hp.health == 70)
+	check("what's left of the shield takes what it can, health the rest", near(r2.shieldDamage, 23.6, 1e-9) and hp.shield == 0 and near(hp.health, 70, 1e-9))
 	Health.apply(hp, 40)
 	local r4 = Health.apply(hp, 40)
-	check("fourth Vandal body shot kills 150 HP", r4.killed and not hp.alive and r4.damage == 30)
+	check("fourth Vandal body shot kills 150 HP", r4.killed and not hp.alive and near(r4.damage, 30, 1e-9))
 	local r5 = Health.apply(hp, 40)
 	check("no damage after death", r5.damage == 0 and not r5.killed)
 	Health.reset(hp)
-	check("reset restores health and shields", hp.alive and hp.health == 100 and hp.shield == 50)
+	check("reset restores health and shields", hp.alive and hp.health == 100 and hp.shield == 50 and hp.kind == "heavy")
 	local one = Health.apply(hp, 160)
 	check("Vandal headshot kills through heavy shields", one.killed and one.damage == 150)
 end

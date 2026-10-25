@@ -67,6 +67,7 @@ type Record = {
 	droppedInputs: number,
 	pacer: MovePacer.Pacer, -- the pose after each move, at the move's time
 	shown: PlayerCodec.Pose?, -- what this frame's snapshot shows
+	freshKit: boolean, -- the next life starts on the starting kit
 }
 
 -- Called with the bullets of each round a player fires (several for a
@@ -84,6 +85,8 @@ PlayerSimServer.spawnPicker = nil :: ((Player) -> SpawnPoint?)?
 PlayerSimServer.loadoutRule = nil :: ((Player) -> boolean?)?
 -- Called when a player dies.
 PlayerSimServer.deathListeners = {} :: { (Player) -> () }
+-- Called when a player's new life starts.
+PlayerSimServer.spawnListeners = {} :: { (Player) -> () }
 
 local records: { [Player]: Record } = {}
 local world = RobloxWorld.new()
@@ -92,8 +95,10 @@ local onShot: ShotHandler = function() end
 -- so its prediction draws the same bullets the server does.
 local seeds = Random.new()
 
+-- A life keeps the last one's weapons, unless it starts on the starting kit.
 local function newSim(r: Record): PlayerSim.State
-	return PlayerSim.new(r.spawnFeet, table.clone(r.sim.weapons.loadout), seeds:NextInteger(0, 2 ^ 31 - 1))
+	local loadout = if r.freshKit then nil else table.clone(r.sim.weapons.loadout)
+	return PlayerSim.new(r.spawnFeet, loadout, seeds:NextInteger(0, 2 ^ 31 - 1))
 end
 
 local function setupCollisionGroup()
@@ -173,6 +178,10 @@ local function onCharacter(r: Record, character: Model)
 	r.ackDirty = true
 	r.alive = true
 	restartPacing(r)
+	if r.freshKit then
+		Health.setShield(r.entity.health, WeaponConfig.DefaultShield)
+		r.freshKit = false
+	end
 	Health.reset(r.entity.health)
 	r.entity.sim = r.sim
 
@@ -185,7 +194,12 @@ local function onCharacter(r: Record, character: Model)
 	humanoid.BreakJointsOnDeath = false
 	root.Anchored = true
 	placeRoot(r)
-	Remotes.get().Combat:FireAllClients({ kind = "spawn", target = r.entity.id, health = r.entity.health.health, shield = r.entity.health.shield })
+	local event = Entities.vitals(r.entity)
+	event.kind = "spawn"
+	Remotes.get().Combat:FireAllClients(event)
+	for _, listener in PlayerSimServer.spawnListeners do
+		listener(r.player)
+	end
 end
 
 local function onPlayerAdded(player: Player)
@@ -196,7 +210,7 @@ local function onPlayerAdded(player: Player)
 		kind = "player",
 		name = player.Name,
 		player = player,
-		health = Health.new(hp.maxHealth.value, hp.heavyShield.value),
+		health = Health.new(hp.maxHealth.value, WeaponConfig.DefaultShield),
 		sim = nil,
 		pose = function(): PlayerCodec.Pose?
 			if not r.root or not r.alive then
@@ -235,6 +249,7 @@ local function onPlayerAdded(player: Player)
 		droppedInputs = 0,
 		pacer = MovePacer.new(),
 		shown = nil,
+		freshKit = false,
 	}
 	records[player] = r
 	Entities.add(entity)
@@ -267,8 +282,8 @@ local function onInput(player: Player, payload: any)
 	end
 end
 
--- Debug loadout changes (Studio / place owner), until there is a buy menu;
--- in the arena, its buy phase decides.
+-- Debug loadout changes, 4 to 8 (Studio / place owner); in the arena, its
+-- buy phase decides. The buy menu is ShopServer's.
 local function onLoadout(player: Player, slot: any, id: any)
 	local r = records[player]
 	if not r or typeof(slot) ~= "number" or typeof(id) ~= "string" then
@@ -282,12 +297,50 @@ local function onLoadout(player: Player, slot: any, id: any)
 	if not allowed then
 		return
 	end
+	PlayerSimServer.give(player, slot, id)
+end
+
+-- Puts a weapon in one of a player's slots with full ammo, drawn if it's the
+-- slot in hand (the debug give and the buy menu). Returns whether it did.
+function PlayerSimServer.give(player: Player, slot: number, id: string): boolean
+	local r = records[player]
 	local def = WeaponConfig.Defs[id]
-	if not def or def.slot ~= slot then
-		return
+	if not r or not def or def.slot ~= slot then
+		return false
 	end
 	WeaponSim.give(r.sim.weapons, slot, id, r.sim.movement.tick * DT)
 	r.ackDirty = true
+	return true
+end
+
+-- The weapon in one of a player's slots ("" for none), and the slot in hand.
+function PlayerSimServer.holding(player: Player, slot: number): (string?, number?)
+	local r = records[player]
+	if not r then
+		return nil, nil
+	end
+	local w = r.sim.weapons
+	return w.loadout[slot], w.equipped
+end
+
+-- From the player's next life, the starting kit (WeaponConfig.DefaultLoadout
+-- and DefaultShield) in place of whatever they had, as a new match starts.
+function PlayerSimServer.resetKit(player: Player)
+	local r = records[player]
+	if r then
+		r.freshKit = true
+	end
+end
+
+-- Whether a player is alive and playing.
+function PlayerSimServer.isAlive(player: Player): boolean
+	local r = records[player]
+	return r ~= nil and r.alive and r.root ~= nil
+end
+
+function PlayerSimServer.entityOf(player: Player): Entities.Entity?
+	local r = records[player]
+	return if r then r.entity else nil
 end
 
 -- Runs the player's next queued input, if the budget allows one. Returns

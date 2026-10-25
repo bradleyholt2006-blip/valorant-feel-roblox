@@ -78,6 +78,7 @@ do
 		"then a new match starts at 0-0, with round 1's long buy phase",
 		same(spawned, { 11, 22 }) and s.score[1] == 0 and s.score[2] == 0 and s.round == 1 and s.matchWinner == nil and s.phase == "buy"
 	)
+	check("and counts as match 2, so everyone gets the starting kit again", s.match == 2)
 end
 
 do
@@ -131,7 +132,7 @@ do
 	end
 	local won = m.phase == "matchOver"
 	ArenaRules.leave(m, 2, 2000)
-	check("leaving a finished match starts the next one at 0-0", won and m.phase == "waiting" and m.score[1] == 0 and m.round == 0)
+	check("leaving a finished match starts the next one at 0-0", won and m.phase == "waiting" and m.score[1] == 0 and m.round == 0 and m.match == 2)
 
 	local v = ArenaRules.new()
 	local before = v.version

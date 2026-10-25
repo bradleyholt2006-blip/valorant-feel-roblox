@@ -4,7 +4,8 @@
 -- everyone in the server is in it: split into two sides on Roblox teams (so
 -- teammates show as allies and can't shoot each other), spawned in their
 -- side's room facing the hall, held there behind a barrier for each buy
--- phase, and respawned, dead or alive, when a round starts.
+-- phase, and respawned, dead or alive, when a round starts. A new match puts
+-- everyone back on the starting kit.
 --
 -- P (Studio or the place owner) turns it on and off. So does Workspace's
 -- VFArenaOn attribute, set from the server, which is how scripted checks do
@@ -52,6 +53,7 @@ local rules: ArenaRules.State? = nil
 local teams: { Team } = {}
 local published = -1
 local queued: { [Player]: boolean } = {} -- spawns asked for and not started yet
+local kitMatch: { [Player]: number } = {} -- the match each player last got the starting kit for
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -128,10 +130,17 @@ local function playerFor(id: number): Player?
 end
 
 -- Once whatever event this is has been handled, and once each however many
--- times they're asked for meanwhile.
+-- times they're asked for meanwhile. Each player's first life in a match
+-- starts on the starting kit, whatever they bought in the last match or on
+-- the course.
 local function spawn(ids: { number })
+	local s = rules
 	for _, id in ids do
 		local player = playerFor(id)
+		if player and s and kitMatch[player] ~= s.match then
+			kitMatch[player] = s.match
+			PlayerSimServer.resetKit(player)
+		end
 		if player and not queued[player] then
 			queued[player] = true
 			task.defer(function()
@@ -188,6 +197,7 @@ local function setActive(on: boolean)
 	end
 	if on then
 		rules = ArenaRules.new()
+		table.clear(kitMatch)
 		for side, info in SIDES do
 			local team = Instance.new("Team")
 			team.Name = info.name
@@ -268,6 +278,7 @@ function Arena.start()
 	Players.PlayerAdded:Connect(join)
 	Players.PlayerRemoving:Connect(function(player)
 		queued[player] = nil
+		kitMatch[player] = nil
 		local s = rules
 		if s then
 			ArenaRules.leave(s, player.UserId, now())

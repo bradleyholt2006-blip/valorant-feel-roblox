@@ -43,6 +43,13 @@ function Entities.all(): { [number]: Entity }
 	return byId
 end
 
+-- What a combat event tells clients about an entity's health and shield:
+-- the shield's kind as `armor` and a Regen Shield's pool left as `pool`.
+function Entities.vitals(entity: Entity): { [string]: any }
+	local h = entity.health
+	return { target = entity.id, health = h.health, shield = h.shield, armor = h.kind, pool = h.pool }
+end
+
 -- The poses this frame's snapshot shows of every living, spawned entity
 -- (players and dummies pace theirs, MovePacer).
 function Entities.poses(): { PlayerCodec.Pose }

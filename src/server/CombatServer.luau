@@ -56,7 +56,7 @@ function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 end
 
 local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount: number, region: string)
-	local result = Health.apply(victim.health, amount)
+	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
 	local hp = WeaponConfig.Health
 	if result.damage > 0 and victim.sim and not result.killed then
 		PlayerSim.applyTag(victim.sim, Tuning.config(), hp.tagSpeedMultiplier.value, hp.tagDuration.value, DT)
@@ -64,20 +64,46 @@ local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount
 			PlayerSimServer.markDirty(victim.player)
 		end
 	end
-	Remotes.get().Combat:FireAllClients({
-		kind = "damage",
-		attacker = attacker.id,
-		target = victim.id,
-		region = region,
-		damage = result.damage,
-		health = victim.health.health,
-		shield = victim.health.shield,
-		killed = result.killed,
-	})
+	local event = Entities.vitals(victim)
+	event.kind = "damage"
+	event.attacker = attacker.id
+	event.region = region
+	event.damage = result.damage
+	event.killed = result.killed
+	Remotes.get().Combat:FireAllClients(event)
 	if result.killed then
 		victim.onKilled(attacker)
 	end
 	return result
+end
+
+-- Regen Shields refilling: told to clients as they go, a few times a second.
+local REGEN_EVENT_INTERVAL = 0.1
+local regenSent: { [number]: number? } = {}
+
+-- Once a server frame, `dt` seconds after the last.
+function CombatServer.step(now: number, dt: number)
+	for id, entity in Entities.all() do
+		local h = entity.health
+		if Health.step(h, now, dt) then
+			local done = h.shield >= h.maxShield or h.pool <= 0
+			if done or now - (regenSent[id] or -math.huge) >= REGEN_EVENT_INTERVAL then
+				regenSent[id] = if done then nil else now
+				local event = Entities.vitals(entity)
+				event.kind = "shield"
+				Remotes.get().Combat:FireAllClients(event)
+			end
+		end
+	end
+end
+
+-- Puts a fresh shield of this kind on an entity ("" for none) and tells
+-- clients (the buy menu).
+function CombatServer.setShield(entity: Entities.Entity, kind: string)
+	Health.setShield(entity.health, kind)
+	local event = Entities.vitals(entity)
+	event.kind = "shield"
+	Remotes.get().Combat:FireAllClients(event)
 end
 
 -- The walls a shot met before `distance`, for the shooter's debug tools.

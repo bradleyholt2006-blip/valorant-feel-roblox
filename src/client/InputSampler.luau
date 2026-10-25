@@ -34,8 +34,19 @@ InputSampler.Bindings = {
 local latched = 0
 local started = false
 
+-- The flags any binding puts on a mouse button.
+local MOUSE_FLAGS = 0
+for _, binding in InputSampler.Bindings do
+	if binding.mouse then
+		MOUSE_FLAGS = bit32.bor(MOUSE_FLAGS, binding.flag)
+	end
+end
+
 -- Buttons held on top of the real ones (TestAim's VFTestButtons, Studio only).
 InputSampler.extraButtons = 0
+-- While set (the buy menu is open), the mouse buttons are the menu's: they
+-- neither fire nor zoom.
+InputSampler.blockMouse = false
 
 local function flagFor(input: InputObject): number
 	for _, binding in InputSampler.Bindings do
@@ -66,14 +77,20 @@ function InputSampler.sample(): number
 		latched = 0
 		return 0
 	end
-	local buttons = bit32.bor(latched, InputSampler.extraButtons)
+	local real = latched
 	latched = 0
+	local blocked = InputSampler.blockMouse
+	if blocked then
+		real = bit32.band(real, bit32.bnot(MOUSE_FLAGS))
+	end
+	local buttons = bit32.bor(real, InputSampler.extraButtons)
 	for _, binding in InputSampler.Bindings do
 		if bit32.band(buttons, binding.flag) ~= 0 then
 			continue
 		end
 		local held = false
-		local keys, mouse = binding.keys, binding.mouse
+		local keys = binding.keys
+		local mouse = if blocked then nil else binding.mouse
 		if keys then
 			for _, key in keys do
 				held = held or UserInputService:IsKeyDown(key)

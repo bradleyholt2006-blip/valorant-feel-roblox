@@ -16,14 +16,19 @@
 --   VFTestAimRegion         "head", "body" (the default) or "legs"
 --
 -- VFTestAimEntity wins over VFTestAimPoint, which wins over the angles.
--- Clearing them gives the mouse back. Two more drive the weapons without a
--- mouse button held:
+-- Clearing them gives the mouse back. More drive the weapons and the buy
+-- menu without a mouse button:
 --
 --   VFTestButtons  PlayerSim button flags held on top of the real input
 --                  while set (Fire 128, AltFire 256, Reload 512, Crouch 32;
 --                  MovementSim.Buttons has the rest)
 --   VFTestGive     a weapon id: asks for it as the debug give does, then
 --                  clears itself
+--   VFTestBuy      an item id ("odin", "regen"): buys it as a click in the
+--                  buy menu would, or with a "-" in front sells it back;
+--                  then clears itself
+--   VFTestMenu     true opens the buy menu (if buying is open), false
+--                  closes it; then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -37,6 +42,7 @@ local PlayerSim = require(Shared.PlayerSim)
 local Units = require(Shared.Units)
 
 local CameraController = require(script.Parent.Parent.CameraController)
+local BuyMenu = require(script.Parent.Parent.BuyMenu)
 local InputSampler = require(script.Parent.Parent.InputSampler)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
@@ -86,6 +92,20 @@ function TestAim.start(controller: any)
 		if typeof(give) == "string" and give ~= "" then
 			player:SetAttribute("VFTestGive", nil)
 			controller.requestWeapon(give)
+		end
+		local buy = player:GetAttribute("VFTestBuy")
+		if typeof(buy) == "string" and buy ~= "" then
+			player:SetAttribute("VFTestBuy", nil)
+			if string.sub(buy, 1, 1) == "-" then
+				BuyMenu.request("sell", string.sub(buy, 2))
+			else
+				BuyMenu.request("buy", buy)
+			end
+		end
+		local menu = player:GetAttribute("VFTestMenu")
+		if typeof(menu) == "boolean" then
+			player:SetAttribute("VFTestMenu", nil)
+			BuyMenu.setOpen(menu)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

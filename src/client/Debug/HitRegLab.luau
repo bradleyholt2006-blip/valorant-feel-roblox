@@ -22,7 +22,7 @@
 --   * peeker's advantage by Riot's formula, from this client's own numbers
 --
 -- Keys while the page is open: [ and ] latency -/+10 ms each way, J jitter,
--- L packet loss, B Network Buffering, K rewind cap (140 ms, 200 ms, 0: no lag
+-- L packet loss, U Network Buffering, K rewind cap (140 ms, 200 ms, 0: no lag
 -- compensation).
 -- Backspace clears the counters and the shot log.
 
@@ -346,7 +346,7 @@ function HitRegLab.start(controller: any)
 		))
 		table.insert(lines, dim("  the round trip stands in for both one-way lags and the server frame"))
 		table.insert(lines, "")
-		table.insert(lines, dim("[ ] latency -/+10 ms each way   J jitter   L loss   B buffering"))
+		table.insert(lines, dim("[ ] latency -/+10 ms each way   J jitter   L loss   U buffering"))
 		table.insert(lines, dim("K rewind cap 140 / 200 / 0 ms   Backspace clear   F2 next page"))
 		body.Text = table.concat(lines, "\n")
 	end
@@ -366,7 +366,7 @@ function HitRegLab.start(controller: any)
 			s.jitter = nextIn(JITTERS, s.jitter)
 		elseif key == Enum.KeyCode.L then
 			s.loss = nextIn(LOSSES, s.loss)
-		elseif key == Enum.KeyCode.B then
+		elseif key == Enum.KeyCode.U then
 			RemoteEntities.setBuffering(RemoteEntities.buffering % #NetConfig.Buffering + 1)
 		elseif key == Enum.KeyCode.K then
 			controller.requestTuning("maxRewind", nextIn(CAPS, cap()))
