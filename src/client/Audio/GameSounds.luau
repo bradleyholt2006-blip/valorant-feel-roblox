@@ -251,7 +251,8 @@ local function onTick(info: any)
 			ownReload = newReload(id, w.reloadEndTime - WeaponConfig.get(id).reloadTime.value)
 		end
 		local def = WeaponConfig.get(id)
-		if fire and not was.fire and def.fireMode ~= "none" and w.ammo[w.equipped] == 0 and w.reloadEndTime == 0 and now >= w.equipEndTime then
+		local ready = def.fireMode ~= "none" and w.reloadEndTime == 0 and now >= w.equipEndTime
+		if SoundMath.dryHeard(fire and not was.fire, info.shot ~= nil, w.ammo[w.equipped], ready) then
 			own("dry")
 		end
 	end
