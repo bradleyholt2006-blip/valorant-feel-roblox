@@ -71,6 +71,10 @@ export type Vitals = { health: number, shield: number, armor: string, pool: numb
 -- Last known health per entity, from combat events.
 RemoteEntities.health = {} :: { [number]: Vitals }
 
+-- The entity whose eyes the camera looks out of (Spectate), whose blocks
+-- are left out so they don't fill the view.
+RemoteEntities.viewing = nil :: number?
+
 -- Health for display: entities we have no event for yet are at full spawn
 -- health, in the shield everyone starts in.
 function RemoteEntities.healthOf(id: number): Vitals
@@ -381,7 +385,7 @@ local function onRender()
 		end
 		local visual = visuals[id] or makeVisual(id)
 		visuals[id] = visual
-		visual.model.Parent = if pose then folderFor(id) else nil
+		visual.model.Parent = if pose and id ~= RemoteEntities.viewing then folderFor(id) else nil
 		if pose then
 			RemoteEntities.placeBoxes(visual.parts, pose)
 			for region, part in visual.parts do

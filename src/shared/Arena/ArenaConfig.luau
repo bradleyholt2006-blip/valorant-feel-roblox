@@ -30,16 +30,25 @@ ArenaConfig.SIDE = "VFArenaSide"
 -- their own map, in the format Workspace's MatchConfig.FORMAT names. Either
 -- way the arena's model carries the state of play.
 ArenaConfig.MODE = "VFArenaMode"
+-- Each player's attribute for where they stand in line, while both sides
+-- are full: 1 for the next to play (system 21).
+ArenaConfig.LINE = "VFInLine"
 
 ArenaConfig.Rules = {
 	winScore = p(10, "confirmed", "Patch 11.07b (Oct 2025), Skirmish in custom games: 'First to 10 wins'; Patch 12.03, the 2v2 queue: 'First to 10 rounds wins'"),
+	-- Anyone over waits in line for a place (system 21).
+	sideSize = p(2, "confirmed", "Patch 12.03: Skirmish is the 2v2 queue, two a side"),
 	-- Each round starts with everyone held in their spawn behind a barrier,
 	-- choosing weapons: Skirmish has 'Full weapon selection each round (no
 	-- economy)' (Patch 12.03).
 	firstBuyTime = p(15, "community", "Valorant Fandom wiki, Skirmish: the first round's buy phase is 15 seconds"),
 	buyTime = p(3, "community", "Valorant Fandom wiki, Skirmish: later buy phases are 3 seconds"),
 	roundOverTime = p(3, "estimate", "Seconds from a round's last kill to everyone spawning for the next"),
-	matchOverTime = p(6, "estimate", "Seconds the match's winner is shown before the next match starts at 0-0"),
+	matchOverTime = p(
+		10,
+		"estimate",
+		"Seconds the match's result, the victory screen (system 21), shows before the next match starts at 0-0, as the spike rounds'"
+	),
 	respawnTime = p(
 		3,
 		"estimate",

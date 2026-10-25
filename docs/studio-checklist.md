@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-one
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -27,13 +27,13 @@ Fill in the results block at the end of this page and reply with it, plus:
    the plugin.
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
-   need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
-   24 one and then two.
+   need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
+   one and then two, and section 25 three and then one.
 
 | Key | What it does |
 | --- | --- |
 | F2 | Labs, one press each: Weapon Lab, Spray Lab, Hit Reg Lab, Sound Lab, off |
-| F3 | HUD panel (on at the start) |
+| F3 | HUD panel (on at the start in Studio, off on a live server) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
 | G | Drops the gun or the spike in hand; with the knife in hand and the HUD on, the ghost box where the server has you |
@@ -46,7 +46,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
 | N | The next enemy outline colour |
 | P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
-| Tab | Held: the scoreboard, in the spike rounds |
+| Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
+| Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
 | C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes |
 | X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
 | Space | Jump; held in the air, Jett's glide (Drift) slows the fall until you land or let go |
@@ -1368,6 +1369,35 @@ on the course.
   jumps on their side holding Space: window 1's Sound Lab shows player 2's `glide` as
   `not heard: buy phase`, as in N9.
 
+## 25. Matches that never stop
+
+From [21-drop-in.md](research/21-drop-in.md). A quick play of what changed, with three players. In
+Studio the game still starts on the course, and P starts Skirmish as before. A live server starts
+Skirmish by itself (F6). Waiting in line needs five players in Skirmish, so the tests cover it.
+
+Start a Local Server with 3 players, as in section 9, and press P once in window 1 (Skirmish).
+
+- **F1 Three players.** Players 1 and 3 are on one side and player 2 on the other: in windows 1
+  and 3 the top bar has two tiles on your left and one on your right. Everyone spawns for round
+  1's 15 s buy phase. The HUD panel (F3) is on from the start, as before.
+- **F2 Watching a teammate.** Once the round is live, player 2 shoots player 1. Window 1 shows
+  `ELIMINATED` where you fell for 2 s. Then the view moves to player 3's eyes, with
+  `SPECTATING PLAYER3` near the bottom and `You play from the next round` under it. Player 3's
+  blocks aren't drawn, and the view turns as player 3 turns in window 3. A click changes nothing,
+  with only one teammate up. Then player 2 kills player 3: window 1's view holds where it was until
+  the next round puts you back in your spawn. **Send:** a screenshot of window 1 watching.
+- **F3 Tab.** Hold Tab in window 3: both sides, each player's K, D, A and ACS, with player 2's
+  kills and players 1 and 3's deaths on it, and no CREDITS column.
+- **F4 The victory screen.** Play the match out: players 1 and 3 kill player 2 in each round until
+  their side has 10. As the last kill lands, the scoreboard shows by itself in every window:
+  `VICTORY` in windows 1 and 3, `DEFEAT` in window 2, everyone's record, `MATCH MVP` in gold on the
+  best ACS of the match, `TEAM MVP` on player 2, and `NEXT MATCH IN 10` counting down under it.
+  Nobody's name is dimmed. **Send:** a screenshot.
+- **F5 The next match.** At 0 the screen goes, everyone spawns for a new match at 0-0 with round
+  1's 15 s buy phase, and Tab shows every record back at 0.
+- **F6 A live server.** Only once the place is published: join it, and you're in Skirmish's
+  waiting phase at once (`WAITING FOR AN OPPONENT`), with the HUD panel off until F3.
+
 ## Results
 
 ```
@@ -1447,6 +1477,8 @@ Z12 the other player's blades and streaks lined up with where they were drawn: y
 I1 the jump line held ___ s, tapped ___ s
 I3 from the top of Updraft: the jump line ___ s
 I8 the other player's rings lined up with where they were drawn: yes / no (what)
+F2 the view moved to player 3 after ___ s; their blocks hidden: yes / no
+F4 MATCH MVP on ___, TEAM MVP on ___; the countdown started at ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1582,3 +1614,9 @@ Didn't look right (IDs and what you saw):
 | 20 | A gun's cone is the air's in a glide, and Blade Storm's knives land on the crosshair | I6 |
 | 20 | Your glide is heard as a soft run of gusts | I1, I7 |
 | 20 | Another player sees and hears a glide where you are on their screen | I8, I9 |
+| 21 | A published server starts Skirmish by itself | F6 |
+| 21 | A third player joins the side with fewer players, and spawns at once in a buy phase | F1 |
+| 21 | Down with a teammate alive: 2 s where you fell, then their view from their eyes, with their name and when you play; their blocks aren't drawn, and clicks switch between teammates | F2 |
+| 21 | Tab shows the scoreboard in Skirmish, with no credits | F3 |
+| 21 | At the end of a match, the victory screen shows by itself: the result, everyone's record, MATCH MVP and TEAM MVP, and the countdown to the next match | F4, F5 |
+| 21 | The HUD panel (F3) shows from the start in Studio | F1 |

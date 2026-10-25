@@ -133,9 +133,9 @@ The rules live in `src/shared/Arena/ArenaConfig.luau` and the map in
 | Buy phase | 15 s in round 1, 3 s after | Community |
 | What holds you in | A barrier across your room's opening during the buy phase, which stops players and bullets | Estimate |
 | Next round | 3 s after the round's last kill, with everyone respawned, dead or alive | Estimate |
-| The end of a match | The result shows for 6 s, then a new match starts at 0-0 | Estimate |
+| The end of a match | The result, the victory screen (system 21), shows for 10 s, then a new match starts at 0-0 | Estimate |
 | Nobody to play against | The arena waits: you can pick any weapon, and you're back 3 s after dying | Estimate |
-| Sides | Each new player joins the side with fewer players (side 1 when level) and spawns in their room straight away, in the round being played | Estimate |
+| Sides | Each new player joins the side with fewer players (side 1 when level), two a side with anyone over in line, and spawns in their room straight away in a buy phase; in a round under way they watch a teammate until the next ([21-drop-in.md](21-drop-in.md)) | Confirmed (two a side); community and estimate (the rest, system 21) |
 | The hall's width | 19 m | Estimate |
 | The hall's length | 1.32 widths (25.1 m) | Measured |
 | Spawn rooms | 0.245 widths wide, 0.175 lengths deep (4.7 x 4.4 m), open across their width | Measured |
@@ -174,7 +174,7 @@ What the numbers give (from `luau tests/run.luau`):
   waiting ──────────────────────────► buy ──────────────────────────────► live
      ▲                               ▲ ▲                                   │ a side has nobody alive,
      │                               │ └──── 3 s ──── roundOver ◄──────────┤ so the other side scores
-     │                               └─ 6 s, at 0-0 ─ matchOver ◄──────────┘ ... and that was its 10th
+     │                               └ 10 s, at 0-0 ─ matchOver ◄──────────┘ ... and that was its 10th
      └── from any phase when a side is empty: the score stays, unless the match was over
 ```
 
@@ -267,11 +267,13 @@ that:
   bullet passes through a teammate, as the reference's guns do.
 - **On and off at any time.** P asks the server (in Studio, or from the place's owner) to set
   Workspace's `VFArenaOn`, which scripted checks can also set from the server. Off puts everyone
-  back on the course on no team, and Roblox spawns players again.
+  back on the course on no team, and Roblox spawns players again. Since system 21 a live server
+  starts with it on.
 - **Joining and leaving.** A new player joins the side with fewer players and spawns straight away
-  in their room, in the round being played. If a side empties, the arena waits for someone to
-  join it, keeping the score unless the match was over. Someone leaving who was the last one
-  alive on their side loses the round for it.
+  in their room in a buy phase; in a round under way they watch a teammate until the next one
+  (system 21, which also puts anyone over two a side in line). If a side empties, the arena waits
+  for someone to join it, keeping the score unless the match was over. Someone leaving who was the
+  last one alive on their side loses the round for it.
 - **While waiting** there's nobody to play against, so the arena behaves like the course: the
   barriers are down, you can buy anything, and you're back 3 s after dying.
 - **The HUD.** The top bar shows your side's score in the ally colour on the left and the other

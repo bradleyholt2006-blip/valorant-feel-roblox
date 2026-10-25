@@ -1,5 +1,5 @@
 --!strict
--- Always-on movement HUD (toggle F3):
+-- Movement HUD (toggle F3; on from the start in Studio):
 --   * a circle showing the true cone of fire of the next shot, drawn where
 --     that bullet would go (recoil included), round the crosshair
 --     (CrosshairView, which can show movement and firing error itself, as
@@ -167,7 +167,11 @@ function DebugHud.start(controller: any)
 		return true
 	end
 
-	local visible = true
+	-- Off on a live server, where players drop into a match under way
+	-- (system 21); F3 still shows it.
+	local visible = RunService:IsStudio()
+	panel.Visible = visible
+	keys.Visible = visible
 	local ghostVisible = false
 	local lastInput = 0
 	local lastState: MovementSim.State? = nil

@@ -106,6 +106,8 @@ MatchConfig.Formats = {
 MatchConfig.DEFAULT_FORMAT = "standard"
 
 MatchConfig.Rules = {
+	-- Anyone over waits in line for a place (system 21).
+	sideSize = p(5, "confirmed", "The game's own description: 'a character-based 5v5 tactical shooter' (PlayStation Store page)"),
 	-- Everyone is held in their spawn behind barriers while they buy.
 	buyTime = p(30, "community", "Valorant Fandom wiki, Unrated: the Buy Phase lasts 30 seconds"),
 	firstBuyTime = p(
@@ -119,7 +121,11 @@ MatchConfig.Rules = {
 		"Wikipedia's Valorant article, on Game Informer's preview (March 2020): 'the 100-second round timer'; Valorant Fandom wiki, Unrated: a round lasts up to 100 seconds"
 	),
 	postRoundTime = p(7, "community", "Valorant Fandom wiki, Unrated: the Post-Round Phase lasts 7 seconds"),
-	matchOverTime = p(10, "estimate", "Seconds the match's result is shown before a new match starts at 0-0"),
+	matchOverTime = p(
+		10,
+		"estimate",
+		"Seconds the match's result, the victory screen (system 21), shows before a new match starts at 0-0"
+	),
 	respawnTime = p(3, "estimate", "Seconds before someone who dies with nobody to play against comes back (as the arena)"),
 }
 

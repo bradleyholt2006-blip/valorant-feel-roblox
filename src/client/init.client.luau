@@ -15,6 +15,7 @@ local CombatHud = require(script.Combat.CombatHud)
 local KillFeed = require(script.KillFeed)
 local ArenaHud = require(script.ArenaHud)
 local Scoreboard = require(script.Scoreboard)
+local Spectate = require(script.Spectate)
 local BuyMenu = require(script.BuyMenu)
 local ClientSettings = require(script.ClientSettings)
 local CrosshairView = require(script.CrosshairView)
@@ -63,8 +64,11 @@ KillFeed.start()
 -- The arena's score and round banners, and P to turn it on or off.
 ArenaHud.start()
 -- Tab: everyone's kills, deaths, assists, combat score and credits, in the
--- spike rounds.
+-- arena and the spike rounds, and the victory screen as a match ends.
 Scoreboard.start()
+-- While you're down in rounds, a living teammate's view (left and right
+-- click to switch).
+Spectate.start()
 -- B: every gun and shield, in the arena's buy phase and any time on the course.
 BuyMenu.start()
 -- Your sensitivity and crosshair, kept between sessions; O for the menu.

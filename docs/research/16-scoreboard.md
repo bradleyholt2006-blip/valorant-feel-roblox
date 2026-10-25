@@ -91,11 +91,11 @@ and labelled as estimates.
 | A kill's score | 150, 130, 110, 90 or 70 by the enemies alive, the one killed among them | Community |
 | Multikills | 50 more for each kill after the first in a round | Community |
 | The ACS | The combat score over the rounds played, at least one, to the nearest point | Community |
-| A round played | Every round played to its end, for everyone in the match then, the dead too | Estimate |
+| A round played | Every round played to its end, for everyone in it from its start, the dead too: one sat out after joining mid-round doesn't count (system 21) | Estimate |
 | Assists | Damage to an enemy that a teammate then kills, in the same life, however long before | Confirmed (what an assist is), estimate (the whole life) |
 | Non-damaging assists | None, as there are no abilities | Not here |
 | Teammates and the spike | Damage to a teammate scores nothing; a teammate's kill is a death, not a kill; the spike's blast is a death with no kill | Estimate |
-| When it's kept | In the spike rounds: in a round and after it, not while waiting for an opponent or once the match is won. A new match starts everyone over | Estimate |
+| When it's kept | In the arena (since system 21) and the spike rounds: in a round and after it, not while waiting for an opponent or once the match is won. A new match starts everyone over | Estimate |
 | The top bar's players | A tile each with their name's first letters, yours to the left of the score and theirs to the right, dimmed once they're dead | Community (the portraits); ours (the letters) |
 | The kill feed | The top right, the newest at the top, at most 6 lines, each for 6 s | Estimate |
 | A kill feed line | The killer in their side's colour, the weapon's name, `HS` for a headshot, `WALL` through a wall, and whoever died in their side's colour | Community (the headshot mark); estimate (a wall's mark, the words) |
@@ -150,7 +150,8 @@ cleared when what's played stops.
 - `Scoreboard` is held on Tab, or with `VFTestBoard`. It reads the attributes, sorts each side by
   ACS, and shows your side first. Loadouts come from `VFLoadout`, the primary or else the
   sidearm, and the shield from what combat events last said of that player's health. While the
-  spike rounds are on, Roblox's own player list is off, as Tab would open it.
+  arena or the spike rounds are on (system 21), Roblox's own player list is off, as Tab would
+  open it.
 
 ### Not here yet
 

@@ -127,7 +127,7 @@ The rules are in `src/shared/Match/MatchRules.luau`, their numbers in
 | Finding it | Lying on the ground, its marker shows through walls only to the attackers; planted, to everyone | Estimate |
 | Starting kit | The Classic and the knife, no shield: at the start of each half, and after any death | Community (Hotspawn) |
 | Survivors | Keep their guns and shield into the next round, the shield refilled | Community (keeping them); estimate (the refill: see the gaps) |
-| Sides | Each player joins the side with fewer players, side 1 when level; side 1 attacks first | Estimate |
+| Sides | Each player joins the side with fewer players, side 1 when level, five a side with anyone over in line, and the sides are evened out before each round ([21-drop-in.md](21-drop-in.md)); side 1 attacks first | Confirmed (five a side); community and estimate (the rest) |
 | Nobody to play | With a side empty: waiting, the barriers down, buying open, anyone who dies back in 3 s, and the spike can be carried but not planted | Estimate (as the arena) |
 | The map | Outpost, our own: section 5 | Estimate |
 | Competitive's draw vote | Not built | |
