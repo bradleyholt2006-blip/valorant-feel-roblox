@@ -110,6 +110,18 @@ do
 	check("nor does anything once dead", not Health.step(dead, 100, 1) and dead.shield == 0)
 end
 
+do
+	local light = Health.new(100, "light")
+	Health.apply(light, 26)
+	check("the HUD rounds what's left up: 91.16 and 7.84 read 92 and 8", Health.points(light.health) == 92 and Health.points(light.shield) == 8)
+	local dead = Health.new(100, "light")
+	Health.apply(dead, 500)
+	local zero = Health.points(dead.health)
+	-- -0 == 0, but it prints as "-0": only its reciprocal tells them apart.
+	check("and reads 0 at death, not -0", zero == 0 and 1 / zero > 0 and tostring(zero) == "0", tostring(zero))
+	check("whole points stay as they are, and nothing below 0 shows", Health.points(150) == 150 and Health.points(-3) == 0)
+end
+
 -- The buy menu's rules --------------------------------------------------------------
 
 do
@@ -157,6 +169,30 @@ do
 	check("a shield sells back to the one worn before", Shop.sell(s, light) == "heavy")
 	Shop.reset(s)
 	check("a new buy phase forgets what was bought: nothing to sell", #Shop.boughtList(s) == 0 and Shop.sell(s, phantom) == nil and Shop.sell(s, sheriff) == nil)
+end
+
+do
+	-- The first moment of a buy phase: the new life it brings is on its way.
+	local s = Shop.new()
+	Shop.hold(s, "buy", "odin", 10.00)
+	Shop.hold(s, "buy", "regen", 10.15)
+	Shop.reset(s) -- the new life starts
+	local held = Shop.takeWaiting(s, 10.32, 5)
+	check(
+		"what's asked for while a new life is on its way is kept for it, in order, through the reset that starts it",
+		#held == 2 and held[1].action == "buy" and held[1].id == "odin" and held[2].id == "regen"
+	)
+	check("and is made once: nothing is held after", #Shop.takeWaiting(s, 10.4, 5) == 0)
+
+	Shop.hold(s, "buy", "bucky", 20)
+	Shop.hold(s, "sell", "bucky", 26)
+	local late = Shop.takeWaiting(s, 26.5, 5)
+	check("a request older than the wait is dropped, as for a life that never came", #late == 1 and late[1].action == "sell")
+
+	for i = 1, Shop.MAX_WAITING + 3 do
+		Shop.hold(s, "buy", "ghost", 30 + i * 0.01)
+	end
+	check("a few clicks are held, not a queue", #Shop.takeWaiting(s, 30.5, 5) == Shop.MAX_WAITING)
 end
 
 return nil

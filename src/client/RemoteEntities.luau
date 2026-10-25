@@ -36,6 +36,7 @@ local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
 local Hitboxes = require(Shared.Combat.Hitboxes)
+local Health = require(Shared.Combat.Health)
 local ShotResolver = require(Shared.Combat.ShotResolver)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 
@@ -82,9 +83,9 @@ function RemoteEntities.healthOf(id: number): Vitals
 end
 
 -- Whole points for display: a split hit leaves fractions, and anything left
--- counts as a point.
+-- counts as a point (Health.points).
 function RemoteEntities.points(value: number): number
-	return math.ceil(value - 1e-9)
+	return Health.points(value)
 end
 
 local DUMMY_COLORS: { [string]: Color3 } = {

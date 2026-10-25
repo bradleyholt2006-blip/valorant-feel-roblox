@@ -7,6 +7,10 @@
 -- with full ammo and is drawn, a shield goes on full, and either stays for
 -- later lives until the player picks another. Each life is a new buy phase,
 -- so what was bought in the last one can't be sold back.
+--
+-- A request that comes while a new life is on its way (the arena respawns
+-- everyone as a buy phase opens, and Roblox takes a moment to load each
+-- character) is held and made as soon as that life starts.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -69,8 +73,9 @@ local function put(player: Player, item: Shop.Item, id: string)
 	end
 end
 
-local function onBuy(player: Player, action: any, id: any)
-	if typeof(action) ~= "string" or typeof(id) ~= "string" or not isOpen(player) then
+-- Makes one request, if buying is open; publish after.
+local function handle(player: Player, action: string, id: string)
+	if not isOpen(player) then
 		return
 	end
 	local item = Shop.item(id)
@@ -96,13 +101,28 @@ local function onBuy(player: Player, action: any, id: any)
 			put(player, item, back)
 		end
 	end
+end
+
+local function onBuy(player: Player, action: any, id: any)
+	if typeof(action) ~= "string" or typeof(id) ~= "string" then
+		return
+	end
+	if PlayerSimServer.spawnPending(player) then
+		Shop.hold(stateOf(player), action, id, os.clock())
+		return
+	end
+	handle(player, action, id)
 	publish(player)
 end
 
 function ShopServer.start()
 	Remotes.get().Buy.OnServerEvent:Connect(onBuy)
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
-		Shop.reset(stateOf(player))
+		local s = stateOf(player)
+		Shop.reset(s)
+		for _, request in Shop.takeWaiting(s, os.clock(), PlayerSimServer.SPAWN_WAIT) do
+			handle(player, request.action, request.id)
+		end
 		publish(player)
 	end)
 	Players.PlayerRemoving:Connect(function(player)

@@ -281,10 +281,11 @@ The buy menu:
 | Buying the shield you wear | A fresh one, if it's damaged | Community for the Regen Shield ("buying it again refills it"); estimate for the others |
 | Selling | A right click, on what was bought this buy phase, puts back what its slot held when the phase began | Community |
 | A buy phase on the course | Each life | Estimate |
+| Buying as the phase opens | Held for the new life the phase brings, and made as soon as it starts (Roblox takes about 0.32 s to load the character) | Ours (the reference respawns everyone at once) |
 | Prices | Shown and not charged: Skirmish has no economy | Confirmed (Patch 12.03) |
 | What it shows | The guns in four columns by group and the shields in a fifth, each with its price and a stand-in picture; a white edge on what you have and a teal one on what you can sell back; the numbers of the one under the cursor in a panel to the right | Estimate (the reference's layout isn't published) |
 | While it's open | The mouse moves a cursor, its buttons are the menu's, and you can still move | Estimate |
-| The HUD's health and shield | Rounded up, so 86.4 reads 87 and a player left with 0.4 reads 1 | Estimate |
+| The HUD's health and shield | Rounded up, so 86.4 reads 87 and a player left with 0.4 reads 1; nothing left reads 0 | Estimate |
 
 What the simulation produces (from `luau tests/run.luau`; a shotgun's shots to kill count every
 pellet hitting):
@@ -420,6 +421,13 @@ health still lets 13.6 of a Vandal body shot through, which kills.
   when the phase began. Selling puts that back, and buying back what a slot began with leaves
   nothing to sell. `ShopServer` checks that buying is open and applies the result: a gun with full
   ammo, drawn if its slot is in hand, or a shield on full. Each life is a new buy phase.
+- **A buy as the phase opens waits for its life.** The arena respawns everyone as a buy phase
+  opens, but Roblox takes a moment to load each character (0.32 s in BRINK), and the menu is open
+  from the phase's first moment. A request in between would be lost: refused for a dead player,
+  or made on a living player's old life and then reset away with it. So the arena marks the
+  respawn as expected (`PlayerSimServer.expectSpawn`), and until the new life starts `ShopServer`
+  holds what comes in (`Shop.hold`, a few requests, for up to 5 s) and makes it as soon as the
+  life begins.
 - **The menu shows the server's word.** The guns you have come from the predicted loadout, which
   the server's acks correct; the shield worn and what can be sold come from two player
   attributes the server sets, `VFShield` and `VFBought`. A gun you buy is drawn only once an ack
@@ -530,6 +538,7 @@ session can confirm:
   bought this buy phase, and nothing else.
 - The HUD shows Light Armor's split and the Regen Shield refilling as the tests have them.
 - A new match in the arena puts everyone back on the starting kit.
+- A buy the moment a buy phase opens lands on the new life, and can be sold back.
 
 ### Checked in BRINK
 
@@ -550,7 +559,8 @@ through `VFTestBuy` and the menu read from the player's GUI (measured):
 - Others' shots (G8), 21 m apart: a Bucky shot showed the other player 15 tracers, 15 holes and
   15 sparks; a Ghost shot from the other side showed its hole and spark but no tracer, and was
   heard at about half the Bucky's volume.
-- Two findings. A purchase in the first third of a second of a buy phase is lost: the new life
-  starts 0.32 s after the phase does, and its reset wipes what was bought, so a buy 0.15 s in
-  never landed. And at death the HUD's health read `-0`.
+- Two findings, both fixed since. A purchase in the first third of a second of a buy phase was
+  lost: the new life starts 0.32 s after the phase does, and its reset wiped what was bought, so
+  a buy 0.15 s in never landed (section 5: it's now held for the new life). And at death the
+  HUD's health read `-0` (now `0`).
 
