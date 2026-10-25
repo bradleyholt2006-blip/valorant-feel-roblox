@@ -21,7 +21,8 @@
 --
 -- Abilities (system 17) are bought a charge at a time into the kit
 -- (AbilityServer), and a charge bought this buy phase sells back for its
--- price.
+-- price. Another agent's kit (system 29) sells back every one bought into
+-- the last one's (ShopServer.refundCharges).
 --
 -- Deathmatch (system 26) sells its guns alone (ShopServer.sells), all free.
 
@@ -196,6 +197,20 @@ function ShopServer.forget(player: Player, slot: number)
 		Shop.forget(s, tostring(slot))
 		publish(player)
 	end
+end
+
+-- Every ability charge bought this buy phase sold back, as the kit they
+-- were bought into gives way to another agent's (system 29, AgentServer).
+function ShopServer.refundCharges(player: Player)
+	local s = states[player]
+	if not s then
+		return
+	end
+	local refund = Shop.sellCharges(s)
+	if refund > 0 then
+		charge(player, -refund)
+	end
+	publish(player)
 end
 
 function ShopServer.start()

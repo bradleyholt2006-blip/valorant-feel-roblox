@@ -117,6 +117,13 @@
 -- (Arena.play, and PlayConfig.PLAYING on the player); until then they're in
 -- the menu, with no side and no life.
 --
+-- Agent select (system 29, AgentServer) asks here where each player is for
+-- picking: free on the course and while a mode waits for players, once a
+-- match by its key in Skirmish, the spike rounds and Team Deathmatch, and
+-- nowhere else; and whether an agent locked in goes on their kit at once:
+-- while they're down, in a buy phase, Team Deathmatch's pre-game and their
+-- own spawn room there, and wherever picking is free (AgentSelect).
+--
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
 -- off. So do Workspace's attributes, set from the server, which is how
@@ -134,6 +141,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
+local AgentSelect = require(Shared.Abilities.AgentSelect)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local ArenaRules = require(Shared.Arena.ArenaRules)
@@ -162,6 +170,7 @@ local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
 local AbilityServer = require(script.Parent.AbilityServer)
+local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
 local Tuning = require(script.Parent.Tuning)
 
@@ -222,6 +231,7 @@ local PACK_GREEN = Color3.fromRGB(90, 230, 120)
 local PACKS = "VFHealthPacks"
 
 local model: Model? = nil -- the arena's, which carries the state of play
+local begun = 0 -- how many times a mode has started, so each match's key is its own (system 29)
 local barriers: { BasePart } = {} -- the arena's
 local cover: { BasePart } = {} -- the arena's, for the map built (system 22)
 local builtMap: string? = nil
@@ -847,7 +857,7 @@ local function stop()
 	AbilityServer.economy = false
 	AbilityServer.refill = true
 	AbilityServer.off = false
-	AbilityServer.agent = AbilityConfig.DEFAULT_AGENT
+	AbilityServer.agent = nil
 	AbilityServer.rules = nil
 	table.clear(killedWith)
 	table.clear(diedAt)
@@ -872,6 +882,7 @@ end
 -- `format` names.
 local function begin(wanted: Mode, format: string)
 	mode = wanted
+	begun += 1
 	if wanted == "skirmish" then
 		skirmish = ArenaRules.new()
 	elseif wanted == "gungame" then
@@ -908,7 +919,7 @@ local function begin(wanted: Mode, format: string)
 	AbilityServer.economy = wanted == "spike"
 	AbilityServer.refill = false
 	AbilityServer.off = wanted == "gungame" or wanted == "deathmatch"
-	AbilityServer.agent = if wanted == "deathmatch" then AbilityConfig.NO_AGENT else AbilityConfig.DEFAULT_AGENT
+	AbilityServer.agent = if wanted == "deathmatch" then AbilityConfig.NO_AGENT else nil
 	AbilityServer.rules = if wanted == "teamdeathmatch" then AbilityConfig.TeamDeathmatch else nil
 	GroundGunsServer.drops = wanted ~= "gungame" and wanted ~= "deathmatch" and wanted ~= "teamdeathmatch"
 	-- The rounds decide when everyone spawns.
@@ -1358,6 +1369,23 @@ function Arena.start()
 			return DeathmatchRules.canPick(d, player.UserId)
 		end
 		return nil
+	end
+	-- Where each player is for picking an agent, and whether one locked in
+	-- goes on their kit at once (system 29).
+	AgentServer.momentOf = function(player: Player): string?
+		local s, m, t = skirmish, match, tdm
+		local sides: Roster.Sides? = if s then s elseif m then m elseif t then t else nil
+		local phase: string = if s then s.phase elseif m then m.phase elseif t then t.phase else ""
+		local number = if s then s.match elseif m then m.match elseif t then t.match else 0
+		return AgentSelect.moment(mode, phase, number, begun, sides ~= nil and sides.members[player.UserId] ~= nil)
+	end
+	AgentServer.swapsNow = function(player: Player): boolean
+		local s, m, t = skirmish, match, tdm
+		local phase: string? = if s then s.phase elseif m then m.phase elseif t then t.phase elseif mode then "" else nil
+		local sim = if PlayerSimServer.isAlive(player) then PlayerSimServer.getSim(player) else nil
+		local feet = if t and sim then sim.movement.position - SpikeMaps.Maps[t.map].origin else nil
+		local ownRoom = t ~= nil and feet ~= nil and TeamDeathmatchRules.roomOf(t, player.UserId, feet) == "own"
+		return AgentSelect.swapsNow(phase, sim ~= nil, ownRoom)
 	end
 	-- Deathmatch sells its guns alone.
 	ShopServer.sells = function(kind: string): boolean

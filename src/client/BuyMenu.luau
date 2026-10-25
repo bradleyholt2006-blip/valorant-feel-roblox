@@ -16,7 +16,8 @@
 -- Under the shields are the abilities sold by the charge (system 17), each
 -- with a pip for every charge it holds, lit for each you have: click buys a
 -- charge, right-click sells back one bought this buy phase. One that can't
--- be played yet is shown, dimmed, and can't be bought.
+-- be played yet is shown, dimmed, and can't be bought. They're your agent's
+-- (system 29), as your kit is.
 --
 -- In deathmatch (system 26) it opens whenever you're alive, and sells the
 -- guns alone, free (DeathmatchConfig.FOR_SALE): every life wears Heavy
@@ -39,6 +40,7 @@ local Remotes = require(Shared.Net.Remotes)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local AgentSelect = require(Shared.Abilities.AgentSelect)
 
 local PlayerController = require(script.Parent.PlayerController)
 local CameraController = require(script.Parent.CameraController)
@@ -82,8 +84,9 @@ local CATEGORY: { [string]: string } = {
 local COLUMNS = { { "Sidearms" }, { "SMGs", "Shotguns" }, { "Rifles" }, { "Snipers", "Machine guns" } }
 
 type Tile = { id: string, item: Shop.Item, button: TextButton, stroke: UIStroke, tag: TextLabel, name: TextLabel, price: TextLabel }
--- An ability's tile has a pip for each charge it can hold.
-type AbilityTile = Tile & { pips: { Frame } }
+-- An ability's tile has a pip for each charge it can hold, and is shown
+-- for its agent's kit.
+type AbilityTile = Tile & { pips: { Frame }, agent: string }
 
 local tiles: { Tile } = {}
 local abilityTiles: { AbilityTile } = {}
@@ -415,9 +418,9 @@ local function makeTile(parent: Frame, id: string, name: string, price: number, 
 	return tile
 end
 
--- An ability's tile: its key large where a gun's look goes, and a pip for
--- each charge it can hold.
-local function makeAbilityTile(parent: Frame, def: AbilityConfig.AbilityDef, x: number, y: number): AbilityTile?
+-- An ability's tile, of `agent`'s kit: its key large where a gun's look
+-- goes, and a pip for each charge it can hold.
+local function makeAbilityTile(parent: Frame, def: AbilityConfig.AbilityDef, agent: string, x: number, y: number): AbilityTile?
 	local item = Shop.item(def.id)
 	if not item then
 		return nil
@@ -509,6 +512,7 @@ local function makeAbilityTile(parent: Frame, def: AbilityConfig.AbilityDef, x: 
 		name = nameLabel,
 		price = priceLabel,
 		pips = pips,
+		agent = agent,
 	}
 	table.insert(abilityTiles, tile)
 	return tile
@@ -606,14 +610,18 @@ function BuyMenu.start()
 		local def = WeaponConfig.Shields[id]
 		makeTile(root, id, def.name, def.price.value, shieldX, TOP + HEADER_H + (i - 1) * (TILE_H + GAP))
 	end
-	-- The abilities sold by the charge, of the agent everyone plays.
+	-- The abilities sold by the charge: each agent's in the same places, shown
+	-- for the agent of your kit.
 	local abilityY = TOP + HEADER_H + #WeaponConfig.ShieldIds * (TILE_H + GAP) + GROUP_GAP
 	header(root, "Abilities", shieldX, abilityY)
 	abilityY += HEADER_H
-	for slot = AbilityConfig.C, AbilityConfig.E do
-		local def = AbilityConfig.abilityOf(AbilityConfig.DEFAULT_AGENT, slot)
-		if def and def.cost and makeAbilityTile(root, def, shieldX, abilityY) then
-			abilityY += TILE_H + GAP
+	for _, agent in AbilityConfig.AgentIds do
+		local y = abilityY
+		for slot = AbilityConfig.C, AbilityConfig.E do
+			local def = AbilityConfig.abilityOf(agent, slot)
+			if def and def.cost and makeAbilityTile(root, def, agent, shieldX, y) then
+				y += TILE_H + GAP
+			end
 		end
 	end
 
@@ -733,10 +741,17 @@ function BuyMenu.start()
 			tile.tag.Text = if tile.id == inHand then "IN HAND" elseif owned then "OWNED" elseif unsold then "NOT SOLD" else ""
 			tile.tag.TextColor3 = if canSell then SELLABLE elseif unsold then Ui.DIM else OWNED
 		end
-		-- The abilities: the charges in our kit, as predicted.
+		-- The abilities: the charges in our kit, as predicted, of its agent's;
+		-- with a kit of no agent's (deathmatch), those of the agent we play.
 		local kit = if sim then sim.abilities else nil
+		local picked = me:GetAttribute(AgentSelect.AGENT)
+		local agent = if kit and kit.agent ~= AbilityConfig.NO_AGENT
+			then kit.agent
+			elseif typeof(picked) == "string" then picked
+			else AbilityConfig.DEFAULT_AGENT
 		local chargesBought = Shop.chargesFrom(me:GetAttribute(Shop.CHARGES_ATTRIBUTE) :: string?)
 		for _, tile in abilityTiles do
+			tile.button.Visible = tile.agent == agent
 			local slot = if kit then AbilitySim.slotOf(kit, tile.id) else nil
 			local have = if kit and slot then kit.charges[slot] else 0
 			local max = if kit and slot then AbilitySim.maxCharges(kit, slot) else 0

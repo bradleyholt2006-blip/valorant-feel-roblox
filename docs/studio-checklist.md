@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-eight
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-nine
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,8 +28,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, section 25 three and then one, sections 26 to 31 two, and section 32 two
-   or three.
+   one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
+   three, and section 33 one and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -58,6 +58,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
 | B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game; in deathmatch any time, guns alone; in Team Deathmatch the loadout menu instead, before the match or in your spawn room) |
 | O | The settings menu: your sensitivity and crosshair |
+| T | Agent select: a card for each agent, its kit, your side's picks and LOCK IN (on the course and while waiting any time, and in a match, where it counts down your window; not in gun game, either deathmatch or between matches) |
 | 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game or Team Deathmatch; in deathmatch any time) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
 
@@ -84,6 +85,8 @@ attribute `VFTestSetting` enters a setting as its box in the menu would: `sensit
 or 3 votes for that card in the vote for the next map, as a click on it would. In Team
 Deathmatch, `VFTestLoadouts` set to true or false opens or closes the loadout menu, and a string
 attribute `VFTestPick` set to `2,3` picks the second stage's third loadout, as a click on it would.
+`VFTestAgents` set to true or false opens or closes agent select as T does, and a string attribute
+`VFTestAgent` set to `jett` selects her card as a click would, or set to `lock` locks in.
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -1732,6 +1735,58 @@ as in TD1.
   in the next pre-game on the map voted for, its pads are dim and empty, and both kits start over:
   E's pip lit, C and Q dark and counting down from about 15 and 22, and X at `0/60`.
 
+## 33. Agent select
+
+From [29-agent-select.md](research/29-agent-select.md). A quick play of what changed, with one
+player and then three. Jett is the only agent for now, so the screen has her card alone and
+doesn't come up by itself as a window opens: T opens it. Your player's `VFAgentPick` attribute
+says where you stand: `free`, `open` or `locked`, or unset where nobody picks. A window lasts
+10 s, so have T ready as each match starts. `workspace:SetAttribute("VFMatchSkip", true)` in the
+server's command bar ends a gun game match, as in section 27. A player who joins a match under
+way has a window of their own too, which the offline tests cover.
+
+Press Play (F5), with one player.
+
+- **AS1 The course.** Press T: `AGENT SELECT` at the top left, `PICK ANY TIME` in gold at the top
+  right, and under them `Nothing's at stake here: an agent picked is yours at once, as often as
+  you like.` There's one card, JETT over DUELIST, outlined in gold with `YOURS` over the name.
+  Under it is Jett's kit, headed `JETT   DUELIST`: C CLOUDBURST, Q UPDRAFT, E TAILWIND and
+  X BLADE STORM, each with its line, and last `DRIFT   PASSIVE` with
+  `Hold jump while you fall to glide.` On the right, `YOUR TEAM` reads
+  `Nobody else on your side`. The button reads `PLAYING JETT`, dimmed, and `T to close` is at the
+  bottom right. The mouse moves a cursor, a click fires nothing, and WASD still moves you. Your
+  player's `VFAgent` reads `jett` and `VFAgentPick` `free`. T closes it, and the view turns with
+  the mouse again. **Send:** a screenshot of the screen.
+- **AS2 The other menus.** With B's buy menu open, T does nothing; the same with O's settings
+  menu. Close them, and press T: B now does nothing. With the screen up, O opens the settings
+  menu over it; close it with O, and the screen is still up, the mouse still moves its cursor, and
+  a click still fires nothing. M opens the Play menu, and the screen goes; T does nothing until
+  you close the menu with M.
+  Press P (Skirmish): you wait for an opponent, and T shows `PICK ANY TIME` and `PLAYING JETT`,
+  as on the course. Stop the game.
+- **AS3 A window.** Start a Local Server with 3 players, as in section 9, and press P once in
+  window 1 (Skirmish): players 1 and 3 share a side, as in F1. As round 1's buy phase starts,
+  press T in window 1: `LOCK IN WITHIN 10` in gold at the top right, counting down, and under the
+  title `Click an agent and LOCK IN; when time's up, the one selected is locked in for the
+  match.` The button reads `LOCK IN`, lit. Under `YOUR TEAM`, `PLAYER3` with `JETT` dimmed and
+  `SELECTING`. `VFAgentPick` reads `open`, and `VFAgentCloses` has a number, the server time it
+  closes. Click LOCK IN: the screen goes, and `VFAgentPick` reads `locked`.
+- **AS4 Locked in, and the time running out.** Press T in window 1 again: `LOCKED IN` at the top
+  right, `Locked in until the match is over; you pick again as the next one starts.` under the
+  title, the card tagged `LOCKED IN`, and the button `LOCKED IN`, dimmed. Player 3 never clicks:
+  10 s after the buy phase started, their row reads `JETT` and `LOCKED IN` in gold, and their
+  `VFAgentPick` reads `locked`. **Send:** a screenshot of window 1's screen.
+- **AS5 Nobody picks in gun game.** Press P in window 1 (gun game). T does nothing, and
+  `VFAgentPick` is unset. Space held in the air still glides, as Jett's Drift does. Run
+  `VFMatchSkip` once: on the victory screen and in the vote after it, T does nothing either.
+- **AS6 The spike rounds.** Press P in window 1 again (the spike rounds). As round 1's buy phase
+  starts, press T in window 2: `LOCK IN WITHIN 10` again, a new window for the new match. Don't
+  click: at 0 the screen goes by itself, and `VFAgentPick` reads `locked`. In window 1, B opens
+  the buy menu, with Cloudburst (`C`, 200) and Updraft (`Q`, 150) under the shields, as in U12.
+  Click Updraft: the credits go from 800 to 650; right-click it: back to 800.
+- **AS7 Deathmatch.** Press M in window 1, click the DEATHMATCH card and PLAY DEATHMATCH. In
+  deathmatch, T does nothing, and `VFAgentPick` is unset.
+
 ## Results
 
 ```
@@ -1849,6 +1904,13 @@ TP5 the gold orbs up ___ s into the match; X after the orb ___, after the kill _
 TP6 C's pip back ___ s after the throw; the counts carried over the death: yes / no
 TP7 the stage-2 guns on the pads: ___; the Stinger after the handover: magazine ___, reserve ___
 TP8 the next pre-game's counts: C ___, Q ___; X ___
+AS1 anything on the screen that read differently: ___; a click fired a shot: yes / no
+AS2 T over the buy menu or the settings menu: did nothing / opened (which); after O closed, the cursor stayed the screen's: yes / no
+AS3 the count started at ___; PLAYER3 under YOUR TEAM with SELECTING: yes / no
+AS4 player 3's row read LOCKED IN ___ s after the buy phase started; their VFAgentPick: ___
+AS5 T did anything in gun game, on its victory screen or in the vote: yes / no (what); the glide: yes / no
+AS6 window 2's screen went by itself at 0: yes / no; Updraft bought and sold back: 800 > ___ > ___
+AS7 T did anything in deathmatch: yes / no (what)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2027,3 +2089,10 @@ Didn't look right (IDs and what you saw):
 | 28 | The Ultimate Orbs up 30 s into the match, 10 points each on the ability bar's X | TP5 |
 | 28 | The abilities as a match starts, their countdowns, and their charges kept through a death | TP1, TP6, TP8 |
 | 28 | A new stage's guns on every spawner, and its loadout in place of a gun lent in the last | TP7 |
+| 29 | T on the course: Jett's card with her role, her kit and Drift, `PICK ANY TIME` and `PLAYING JETT`, with a cursor, and you can still move | AS1 |
+| 29 | It doesn't open over the buy menu, the settings menu or the Play menu, and the settings menu opens over it and gives the cursor back to it | AS2 |
+| 29 | In a match, the window: `LOCK IN WITHIN` counting down from 10 as the match starts; LOCK IN, or the time running out, locks in what's selected, and the screen goes | AS3, AS4, AS6 |
+| 29 | After the window, `LOCKED IN` until the match is over, and a new window as the next one starts | AS4, AS6 |
+| 29 | The buy menu's abilities, Jett's as before | AS6 |
+| 29 | Nobody picks in gun game or deathmatch, on the victory screen or in the vote: T does nothing | AS5, AS7 |
+| 29 | Teammates' picks: `SELECTING` while their window's open, and `LOCKED IN` after | AS3, AS4 |

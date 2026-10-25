@@ -57,6 +57,11 @@
 --   VFTestPick     "stage,index" ("2,3"): picks that loadout for that stage
 --                  as a click on it in the loadout menu does, then clears
 --                  itself
+--   VFTestAgents   true opens agent select as T does (system 29), false
+--                  closes it; then clears itself
+--   VFTestAgent    an agent's id ("jett"): selects it as a click on its
+--                  card does, or "lock" locks in as the button does; then
+--                  clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -77,6 +82,7 @@ local SettingsMenu = require(script.Parent.Parent.SettingsMenu)
 local VoteScreen = require(script.Parent.Parent.VoteScreen)
 local InputSampler = require(script.Parent.Parent.InputSampler)
 local LoadoutMenu = require(script.Parent.Parent.LoadoutMenu)
+local AgentMenu = require(script.Parent.Parent.AgentMenu)
 local PlayMenu = require(script.Parent.Parent.PlayMenu)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
@@ -194,6 +200,20 @@ function TestAim.start(controller: any)
 			local stage, index = string.match(pick, "^(%d+),(%d+)$")
 			if stage and index then
 				LoadoutMenu.pick(tonumber(stage) :: number, tonumber(index) :: number)
+			end
+		end
+		local agents = player:GetAttribute("VFTestAgents")
+		if typeof(agents) == "boolean" then
+			player:SetAttribute("VFTestAgents", nil)
+			AgentMenu.setOpen(agents)
+		end
+		local agent = player:GetAttribute("VFTestAgent")
+		if typeof(agent) == "string" and agent ~= "" then
+			player:SetAttribute("VFTestAgent", nil)
+			if agent == "lock" then
+				AgentMenu.lock()
+			else
+				AgentMenu.select(agent)
 			end
 		end
 		local sim: PlayerSim.State? = controller.sim
