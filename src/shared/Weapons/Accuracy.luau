@@ -114,12 +114,14 @@ function Accuracy.movementError(acc: WeaponConfig.AccuracyDef, state: MoveState)
 end
 
 -- The cone for a shot with this bullet number, from the accuracy of the
--- mode it fires in (WeaponConfig.mode).
+-- mode it fires in (WeaponConfig.mode), with its own landing penalty if it
+-- has one.
 function Accuracy.cone(acc: WeaponConfig.AccuracyDef, ctx: Context, bullet: number): Cone
 	local raw = Accuracy.curve(acc.firingError.points, bullet)
 	local crouch = if ctx.crouched and ctx.moveState ~= "air" then acc.crouchMultiplier.value else 1
 	local movement = Accuracy.movementError(acc, ctx.moveState)
-	local landing = if ctx.landing then WeaponConfig.Accuracy.landError.value else 0
+	local land = acc.landError or WeaponConfig.Accuracy.landError
+	local landing = if ctx.landing then land.value else 0
 	local power = if ctx.moveState == "still" then WeaponConfig.Accuracy.errorPower.value else WeaponConfig.Accuracy.moveErrorPower.value
 	return {
 		radius = raw * crouch + movement + landing,

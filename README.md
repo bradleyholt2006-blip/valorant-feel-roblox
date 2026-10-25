@@ -97,11 +97,10 @@ Built one system at a time:
 17. **The ability kit**: four abilities on C, Q, E and X, with an ability bar between health and
     ammo. Basic abilities are bought a charge at a time in the buy phase and kept through a death
     into the next round; the signature has a free charge every round; the ultimate fills with a
-    point for each kill, death, plant and defuse. Everyone plays Jett for now, and two of hers
-    work: Updraft throws you straight up about 4 m, and Tailwind readies a gust that, after a
-    second's windup, dashes you about 7 m the way you're moving, and comes back with two kills.
-    Casts are predicted on your screen and decided by the server, and others see and hear them
-    where you're drawn. Her Blade Storm is in the kit but not playable yet -
+    point for each kill, death, plant and defuse. Everyone plays Jett for now: Updraft throws you
+    straight up about 4 m, and Tailwind readies a gust that, after a second's windup, dashes you
+    about 7 m the way you're moving, and comes back with two kills. Casts are predicted on your
+    screen and decided by the server, and others see and hear them where you're drawn -
     [research and design](docs/research/17-abilities.md)
 18. **Cloudburst**, Jett's smoke: C throws it at once from your eye the way you look, and puts
     your gun away for a quarter of a second. It flies at 30 m/s, and holding C curves it towards
@@ -110,6 +109,14 @@ Built one system at a time:
     from inside it, the screen is smoke. The server flies each throw on its thrower's ticks, and
     your screen flies yours the same way, so your cloud forms at once where the server's will -
     [research and design](docs/research/18-cloudburst.md)
+19. **Blade Storm**, Jett's ultimate: X, once its 8 points are full, puts five throwing knives in
+    your hand after a second's windup. Mouse 1 throws one, exactly where the crosshair is,
+    standing, running or in the air, for 50 to the body and 150 to the head, and a kill with one
+    brings all five back. Mouse 2 throws all that are left at once, in a spread, and its kills
+    bring none back. Once they're all thrown, your gun comes back. A number key draws a gun and
+    keeps the knives for later, X draws them again, and the other abilities work with them out.
+    The knives are a weapon of their own in a fifth slot, so the server decides each throw as it
+    does a shot, with lag compensation - [research and design](docs/research/19-blade-storm.md)
 
 ## Running it
 
@@ -132,10 +139,12 @@ R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs),
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent), Tab held the scoreboard (the spike
-rounds), C Cloudburst (held, it curves the throw), Q Updraft and E Tailwind (E readies the gust,
-and E again within its window dashes; X, Blade Storm, isn't playable yet). The spike rounds
-charge credits; the course and the arena are free. On the course a spent charge comes back 1.5 s
-after it's done, and in the arena every life starts with every charge.
+rounds), C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
+and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
+that are left; with a gun drawn, X draws the knives again). The spike rounds charge credits; the
+course and the arena are free. On the course a spent charge comes back 1.5 s after it's done,
+and the ultimate's points are full at every life and fill again 1.5 s after Blade Storm ends; in
+the arena every life starts with every charge.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -159,31 +168,30 @@ In the sound lab: `[` / `]` footstep radius (this client only), Y practice dummi
 (off by default), H the rings sounds draw on the floor, Backspace clears its log.
 Scripted playtests (Studio only): a tool that can press keys but can't move the mouse aims by
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
-`VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
-`VFTestButtons` holds input flags on top of the real ones (128 fire or slash, 256 right click or
-stab, 512 reload, 1024 the spike's 4 held, 2048 G, and the ability keys: 4096 C, 8192 Q, 16384 E
-and 32768 X), `VFTestGive` set to a weapon id gives that
-weapon as 5-9 would (`spike` hands over the course's spike), `VFTestBuy` set
-to an id buys it as the menu would (`-` and the id sells it back), `VFTestMenu` set to true or
-false opens or closes the menu, `VFTestSlot` set to 1, 2, 3 or 4 draws that slot,
-`VFTestSettingsMenu` set to true or false opens or closes the settings menu, `VFTestSetting`
-set to `key=value` (`sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or `crosshair=0;P;c;5`) enters
-that setting as its box in the menu would, `VFTestTake` set to true presses F, and `VFTestBoard`
-set to true or false holds the scoreboard open as Tab does or lets it go. Each of the last eight
-clears itself.
-`VFTestMute` on the local player silences the game's sound while the sound lab's meters still
-read. From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat`
-(`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
-set true ends the spike rounds' phase under way (a buy phase, a round or the wait for the next).
-In the spike rounds each player's credits are their `VFCredits` attribute, and each side's losses
-in a row `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in
-Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's
-record is in their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds` and
-`VFStartCredits` in the spike rounds, and `VFAlive` and `VFLoadout` in either. Each player's ability kit is
-their `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points),
-with what's under way after it, and `VFTestBuy` set to `updraft` buys a charge. Where a player's
-last Cloudburst burst is their `VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds
-each throw in the air and each cloud as parts.
+`VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)). `VFTestButtons`
+holds input flags on top of the real ones (128 fire or slash, 256 right click or stab, 512 reload,
+1024 the spike's 4 held, 2048 G, and the ability keys: 4096 C, 8192 Q, 16384 E and 32768 X),
+`VFTestGive` set to a weapon id gives that weapon as 5-9 would (`spike` hands over the course's
+spike), `VFTestBuy` set to an id buys it as the menu would (`-` and the id sells it back),
+`VFTestMenu` set to true or false opens or closes the menu, `VFTestSlot` set to 1, 2, 3, 4 or 5
+draws that slot (5 is Blade Storm's knives), `VFTestSettingsMenu` set to true or false opens or
+closes the settings menu, `VFTestSetting` set to `key=value` (`sensitivity=0.8`, `scoped=0.5`,
+`dpi=1600` or `crosshair=0;P;c;5`) enters that setting as its box in the menu would, `VFTestTake`
+set to true presses F, and `VFTestBoard` set to true or false holds the scoreboard open as Tab does
+or lets it go. Each of the last eight clears itself.
+`VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
+From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat` (`standard`,
+`competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip` set true ends
+the spike rounds' phase under way (a buy phase, a round or the wait for the next). In the spike
+rounds each player's credits are their `VFCredits` attribute, and each side's losses in a row
+`Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in Workspace's
+`VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's record is in
+their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds` and `VFStartCredits`
+in the spike rounds, and `VFAlive` and `VFLoadout` in either. Each player's ability kit is their
+`VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
+what's under way after it (`storm` while Blade Storm lasts), and `VFTestBuy` set to `updraft` buys a
+charge. Where a player's last Cloudburst burst is their `VFLastCloud` attribute (metres), and
+`Workspace.VFClouds` holds each throw in the air and each cloud as parts.
 
 ## Tests
 
@@ -196,10 +204,11 @@ cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast),
 rounds' rules and map, the economy (what each round pays, kills, the plant, the cap, what a
 purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the dead
 drop, walking over one and the one in view), the match's record (the combat score, kills,
-deaths, assists and the average) and the ability kit (charges through rounds, halves, kills and
-deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire) and Cloudburst
-(the throw, its flight, its curve and what stops it, and the cloud's life) are pure Luau and run
-outside Roblox:
+deaths, assists and the average), the ability kit (charges through rounds, halves, kills and
+deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire), Cloudburst
+(the throw, its flight, its curve and what stops it, and the cloud's life) and Blade Storm (the
+cast, single throws and the burst, the kills that bring the knives back, swapping, and what ends
+it) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

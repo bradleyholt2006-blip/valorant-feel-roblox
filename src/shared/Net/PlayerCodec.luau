@@ -13,6 +13,9 @@ local AbilityConfig = require("../Abilities/AbilityConfig")
 local PlayerCodec = {}
 
 local TAU = 2 * math.pi
+-- A player's weapon slots: the three weapons, the spike and an ultimate's
+-- weapon (WeaponSim.SLOTS).
+local SLOTS = 5
 
 local function packAngle(a: number): number
 	return math.floor(((a % TAU) / TAU) * 65536 + 0.5) % 65536
@@ -142,7 +145,7 @@ function PlayerCodec.decodeInputs(b: any): { WireInput }?
 		local yaw = unpackAngle(r16(c))
 		local pitch = ri16(c) / 10000
 		local viewTime = rf64(c)
-		if slot < 1 or slot > 4 or viewTime ~= viewTime then
+		if slot < 1 or slot > SLOTS or viewTime ~= viewTime then
 			return nil
 		end
 		table.insert(out, { seq = seq, buttons = buttons, slot = slot, yaw = yaw, pitch = pitch, viewTime = viewTime })
@@ -152,13 +155,11 @@ end
 
 -- Ack: everything PlayerSim needs to resume from this state ------------------
 
-local SLOTS = 4 -- the three weapons and the spike (WeaponSim.SLOTS)
-
 local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
-	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 -- weapons
+	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 4 + 8 * 6 -- the ability kit
+	+ 1 + 3 + 5 + 8 * 6 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -211,6 +212,8 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, w.burstNext)
 	wf64(c, w.spin)
 	w8(c, w.combo)
+	w8(c, w.back)
+	w8(c, w.hold)
 
 	local k = s.spike
 	w8(c, k.channel)
@@ -229,6 +232,7 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, math.clamp(a.points, 0, 255))
 	-- The kit's keys, a bit a slot (their buttons are the input's top four).
 	w8(c, bit32.rshift(a.held, 12))
+	w8(c, if a.storm then 1 else 0)
 	wf64(c, a.readyFrom)
 	wf64(c, a.readyUntil)
 	wf64(c, a.liftUntil)
@@ -300,6 +304,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local burstNext = rf64(c)
 	local spin = rf64(c)
 	local combo = r8(c)
+	local back = r8(c)
+	local hold = r8(c)
 	local weapons = {
 		loadout = loadout,
 		ammo = ammo,
@@ -321,6 +327,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		burstNext = burstNext,
 		spin = spin,
 		combo = combo,
+		back = back,
+		hold = hold,
 	}
 
 	local channel = r8(c)
@@ -344,6 +352,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local kills = r8(c)
 	local points = r8(c)
 	local held = bit32.lshift(r8(c), 12)
+	local storm = r8(c) ~= 0
 	local readyFrom = rf64(c)
 	local readyUntil = rf64(c)
 	local liftUntil = rf64(c)
@@ -363,6 +372,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		dashUntil = dashUntil,
 		dashX = dashX,
 		dashZ = dashZ,
+		storm = storm,
 	}
 
 	local tagUntilTick = r32(c)

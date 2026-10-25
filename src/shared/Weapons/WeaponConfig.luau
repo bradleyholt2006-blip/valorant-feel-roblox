@@ -29,7 +29,9 @@ export type CurveParam = { points: Curve, status: Status, source: string }
 
 -- The buy menu's groups, in its order.
 -- "spike" is the spike (system 12), carried in the fourth slot and never sold.
-export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike"
+-- "ultimate" is an ultimate's weapon (system 19: Jett's Blade Storm knives),
+-- in the fifth slot while the ultimate lasts, and never sold either.
+export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike" | "ultimate"
 
 export type AccuracyDef = {
 	-- Firing error: radius of the cone of fire by bullet number.
@@ -45,6 +47,9 @@ export type AccuracyDef = {
 	walkError: Param,
 	crouchMoveError: Param,
 	airError: Param,
+	-- The jump landing penalty, when it isn't WeaponConfig.Accuracy's (Blade
+	-- Storm's knives are exact even then).
+	landError: Param?,
 }
 
 export type RecoilDef = {
@@ -119,7 +124,7 @@ export type WeaponDef = {
 	id: string,
 	name: string,
 	category: Category,
-	slot: number, -- 1 primary, 2 secondary, 3 melee, 4 the spike
+	slot: number, -- 1 primary, 2 secondary, 3 melee, 4 the spike, 5 an ultimate's weapon
 	price: Param, -- credits
 	fireMode: "auto" | "semi" | "none",
 	fireRate: Param, -- rounds per second
@@ -141,6 +146,9 @@ export type WeaponDef = {
 	alt: AltDef?,
 	melee: MeleeDef?, -- swings instead of firing (the knife)
 	spike: boolean?, -- the spike (system 12): planted, not fired (SpikeSim)
+	-- An ultimate's weapon (system 19): put in hand by its cast, and never
+	-- bought, dropped or reloaded (WeaponSim.arm).
+	ultimate: boolean?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
 }
@@ -332,7 +340,7 @@ end
 
 local WeaponConfig = {}
 
-WeaponConfig.Slots = { Primary = 1, Secondary = 2, Melee = 3 }
+WeaponConfig.Slots = { Primary = 1, Secondary = 2, Melee = 3, Ultimate = 5 }
 
 -- Pistols ---------------------------------------------------------------------
 
@@ -526,6 +534,49 @@ local odinHip = accuracy(
 )
 
 local KNIFE_NA = p(0, "estimate", "n/a")
+
+-- Jett's Blade Storm (system 19): one knife at a time, exact wherever she is,
+-- or all that are left at once, in a spread.
+local BLADE = "VALORANT Wiki, Blade Storm"
+local EXACT = BLADE .. ": Single Fire 'has 100% accuracy at all times (even when Jett is running or in the air)'"
+local SPREAD = BLADE .. ": Burst Fire 'throws all of Blade Storm's remaining knives, though this can be inaccurate'"
+local kunaiExact = accuracy(
+	c({ { 1, 0 } }, "community", EXACT),
+	p(1, "community", EXACT),
+	p(0.1, "estimate", "n/a: there's no spread to recover"),
+	p(1, "estimate", "n/a"),
+	{
+		crouch = p(0, "community", EXACT),
+		walk = p(0, "community", EXACT),
+		run = p(0, "community", EXACT),
+		air = p(0, "community", EXACT),
+	}
+)
+kunaiExact.landError = p(0, "community", EXACT)
+local STILL_SPREAD = p(0, "estimate", "Not published; ours: the spread is the same however she moves")
+local kunaiSpread = accuracy(
+	c({ { 1, 2 } }, "estimate", SPREAD .. "; how far isn't published, and 2 is ours (Patch 1.09: it was 'frequently getting frags at over 20 meters')"),
+	p(1, "estimate", "Not published; ours: crouching changes nothing"),
+	p(0.1, "estimate", "n/a: all the knives go at once"),
+	p(1, "estimate", "n/a"),
+	{ crouch = STILL_SPREAD, walk = STILL_SPREAD, run = STILL_SPREAD, air = STILL_SPREAD }
+)
+kunaiSpread.landError = STILL_SPREAD
+local NO_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a thrown knife doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = KNIFE_NA,
+	adsCamera = KNIFE_NA,
+})
+local kunaiBurst: AltDef = {
+	fireMode = "semi",
+	fireRate = p(1 / 0.45, "confirmed", P109 .. ": 'The time between consecutive Burst Fire use has increased from 0.33 seconds >>> 0.45 seconds'"),
+	pellets = p(5, "community", SPREAD),
+	ammo = p(5, "community", SPREAD .. ": a knife each"),
+	accuracy = kunaiSpread,
+	recoil = NO_KICK,
+}
 
 WeaponConfig.Defs = {
 	classic = {
@@ -1283,11 +1334,43 @@ WeaponConfig.Defs = {
 			adsCamera = KNIFE_NA,
 		}),
 	},
+	-- Jett's Blade Storm knives (system 19): put in hand in the fifth slot by
+	-- her ultimate's cast (AbilityConfig.BladeStorm), and gone once they're
+	-- all thrown. Fire throws one; alt fire throws all that are left.
+	kunai = {
+		id = "kunai",
+		name = "Blade Storm",
+		category = "ultimate",
+		slot = 5,
+		price = p(0, "community", "Not bought: Blade Storm's 8 ultimate points put them in hand (" .. BLADE .. ")"),
+		-- A click a knife (ours: no source says whether holding fire throws on).
+		fireMode = "semi",
+		fireRate = p(6, "community", BLADE .. ": Single Fire 'one every 0.167 s', timed by the wiki (not published)"),
+		magazine = p(5, "community", BLADE .. ": 5 knives; the Fandom wiki: 'a set of 5 highly accurate throwing knives'"),
+		reserve = p(0, "community", BLADE .. ": none to reload; Single Fire 'fully recharges knives on a kill'"),
+		reloadTime = KNIFE_NA,
+		equipTime = p(0.5, "community", BLADE .. ": 'Reequip time' 0.5 s; the first draw is the cast's windup"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with the knives in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 150, 50, 42.5) },
+		damageSource = p(
+			0,
+			"community",
+			BLADE .. ": 50 a knife on the range's bot, head x3, legs x0.85 (Patch 5.03: 'from 1.0 >>> 0.85'); Patch 3.06: the burst's 'damage and multipliers will mirror the left-click'"
+		),
+		-- Knives don't go through walls (ours; on vlr.gg players take it that
+		-- they can't: "I thought this wasn't possible?").
+		penetration = "none",
+		suppressed = false,
+		ultimate = true,
+		alt = kunaiBurst,
+		accuracy = kunaiExact,
+		recoil = NO_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
--- they always were, the rest in alphabetical order after them, and the
--- spike after those.
+-- they always were, the rest in alphabetical order after them, the spike
+-- after those, and Blade Storm's knives (system 19) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1311,6 +1394,7 @@ WeaponConfig.Ids = {
 	"stinger",
 	"warden",
 	"spike",
+	"kunai",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

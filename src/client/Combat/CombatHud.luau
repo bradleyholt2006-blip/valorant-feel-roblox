@@ -2,6 +2,7 @@
 -- Player-facing combat HUD (original layout): health and shields, ammo and
 -- weapon, a reload / equip bar, server-confirmed hit markers and damage
 -- numbers, the death notice and a scope overlay. The kill feed is KillFeed's.
+-- Blade Storm's knives (system 19) show how many are left, on their key.
 --
 -- Hit markers and damage numbers only ever come from the server's verdict,
 -- never from the client's guess, so they show what actually counted.
@@ -141,6 +142,10 @@ function CombatHud.start()
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
 
+	-- The draw under way: when it ends, and how long it is, as first seen
+	-- (Blade Storm's first is its windup, longer than the knives' own).
+	local drawEnds, drawLength = 0, 0
+
 	-- Hit marker: four short diagonal ticks around the crosshair --------------
 	local marker = Ui.frame(gui, {
 		Size = UDim2.fromOffset(1, 1),
@@ -225,8 +230,11 @@ function CombatHud.start()
 			local w = sim.weapons
 			local def = PlayerSim.def(sim)
 			local slot = w.equipped
-			ammoText.Text = if def.fireMode == "none" then "" else string.format("%d <font size=\"18\" color=\"#%s\">/ %d</font>", w.ammo[slot], Ui.hex(Ui.DIM), w.reserve[slot])
-			weaponText.Text = string.format("%s   [%d]", def.name, slot)
+			ammoText.Text = if def.fireMode == "none"
+				then ""
+				elseif def.ultimate then tostring(w.ammo[slot])
+				else string.format("%d <font size=\"18\" color=\"#%s\">/ %d</font>", w.ammo[slot], Ui.hex(Ui.DIM), w.reserve[slot])
+			weaponText.Text = string.format("%s   [%s]", def.name, if def.ultimate then "X" else tostring(slot))
 			if w.scoped > 0 and def.ads then
 				zoom = def.ads.zoom[w.scoped]
 			end
@@ -239,7 +247,11 @@ function CombatHud.start()
 				fill = 1 - math.clamp((w.reloadEndTime - t) / math.max(step, 1e-3), 0, 1)
 				label = "reloading"
 			elseif t < w.equipEndTime then
-				fill = 1 - math.clamp((w.equipEndTime - t) / math.max(def.equipTime.value, 1e-3), 0, 1)
+				if w.equipEndTime ~= drawEnds then
+					drawEnds = w.equipEndTime
+					drawLength = math.max(def.equipTime.value, w.equipEndTime - t)
+				end
+				fill = 1 - math.clamp((w.equipEndTime - t) / math.max(drawLength, 1e-3), 0, 1)
 				label = "drawing"
 			end
 			barBack.Visible = fill ~= nil and alive

@@ -383,17 +383,31 @@ SoundConfig.Sounds = {
 	smokeBurst = sound(0.8, 0.03, 3, {
 		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
 	}, 0.55),
+	-- Blade Storm (system 19): each throw the thin swish, quicker still; a
+	-- knife's hit on the body the blade going in, as the knife's; and the
+	-- cast a knife's draw slowed down, as the five come out.
+	kunai = sound(0.7, 0.05, 4, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 1.25),
+	kunaiHit = sound(0.8, 0.04, 4, {
+		asset(9114487207, "Flesh Stab 9 (SFX)", 0.320, 0.12),
+		asset(9114487004, "Flesh Stab 5 (SFX)", 0.355, 0.07),
+	}),
+	storm = sound(0.8, 0.02, 2, {
+		asset(9116190959, "Knife Fast Scraping Draws Pull Out 17 (SFX)", 0.180, 0.2),
+	}, 0.7),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, and a
--- thrown cloud's burst), heard as the ability curve says (systems 17 and
--- 18).
+-- thrown cloud's burst), heard as the ability curve says (systems 17 to
+-- 19). Blade Storm's knives drawn again sound as their draw does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
 	ready = "windup",
 	throw = "smokeThrow",
 	cloud = "smokeBurst",
+	storm = "storm",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -439,7 +453,8 @@ export type WeaponSounds = {
 	curve: string,
 	-- A knife's: its two swings, the blade going in (the one swinging hears
 	-- it when the server confirms the hit, and the others where it happens)
-	-- and striking the level.
+	-- and striking the level. Blade Storm's knives have a hit too, for a
+	-- body hit, which the thrower hears with the confirm (system 19).
 	slash: string?,
 	stab: string?,
 	hit: string?,
@@ -475,6 +490,9 @@ SoundConfig.Weapons = {
 	-- The spike in hand (system 12): only its draw; its plant, defuse and
 	-- beeps are SoundConfig.Spike's.
 	spike = { draw = "drawRifle", curve = "melee" },
+	-- Blade Storm's knives (system 19): thrown, heard as far as an
+	-- ability, and never reloaded.
+	kunai = { shot = "kunai", pitch = 1, draw = "knife", curve = "ability", hit = "kunaiHit" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

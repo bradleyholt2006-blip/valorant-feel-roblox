@@ -28,5 +28,6 @@ require("./groundguns")
 require("./scoreboard")
 require("./abilities")
 require("./cloudburst")
+require("./bladestorm")
 
 H.finish()

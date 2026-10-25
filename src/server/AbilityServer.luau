@@ -9,13 +9,17 @@
 --     back. Charges are bought in the buy menu (ShopServer), one at a time
 --   * on the course and in Skirmish, where nothing is bought, every life
 --     starts with every charge, and on the course a spent charge comes back
---     a moment after, so it can be practised (ours)
+--     a moment after, so it can be practised (ours). So does the ultimate
+--     on the course: every life starts with its points full, and they fill
+--     again a moment after it's over (system 19)
 --   * the ultimate's points: one for a kill (a dummy's too), a death, a
 --     plant and a defuse; and kills bring the signature's charge back
---     (Jett's: two)
+--     (Jett's: two). A kill with a single Blade Storm knife brings all its
+--     knives back (PlayerSim.killedWith, system 19)
 -- Each cast is told to every client (the Ability remote) for its sound and
--- look, when the frame on their screen reaches it. The caster's own client
--- has predicted it already. Each kit is a player attribute
+-- look, when the frame on their screen reaches it, but Blade Storm's knives
+-- drawn again, which others see in hand. The caster's own client has
+-- predicted it already. Each kit is a player attribute
 -- (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary writes it), which
 -- scripted checks read.
 
@@ -26,6 +30,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local PlayerSim = require(Shared.PlayerSim)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
@@ -38,7 +43,8 @@ local AbilityServer = {}
 -- Whether charges are bought (the spike rounds). Without, every life
 -- starts with every charge.
 AbilityServer.economy = false
--- Whether a spent charge comes back by itself (the course).
+-- Whether a spent charge comes back by itself, and the ultimate's points
+-- fill (the course).
 AbilityServer.refill = true
 -- How long the course waits, once nothing's under way, before it fills a
 -- kit again (ours).
@@ -104,7 +110,8 @@ function AbilityServer.sell(player: Player, id: string): boolean
 	return true
 end
 
--- Once a server frame: the course's refills, and each kit told to clients.
+-- Once a server frame: the course's refills, the ultimate's points with
+-- them, and each kit told to clients.
 function AbilityServer.step(now: number)
 	for _, player in Players:GetPlayers() do
 		local kit = PlayerSimServer.abilitiesOf(player)
@@ -112,7 +119,7 @@ function AbilityServer.step(now: number)
 			continue
 		end
 		local t = PlayerSimServer.timeOf(player) or 0
-		if not AbilityServer.refill or not PlayerSimServer.isAlive(player) or AbilitySim.full(kit) or AbilitySim.busy(kit, t) then
+		if not AbilityServer.refill or not PlayerSimServer.isAlive(player) or AbilitySim.full(kit, true) or AbilitySim.busy(kit, t) then
 			shortSince[player] = nil
 		else
 			local since = shortSince[player]
@@ -120,7 +127,7 @@ function AbilityServer.step(now: number)
 				shortSince[player] = now
 			elseif now - since >= AbilityServer.REFILL_DELAY then
 				shortSince[player] = nil
-				AbilitySim.fill(kit)
+				AbilitySim.fill(kit, true)
 				PlayerSimServer.markDirty(player)
 			end
 		end
@@ -135,7 +142,7 @@ end
 function AbilityServer.start()
 	table.insert(PlayerSimServer.castListeners, function(player: Player, cast: AbilitySim.Cast)
 		local entity = PlayerSimServer.entityOf(player)
-		if not entity then
+		if not entity or cast.kind == "draw" then
 			return
 		end
 		local event: CastEvent = {
@@ -148,16 +155,21 @@ function AbilityServer.start()
 		}
 		Remotes.get().Ability:FireAllClients(event)
 	end)
-	-- Every life on the course and in Skirmish starts with every charge.
+	-- Every life on the course and in Skirmish starts with every charge,
+	-- and on the course with the ultimate's points full.
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
 		if not AbilityServer.economy then
-			change(player, AbilitySim.fill)
+			change(player, function(kit)
+				AbilitySim.fill(kit, AbilityServer.refill)
+			end)
 		end
 	end)
-	table.insert(CombatServer.killListeners, function(attacker, victim)
+	table.insert(CombatServer.killListeners, function(attacker, victim, weapon, mode)
 		local by = if attacker then attacker.player else nil
-		if by and by ~= victim.player then
-			change(by, AbilitySim.killed)
+		local sim = if by and by ~= victim.player then PlayerSimServer.getSim(by) else nil
+		if by and sim then
+			PlayerSim.killedWith(sim, weapon, mode)
+			PlayerSimServer.markDirty(by)
 		end
 	end)
 	table.insert(PlayerSimServer.deathListeners, function(player: Player)

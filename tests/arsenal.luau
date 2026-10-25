@@ -95,7 +95,7 @@ do
 	end
 	local guns = 0
 	for id, def in WeaponConfig.Defs do
-		if def.category ~= "melee" and def.category ~= "spike" then
+		if def.category ~= "melee" and def.category ~= "spike" and def.category ~= "ultimate" then
 			guns += 1
 			ok = ok and seen[id] == 1
 		end
@@ -104,8 +104,16 @@ do
 	check("the buy menu lists all 20 guns once each, in their slots", ok and guns == 20, tostring(guns))
 	local ids = WeaponConfig.Ids
 	check(
-		"wire ids: the first six as they always were, then the rest, then the spike",
-		#ids == 22 and ids[1] == "classic" and ids[2] == "knife" and ids[3] == "operator" and ids[4] == "phantom" and ids[5] == "sheriff" and ids[6] == "vandal" and ids[22] == "spike"
+		"wire ids: the first six as they always were, then the rest, the spike, then Blade Storm's knives",
+		#ids == 23
+			and ids[1] == "classic"
+			and ids[2] == "knife"
+			and ids[3] == "operator"
+			and ids[4] == "phantom"
+			and ids[5] == "sheriff"
+			and ids[6] == "vandal"
+			and ids[22] == "spike"
+			and ids[23] == "kunai"
 	)
 	local quiet = {}
 	for _, id in ids do

@@ -140,8 +140,9 @@ local onSwing: SwingHandler = function() end
 local seeds = Random.new()
 
 -- A life keeps the last one's weapons, unless it starts on the starting kit,
--- but never the spike: a carrier drops it as they die. It keeps the last
--- one's ability kit too, with nothing under way.
+-- but never the spike: a carrier drops it as they die. Nor an ultimate's
+-- weapon, which a death ends (WeaponSim.newState). It keeps the last one's
+-- ability kit too, with nothing under way.
 local function newSim(r: Record): PlayerSim.State
 	local kit = r.kit
 	local loadout = if not r.freshKit then table.clone(r.sim.weapons.loadout) elseif kit then table.clone(kit) else nil
@@ -376,11 +377,12 @@ end
 -- Puts a weapon in one of a player's slots with full ammo, drawn if it's the
 -- slot in hand (the debug give and the buy menu), or with the rounds given (a
 -- gun off the ground), or empties the primary or sidearm slot ("": a gun
--- sold back or dropped). Returns whether it did.
+-- sold back or dropped). Never the spike or an ultimate's weapon, which
+-- come their own ways. Returns whether it did.
 function PlayerSimServer.give(player: Player, slot: number, id: string, ammo: number?, reserve: number?): boolean
 	local r = records[player]
 	local def = WeaponConfig.Defs[id]
-	local fits = if id == "" then slot == 1 or slot == 2 else def ~= nil and def.slot == slot and not def.spike
+	local fits = if id == "" then slot == 1 or slot == 2 else def ~= nil and def.slot == slot and not def.spike and not def.ultimate
 	if not r or not fits then
 		return false
 	end

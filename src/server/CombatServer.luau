@@ -32,7 +32,8 @@
 -- Each damage event says whether the bullets went through a wall first, for
 -- the kill feed (system 16), and every hit that took something is told to
 -- damageListeners, for the match's record. Every kill is told to
--- killListeners, for the ability kit's points (system 17).
+-- killListeners, for the ability kit's points (system 17), with what made it
+-- (a single Blade Storm knife brings them all back, system 19).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -65,8 +66,10 @@ local CombatServer = {}
 -- spike's blast), to whom, and how much, before a kill's death listeners.
 CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, number) -> () }
 -- Called with every kill, players' and dummies' alike: who did it (nil for
--- the spike's blast) and who died, before the death listeners.
-CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity) -> () }
+-- the spike's blast), who died, the weapon and the mode it fired in (a
+-- WeaponSim.Shot's; nil for a swing or the blast), before the death
+-- listeners.
+CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity, string, string?) -> () }
 
 local level = RobloxLevel.new()
 local history = LagCompensation.new()
@@ -77,8 +80,17 @@ function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 end
 
 -- `attacker` is nil for a death nobody caused (the spike's blast);
--- `wallbang`, that the bullets went through a wall on the way.
-local function damage(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, region: string, weapon: string, wallbang: boolean?)
+-- `wallbang`, that the bullets went through a wall on the way; `mode`, the
+-- way the weapon fired, for a shot.
+local function damage(
+	attacker: Entities.Entity?,
+	victim: Entities.Entity,
+	amount: number,
+	region: string,
+	weapon: string,
+	wallbang: boolean?,
+	mode: string?
+)
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
 	if result.damage > 0 then
 		for _, listener in CombatServer.damageListeners do
@@ -103,7 +115,7 @@ local function damage(attacker: Entities.Entity?, victim: Entities.Entity, amoun
 	Remotes.get().Combat:FireAllClients(event)
 	if result.killed then
 		for _, listener in CombatServer.killListeners do
-			listener(attacker, victim)
+			listener(attacker, victim, weapon, mode)
 		end
 		victim.onKilled(attacker)
 	end
@@ -273,7 +285,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 	for _, total in Volley.totals(hits) do
 		local victim = Entities.get(total.target)
 		if victim and victim.health.alive then
-			local result = damage(shooter, victim, total.damage, total.region, first.weapon, throughWall[total.target])
+			local result = damage(shooter, victim, total.damage, total.region, first.weapon, throughWall[total.target], first.mode)
 			table.insert(results, { target = total.target, region = total.region, damage = total.damage, pellets = total.pellets, killed = result.killed })
 		end
 	end

@@ -102,6 +102,17 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.09, 0.03, 0.09), offset = vector.create(0, 0.135, -0.14) }, -- cap
 		},
 	},
+	-- Blade Storm's knives (system 19): three thin blades held fanned out,
+	-- their hilts together.
+	kunai = {
+		muzzle = vector.create(0, 0.015, -0.22),
+		pieces = {
+			{ size = vector.create(0.008, 0.028, 0.18), offset = vector.create(-0.035, 0, -0.1), accent = true },
+			{ size = vector.create(0.008, 0.028, 0.2), offset = vector.create(0, 0.015, -0.11), accent = true },
+			{ size = vector.create(0.008, 0.028, 0.18), offset = vector.create(0.035, 0, -0.1), accent = true },
+			{ size = vector.create(0.09, 0.022, 0.03), offset = vector.create(0, 0, 0) }, -- hilts
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -128,6 +139,7 @@ local SHAPE_OF: { [string]: string } = {
 	odin = "heavy",
 	knife = "knife",
 	spike = "spike",
+	kunai = "kunai",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -153,6 +165,7 @@ local ACCENT: { [string]: Color3 } = {
 	odin = Color3.fromRGB(80, 80, 90),
 	knife = Color3.fromRGB(190, 195, 205),
 	spike = Color3.fromRGB(235, 70, 60),
+	kunai = Color3.fromRGB(150, 230, 255),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

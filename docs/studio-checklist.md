@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the eighteen
+Studio can show. It goes through every "Known gaps to check in Studio" item in the nineteen
 research docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about four and a half hours. Doing it in parts is fine; keep the order.
+It takes about five hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
-   22 one and then two.
+   23 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -47,7 +47,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 | N | The next enemy outline colour |
 | P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the spike rounds |
-| C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes (X, Blade Storm, isn't playable yet) |
+| C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes |
+| X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
@@ -1095,10 +1096,11 @@ the ultimate's points and what it needs, as `C0/2 Q1/1 E1/1 X0/8`, with `lift` o
 (8192) or E (16384): set it, then clear it.
 
 - **U1 The bar.** At the bottom of the screen, between your health and your ammo, four squares:
-  `C` CLOUDBURST, `Q` UPDRAFT, `E` TAILWIND and `X` BLADE STORM. Blade Storm's is dimmed. C's
-  square has two pips, Q's one and E's one, all lit; X's has eight, all dark, and reads `0/8` at
-  its top right. Each name fits inside its square: BLADE STORM on two lines, CLOUDBURST smaller.
-  `VFKit` reads `C2/2 Q1/1 E1/1 X0/8`. **Send:** a screenshot of the bar.
+  `C` CLOUDBURST, `Q` UPDRAFT, `E` TAILWIND and `X` BLADE STORM. C's square has two pips, Q's one
+  and E's one, all lit; X's has eight, gold, since the course fills the ultimate's points (system
+  19), and reads `8/8` at its top right, in gold. Each name fits inside its square: BLADE STORM on
+  two lines, CLOUDBURST smaller. `VFKit` reads `C2/2 Q1/1 E1/1 X8/8`. **Send:** a screenshot of
+  the bar.
 - **U2 Updraft.** Stand still on open floor and press Q. You're thrown straight up at once, with
   a low gust, a ring of air spreading at your feet and six streaks rising. Q's square is outlined
   for the lift's 0.6 s, and its pip goes dark; `VFKit` reads `Q0/1`, with `lift` for those 0.6 s.
@@ -1162,7 +1164,7 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   `E0/1`. Skip the round. In round 3's buy phase it reads `E1/1` again. If a round has a plant or a
   defuse (as in E6), whoever made it gets a point too.
 - **U15 Off.** Press P in window 1 until `[VF] Arena off`. Within 2 s on the course both kits read
-  `C2/2 Q1/1 E1/1 X0/8` again: full, and the points gone.
+  `C2/2 Q1/1 E1/1 X8/8` again: full, the ultimate's points too.
 
 ## 22. Cloudburst
 
@@ -1176,8 +1178,7 @@ your screen has it, in metres, and `Moved` is set if the server's word moved it.
 one. `VFTestYaw` and `VFTestPitch` aim, in degrees, and positive pitch looks up. On the course a
 spent charge comes back 1.5 s after the throw.
 
-- **Y1 The bar.** C's square is lit, with both its pips, and only Blade Storm's is dimmed.
-  `VFKit` reads `C2/2 Q1/1 E1/1 X0/8`.
+- **Y1 The bar.** C's square is lit, with both its pips. `VFKit` reads `C2/2 Q1/1 E1/1 X8/8`.
 - **Y2 Down the lane.** Stand at the spawn facing down the target lane (`VFTestYaw` 0,
   `VFTestPitch` 0) with the Vandal, and press C. A quick, thin swish, and the Vandal dips and is
   back up within a quarter of a second. A small pale blue ball flies straight down the lane at eye
@@ -1236,6 +1237,84 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   (`up to 2`), `A charge` (`200 credits`), `Cloud` (`6.7 m across, for 2.5 s`) and `Flight`
   (`30 m/s, at most 2 s`). Click it twice: the credits go from 800 to 600 to 400, both its pips
   light and it shows `FULL`, and `VFKit` reads `C2/2`. Right-click it once: 600, and `C1/2`.
+
+## 23. Blade Storm
+
+From [19-blade-storm.md](research/19-blade-storm.md). One player on the course with the HUD on (F3),
+then two players on the course: stay on it, as it's where the ultimate fills. On the course every
+life starts with the ultimate's 8 points full, and they fill again 1.5 s after Blade Storm ends, so
+it can be cast again and again. While it lasts, your `VFKit` reads `storm` after the points. Without
+keys, `VFTestButtons` 32768 presses X, 128 throws one and 256 throws all that are left: set it, then
+clear it, for each. `VFTestAimEntity` aims at a dummy (Dummy 1, 10 m down the target lane, is
+4294901761) and `VFTestAimRegion` at its `head`, `body` or `legs`; clear `VFTestAimEntity` and set
+`VFTestPitch` to -20 to throw at the floor a few metres ahead.
+
+- **Z1 The bar.** X's square has eight gold pips and reads `8/8` in gold, and `VFKit` reads
+  `C2/2 Q1/1 E1/1 X8/8`, as in U1.
+- **Z2 The cast.** Stand at the spawn with the Vandal, facing down the target lane, and press X. You
+  hear a slow metal scrape, the cast. The Vandal goes, and about half a second later three pale blue
+  blades, fanned out, come up into view. The bar under the crosshair, labelled `drawing`, fills over
+  about 1 s. The ammo box reads `5`, with `Blade Storm   [X]` under it. X's square is outlined in
+  teal, its pips dark, and its note reads `x5`. `VFKit` reads `C2/2 Q1/1 E1/1 X0/8 storm`. A click
+  before the bar is full throws nothing. **Send:** a screenshot with the knives up and the bar.
+- **Z3 One at a time.** Throw one at Dummy 1's body. You hear a quick, thin swish, the blades snap
+  forward, and a pale streak runs from your hand to the dummy. The number `50` shows, and you hear
+  the blade going in. Its label reads `83 + 17`, and the ammo `4`. The second makes it `50 + 0` and
+  the third kills it. The ammo goes straight back to `5`, and X's note to `x5`. The kill feed reads
+  `<your name>   Blade Storm   Dummy 1`, and `VFKit` reads `X1/8 storm`, a point for the kill. Click
+  as fast as you can: no more than six go a second. Hold the button down: one goes. **Send:** how
+  many knives it took, and whether all five came back.
+- **Z4 Head and legs.** When Dummy 1 is back (2 s), one to its head kills it: `150`, the headshot
+  sound, `HS` in the kill feed, and all five back. Then its legs: `43` each, its label `86 + 22`
+  after the first, and the fourth kills it.
+- **Z5 Exact on the move.** Aim at the middle of Dummy 1's body with the mouse, and throw while
+  strafing left and right (A and D), while running at it (W), at the top of a jump, and just as you
+  land. Each lands on the body, where the crosshair is. The HUD's `cone` line reads `0.00 deg` the
+  whole time, and its ring stays a green dot, even while the speed line reads `MOVING ERROR`. Then
+  run along the sprint lane with the knives out: the speed reads `6.75`, as with the knife (3).
+- **Z6 Walls.** Stand on the red line at the wallbang lane and throw at the middle of the 0.10 m
+  wood wall, at chest height. A dark mark shows on its face, with an orange spark. There's no hole
+  out the back, and no number on the dummy behind it. The Vandal goes through that wall (P1).
+- **Z7 Running out.** Throw all five, one at a time, at the floor. A sixth of a second after the
+  fifth, the knives go, X's outline goes and its note reads `0/8`. The Vandal comes back up over its
+  1 s draw, as `Vandal   [1]`. `VFKit` reads `X0/8`, without `storm`, and about 1.5 s later `X8/8`,
+  with the pips gold again.
+- **Z8 All at once.** With `X8/8` back, cast again and wait for the bar. From the spawn, aim at
+  Dummy 1's body and right-click. Five streaks go out at once, each within about 0.35 m of the
+  crosshair (2 degrees at 10 m), with one number for all that hit, and the ammo reads `0`. About
+  half a second later the knives go and the Vandal comes back. If Dummy 1 died, the kill feed has
+  its line, but no knives come back. Then cast again, throw two singly at the floor, and
+  right-click: three streaks, and the ammo goes from `3` to `0`. **Send:** how many of the five
+  landed, and the number.
+- **Z9 Guns and X again.** Cast, and throw one at the floor (`x4`). Press 2: the Classic comes out
+  over its 0.75 s draw, with `12 / 36` and `Classic   [2]`. X's square stays outlined with `x4`, and
+  `VFKit` still reads `storm`. The Classic fires as ever. Press X: the knives come back up, the bar
+  fills over half a second, and the ammo reads `4` again. Press 1 for the Vandal, then X: the same.
+  Press 2, then X, and throw the last four at the floor: the hand goes back to the Classic, the gun
+  they were last drawn from.
+- **Z10 With the rest of the kit.** With the knives out, press C. The knives dip and are back within
+  a quarter of a second, a ball flies down the lane, and `VFKit` reads `C1/2` with `storm`. Press Q:
+  you're lifted, and a throw at the top at Dummy 1's body lands where the crosshair is. Ready a gust
+  (E), and once the countdown shows, dash (E) and click quickly during the dash: nothing is thrown,
+  and the ammo stays. A click after the dash throws.
+- **Z11 The sounds.** Open the Sound Lab (F2 four times). The cast logs `storm` from `you`, each
+  throw `kunai`, and a body hit on a dummy `kunaiHit`, the blade going in. A head hit logs
+  `headshot` and a kill `kill`, as with guns. Nothing is heard when the knives run out: no reload.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and stay
+on the course.
+
+- **Z12 Others' cast and streaks.** Bring the two players about 10 m apart, in view of each other.
+  In window 2, cast Blade Storm. Window 1 sees five pale blue blades circle player 2 at chest height
+  for about a second, where player 2 is drawn at the moment, and its Sound Lab logs `storm` from
+  player 2. Player 2 throws at player 1's body. Window 1 sees each pale streak leave player 2's eye
+  and hears `kunai` from them. After the first, player 1's HUD reads `83` and `+17`, as from the
+  knife (K9). The third kills player 1. Both kill feeds read `Player2   Blade Storm   Player1`, and
+  window 2's ammo is back to `5`.
+- **Z13 A death ends it.** In window 1, cast Blade Storm and throw one (`x4`). In window 2, kill
+  player 1 with the Vandal. About 3 s later player 1 is back with the Vandal in hand and no knives:
+  the ammo box has no `[X]`, X's square isn't outlined, and `VFKit` reads `C2/2 Q1/1 E1/1 X8/8`,
+  with no `storm`.
 
 ## Results
 
@@ -1307,6 +1386,12 @@ Y5 on the floor: VFLastCloud ___; Dummy 1's outline hidden while it was thick: y
 Y6 the screen turned to smoke: yes / no; it cleared ___ m back
 Y7 held: VFLastCloud ___; let go: VFLastCloud ___
 Y10 the cloud in the same place in both windows: yes / no (what)
+Z2 the windup: the bar took about ___ s; a click before it was full threw: yes / no
+Z3 body knives to kill Dummy 1: ___; all five came back: yes / no
+Z4 leg knives to kill: ___
+Z5 a throw on the move missed the crosshair: yes / no (which)
+Z8 the burst at 10 m: ___ of 5 landed, the number ___
+Z12 the other player's blades and streaks lined up with where they were drawn: yes / no (what)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1422,3 +1507,15 @@ Didn't look right (IDs and what you saw):
 | 18 | Your cloud forms where the server says, on your screen at once | Y2, Y4, Y5, Y7 |
 | 18 | Another player sees the throw fly and the cloud form where it burst, and hears both, even once the thrower is dead | Y10, Y11 |
 | 18 | Cloudburst is on sale in the spike rounds, two charges at 200 | Y12 |
+| 19 | With its points full, X casts it: the knives come up over about a second, and the HUD shows 5 | Z1, Z2 |
+| 19 | A click throws one, straight to the crosshair standing, running or in the air | Z3, Z5, Z10 |
+| 19 | Three to the body or one to the head kills a dummy, and the kill brings all five back | Z3, Z4 |
+| 19 | Alt fire throws all that are left, spread round the crosshair, and its kills bring none back | Z8 |
+| 19 | A knife stops at the first wall it meets | Z6 |
+| 19 | They're gone a sixth of a second after the last, or half a second after a burst, and the gun comes back | Z7, Z8 |
+| 19 | A number key draws a gun with the knives kept, and X draws them again in half a second | Z9 |
+| 19 | Cloudburst, Updraft and Tailwind work with the knives out | Z10 |
+| 19 | On the course the points fill again once it's over | Z7, Z8 |
+| 19 | The cast, the throws and a body hit are heard | Z2, Z3, Z11 |
+| 19 | Another player sees your cast and your knives' streaks, and hears both | Z12 |
+| 19 | A death ends it | Z13 |

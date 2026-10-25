@@ -1,6 +1,7 @@
 --!strict
 -- One player's full deterministic simulation: movement + weapons + hit slow,
--- the spike's plant and defuse (system 12), and the ability kit (system 17).
+-- the spike's plant and defuse (system 12), and the ability kit (system 17),
+-- whose Blade Storm puts its knives in the weapons' hand (system 19).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -173,13 +174,26 @@ function PlayerSim.step(
 	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
 	local motion, casts = AbilitySim.step(s.abilities, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
 	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
-	-- A throw puts the gun away for a moment (system 18).
+	-- A throw puts the gun away for a moment (system 18). Blade Storm's cast
+	-- puts its knives in hand, and X draws them again (system 19).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
 				WeaponSim.stow(s.weapons, t, AbilityConfig.Cloudburst.stow.value)
+			elseif cast.kind == "storm" then
+				local weapon = AbilityConfig.Defs[cast.ability].weapon
+				if weapon then
+					WeaponSim.arm(s.weapons, weapon, t, AbilityConfig.BladeStorm.windup.value, input.slot)
+				end
+			elseif cast.kind == "draw" then
+				WeaponSim.takeUp(s.weapons, t, input.slot)
 			end
 		end
+	end
+	-- Blade Storm's knives go once it's over, as the server ends it between
+	-- ticks (a death, a new round or a new kit).
+	if not s.abilities.storm and s.weapons.loadout[WeaponSim.ULT] ~= "" then
+		WeaponSim.putAway(s.weapons, t)
 	end
 	local tick = s.movement.tick
 	-- A defuse has the weapon put away.
@@ -199,7 +213,23 @@ function PlayerSim.step(
 	end
 	local ctx = PlayerSim.accuracyContext(s, input.buttons, cfg, dt)
 	local shots, swing = WeaponSim.step(s.weapons, input, tick * dt, dt, PlayerSim.eye(s, cfg), tick, ctx)
+	-- And Blade Storm is over once its knives are gone.
+	if s.abilities.storm and s.weapons.loadout[WeaponSim.ULT] == "" then
+		s.abilities.storm = false
+	end
 	return shots, swing, act, dropped, casts
+end
+
+-- A kill this player made with `weapon`, fired in `mode` (a shot's, nil for
+-- a swing), applied by the server between ticks: the kit's point and the
+-- signature's count (AbilitySim.killed), and for a single Blade Storm knife
+-- all the knives back (system 19); its burst's kills bring none back
+-- (Patch 3.06).
+function PlayerSim.killedWith(s: State, weapon: string, mode: string?)
+	AbilitySim.killed(s.abilities)
+	if mode == "hip" and weapon ~= "" and s.weapons.loadout[WeaponSim.ULT] == weapon then
+		WeaponSim.refill(s.weapons, WeaponSim.ULT)
+	end
 end
 
 -- Hit slow, applied by the server between ticks. Speed is clamped at once and
