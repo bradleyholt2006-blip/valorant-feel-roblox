@@ -27,6 +27,9 @@
 -- victory screen says VICTORY to whoever won and to everyone else their
 -- place (our words), with MATCH MVP on the winner.
 --
+-- Team Deathmatch (system 27) has no rounds, so its combat score is the
+-- match's, under SCORE, and a match it ends level is a DRAW.
+--
 -- Everything comes from the player attributes the server keeps (Arena), and
 -- each player's shield from what combat events have said of it. While either
 -- is on, Roblox's own player list, which Tab would open, is off.
@@ -289,6 +292,7 @@ function Scoreboard.start()
 		local spike = arena:GetAttribute("Mode") == "spike"
 		local gunGame = arena:GetAttribute("Mode") == "gungame"
 		local deathmatch = arena:GetAttribute("Mode") == "deathmatch"
+		local teamDeathmatch = arena:GetAttribute("Mode") == "teamdeathmatch"
 		local ladder = {}
 		if gunGame then
 			local text = arena:GetAttribute("Ladder")
@@ -313,13 +317,16 @@ function Scoreboard.start()
 		local title: string
 		if over then
 			local won = winner == side
+			local drawn = teamDeathmatch and winner == nil
 			local place = me:GetAttribute(DeathmatchConfig.PLACE)
-			title = if not playing
-				then "MATCH OVER"
+			title = if drawn
+				then "DRAW"
+				elseif not playing then "MATCH OVER"
 				elseif won then "VICTORY"
 				elseif deathmatch and typeof(place) == "number" then string.upper(Ui.ordinal(place)) .. " PLACE"
 				else "DEFEAT"
-			title = string.format('<font color="#%s">%s</font>', Ui.hex(if not playing then Ui.TEXT elseif won then ally else enemy), title)
+			local colour = if drawn or not playing then Ui.TEXT elseif won then ally else enemy
+			title = string.format('<font color="#%s">%s</font>', Ui.hex(colour), title)
 			local endsAt = arena:GetAttribute("PhaseEndsAt")
 			local left = if typeof(endsAt) == "number" then math.max(endsAt - Workspace:GetServerTimeNow(), 0) else 0
 			-- What follows: the vote for the next map, where the mode has one,
@@ -330,6 +337,7 @@ function Scoreboard.start()
 			local name = if gunGame
 				then "GUN GAME"
 				elseif deathmatch then string.format("DEATHMATCH   FIRST TO %d", arena:GetAttribute("WinScore") or 0)
+				elseif teamDeathmatch then string.format("TEAM DEATHMATCH   FIRST TO %d", arena:GetAttribute("WinScore") or 0)
 				elseif not spike then "SKIRMISH"
 				elseif format then string.upper(format.name)
 				else "SPIKE ROUNDS"
@@ -350,7 +358,7 @@ function Scoreboard.start()
 		-- MVPs where the guns go.
 		titles.credits.Visible = spike and not over
 		titles.loadout.Visible = not over
-		titles.acs.Text = if gunGame then "LEVEL" elseif deathmatch then "PLACE" else "ACS"
+		titles.acs.Text = if gunGame then "LEVEL" elseif deathmatch then "PLACE" elseif teamDeathmatch then "SCORE" else "ACS"
 		titles.loadout.Text = if gunGame then "GUN" else "LOADOUT"
 
 		local leader = arena:GetAttribute("Leader")

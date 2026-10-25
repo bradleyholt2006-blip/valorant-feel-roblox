@@ -18,9 +18,15 @@
 -- top bar has your kills and the most anyone else has either side of the
 -- match's clock, with the kills that win under it, and under the bar your
 -- place and who leads; there are no tiles, as there are no sides, and G does
--- nothing there either. P asks the server for the next of: the arena, gun
--- game, the spike rounds, the spike rounds in Swiftplay's format, and off
--- (Studio or the place owner).
+-- nothing there either. In Team Deathmatch (system 27) the top bar has each
+-- side's kills either side of the clock (the pre-game's, then the match's),
+-- with the stage under way under it, and under the bar when the next comes.
+-- A new stage shows in the middle for a moment with the loadout it brings,
+-- and then how long until it's handed over; so do your spawn protection and
+-- a warning while a spawn room burns you, or soon will. A primary handed
+-- over mid-life is drawn, and G does nothing. P asks the server for the
+-- next of: the arena, gun game, the spike rounds, the spike rounds in
+-- Swiftplay's format, and off (Studio or the place owner).
 --
 -- Either side of the top bar, who's alive (system 16): a tile for each
 -- player, yours on the left and theirs on the right, as the reference's
@@ -38,6 +44,8 @@ local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
+local TeamDeathmatchConfig = require(Shared.Arena.TeamDeathmatchConfig)
+local TeamDeathmatchRules = require(Shared.Arena.TeamDeathmatchRules)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
 local SpikeMaps = require(Shared.Match.SpikeMaps)
@@ -170,8 +178,18 @@ local function gunName(id: string?): string
 	return if def then string.upper(def.name) else ""
 end
 
--- Seconds a level's change shows in the middle (ours).
+-- A shield's name as the HUD has it.
+local function shieldName(id: string): string
+	local def = WeaponConfig.Shields[id]
+	return if def then string.upper(def.name) else "NO SHIELD"
+end
+
+-- Seconds a level's change shows in the middle, and a stage's (ours).
 local FLASH_TIME = 1.5
+local STAGE_FLASH = 2.5
+
+local TDM = TeamDeathmatchConfig.Rules
+local STAGES = TeamDeathmatchConfig.Stages
 
 -- Draws the gun `id` from its slot: at once if it's there already, or once
 -- the server's handed it over.
@@ -277,13 +295,19 @@ function ArenaHud.start()
 	local seenLevel: number? = nil
 	local seenPhase: any = nil
 	local flash = { title = "", sub = "", colour = Ui.TEXT, untilTime = 0 }
+	-- Team Deathmatch: the stage under way as last seen, and your life as
+	-- last seen, with the primary it held.
+	local seenStage: number? = nil
+	local seenLife = -1
+	local seenPrimary: string? = nil
 
 	RunService.RenderStepped:Connect(function()
 		local on = Workspace:GetAttribute(ArenaConfig.ON) == true
-		-- Gun game's guns can't be dropped, as in Arms Race, nor deathmatch's
-		-- (ours): G does nothing.
+		-- Gun game's guns can't be dropped, as in Arms Race, nor either
+		-- deathmatch's (ours): G does nothing.
 		local wanted = Workspace:GetAttribute(ArenaConfig.MODE)
-		InputSampler.blockButtons = if on and (wanted == "gungame" or wanted == "deathmatch") then PlayerSim.Buttons.Drop else 0
+		local undroppable = wanted == "gungame" or wanted == "deathmatch" or wanted == "teamdeathmatch"
+		InputSampler.blockButtons = if on and undroppable then PlayerSim.Buttons.Drop else 0
 		local phase = arena:GetAttribute("Phase")
 		local side = me:GetAttribute(ArenaConfig.SIDE)
 		if not on or typeof(phase) ~= "string" or typeof(side) ~= "number" then
@@ -309,9 +333,13 @@ function ArenaHud.start()
 		local spike = arena:GetAttribute("Mode") == "spike" and format ~= nil and typeof(attackers) == "number"
 		local gunGame = arena:GetAttribute("Mode") == "gungame"
 		local deathmatch = arena:GetAttribute("Mode") == "deathmatch"
+		local teamDeathmatch = arena:GetAttribute("Mode") == "teamdeathmatch"
 		guns.Visible = false
 		if not gunGame then
 			seenLevel, seenPhase = nil, nil
+		end
+		if not teamDeathmatch then
+			seenStage = nil
 		end
 
 		local width = if spike then 280 else 240
@@ -457,6 +485,85 @@ function ArenaHud.start()
 					winScore,
 					DeathmatchConfig.Rules.timeLimit.value // 60
 				)
+			end
+		elseif teamDeathmatch then
+			local stage = arena:GetAttribute("Stage")
+			local stageNow: number = if typeof(stage) == "number" then stage else 1
+			local stageAt = arena:GetAttribute("StageAt")
+			local time = Workspace:GetServerTimeNow()
+			local mapKey = arena:GetAttribute("Map")
+			local map = SpikeMaps.Maps[if typeof(mapKey) == "string" then mapKey else ""]
+			round.Text = if phase == "live" or phase == "pregame" then clock(left) else "TDM"
+			target.Text = if phase == "live"
+				then string.format("STAGE %d OF %d", stageNow, #STAGES)
+				else string.format("FIRST TO %d", winScore)
+			-- A primary handed over mid-life, a new stage's or a pick's in the
+			-- room, is drawn.
+			local life = PlayerController.life
+			local sim = PlayerController.sim
+			local primary = if sim then sim.weapons.loadout[1] else nil
+			if life == seenLife and PlayerController.alive and primary and primary ~= "" and primary ~= seenPrimary then
+				PlayerController.selectSlot(1)
+			end
+			seenLife, seenPrimary = life, primary
+			-- A new stage: for a moment, the loadout you've picked for it.
+			local before = seenStage
+			if phase == "live" and before and stageNow > before then
+				local picks = split(me:GetAttribute(TeamDeathmatchConfig.PICKS))
+				local list = STAGES[stageNow] or STAGES[1]
+				local pick = list[tonumber(picks[stageNow]) or 1] or list[1]
+				flash.title = string.format("STAGE %d", stageNow)
+				flash.sub = gunName(pick.gun) .. "   " .. shieldName(pick.shield)
+				flash.colour = GOLD
+				flash.untilTime = os.clock() + STAGE_FLASH
+			end
+			seenStage = if phase == "live" then stageNow else nil
+			local room = if map and sim and PlayerController.alive
+				then TeamDeathmatchRules.roomAt(mapKey, side, sim.movement.position - map.origin)
+				else nil
+			if phase == "live" then
+				-- Each stage but the last lasts the stage time. The loadout menu
+				-- opens in your spawn room, or while you're down.
+				local nextAt = if typeof(stageAt) == "number" and stageNow < #STAGES then stageAt + TDM.stageTime.value else nil
+				guns.Visible = true
+				guns.Text = string.format("FIRST TO %d", winScore)
+					.. (if nextAt then "   NEXT STAGE IN " .. clock(math.max(nextAt - time, 0)) else "   LAST STAGE")
+					.. (if room == "own" or not PlayerController.alive then "   B loadouts" else "")
+			end
+			if phase == "waiting" then
+				title = "WAITING FOR AN OPPONENT"
+				sub = string.format(
+					"Team Deathmatch: the first side to %d kills wins, or the side with more in %s   B loadouts",
+					winScore,
+					clock(TDM.timeLimit.value)
+				)
+			elseif phase == "pregame" then
+				title = string.format("MATCH STARTS IN %d", math.ceil(left))
+				sub = (if map then string.upper(map.NAME) .. "   " else "") .. "Pick a loadout for each stage: B"
+			elseif phase == "live" then
+				-- Your own room burns you its stay time after your life started, or
+				-- the match did.
+				local since = me:GetAttribute(TeamDeathmatchConfig.ROOM_SINCE)
+				local burnsAt = if typeof(since) == "number" then since + TDM.stayTime.value else math.huge
+				local burning = room == "enemy" or (room == "own" and time >= burnsAt)
+				if burning then
+					title = if room == "enemy" then "ENEMY SPAWN ROOM" else "LEAVE THE SPAWN ROOM"
+					colour = SPIKE_RED
+				elseif os.clock() < flash.untilTime then
+					title, sub, colour = flash.title, flash.sub, flash.colour
+				end
+				-- Under it: the new stage's loadout to come, the protection, or the
+				-- burn to come.
+				local kitStage = me:GetAttribute(TeamDeathmatchConfig.KIT_STAGE)
+				local due = if typeof(stageAt) == "number" then stageAt + TDM.swapDelay.value - time else 0
+				local unsaid = PlayerController.alive and sub == ""
+				if unsaid and typeof(kitStage) == "number" and kitStage < stageNow and due > 0 then
+					sub = string.format("NEW LOADOUT IN %d", math.ceil(due))
+				elseif unsaid and me:GetAttribute(GunGameConfig.PROTECTED) == true then
+					sub = "SPAWN PROTECTION   until you fire or leave the spawn room"
+				elseif unsaid and room == "own" and not burning and burnsAt < math.huge then
+					sub = string.format("The spawn room burns you in %d: move out", math.ceil(burnsAt - time))
+				end
 			end
 		else
 			round.Text = if roundNumber > 0 then string.format("ROUND %d", roundNumber) else "ARENA"

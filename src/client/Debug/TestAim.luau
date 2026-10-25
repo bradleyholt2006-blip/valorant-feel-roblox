@@ -49,8 +49,13 @@
 --   VFTestPlayMenu true opens the Play menu as M does (system 24), false
 --                  closes it if it may close; then clears itself
 --   VFTestPlay     a mode's key ("skirmish", "gungame", "deathmatch",
---                  "standard", "competitive" or "swiftplay"): presses PLAY
---                  for it as the Play menu's button does, then clears
+--                  "teamdeathmatch", "standard", "competitive" or
+--                  "swiftplay"): presses PLAY for it as the Play menu's
+--                  button does, then clears itself
+--   VFTestLoadouts true opens the loadout menu as B does in Team Deathmatch
+--                  (system 27), false closes it; then clears itself
+--   VFTestPick     "stage,index" ("2,3"): picks that loadout for that stage
+--                  as a click on it in the loadout menu does, then clears
 --                  itself
 --
 -- Outside Studio this does nothing.
@@ -71,6 +76,7 @@ local Scoreboard = require(script.Parent.Parent.Scoreboard)
 local SettingsMenu = require(script.Parent.Parent.SettingsMenu)
 local VoteScreen = require(script.Parent.Parent.VoteScreen)
 local InputSampler = require(script.Parent.Parent.InputSampler)
+local LoadoutMenu = require(script.Parent.Parent.LoadoutMenu)
 local PlayMenu = require(script.Parent.Parent.PlayMenu)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
@@ -176,6 +182,19 @@ function TestAim.start(controller: any)
 		if typeof(play) == "string" and play ~= "" then
 			player:SetAttribute("VFTestPlay", nil)
 			PlayMenu.play(play)
+		end
+		local loadouts = player:GetAttribute("VFTestLoadouts")
+		if typeof(loadouts) == "boolean" then
+			player:SetAttribute("VFTestLoadouts", nil)
+			LoadoutMenu.setOpen(loadouts)
+		end
+		local pick = player:GetAttribute("VFTestPick")
+		if typeof(pick) == "string" and pick ~= "" then
+			player:SetAttribute("VFTestPick", nil)
+			local stage, index = string.match(pick, "^(%d+),(%d+)$")
+			if stage and index then
+				LoadoutMenu.pick(tonumber(stage) :: number, tonumber(index) :: number)
+			end
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

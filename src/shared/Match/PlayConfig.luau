@@ -10,6 +10,7 @@
 local ArenaConfig = require("../Arena/ArenaConfig")
 local DeathmatchConfig = require("../Arena/DeathmatchConfig")
 local GunGameConfig = require("../Arena/GunGameConfig")
+local TeamDeathmatchConfig = require("../Arena/TeamDeathmatchConfig")
 local MatchConfig = require("./MatchConfig")
 
 export type Status = "confirmed" | "community" | "estimate"
@@ -38,6 +39,7 @@ local PlayConfig = {}
 
 local SKIRMISH = ArenaConfig.Rules.sideSize.value
 local GUN_GAME = GunGameConfig.Rules.sideSize.value
+local TEAM_DEATHMATCH = TeamDeathmatchConfig.Rules.sideSize.value
 local SPIKE = MatchConfig.Rules.sideSize.value
 local F = MatchConfig.Formats
 
@@ -70,6 +72,16 @@ PlayConfig.Modes = {
 		arena = "deathmatch",
 		players = DeathmatchConfig.Rules.players.value,
 		freeForAll = true,
+	},
+	{
+		key = "teamdeathmatch",
+		name = "Team Deathmatch",
+		blurb = string.format(
+			"Two sides, a new loadout each stage: the first to %d kills wins",
+			TeamDeathmatchConfig.Rules.killTarget.value
+		),
+		arena = "teamdeathmatch",
+		players = 2 * TEAM_DEATHMATCH,
 	},
 	{
 		key = "standard",
@@ -118,7 +130,7 @@ function PlayConfig.keyOf(on: any, arenaMode: any, format: any): string?
 		return nil
 	elseif arenaMode == "spike" then
 		return if typeof(format) == "string" and PlayConfig.ByKey[format] then format else MatchConfig.DEFAULT_FORMAT
-	elseif arenaMode == "gungame" or arenaMode == "deathmatch" then
+	elseif arenaMode == "gungame" or arenaMode == "deathmatch" or arenaMode == "teamdeathmatch" then
 		return arenaMode
 	end
 	return "skirmish"

@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-six
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-seven
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, section 25 three and then one, and sections 26 to 30 two.
+   one and then two, section 25 three and then one, and sections 26 to 31 two.
 
 | Key | What it does |
 | --- | --- |
@@ -36,7 +36,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F3 | HUD panel (on at the start in Studio, off on a live server) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
-| G | Drops the gun or the spike in hand (not in gun game or deathmatch); with the knife in hand and the HUD on, the ghost box where the server has you |
+| G | Drops the gun or the spike in hand (not in gun game or either deathmatch); with the knife in hand and the HUD on, the ghost box where the server has you |
 | F | Picks up the gun on the ground you're looking at, swapping it for yours |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
@@ -55,9 +55,9 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
-| B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game; in deathmatch any time, guns alone) |
+| B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game; in deathmatch any time, guns alone; in Team Deathmatch the loadout menu instead, before the match or in your spawn room) |
 | O | The settings menu: your sensitivity and crosshair |
-| 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game; in deathmatch any time) |
+| 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game or Team Deathmatch; in deathmatch any time) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
 
 Every gun is in the buy menu. A gun can also come from an attribute, which is how scripted checks
@@ -80,7 +80,9 @@ A boolean attribute `VFTestTake` set to true presses F for you, and clears itsel
 `VFTestSettingsMenu` set to true or false opens or closes the settings menu, and a string
 attribute `VFTestSetting` enters a setting as its box in the menu would: `sensitivity=0.8`,
 `scoped=0.5`, `dpi=1600` or `crosshair=` and a code. A number attribute `VFTestVote` set to 1, 2
-or 3 votes for that card in the vote for the next map, as a click on it would.
+or 3 votes for that card in the vote for the next map, as a click on it would. In Team
+Deathmatch, `VFTestLoadouts` set to true or false opens or closes the loadout menu, and a string
+attribute `VFTestPick` set to `2,3` picks the second stage's third loadout, as a click on it would.
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -1604,6 +1606,73 @@ Start a Local Server with 2 players, as in section 9. Both start on the course.
   vote or let it run out. Both players spawn for a new match on the map with the votes, at `9:00`
   with no kills, each back on the Vandal and the Classic.
 
+## 31. Team Deathmatch
+
+From [27-team-deathmatch.md](research/27-team-deathmatch.md). A quick play of what changed, with two
+players. `workspace:SetAttribute("VFMatchSkip", true)` in the server's command bar ends the
+pre-game, then each time moves the match on to the next stage's start, and in the last stage ends
+it as if its time were up.
+
+Start a Local Server with 2 players, as in section 9. Both start on the course.
+
+- **TD1 The start.** Press M in window 1: seven cards, with TEAM DEATHMATCH `5v5` after
+  DEATHMATCH, its name inside the card, and under it
+  `Two sides, a new loadout each stage: the first to 100 kills wins`. Click it, then PLAY TEAM
+  DEATHMATCH. The Output says `[VF] Arena on: Team Deathmatch, on Outpost`, `Quarry` or
+  `Foundry`, and each player spawns in one of that map's two spawn rooms, held in by its
+  barriers. In the middle `MATCH STARTS IN 20` counts down, with the map's name and
+  `Pick a loadout for each stage: B` under it. The top bar has `0:20` counting down between the
+  sides' kills, 0 and 0, with `FIRST TO 100` under it and a tile beside it for each player. You
+  hold the Classic, on 2, with nothing on 1 and the knife on 3, and the HUD's shield reads `+25`
+  and `REGEN  50 LEFT`. The keys 5 to 9 give nothing, and G does nothing.
+- **TD2 The loadout menu.** B in window 1: `LOADOUTS` at the top, `B to close` at the top right,
+  and four columns, `STAGE 1` `0:00 - 1:15`, `STAGE 2` `1:15 - 2:30`, `STAGE 3` `2:30 - 3:45` and
+  `STAGE 4` `3:45 - 9:30`, each with its loadouts, a gun over its shield: CLASSIC over REGEN
+  SHIELD, then FRENZY, GHOST and BANDIT over NO SHIELD; SHERIFF (LIGHT ARMOR), STINGER (HEAVY
+  ARMOR) and ARES (LIGHT ARMOR); SPECTRE, ARES and BULLDOG (HEAVY ARMOR) and GUARDIAN (LIGHT
+  ARMOR); PHANTOM and VANDAL (HEAVY ARMOR). The first of each is outlined in gold, and the mouse
+  moves a cursor. Click GHOST: the outline moves to it, the Ghost is in your hands at once in the
+  Classic's place, and the HUD shows no shield. In stage 2's column click STINGER, in stage 3's
+  SPECTRE, and close the menu with B. **Send:** a screenshot of the menu.
+- **TD3 The match.** Wait out the countdown, or run `VFMatchSkip` once. The barriers go, the
+  top bar's clock reads `9:30` counting down with `STAGE 1 OF 4` under it, and under the bar
+  `FIRST TO 100   NEXT STAGE IN 1:15   B loadouts`. In the middle,
+  `SPAWN PROTECTION   until you fire or leave the spawn room`. In window 1, press B in your room:
+  the menu opens, with `NOW` in gold by STAGE 1. Walk out of the room with it open: it closes as
+  you leave, the protection line goes, `B loadouts` goes from under the bar, and B out there does
+  nothing.
+- **TD4 The spawn room's burn.** Meanwhile player 2 stays in their room, and once the match is
+  under way fires once into the floor: the protection line gives way to
+  `The spawn room burns you in 10: move out`, or however many seconds are left, counting down. At
+  0, 15 s into the match, `LEAVE THE SPAWN ROOM` shows in red, and the health and shield drop by
+  15 every half second until player 2 falls, about 4 s later. Both kill feeds read `SPAWN ROOM` in
+  red, then player 2's name, and the top bar stays at 0 and 0. Player 2 comes back 1.5 s later in
+  their room, with the protection line again.
+- **TD5 Spawn protection and a kill.** Player 1 goes to the doorway of player 2's room, without
+  stepping in. If player 2 is a force field, player 2 fires once; then player 1 kills player 2:
+  the top bar reads 1 on the left in window 1, and 1 on the right in window 2. Player 2 comes back
+  1.5 s later, and player 1 shoots them at once: in window 1 player 2 is drawn as a force field,
+  and the label over them stays at `100 + 25`. Player 2 fires once: they look solid again, and
+  player 1's next shot hurts. Then player 1 steps into the room and straight back out: inside,
+  `ENEMY SPAWN ROOM` shows in red at once, and player 1 takes 15 every half second.
+- **TD6 A new stage.** Run `VFMatchSkip` once. The top bar reads `8:15` and `STAGE 2 OF 4`. In
+  window 1, out of the room, `STAGE 2` shows in gold with `STINGER   HEAVY ARMOR` under it for a
+  moment, then `NEW LOADOUT IN 2` and `1`, then the Stinger is drawn on 1, with the Ghost kept on
+  2, and the HUD's shield reads `+50` and `HEAVY ARMOR`. In window 2, in the room, the Sheriff is
+  there at once, on 2 in the Classic's place, with `+25` and `LIGHT ARMOR`. Player 2 presses B
+  and clicks stage 2's ARES: the Ares is drawn on 1 at once, the Classic is back on 2, and the
+  shield still reads `LIGHT ARMOR`. Player 2 leaves the room before it burns them.
+- **TD7 The end.** Run `VFMatchSkip` once more: stage 3, and 5 s in player 1's Spectre is drawn by
+  itself. Once more, stage 4, and the Phantom; once more ends the match. Player 1's side, with
+  more kills, wins: `VICTORY` in window 1 and `DEFEAT` in window 2, with the kills either side,
+  the SCORE column, `MATCH MVP` in gold on player 1 and `MAP VOTE IN 10` under it. **Send:** a
+  screenshot of window 2.
+- **TD8 The next match, and a draw.** At 0 the vote shows OUTPOST, QUARRY and FOUNDRY's cards, as
+  in SM3; vote or let it run out. Both players spawn in their rooms on the map with the votes,
+  with `MATCH STARTS IN 20`, 0 and 0, and player 1 on the Ghost again. Run `VFMatchSkip` five
+  times with no kills: the match starts, runs through its stages and ends level, and both windows
+  read `DRAW` in white. **Send:** a screenshot of window 1.
+
 ## Results
 
 ```
@@ -1705,6 +1774,14 @@ DM3 before the kill: magazine ___, reserve ___; after: magazine ___, reserve ___
 DM4 the pack healed to 100 + 50: yes / no; the magazine full: yes / no; the cross left alone went after ___ s
 DM5 respawns in player 1's sight: ___ of 5; facing a wall: ___ of 5
 DM6 window 2's title: ___; MATCH MVP on ___
+TD1 the map: ___; the TEAM DEATHMATCH card's name fit: yes / no; anything that did work of 5 to 9 and G: ___
+TD2 anything in the menu that read differently: ___; the Ghost in hand at once: yes / no
+TD3 the menu closed as you left the room: yes / no; B did nothing out there: yes / no
+TD4 the burn began ___ s into the match; player 2 fell ___ s after; the kill feed read: ___
+TD5 player 2 a force field: yes / no; their label stayed at 100 + 25: yes / no; ENEMY SPAWN ROOM at once: yes / no
+TD6 the Stinger in hand ___ s into the stage, drawn by itself: yes / no; player 2's Sheriff at once: yes / no
+TD7 window 2's title: ___; MATCH MVP on ___
+TD8 the next map: ___; the drawn match's title: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1870,3 +1947,9 @@ Didn't look right (IDs and what you saw):
 | 26 | A kill fills the killer's magazine at once, and a death leaves a green cross for 10 s that heals and reloads whoever walks over it | DM3, DM4 |
 | 26 | A life comes back 1.5 s after a death, away from where it fell, facing open floor | DM4, DM5 |
 | 26 | A match's end: the victory screen of everyone in their places, `VICTORY` and `2ND PLACE`, MATCH MVP on the winner, then the vote of the spike rounds' maps, and the next match on the winner | DM6, DM7 |
+| 27 | PLAY TEAM DEATHMATCH on the Play menu's seventh card, `5v5`, starts it on one of the three maps, each side in its own spawn room behind the barriers, with the pre-game's countdown | TD1 |
+| 27 | B opens the loadout menu; a click picks a loadout, and in the pre-game or the room it's in your hands at once, with its shield. Out of the room in a match, B does nothing | TD2, TD3, TD6 |
+| 27 | The top bar's kills, clock and stage, and a new stage's loadout handed over 5 s in, or at once in the room, with a new primary drawn | TD3, TD6, TD7 |
+| 27 | A respawn is a force field to others and can't be hurt until it fires or leaves the room | TD3, TD5 |
+| 27 | Staying in your room 15 s, or going into the other side's, burns, with the HUD's warning, and a death there reads `SPAWN ROOM` in the kill feed | TD4, TD5 |
+| 27 | A match's end: `VICTORY` and `DEFEAT`, or `DRAW` for a tie, then the vote of the spike rounds' maps, and the next pre-game on the winner | TD7, TD8 |

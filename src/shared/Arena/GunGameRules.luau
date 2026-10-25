@@ -339,16 +339,18 @@ function GunGameRules.died(s: State, id: number, now: number, killer: number?, w
 	end
 	m.alive = false
 	s.safeUntil[id] = nil
-	s.hurt[id] = nil
 	s.version += 1
 	if s.phase == "waiting" or s.phase == "live" then
 		m.respawnAt = now + G.respawnTime.value
 	end
 	if not recorded(s) then
+		s.hurt[id] = nil
 		return
 	end
 	local by = if killer then s.members[killer] else nil
+	-- Who hurt this life is for its assists, and then done with.
 	Roster.recordDeath(s, id, killer)
+	s.hurt[id] = nil
 	if not killer or not by or by.side == m.side then
 		return
 	end

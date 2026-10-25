@@ -154,14 +154,18 @@ function PlayMenu.start()
 		stroke.Color = GOLD
 		stroke.Transparency = 1
 		stroke.Parent = button
-		Ui.label(button, {
+		-- A long name (TEAM DEATHMATCH) shrinks to fit.
+		local name = Ui.label(button, {
 			Text = string.upper(mode.name),
 			Font = Enum.Font.GothamBold,
-			TextSize = 18,
+			TextScaled = true,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			Position = UDim2.fromOffset(8, 14),
 			Size = UDim2.fromOffset(CARD_W - 16, 22),
 		})
+		local fit = Instance.new("UITextSizeConstraint")
+		fit.MaxTextSize = 18
+		fit.Parent = name
 		local tag = Ui.label(button, {
 			Text = "THIS SERVER",
 			Font = Enum.Font.GothamBold,

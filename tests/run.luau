@@ -35,5 +35,6 @@ require("./mapvote")
 require("./gungame")
 require("./play")
 require("./deathmatch")
+require("./teamdeathmatch")
 
 H.finish()
