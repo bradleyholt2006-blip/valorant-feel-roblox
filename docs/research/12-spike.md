@@ -6,8 +6,8 @@ it. This system builds the spike itself: carrying it, dropping it and picking it
 the defuse in the predicted simulation, the countdown with its beeps and visual tells, and the
 blast. On the course there are two sites behind the spawn where anyone can plant it and anyone can
 defuse it, and a new spike waits at the start after each one ends. The rules of a round played for
-it (who carries it, who may defuse it, winning by it and the credits for a plant) need sides and
-a map with sites, and are separate work.
+it (who carries it, who may defuse it and winning by it) are system 13's
+([13-rounds.md](13-rounds.md)), and the credits for a plant system 14's.
 
 As before, everything comes from Riot's patch notes and from community wikis, guides and
 measurements. No game files, memory, network traffic or protected assets were used, and nothing
@@ -260,7 +260,7 @@ to 8 are now on 5 to 9.
 | 4 held and G | `src/client/InputSampler.luau` |
 | The spike in the world | `src/client/SpikeView.luau` |
 | The HUD | `src/client/SpikeHud.luau` |
-| The clicks and the pickup; the sounds and their curves | `src/client/Audio/GameSounds.luau`, `src/shared/Audio/SoundConfig.luau` |
+| The arming beeps, the defuse's beeping, the drop and the pickup; the sounds and their curves | `src/client/Audio/GameSounds.luau`, `src/shared/Audio/SoundConfig.luau` |
 | In hand | `src/client/Combat/WeaponEffects.luau`, `src/client/Combat/WeaponLooks.luau`, `src/shared/Weapons/WeaponConfig.luau` |
 | The ack and the pose | `src/shared/Net/PlayerCodec.luau` |
 | The course's sites | `src/server/TestRange.luau` |
@@ -284,8 +284,8 @@ to 8 are now on 5 to 9.
 1. Measure the defuse circle, its height, running over it, the drop and where it goes down, as
    in section 3, and set the estimates.
 2. Time the blast's growth from a video and check its edge against 35 m with a teammate.
-3. Replace the stand-in sounds with the library search's, and check each against the reference by
-   ear: the beeps, the clicks, the defuse's tone, the blast.
+3. Check each sound against the reference by ear: the beeps, the arming beeps, the defuse's
+   beeping, the blast, and a draw of its own (it borrows the rifle's for now).
 4. Check whether fire plants in the reference, and the draw time and run speed with the spike.
 
 ## Known gaps to check in Studio
@@ -300,8 +300,8 @@ session can confirm:
 - The beeps keep time, faster at 25, 35 and 40 seconds, and come from the spike.
 - A defuse stops when its defuser crouches out of sight of the spike.
 - The blast kills everyone within 35 m, through walls, and no one further.
-- Another player sees the spike, its tells and the blast, and hears the clicks from where the
-  planter or defuser is.
+- Another player sees the spike, its tells and the blast, and hears the arming beeps and the
+  defuse's beeping from where the planter or defuser is.
 - The sounds are at sensible levels next to the others.
 
 The [Studio test session](../studio-checklist.md), section 16, walks through these, with what to

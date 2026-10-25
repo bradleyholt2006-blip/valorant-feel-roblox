@@ -1,6 +1,7 @@
 --!strict
 -- The spike in the world (system 12), on this client: its model where it
--- lies or is planted, with a marker over it so it can be found; once
+-- lies or is planted, with a marker over it so it can be found (lying, only
+-- by the side that carries it, in the spike rounds); once
 -- planted, its light flashing with each beep, faster as the end nears, and
 -- the circle a defuser must stand in; and its blast, a dark sphere growing
 -- from it out to 35 m that darkens the view of anyone it passes. Its beeps,
@@ -170,7 +171,7 @@ function SpikeView.start()
 		if at and shown then
 			place(at, if beingDefused then 1 elseif state == "planted" and view.halfSaved then 0.5 else 0)
 		end
-		marker.Enabled = state == "dropped" or state == "planted"
+		marker.Enabled = state == "planted" or (state == "dropped" and ClientSpike.ours())
 		label.Text = if state == "planted" then "SPIKE PLANTED" else "SPIKE"
 		ring.Parent = if at and state == "planted" then folder else nil
 		if at and state == "planted" then

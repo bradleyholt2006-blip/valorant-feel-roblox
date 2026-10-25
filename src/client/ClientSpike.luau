@@ -2,7 +2,9 @@
 -- The spike as this client knows it (system 12): the server's state of it,
 -- from Workspace's attributes (Spike.STATE and the rest), for the HUD and
 -- the spike's model and sounds, and what the local player may do with it,
--- for PlayerController's prediction of the plant and the defuse.
+-- for PlayerController's prediction of the plant and the defuse: in the
+-- spike rounds (system 13), plant it only while a round is live, and defuse
+-- it only on the defending side.
 --
 -- A defuse of ours let go of past the half is saved straight away here, as
 -- the server saves it when it runs the same tick, so the next defuse is
@@ -13,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local RobloxSpike = require(Shared.Spike.RobloxSpike)
@@ -31,7 +34,18 @@ export type View = {
 
 local ClientSpike = {}
 
-local ATTRIBUTES = { Spike.LAYOUT, Spike.STATE, Spike.CARRIER, Spike.POSITION, Spike.PLANTED_AT, Spike.HALF, Spike.SITE, Spike.ENDED_AT }
+local ATTRIBUTES = {
+	Spike.LAYOUT,
+	Spike.STATE,
+	Spike.CARRIER,
+	Spike.POSITION,
+	Spike.PLANTED_AT,
+	Spike.HALF,
+	Spike.SITE,
+	Spike.ENDED_AT,
+	Spike.PLANT_OPEN,
+	Spike.DEFUSERS,
+}
 
 local view: View = { layout = "", state = "none", carrier = 0, position = nil, plantedAt = 0, halfSaved = false, site = "", endedAt = 0 }
 local context: Spike.Context = Spike.NONE
@@ -59,10 +73,12 @@ local function rebuild()
 		return
 	end
 	local planted = if view.state == "planted" then view.position else nil
+	local me = Players.LocalPlayer
+	local defusers = tonumber(Workspace:GetAttribute(Spike.DEFUSERS)) or 0
 	context = {
 		zones = zones,
-		canPlant = view.state == "carried" and view.carrier == Players.LocalPlayer.UserId,
-		canDefuse = planted ~= nil,
+		canPlant = view.state == "carried" and view.carrier == me.UserId and Workspace:GetAttribute(Spike.PLANT_OPEN) ~= false,
+		canDefuse = planted ~= nil and (defusers == 0 or me:GetAttribute(ArenaConfig.SIDE) == defusers),
 		planted = planted,
 		halfSaved = view.halfSaved or (halfOf ~= nil and halfOf == view.plantedAt),
 		sees = RobloxSpike.sees,
@@ -79,6 +95,13 @@ function ClientSpike.context(): Spike.Context
 	return context
 end
 
+-- Whether the local player's side carries the spike: anyone's on the course,
+-- the attackers' in the spike rounds (the side that doesn't defuse it).
+function ClientSpike.ours(): boolean
+	local defusers = tonumber(Workspace:GetAttribute(Spike.DEFUSERS)) or 0
+	return defusers == 0 or Players.LocalPlayer:GetAttribute(ArenaConfig.SIDE) ~= defusers
+end
+
 -- What happened with the spike in the local player's simulation, on a live
 -- tick.
 function ClientSpike.onAct(act: SpikeSim.Act)
@@ -92,6 +115,7 @@ function ClientSpike.start()
 	for _, name in ATTRIBUTES do
 		Workspace:GetAttributeChangedSignal(name):Connect(rebuild)
 	end
+	Players.LocalPlayer:GetAttributeChangedSignal(ArenaConfig.SIDE):Connect(rebuild)
 	rebuild()
 end
 

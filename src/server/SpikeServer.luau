@@ -12,7 +12,13 @@
 --
 -- On the course anyone can plant it and anyone can defuse it, at the two
 -- sites behind the spawn (Spike.CourseSites), and a new one waits at the
--- start a few seconds after each one ends. In the arena there's none.
+-- start a few seconds after each one ends. In Skirmish there's none.
+--
+-- In the spike rounds (system 13; Arena runs them) it's played for, on their
+-- map's sites: only the attacking side picks it up, its carrier can plant
+-- it only while a round is live, only the defending side can defuse it, and
+-- the rounds hear when it's planted, defused or goes off. A new one waits in
+-- front of the attackers as each round starts, and none before.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,6 +26,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local MatchMap = require(Shared.Match.MatchMap)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
@@ -42,6 +49,13 @@ local EPS = 1e-9
 
 export type State = "none" | "carried" | "dropped" | "planted" | "defused" | "detonated"
 
+-- What the spike rounds hear of the spike, at server time.
+export type Events = {
+	planted: (detonateAt: number) -> (),
+	defused: (time: number) -> (),
+	detonated: (time: number) -> (),
+}
+
 local SpikeServer = {}
 
 local layout: string? = nil -- the sites in play; nil while there's no spike
@@ -60,10 +74,18 @@ local respawnAt: number? = nil
 local blastFrom: number? = nil -- while the blast grows: when it started
 -- Dropped it and hasn't stepped off it yet, so doesn't pick it straight up.
 local stepOff: Player? = nil
+-- The spike rounds, while they're played: who hears of the spike, the side
+-- attacking (0 on the course: anyone may carry and defuse it) and whether a
+-- plant is open.
+local events: Events? = nil
+local attackers = 0
+local plantOpen = true
 
--- What players may do with it, rebuilt whenever anything changes.
+-- What players may do with it, rebuilt whenever anything changes: its
+-- carrier, those who may defuse it, and those who may not.
 local forCarrier: Spike.Context = Spike.NONE
 local forOthers: Spike.Context = Spike.NONE
+local forBystanders: Spike.Context = Spike.NONE
 
 local function publish()
 	Workspace:SetAttribute(Spike.LAYOUT, layout or "")
@@ -74,8 +96,10 @@ local function publish()
 	Workspace:SetAttribute(Spike.HALF, halfSaved)
 	Workspace:SetAttribute(Spike.SITE, site)
 	Workspace:SetAttribute(Spike.ENDED_AT, endedAt)
+	Workspace:SetAttribute(Spike.PLANT_OPEN, plantOpen)
+	Workspace:SetAttribute(Spike.DEFUSERS, if attackers == 0 then 0 else 3 - attackers)
 	if layout == nil then
-		forCarrier, forOthers = Spike.NONE, Spike.NONE
+		forCarrier, forOthers, forBystanders = Spike.NONE, Spike.NONE, Spike.NONE
 		return
 	end
 	local planted = if state == "planted" then position else nil
@@ -88,12 +112,32 @@ local function publish()
 		sees = RobloxSpike.sees,
 	}
 	local mine = table.clone(forOthers)
-	mine.canPlant = state == "carried"
+	mine.canPlant = state == "carried" and plantOpen
 	forCarrier = mine
+	local theirs = table.clone(forOthers)
+	theirs.canDefuse = false
+	forBystanders = theirs
 end
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
+end
+
+local function sideOf(player: Player): number?
+	local side = player:GetAttribute(ArenaConfig.SIDE)
+	return if typeof(side) == "number" then side else nil
+end
+
+-- Whether a player may pick the spike up: the attackers in the spike rounds,
+-- anyone on the course.
+local function mayCarry(player: Player): boolean
+	return attackers == 0 or sideOf(player) == attackers
+end
+
+-- Whether a player may defuse it: the defenders in the spike rounds, anyone
+-- on the course.
+local function mayDefuse(player: Player): boolean
+	return attackers == 0 or sideOf(player) == 3 - attackers
 end
 
 -- Takes the spike from whoever carries it.
@@ -147,10 +191,15 @@ local function hand(player: Player)
 	publish()
 end
 
--- Which sites are in play (a key of Spike.Layouts), or none.
+-- Which sites are in play (a key of Spike.Layouts), or none. A new spike
+-- if they change.
 local function setLayout(name: string?)
+	local wanted = if name and Spike.Layouts[name] then name else nil
+	if wanted == layout then
+		return
+	end
 	takeBack()
-	layout = if name and Spike.Layouts[name] then name else nil
+	layout = wanted
 	zones = if layout then Spike.Layouts[layout] else {}
 	if layout then
 		fresh()
@@ -178,6 +227,9 @@ local function onAct(player: Player, act: SpikeSim.Act)
 		detonateAt = time + P.detonateTime.value
 		halfSaved = false
 		publish()
+		if events then
+			events.planted(detonateAt)
+		end
 	elseif act.kind == "dropped" then
 		if state ~= "carried" or carrier ~= player then
 			return
@@ -197,8 +249,12 @@ local function onAct(player: Player, act: SpikeSim.Act)
 		state = "defused"
 		endedAt = time
 		detonateAt = math.huge
-		respawnAt = time + P.courseRespawn.value
+		-- The spike rounds put a new one down as the next round starts.
+		respawnAt = if events then nil else time + P.courseRespawn.value
 		publish()
+		if events then
+			events.defused(time)
+		end
 	elseif act.kind == "stopped" then
 		if state == "planted" and not halfSaved and act.progress >= P.defuseHalf.value - EPS then
 			halfSaved = true
@@ -271,7 +327,7 @@ local function pickUp()
 			if not over then
 				stepOff = nil
 			end
-		elseif over then
+		elseif over and mayCarry(player) then
 			hand(player)
 			return
 		end
@@ -300,8 +356,12 @@ function SpikeServer.step(time: number)
 		endedAt = time
 		detonateAt = math.huge
 		blastFrom = time
-		respawnAt = time + P.courseRespawn.value
+		respawnAt = if events then nil else time + P.courseRespawn.value
 		publish()
+		-- The round is the attackers' before the blast kills anyone.
+		if events then
+			events.detonated(time)
+		end
 	end
 	local from = blastFrom
 	if from then
@@ -313,12 +373,61 @@ function SpikeServer.step(time: number)
 	end
 end
 
+-- The sites in play: the spike rounds' while they're played; the course's
+-- while it's played on; none in Skirmish.
+local function wanted(): string?
+	if events then
+		return MatchMap.LAYOUT
+	end
+	local arena = Workspace:GetAttribute(ArenaConfig.ON) == true
+	return if not arena and Workspace:FindFirstChild("VFTestRange") then "course" else nil
+end
+
+-- The spike rounds start (Arena), telling `e` what happens to the spike.
+function SpikeServer.startRounds(e: Events)
+	events = e
+	startAt = MatchMap.origin + MatchMap.spikeStart
+	setLayout(wanted())
+end
+
+-- The spike rounds are over: back to the course's spike, or none.
+function SpikeServer.stopRounds()
+	events = nil
+	attackers = 0
+	plantOpen = true
+	startAt = Spike.CourseStart
+	setLayout(wanted())
+	publish()
+end
+
+-- The spike rounds' side attacking this round, and whether a plant is open.
+function SpikeServer.setRound(attacking: number, open: boolean)
+	if attacking == attackers and open == plantOpen then
+		return
+	end
+	attackers = attacking
+	plantOpen = open
+	publish()
+end
+
+-- A new spike at the start, as a round of the spike rounds starts.
+function SpikeServer.reset()
+	if layout ~= nil then
+		fresh()
+	end
+end
+
 function SpikeServer.start()
 	PlayerSimServer.objectiveFor = function(player: Player): Spike.Context
-		return if player == carrier then forCarrier else forOthers
+		if player == carrier then
+			return forCarrier
+		end
+		return if mayDefuse(player) then forOthers else forBystanders
 	end
 	PlayerSimServer.spikeGive = function(player: Player)
-		if layout ~= nil and PlayerSimServer.isAlive(player) then
+		-- In the spike rounds, never one that's planted or has gone off.
+		local free = events == nil or state == "dropped" or state == "carried"
+		if layout ~= nil and free and PlayerSimServer.isAlive(player) and mayCarry(player) then
 			hand(player)
 		end
 	end
@@ -334,15 +443,11 @@ function SpikeServer.start()
 		end
 	end)
 
-	-- The course's sites while it's played on; none in the arena.
-	local function course(): string?
-		local arena = Workspace:GetAttribute(ArenaConfig.ON) == true
-		return if not arena and Workspace:FindFirstChild("VFTestRange") then "course" else nil
-	end
 	Workspace:GetAttributeChangedSignal(ArenaConfig.ON):Connect(function()
-		setLayout(course())
+		setLayout(wanted())
 	end)
-	setLayout(course())
+	setLayout(wanted())
+	publish()
 end
 
 return SpikeServer

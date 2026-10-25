@@ -64,6 +64,15 @@ Built one system at a time:
     defused, the white sphere at 7 seconds), and a blast that kills everyone within 35 m; all
     predicted on your screen and decided by the server. On the course, two sites behind the spawn
     where anyone can plant and defuse - [research and design](docs/research/12-spike.md)
+13. **Rounds played for the spike**: the reference's standard match on Outpost, a small two-site
+    map of our own for one to three a side. One side attacks with the spike, which lies in front
+    of them each round and only they can carry; the other defends the sites, and only it can
+    defuse. A buy phase behind the spawn barriers (45 s at each half, 30 s otherwise), 100 s to
+    plant, a round won by a wipe, the clock, a defuse or the blast, halves of 12, first to 13 and
+    sudden death at 12-12, or Competitive's win by two, or Swiftplay's first to 5; the Classic and
+    the knife at each half and after a death; a top bar with the round's clock that gives way to
+    the spike, and banners for match point, overtime, switching sides and how each round was won -
+    [research and design](docs/research/13-rounds.md)
 
 ## Running it
 
@@ -74,9 +83,10 @@ Built one system at a time:
    to the left, and the spike's two sites are 26 m behind you, with the spike waiting 4 m
    behind. In a place made from the Baseplate template, delete its `Baseplate` and
    `SpawnLocation` first.
-4. The arena is built beside the course, off to its right. P turns it on for everyone in the
-   server: you spawn in your side's room and wait there for an opponent, and anyone who joins
-   plays for the other side. P again puts everyone back on the course.
+4. The arena is built beside the course, off to its right, and the spike rounds' map off to its
+   left. P puts everyone in the server in the arena: you spawn in your side's room and wait there
+   for an opponent, and anyone who joins plays for the other side. P again starts the spike
+   rounds, P again their shorter Swiftplay format, and P again puts everyone back on the course.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
@@ -88,9 +98,11 @@ O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it sh
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
-Arena: P turns it on and off (Studio or place owner only). In the arena, the buy menu and the
-debug keys 5-9 (below) work for anyone during the buy phase, and while waiting for an opponent;
-a new match puts everyone back on the starting kit (Vandal, Classic, knife, Heavy Armor).
+Arena: P moves on through the arena, the spike rounds, Swiftplay and off (Studio or place owner
+only). In either, the buy menu and the debug keys 5-9 (below) work for anyone during the buy
+phase, and while waiting for an opponent. A new match in the arena puts everyone back on its
+starting kit (Vandal, Classic, knife, Heavy Armor); in the spike rounds, each half and each death
+leaves you the Classic and the knife, with no shield.
 Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (with the next
 shot's cone round the crosshair, how far the crosshair's lines have spread and the last jump
 measured; G with the HUD on shows the server ghost, unless the spike is in hand), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
@@ -114,7 +126,9 @@ false opens or closes the menu, `VFTestSlot` set to 1, 2, 3 or 4 draws that slot
 set to `key=value` (`sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or `crosshair=0;P;c;5`) enters
 that setting as its box in the menu would. Each of the last six clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still
-read.
+read. From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat`
+(`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
+set true ends the spike rounds' phase under way (a buy phase, a round or the wait for the next).
 
 ## Tests
 
@@ -123,8 +137,8 @@ what they catch, the spike's plant, defuse and drop, spread and recoil, hitboxes
 pose history, render clock, move pacing, lag compensation and wall penetration), the look's maths,
 the arena's rules and map, the sound's rules (footsteps, landings, distance curves, walls in the
 way, reload parts), the settings (crosshair codes and the pixels they draw, sensitivity and
-cm/360) and the spike's rules (sites, the defuse's reach, its beeps and its blast) are pure Luau
-and run outside Roblox:
+cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast) and the spike
+rounds' rules and map are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
@@ -137,7 +151,8 @@ target through a simulated network; how evenly other players and dummies are dra
 not; damage left through walls by class, material and thickness; the vignette across the screen
 and the outline's tint by distance; the arena's size and how much of it each spawn can see; the
 footstep curve, steps per second by weapon, and the filters for walls and distance; cm/360 at
-the default sensitivity, unzoomed and scoped) and runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox definitions.
+the default sensitivity, unzoomed and scoped; how long each side takes to reach Outpost's sites)
+and runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox definitions.
 
 ## Rules for this project
 
