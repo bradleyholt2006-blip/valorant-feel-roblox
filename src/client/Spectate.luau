@@ -166,8 +166,9 @@ function Spectate.start()
 
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 		local phase = if arena then arena:GetAttribute("Phase") else nil
-		-- The victory screen (Scoreboard) has the end of a match.
-		local over = phase == "matchOver"
+		-- The victory screen (Scoreboard) has the end of a match, and the vote
+		-- for the next map (VoteScreen) what follows it.
+		local over = phase == "matchOver" or phase == "vote"
 		local text = whenYouPlay(phase)
 		if target and #list > 1 then
 			text ..= (if text ~= "" then "     " else "") .. "LEFT / RIGHT CLICK  switch"

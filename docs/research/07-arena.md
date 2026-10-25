@@ -2,8 +2,9 @@
 
 This covers somewhere to play rounds against a friend: a whitebox of Skirmish A, the smallest of
 the three layouts of the reference's Skirmish mode (the mode its 2v2 queue plays), with
-Skirmish's rules for sides, rounds and the score. Skirmish B and C and anything to do with the
-spike are separate work; the buy menu came with system 9 ([09-arsenal](09-arsenal.md)).
+Skirmish's rules for sides, rounds and the score. Skirmish B and C, and the vote for the next map
+between the three, came with system 22 ([22-map-vote](22-map-vote.md)); the spike is systems 12
+and 13, and the buy menu came with system 9 ([09-arsenal](09-arsenal.md)).
 
 As before, everything comes from Riot's patch notes, the community wiki and articles about the
 mode, plus one image: the three Skirmish minimaps, credited to Riot, in Sheep Esports' article on
@@ -133,7 +134,7 @@ The rules live in `src/shared/Arena/ArenaConfig.luau` and the map in
 | Buy phase | 15 s in round 1, 3 s after | Community |
 | What holds you in | A barrier across your room's opening during the buy phase, which stops players and bullets | Estimate |
 | Next round | 3 s after the round's last kill, with everyone respawned, dead or alive | Estimate |
-| The end of a match | The result, the victory screen (system 21), shows for 10 s, then a new match starts at 0-0 | Estimate |
+| The end of a match | The result, the victory screen (system 21), shows for 10 s, then everyone votes for the next map for 15 s (system 22), and a new match starts at 0-0 on it | Estimate |
 | Nobody to play against | The arena waits: you can pick any weapon, and you're back 3 s after dying | Estimate |
 | Sides | Each new player joins the side with fewer players (side 1 when level), two a side with anyone over in line, and spawns in their room straight away in a buy phase; in a round under way they watch a teammate until the next ([21-drop-in.md](21-drop-in.md)) | Confirmed (two a side); community and estimate (the rest, system 21) |
 | The hall's width | 19 m | Estimate |
@@ -174,15 +175,18 @@ What the numbers give (from `luau tests/run.luau`):
   waiting ──────────────────────────► buy ──────────────────────────────► live
      ▲                               ▲ ▲                                   │ a side has nobody alive,
      │                               │ └──── 3 s ──── roundOver ◄──────────┤ so the other side scores
-     │                               └ 10 s, at 0-0 ─ matchOver ◄──────────┘ ... and that was its 10th
+     │                               └ 15 s ─ vote ◄─ 10 s ─ matchOver ◄───┘ ... and that was its 10th
      └── from any phase when a side is empty: the score stays, unless the match was over
 ```
 
+The vote picks the next match's map, and the new match starts at 0-0 on it (system 22,
+[22-map-vote](22-map-vote.md)).
+
 Every move into the buy phase respawns everyone in their rooms, dead or alive.
 
-The plan as built, seen from above with side 1 (North) at the top. It's drawn from
-`ArenaLayout.parts()` with one character for 0.5 m across and 1 m down, so edges are rounded to
-that:
+Skirmish A's plan as built, seen from above with side 1 (North) at the top. It's drawn from
+`ArenaLayout.parts("A")` with one character for 0.5 m across and 1 m down, so edges are rounded
+to that (B's and C's are in [22-map-vote](22-map-vote.md)):
 
 ```
               ##############
@@ -295,12 +299,13 @@ that:
   the debug keys 5 to 9 work at the same times. A new match puts everyone back on the starting
   kit ([09-arsenal](09-arsenal.md)).
 
-### Building B and C
+### B and C
 
-The three layouts share the hall and its rooms, near enough, so B and C each need their own list
-of pieces like `ArenaLayout.Pieces`, from the measurements in section 2, and a way to pick one
-each match. The tests' map checks (inside the hall, the same from either end, room to move, no
-sightline between the rooms) apply to them unchanged.
+System 22 built them: the hall and its rooms are shared (`ArenaLayout.hallParts()`), each map's
+cover is its own list in `ArenaLayout.Maps`, from the measurements in section 2, and the tests'
+map checks (inside the hall, the same from either end, room to move, no sightline between the
+rooms) run on every map. The server builds the cover of the map being played, chosen by the vote
+after each match ([22-map-vote](22-map-vote.md)).
 
 ## 6. Implementation map
 
@@ -308,7 +313,7 @@ sightline between the rooms) apply to them unchanged.
 | --- | --- |
 | `src/shared/Arena/ArenaConfig.luau` | The rules' numbers, with status and source, and the names the server and clients share |
 | `src/shared/Arena/ArenaRules.luau` | Sides, phases, rounds and the score, as plain state |
-| `src/shared/Arena/ArenaLayout.luau` | The plan as measured, its heights, and every part, room and spawn spot in metres |
+| `src/shared/Arena/ArenaLayout.luau` | The plan as measured, its heights, and every part, room and spawn spot in metres: the hall, and each map's cover (B and C since system 22) |
 | `src/server/Arena.luau` | Builds the arena, turns it on and off, the teams, spawns, the starting kit for each match, the barriers, and the phase and score for clients |
 | `src/client/ArenaHud.luau` | The top bar, the banner, and P |
 | `src/server/PlayerSimServer.luau` | Hooks for where a life starts and which way it faces, who can change weapons, and deaths; each life's first input |
@@ -328,13 +333,13 @@ sightline between the rooms) apply to them unchanged.
 | Output | `[VF] Arena on` and `[VF] Arena off` |
 | The hall's floor | A grid line every 2 m, to judge distances by |
 | F3 HUD | `corrections` goes up once at each spawn, as on the course, and `max` shouldn't grow at a round restart |
-| Explorer, while playing | `Workspace.VFArena` and its attributes `Phase`, `Round`, `Score1`, `Score2`, `RoundWinner`, `MatchWinner`, `PhaseEndsAt` (server time) and `WinScore`; `Teams.North` and `Teams.South`; `VFArenaSide` on each player; `VFFirstSeq` and `VFSpawnYaw` on each character |
+| Explorer, while playing | `Workspace.VFArena` and its attributes `Phase`, `Round`, `Score1`, `Score2`, `RoundWinner`, `MatchWinner`, `PhaseEndsAt` (server time), `WinScore` and `Map` (system 22); `Teams.North` and `Teams.South`; `VFArenaSide` on each player; `VFFirstSeq` and `VFSpawnYaw` on each character |
 
 ## 8. Refinement loop
 
 1. Play Skirmish A in a custom game and take the measurements in section 3.
 2. Check that the minimap we built from is A. If it isn't, measure the right one and replace
-   `ArenaLayout.Pieces`.
+   `ArenaLayout.Maps.A`.
 3. Set `hallWidth` from the timed runs, and the heights from what you could see over.
 4. Set the buy phase, the time between rounds and the end of a match in `ArenaConfig`.
 5. If bullets go through some obstacles, give those pieces a material that wall penetration knows.

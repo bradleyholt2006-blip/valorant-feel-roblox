@@ -1,8 +1,9 @@
 --!strict
--- The arena (system 7): Skirmish's rounds, and the whitebox of Skirmish A
--- they're played on: inside its walls, the same from either end, room to
--- move everywhere, no sightline from one spawn to the other, barriers that
--- hold each side in, and every number labelled.
+-- The arena (system 7): Skirmish's rounds, and the whiteboxes of Skirmish
+-- A, B and C they're played on (B and C since system 22), each checked the
+-- same way: inside its walls, the same from either end, room to move
+-- everywhere, no sightline from one spawn to the other, barriers that hold
+-- each side in, and every number labelled.
 
 local ArenaConfig = require("../src/shared/Arena/ArenaConfig")
 local ArenaLayout = require("../src/shared/Arena/ArenaLayout")
@@ -73,6 +74,10 @@ do
 		s.phase == "matchOver" and s.matchWinner == 2 and s.score[2] == R.winScore.value and s.score[1] == 1,
 		string.format("%s %d-%d", s.phase, s.score[1], s.score[2])
 	)
+	check(
+		"after the victory screen, everyone votes for the next map (system 22)",
+		#ArenaRules.step(s, s.phaseEndsAt) == 0 and s.phase == "vote"
+	)
 	spawned = ArenaRules.step(s, s.phaseEndsAt)
 	check(
 		"then a new match starts at 0-0, with round 1's long buy phase",
@@ -142,12 +147,12 @@ do
 	check("the version moves on every change and only then", afterJoin > before and v.version == afterJoin)
 end
 
--- The map -----------------------------------------------------------------------
+-- The maps ----------------------------------------------------------------------
 
-local parts = ArenaLayout.parts()
 local W, L, RW, RD = ArenaLayout.size()
 local HALF = cfg.halfWidth
 local EYE = cfg.standEyeHeight
+
 
 -- How far apart a part's footprint and an upright square of half-width h at
 -- (x, z) are (negative when they overlap): the widest gap along the four axes
@@ -212,56 +217,9 @@ local function corners(part: ArenaLayout.Part): { vector }
 end
 
 do
-	local hall = ArenaLayout.hall()
-	local inside = true
-	for _, part in parts do
-		if part.kind == "cover" then
-			for _, corner in corners(part) do
-				inside = inside
-					and corner.x >= hall.min.x - 1e-6
-					and corner.x <= hall.max.x + 1e-6
-					and corner.z >= hall.min.z - 1e-6
-					and corner.z <= hall.max.z + 1e-6
-			end
-		end
-	end
-	check("every piece of cover is inside the hall", inside)
-
-	-- Each part has a partner turned half way round the centre: the same
-	-- kind and size, facing the same way (a box turned half way round looks
-	-- the same).
-	local unmatched = 0
-	for _, part in parts do
-		local turned = ArenaLayout.turned(part.center)
-		local found = false
-		for _, other in parts do
-			local dyaw = (other.yaw - part.yaw) % math.pi
-			if
-				other.kind == part.kind
-				and vector.magnitude(other.center - turned) < 1e-6
-				and vector.magnitude(other.size - part.size) < 1e-9
-				and (dyaw < 1e-9 or math.pi - dyaw < 1e-9)
-			then
-				found = true
-				break
-			end
-		end
-		if not found then
-			unmatched += 1
-		end
-	end
-	check("the map is the same seen from either spawn (each part has its partner turned round the centre)", unmatched == 0, unmatched .. " without")
-
-	local pieces = 0
-	for _, part in parts do
-		if part.kind == "cover" then
-			pieces += 1
-		end
-	end
-	-- 1 centre block, 2 side crates, 4 double crates of 2, 4 wall crates.
-	check("all of Skirmish A's cover is there: 15 blocks and crates", pieces == 15, tostring(pieces))
-
-	-- Along each wall from every corner of the hall: the cut ends where the plan says.
+	-- Along each wall from every corner of the hall: the cut ends where the
+	-- plan says. The hall is every map's.
+	local parts = ArenaLayout.hallParts()
 	local cut = ArenaLayout.Plan.chamfer.value * W
 	local function inCorner(x: number, z: number): boolean
 		for _, part in parts do
@@ -286,7 +244,15 @@ do
 		end
 	end
 	check(string.format("the hall's corners are cut at 45 degrees, %.2f m along each wall", cut), cutRight)
+	local cover = 0
+	for _, part in parts do
+		if part.kind == "cover" then
+			cover += 1
+		end
+	end
+	check("the hall is every map's, with no cover of its own", cover == 0)
 end
+
 
 -- Free floor for a player's box, on a grid over the hall and the rooms:
 -- true where the box fits with `margin` to spare.
@@ -299,7 +265,11 @@ local function onPlan(x: number, z: number): boolean
 	end
 	return false
 end
-local function freeGrid(barriers: boolean, margin: number): ({ { boolean } }, number, number, (x: number, z: number) -> (number, number))
+local function freeGrid(
+	parts: { ArenaLayout.Part },
+	barriers: boolean,
+	margin: number
+): ({ { boolean } }, number, number, (x: number, z: number) -> (number, number))
 	local x0, z0 = -W / 2 - 1, -L / 2 - RD - 1
 	local nx, nz = math.ceil((W + 2) / CELL), math.ceil((L + 2 * RD + 2) / CELL)
 	local blockers = {}
@@ -361,126 +331,209 @@ local function regions(grid: { { boolean } }, nx: number, nz: number): ({ { numb
 end
 
 local MARGIN = 0.1 -- every way through is at least the player's width and 0.2 m more
-do
-	local grid, nx, nz, cellOf = freeGrid(false, MARGIN)
-	local label, count = regions(grid, nx, nz)
-	local spotsFree = true
-	local spotRegion: number? = nil
-	for side = 1, 2 do
-		for _, spot in ArenaLayout.spots(side) do
-			for _, part in parts do
-				if solid(part, true) and gap(part, spot.feet.x, spot.feet.z, HALF) < MARGIN then
-					spotsFree = false
+
+-- How many blocks and crates each map has, both of every pair:
+--   A: 1 centre block, 2 side crates, 4 double crates of 2, 4 wall crates
+--   B: 2 screens, 1 centre block, 2 turned crates, 2 long crates with the 2
+--      crates at their ends, and 2 wall groups of a long crate and a crate
+--   C: the Z's column and its 2 blocks of 2 crates, 2 wall groups of a long
+--      crate and a crate, 2 double crates, 2 Ls of a pair and a crate, 2
+--      turned crates and 2 crates on the end walls
+local PIECES: { [string]: number } = { A = 15, B = 13, C = 23 }
+
+local jumpReport: { string } = {}
+check("the vote's maps are Skirmish A, B and C", #ArenaLayout.MAPS == 3 and ArenaLayout.Maps.B.name == "Skirmish B")
+for _, key in ArenaLayout.MAPS do
+	local map = ArenaLayout.Maps[key]
+	local parts = ArenaLayout.parts(key)
+	local function named(text: string): string
+		return map.name .. ": " .. text
+	end
+
+	do
+		local hall = ArenaLayout.hall()
+		local inside = true
+		for _, part in parts do
+			if part.kind == "cover" then
+				for _, corner in corners(part) do
+					inside = inside
+						and corner.x >= hall.min.x - 1e-6
+						and corner.x <= hall.max.x + 1e-6
+						and corner.z >= hall.min.z - 1e-6
+						and corner.z <= hall.max.z + 1e-6
 				end
 			end
-			local i, j = cellOf(spot.feet.x, spot.feet.z)
-			spotRegion = spotRegion or label[i][j]
-			spotsFree = spotsFree and label[i][j] == spotRegion
 		end
-	end
-	check("every spawn spot is clear, even with the barriers up", spotsFree)
-	check(
-		"with the barriers down the floor is all one space: no pocket you can't get to, every gap wider than a player",
-		count == 1,
-		count .. " regions"
-	)
+		check(named("every piece of cover is inside the hall"), inside)
 
-	local up, ux, uz, upCell = freeGrid(true, MARGIN)
-	local upLabel = regions(up, ux, uz)
-	local function regionAt(x: number, z: number): number
-		local i, j = upCell(x, z)
-		return upLabel[i][j]
-	end
-	local one, two = ArenaLayout.spots(1)[1].feet, ArenaLayout.spots(2)[1].feet
-	local hallPoint = vector.create(0, 0, -L / 4)
-	check(
-		"with the barriers up each side is held in its room",
-		regionAt(one.x, one.z) ~= regionAt(hallPoint.x, hallPoint.z) and regionAt(two.x, two.z) ~= regionAt(hallPoint.x, hallPoint.z)
-	)
-end
-
-do
-	-- Every eye, standing anywhere in one room, against every eye in the
-	-- other: something taller than the eye is in the way.
-	local function eyes(side: number): { vector }
-		local room = ArenaLayout.room(side)
-		local out = {}
-		local x = room.min.x + HALF
-		while x <= room.max.x - HALF + 1e-9 do
-			local z = room.min.z + HALF
-			while z <= room.max.z - HALF + 1e-9 do
-				table.insert(out, vector.create(x, 0, z))
-				z += 0.5
-			end
-			x += 0.5
-		end
-		return out
-	end
-	local function blockedAt(height: number, a: vector, b: vector): boolean
+		-- Each part has a partner turned half way round the centre: the same
+		-- kind and size, facing the same way (a box turned half way round
+		-- looks the same).
+		local unmatched = 0
 		for _, part in parts do
-			if solid(part, false) and part.center.y + part.size.y / 2 > height and part.center.y - part.size.y / 2 < height and crosses(part, a, b) then
-				return true
+			local turned = ArenaLayout.turned(part.center)
+			local found = false
+			for _, other in parts do
+				local dyaw = (other.yaw - part.yaw) % math.pi
+				if
+					other.kind == part.kind
+					and vector.magnitude(other.center - turned) < 1e-6
+					and vector.magnitude(other.size - part.size) < 1e-9
+					and (dyaw < 1e-9 or math.pi - dyaw < 1e-9)
+				then
+					found = true
+					break
+				end
+			end
+			if not found then
+				unmatched += 1
 			end
 		end
-		return false
-	end
-	local from, to = eyes(1), eyes(2)
-	local open, jumpOpen = 0, 0
-	for _, a in from do
-		for _, b in to do
-			if not blockedAt(EYE, a, b) then
-				open += 1
-			end
-			if not blockedAt(EYE + cfg.jumpApexHeight, a, b) then
-				jumpOpen += 1
-			end
-		end
-	end
-	check(
-		"standing anywhere in your spawn, you can't see into the other one",
-		open == 0 and #from > 50,
-		string.format("%d of %d lines open", open, #from * #to)
-	)
-	H.section("Arena report")
-	print(
-		string.format(
-			"spawn to spawn at the top of a jump (estimates): %d of %d lines open (%.0f%%)",
-			jumpOpen,
-			#from * #to,
-			jumpOpen / (#from * #to) * 100
+		check(
+			named("the same seen from either spawn (each part has its partner turned round the centre)"),
+			unmatched == 0,
+			unmatched .. " without"
 		)
-	)
-	H.section("Arena tests")
-end
 
-do
-	-- The real movement against the arena's parts: run at the barrier, then
-	-- with it down, out into the hall.
-	local function world(barriers: boolean): any
-		local w = FakeWorld.new():addFloor()
+		local pieces = 0
 		for _, part in parts do
-			if solid(part, barriers) then
-				w:addPart(part.center, part.size, 0, part.yaw, 0)
+			if part.kind == "cover" then
+				pieces += 1
 			end
 		end
-		return w
+		check(named(string.format("all of its cover is there: %d blocks and crates", PIECES[key])), pieces == PIECES[key], tostring(pieces))
 	end
-	local spot = ArenaLayout.spots(1)[1]
-	local function run(barriers: boolean, seconds: number): vector
-		local sim = PlayerSim.new(spot.feet + vector.create(0, 0.05, 0))
-		local w = world(barriers)
-		for i = 1, math.floor(seconds / DT) do
-			PlayerSim.step(sim, { seq = i, buttons = B.Forward, slot = 1, yaw = spot.yaw, pitch = 0, viewTime = 0 }, cfg, w, DT)
+
+	do
+		local grid, nx, nz, cellOf = freeGrid(parts, false, MARGIN)
+		local label, count = regions(grid, nx, nz)
+		local spotsFree = true
+		local spotRegion: number? = nil
+		for side = 1, 2 do
+			for _, spot in ArenaLayout.spots(side) do
+				for _, part in parts do
+					if solid(part, true) and gap(part, spot.feet.x, spot.feet.z, HALF) < MARGIN then
+						spotsFree = false
+					end
+				end
+				local i, j = cellOf(spot.feet.x, spot.feet.z)
+				spotRegion = spotRegion or label[i][j]
+				spotsFree = spotsFree and label[i][j] == spotRegion
+			end
 		end
-		return sim.movement.position
+		check(named("every spawn spot is clear, even with the barriers up"), spotsFree)
+		check(
+			named("with the barriers down the floor is all one space: no pocket you can't get to, every gap wider than a player"),
+			count == 1,
+			count .. " regions"
+		)
+
+		local up, ux, uz, upCell = freeGrid(parts, true, MARGIN)
+		local upLabel = regions(up, ux, uz)
+		local function regionAt(x: number, z: number): number
+			local i, j = upCell(x, z)
+			return upLabel[i][j]
+		end
+		local one, two = ArenaLayout.spots(1)[1].feet, ArenaLayout.spots(2)[1].feet
+		local hallPoint = vector.create(-W / 4, 0, 0)
+		check(
+			named("with the barriers up each side is held in its room"),
+			regionAt(one.x, one.z) ~= regionAt(hallPoint.x, hallPoint.z) and regionAt(two.x, two.z) ~= regionAt(hallPoint.x, hallPoint.z)
+		)
 	end
-	local held = run(true, 3)
-	local mouth = ArenaLayout.room(1).max.z
-	check("running at the barrier for 3 s, you stay in your room", held.z < mouth and held.y > -0.01, string.format("z %.2f, mouth %.2f", held.z, mouth))
-	local free = run(false, 3)
-	check("with it down you run out into the hall", free.z > mouth + 5, string.format("z %.2f", free.z))
-	check("and you can't jump out: the walls are far above a jump", ArenaLayout.Plan.wallHeight.value > cfg.jumpApexHeight + cfg.standHeight)
+
+	do
+		-- Every eye, standing anywhere in one room, against every eye in the
+		-- other: something taller than the eye is in the way.
+		local function eyes(side: number): { vector }
+			local room = ArenaLayout.room(side)
+			local out = {}
+			local x = room.min.x + HALF
+			while x <= room.max.x - HALF + 1e-9 do
+				local z = room.min.z + HALF
+				while z <= room.max.z - HALF + 1e-9 do
+					table.insert(out, vector.create(x, 0, z))
+					z += 0.5
+				end
+				x += 0.5
+			end
+			return out
+		end
+		local function blockedAt(height: number, a: vector, b: vector): boolean
+			for _, part in parts do
+				if
+					solid(part, false)
+					and part.center.y + part.size.y / 2 > height
+					and part.center.y - part.size.y / 2 < height
+					and crosses(part, a, b)
+				then
+					return true
+				end
+			end
+			return false
+		end
+		local from, to = eyes(1), eyes(2)
+		local open, jumpOpen = 0, 0
+		for _, a in from do
+			for _, b in to do
+				if not blockedAt(EYE, a, b) then
+					open += 1
+				end
+				if not blockedAt(EYE + cfg.jumpApexHeight, a, b) then
+					jumpOpen += 1
+				end
+			end
+		end
+		check(
+			named("standing anywhere in your spawn, you can't see into the other one"),
+			open == 0 and #from > 50,
+			string.format("%d of %d lines open", open, #from * #to)
+		)
+		table.insert(
+			jumpReport,
+			string.format(
+				"%s, spawn to spawn at the top of a jump (estimates): %d of %d lines open (%.0f%%)",
+				map.name,
+				jumpOpen,
+				#from * #to,
+				jumpOpen / (#from * #to) * 100
+			)
+		)
+	end
+
+	do
+		-- The real movement against the map's parts: run at the barrier, then
+		-- with it down, out of the room.
+		local function world(barriers: boolean): any
+			local w = FakeWorld.new():addFloor()
+			for _, part in parts do
+				if solid(part, barriers) then
+					w:addPart(part.center, part.size, 0, part.yaw, 0)
+				end
+			end
+			return w
+		end
+		local spot = ArenaLayout.spots(1)[1]
+		local function run(barriers: boolean, seconds: number): vector
+			local sim = PlayerSim.new(spot.feet + vector.create(0, 0.05, 0))
+			local w = world(barriers)
+			for i = 1, math.floor(seconds / DT) do
+				PlayerSim.step(sim, { seq = i, buttons = B.Forward, slot = 1, yaw = spot.yaw, pitch = 0, viewTime = 0 }, cfg, w, DT)
+			end
+			return sim.movement.position
+		end
+		local held = run(true, 3)
+		local mouth = ArenaLayout.room(1).max.z
+		check(
+			named("running at the barrier for 3 s, you stay in your room"),
+			held.z < mouth and held.y > -0.01,
+			string.format("z %.2f, mouth %.2f", held.z, mouth)
+		)
+		local free = run(false, 3)
+		check(named("with it down you run out into the hall"), free.z > mouth + 2, string.format("%.2f m out", free.z - mouth))
+	end
 end
+check("and you can't jump out: the walls are far above a jump", ArenaLayout.Plan.wallHeight.value > cfg.jumpApexHeight + cfg.standHeight)
 
 do
 	-- Cover either shows your head with your eye above it, or hides your head.
@@ -514,7 +567,10 @@ do
 	for key, v in (ArenaLayout.Heights :: any) :: { [string]: any } do
 		param("Heights." .. key, v)
 	end
-	okLabels = okLabels and ArenaLayout.piecesStatus == "measured" and ArenaLayout.piecesSource ~= ""
+	for _, key in ArenaLayout.MAPS do
+		local map = ArenaLayout.Maps[key]
+		okLabels = okLabels and map.status == "measured" and map.source ~= ""
+	end
 	check("every number has a status and a source", okLabels)
 end
 
@@ -523,6 +579,9 @@ do
 	local spot1, spot2 = ArenaLayout.spots(1)[1].feet, ArenaLayout.spots(2)[1].feet
 	print(string.format("hall %.1f x %.1f m (scale an estimate), spawn rooms %.1f x %.1f m", W, L, RW, RD))
 	print(string.format("spawn to spawn %.1f m; hall corner to corner %.1f m", vector.magnitude(spot2 - spot1), math.sqrt(W * W + L * L)))
+	for _, line in jumpReport do
+		print(line)
+	end
 	print(
 		string.format(
 			"rules: first to %d, buy phase %d s then %d s (community), next round %d s after the last kill (estimate)",

@@ -50,6 +50,15 @@
 -- here as the rules move them. In either mode every player has a record
 -- this match, for the scoreboard and the victory screen.
 --
+-- The vote for the next map (system 22): Skirmish is played on A, B or C,
+-- the first match on one at random, and after each match's victory screen
+-- everyone in the server votes for the next (ArenaRules, MapVote) by
+-- clicking a map (the Vote remote). The maps share the hall and differ in
+-- their cover, so a new map is the arena's cover built anew, as the next
+-- match starts with everyone in their rooms. The arena's model says which
+-- map is played, and during the vote the maps to pick from and their votes;
+-- each player's own vote is their ArenaConfig.VOTE attribute.
+--
 -- P (Studio or the place owner) moves on through the arena, the spike rounds
 -- in the standard format, the spike rounds in Swiftplay's, and off. So do
 -- Workspace's attributes, set from the server, which is how scripted checks
@@ -68,6 +77,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local ArenaRules = require(Shared.Arena.ArenaRules)
+local MapVote = require(Shared.Match.MapVote)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchMap = require(Shared.Match.MatchMap)
 local MatchRules = require(Shared.Match.MatchRules)
@@ -112,11 +122,12 @@ local COLOURS: { [string]: Color3 } = {
 	wall = Color3.fromRGB(200, 200, 205),
 	marking = Color3.fromRGB(95, 98, 108),
 }
+-- The arena's cover by its height: what a player can see over darkest, then
+-- what hides them, and the centre block lightest.
 local COVER: { [string]: Color3 } = {
-	CentreBlock = Color3.fromRGB(175, 175, 182),
-	DoubleCrate = Color3.fromRGB(150, 152, 160),
-	SideCrate = Color3.fromRGB(125, 128, 136),
-	WallCrate = Color3.fromRGB(125, 128, 136),
+	centre = Color3.fromRGB(175, 175, 182),
+	high = Color3.fromRGB(150, 152, 160),
+	low = Color3.fromRGB(125, 128, 136),
 }
 -- The spike rounds' map: cover a player can see over darker than cover they
 -- can't, the sites' plant areas marked on the floor, and each spawn's floor
@@ -133,6 +144,8 @@ local ROLE_COLOURS: { [string]: { floor: Color3, barrier: Color3 } } = {
 
 local model: Model? = nil -- the arena's, which carries the state of play
 local barriers: { BasePart } = {} -- the arena's
+local cover: { BasePart } = {} -- the arena's, for the map built (system 22)
+local builtMap: string? = nil
 local mapBarriers: { BasePart } = {} -- the spike rounds' map's
 local mode: Mode? = nil
 local skirmish: ArenaRules.State? = nil
@@ -201,14 +214,37 @@ local function newModel(name: string): Model
 	return root
 end
 
--- Builds the arena from ArenaLayout and the spike rounds' map from MatchMap,
--- unless the place already has them.
+-- Builds a map's cover into the arena in place of the last map's, if it's
+-- another: the maps differ only in their cover.
+local function showMap(key: string)
+	local root = model
+	if not root or key == builtMap or not ArenaLayout.Maps[key] then
+		return
+	end
+	builtMap = key
+	for _, part in cover do
+		part:Destroy()
+	end
+	table.clear(cover)
+	local H = ArenaLayout.Heights
+	for _, spec in ArenaLayout.coverParts(key) do
+		local p = newPart(spec.name, spec.size, ArenaLayout.origin + spec.center, spec.yaw)
+		local height = spec.size.y
+		p.Color = if height < H.high.value then COVER.low elseif height < H.centre.value then COVER.high else COVER.centre
+		p.Parent = root
+		table.insert(cover, p)
+	end
+end
+
+-- Builds the arena from ArenaLayout, with Skirmish A's cover until a match
+-- is played on another, and the spike rounds' map from MatchMap, unless the
+-- place already has them.
 function Arena.buildIfMissing()
 	if not Workspace:FindFirstChild(ArenaConfig.MODEL) then
 		local root = newModel(ArenaConfig.MODEL)
-		for _, spec in ArenaLayout.parts() do
+		for _, spec in ArenaLayout.hallParts() do
 			local p = newPart(spec.name, spec.size, ArenaLayout.origin + spec.center, spec.yaw)
-			p.Color = COVER[spec.name] or COLOURS[spec.kind] or COLOURS.wall
+			p.Color = COLOURS[spec.kind] or COLOURS.wall
 			local side = spec.side
 			if spec.kind == "marking" then
 				marking(p)
@@ -227,6 +263,7 @@ function Arena.buildIfMissing()
 		root.Parent = Workspace
 		model = root
 		raise(barriers, false)
+		showMap(ArenaLayout.MAPS[1])
 	end
 
 	if not Workspace:FindFirstChild(MatchConfig.MODEL) then
@@ -271,6 +308,7 @@ local RECORD = {
 	MatchConfig.ALIVE,
 	MatchConfig.LOADOUT,
 	ArenaConfig.LINE,
+	ArenaConfig.VOTE,
 }
 
 local function playerFor(id: number): Player?
@@ -320,8 +358,9 @@ end
 
 -- Puts each player on their side's team, or on none while they wait in line
 -- or nothing is played, as the rules have them now: the sides are evened
--- out between rounds, and a place in line opens when someone leaves.
-local function seat(sides: Roster.Sides?)
+-- out between rounds, and a place in line opens when someone leaves. And
+-- during a vote for the next map, the one each has voted for.
+local function seat(sides: Roster.Sides?, vote: MapVote.Vote?)
 	for _, player in Players:GetPlayers() do
 		local id = player.UserId
 		local side = if sides then Roster.sideOf(sides, id) else nil
@@ -332,6 +371,7 @@ local function seat(sides: Roster.Sides?)
 		player.Neutral = team == nil
 		player:SetAttribute(ArenaConfig.SIDE, side)
 		player:SetAttribute(ArenaConfig.LINE, if sides then Roster.placeInLine(sides, id) else nil)
+		player:SetAttribute(ArenaConfig.VOTE, if vote then vote.picks[id] else nil)
 	end
 end
 
@@ -363,9 +403,21 @@ local function publish()
 		root:SetAttribute("Reason", if m then m.reason else nil)
 		root:SetAttribute("Streak1", if m then m.streak[1] else nil)
 		root:SetAttribute("Streak2", if m then m.streak[2] else nil)
+		-- Skirmish's own (system 22): the map played (a key of
+		-- ArenaLayout.Maps), whether a vote for the next follows each match,
+		-- and during it the maps to pick from ("A,B,C") and the votes for
+		-- each ("2,0,1").
+		local vote = if s then s.vote else nil
+		root:SetAttribute("Map", if s then s.map else nil)
+		root:SetAttribute("MapVote", if s then #s.maps > 1 else nil)
+		root:SetAttribute("VoteMaps", if vote then table.concat(vote.options, ",") else nil)
+		root:SetAttribute("Votes", if vote then table.concat(MapVote.tally(vote), ",") else nil)
 	end
-	-- Everyone's team, and the record of everyone playing.
-	seat(state)
+	if s then
+		showMap(s.map)
+	end
+	-- Everyone's team and vote, and the record of everyone playing.
+	seat(state, if s then s.vote else nil)
 	local members: { [number]: Roster.Member }? = if s then s.members elseif m then m.members else nil
 	if members then
 		for id, member in members do
@@ -565,7 +617,9 @@ local function apply()
 	if wanted then
 		begin(wanted, format)
 		local m2 = match
-		print(string.format("[VF] Arena on: %s", if m2 then "the spike rounds, " .. m2.format.name else "Skirmish"))
+		local s2 = skirmish
+		local what = if m2 then "the spike rounds, " .. m2.format.name elseif s2 then ArenaLayout.Maps[s2.map].name else "Skirmish"
+		print(string.format("[VF] Arena on: %s", what))
 	else
 		Players.CharacterAutoLoads = true
 		published = -2
@@ -632,9 +686,18 @@ function Arena.start()
 			return
 		end
 		Workspace:SetAttribute(MatchConfig.SKIP, nil)
-		local m = match
-		if m then
+		local s, m = skirmish, match
+		if s then
+			ArenaRules.skip(s, now())
+		elseif m then
 			MatchRules.skip(m, now())
+		end
+		publish()
+	end)
+	-- A vote for the next map, by its number in the list.
+	Remotes.get().Vote.OnServerEvent:Connect(function(player, option)
+		local s = skirmish
+		if s and typeof(option) == "number" and ArenaRules.vote(s, player.UserId, option) then
 			publish()
 		end
 	end)

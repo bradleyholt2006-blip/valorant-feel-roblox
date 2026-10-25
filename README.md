@@ -130,6 +130,11 @@ Built one system at a time:
     spike rounds, and each match ends on a 10-second victory screen with everyone's kills, deaths,
     assists and combat score and the MVPs, before the next starts on the same server -
     [research and design](docs/research/21-drop-in.md)
+22. **The map vote**: Skirmish B and C, built beside A from Riot's minimaps, so Skirmish has the
+    reference's three maps, sharing one hall. A server's first match is on one of them at random,
+    and after each victory screen everyone votes for the next for 15 s, clicking one of three map
+    cards that each show the map's plan. The most votes wins, a tie or no votes at all is settled
+    at random, and the next match starts on it - [research and design](docs/research/22-map-vote.md)
 
 ## Running it
 
@@ -143,8 +148,9 @@ Built one system at a time:
 4. The arena is built beside the course, off to its right, and the spike rounds' map off to its
    left. A live server starts the arena by itself; in Studio you start on the course, and P puts
    everyone in the server in the arena: you spawn in your side's room and wait there for an
-   opponent, and whoever joins goes on the side with fewer players. P again starts the spike
-   rounds, P again their shorter Swiftplay format, and P again puts everyone back on the course.
+   opponent, and whoever joins goes on the side with fewer players. After each match everyone
+   votes for the next of Skirmish's three maps. P again starts the spike rounds, P again their
+   shorter Swiftplay format, and P again puts everyone back on the course.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
@@ -154,6 +160,7 @@ while you carry it (hold 4 to plant it in a site or to defuse it), G drops the g
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent), Tab held the scoreboard (the arena and
 the spike rounds), mouse 1 and 2, while you're down in either, the next or the last teammate to watch,
+a click on a map card, during the vote after a match in the arena, your vote for the next map,
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
@@ -193,12 +200,16 @@ spike), `VFTestBuy` set to an id buys it as the menu would (`-` and the id sells
 draws that slot (5 is Blade Storm's knives), `VFTestSettingsMenu` set to true or false opens or
 closes the settings menu, `VFTestSetting` set to `key=value` (`sensitivity=0.8`, `scoped=0.5`,
 `dpi=1600` or `crosshair=0;P;c;5`) enters that setting as its box in the menu would, `VFTestTake`
-set to true presses F, and `VFTestBoard` set to true or false holds the scoreboard open as Tab does
-or lets it go. Each of the last eight clears itself.
+set to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as Tab does
+or lets it go, and `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would. Each of
+the last nine clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
 From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat` (`standard`,
 `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip` set true ends
-the spike rounds' phase under way (a buy phase, a round or the wait for the next). In the spike
+the phase under way (a buy phase, a round, the wait for the next, the victory screen or the vote;
+a Skirmish round goes to side 1). The arena's model says which of Skirmish's maps is played
+(`Map`), and during the vote the maps to pick from and their votes (`VoteMaps`, `Votes`), with
+each player's own vote as `VFMapVote`. In the spike
 rounds each player's credits are their `VFCredits` attribute, and each side's losses in a row
 `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in Workspace's
 `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's record is in
@@ -213,22 +224,22 @@ cloud as parts.
 
 ## Tests
 
-The shared simulation (movement, weapons and every gun's way of firing, the knife's swings and
-what they catch, the spike's plant, defuse and drop, spread and recoil, hitboxes, wire formats,
-pose history, render clock, move pacing, lag compensation and wall penetration), the look's maths,
-the arena's rules and map, the sound's rules (footsteps, landings, distance curves, walls in the
-way, reload parts), the settings (crosshair codes and the pixels they draw, sensitivity and
-cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast), the spike
-rounds' rules and map, the economy (what each round pays, kills, the plant, the cap, what a
-purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the dead
-drop, walking over one and the one in view), the match's record (the combat score, kills,
+The shared simulation (movement, weapons and every gun's way of firing, the knife's swings and what
+they catch, the spike's plant, defuse and drop, spread and recoil, hitboxes, wire formats, pose
+history, render clock, move pacing, lag compensation and wall penetration), the look's maths, the
+arena's rules and its three maps, the vote for the next map, the sound's rules (footsteps, landings,
+distance curves, walls in the way, reload parts), the settings (crosshair codes and the pixels they
+draw, sensitivity and cm/360), the spike's rules (sites, the defuse's reach, its beeps and its
+blast), the spike rounds' rules and map, the economy (what each round pays, kills, the plant, the
+cap, what a purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the
+dead drop, walking over one and the one in view), the match's record (the combat score, kills,
 deaths, assists and the average), who plays on which side (dropping in, the line and evening the
-sides out), the ability kit (charges through rounds, halves, kills and
-deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire), Cloudburst
-(the throw, its flight, its curve and what stops it, and the cloud's life), Blade Storm (the
-cast, single throws and the burst, the kills that bring the knives back, swapping, and what ends
-it) and Drift (the glide from a jump, a ledge and Updraft, a press in a fall, landing with jump
-held, and what it leaves alone) are pure Luau and run outside Roblox:
+sides out), the ability kit (charges through rounds, halves, kills and deaths, buying them,
+Updraft's height and Tailwind's dash, and the kit on the wire), Cloudburst (the throw, its flight,
+its curve and what stops it, and the cloud's life), Blade Storm (the cast, single throws and the
+burst, the kills that bring the knives back, swapping, and what ends it) and Drift (the glide from a
+jump, a ledge and Updraft, a press in a fall, landing with jump held, and what it leaves alone) are
+pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
