@@ -8,7 +8,9 @@
 -- while waiting for an opponent, and on the course at any time, as in the
 -- reference's practice range. The server checks again (ShopServer). While
 -- it's open the mouse moves a cursor and its buttons are the menu's, and you
--- can still move. Nothing costs anything yet, so prices show what the
+-- can still move. In the spike rounds it costs credits (system 14): yours
+-- show at the top, with what the round pays, and anything you can't afford
+-- is dimmed. Elsewhere everything's free, and prices show what the
 -- reference charges.
 
 local Players = game:GetService("Players")
@@ -19,6 +21,8 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local MatchConfig = require(Shared.Match.MatchConfig)
+local MatchRules = require(Shared.Match.MatchRules)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Shop = require(Shared.Weapons.Shop)
 local Remotes = require(Shared.Net.Remotes)
@@ -51,6 +55,7 @@ local TILE_HOVER = Color3.fromRGB(48, 52, 64)
 local OWNED = Color3.fromRGB(235, 235, 235)
 local SELLABLE = Color3.fromRGB(90, 220, 200)
 local GOLD = Color3.fromRGB(230, 200, 120)
+local SHORT = Color3.fromRGB(235, 90, 80) -- what you can't afford
 
 local CATEGORY: { [string]: string } = {
 	sidearm = "Sidearm",
@@ -64,7 +69,7 @@ local CATEGORY: { [string]: string } = {
 -- The menu's columns: groups of WeaponConfig.Arsenal by name, then the shields.
 local COLUMNS = { { "Sidearms" }, { "SMGs", "Shotguns" }, { "Rifles" }, { "Snipers", "Machine guns" } }
 
-type Tile = { id: string, button: TextButton, stroke: UIStroke, tag: TextLabel }
+type Tile = { id: string, item: Shop.Item, button: TextButton, stroke: UIStroke, tag: TextLabel, name: TextLabel, price: TextLabel }
 
 local tiles: { Tile } = {}
 local hovered: string? = nil
@@ -88,6 +93,37 @@ end
 local function shieldWorn(): string
 	local kind = me:GetAttribute(Shop.SHIELD_ATTRIBUTE)
 	return if typeof(kind) == "string" then kind else ""
+end
+
+-- Our copy of what we've bought this buy phase and what it replaced, for
+-- what buying something costs.
+local function shopState(): Shop.State
+	local bought = me:GetAttribute(Shop.BOUGHT_ATTRIBUTE)
+	local before = me:GetAttribute(Shop.BEFORE_ATTRIBUTE)
+	return Shop.fromLists(if typeof(bought) == "string" then bought else nil, if typeof(before) == "string" then before else nil)
+end
+
+-- Our credits, when things cost them (the spike rounds).
+local function credits(): number?
+	local value = me:GetAttribute(MatchConfig.CREDITS)
+	if Workspace:GetAttribute(ArenaConfig.ON) ~= true or Workspace:GetAttribute(ArenaConfig.MODE) ~= "spike" then
+		return nil
+	end
+	return if typeof(value) == "number" then value else nil
+end
+
+-- What the round being played pays our side, won and lost, as the next
+-- starts; nil when the next starts everyone over.
+local function stakes(arena: Instance?): MatchRules.Payout?
+	local side = me:GetAttribute(ArenaConfig.SIDE)
+	local key = arena and arena:GetAttribute("Format")
+	local format = if typeof(key) == "string" then MatchConfig.Formats[key] else nil
+	local round = arena and arena:GetAttribute("Round")
+	if not arena or not format or typeof(side) ~= "number" or typeof(round) ~= "number" or round < 1 then
+		return nil
+	end
+	local streak = arena:GetAttribute("Streak" .. side)
+	return MatchRules.payout(format, round, if typeof(streak) == "number" then streak else 0)
 end
 
 -- Whether buying is open for us now, as the server will see it.
@@ -240,7 +276,11 @@ local function drawShield(area: Frame, def: WeaponConfig.ShieldDef)
 	end
 end
 
-local function makeTile(parent: Frame, id: string, name: string, price: number, x: number, y: number): Tile
+local function makeTile(parent: Frame, id: string, name: string, price: number, x: number, y: number): Tile?
+	local item = Shop.item(id)
+	if not item then
+		return nil
+	end
 	local button = Instance.new("TextButton")
 	button.Name = id
 	button.AutoButtonColor = false
@@ -269,7 +309,7 @@ local function makeTile(parent: Frame, id: string, name: string, price: number, 
 	else
 		drawSilhouette(area, id)
 	end
-	Ui.label(button, {
+	local nameLabel = Ui.label(button, {
 		Text = name:upper(),
 		Font = Enum.Font.GothamBold,
 		TextSize = 13,
@@ -277,7 +317,7 @@ local function makeTile(parent: Frame, id: string, name: string, price: number, 
 		Size = UDim2.fromOffset(TILE_W - 16, 16),
 		ZIndex = 5,
 	})
-	Ui.label(button, {
+	local priceLabel = Ui.label(button, {
 		Text = if price > 0 then tostring(price) else "FREE",
 		Font = Enum.Font.GothamBold,
 		TextSize = 12,
@@ -310,7 +350,7 @@ local function makeTile(parent: Frame, id: string, name: string, price: number, 
 	button.MouseButton2Click:Connect(function()
 		BuyMenu.request("sell", id)
 	end)
-	local tile = { id = id, button = button, stroke = stroke, tag = tag }
+	local tile = { id = id, item = item, button = button, stroke = stroke, tag = tag, name = nameLabel, price = priceLabel }
 	table.insert(tiles, tile)
 	return tile
 end
@@ -480,12 +520,18 @@ function BuyMenu.start()
 		scale.Scale = math.min(1, (viewport.X - 40) / width, (viewport.Y - 40) / height)
 
 		local arenaOn = Workspace:GetAttribute(ArenaConfig.ON) == true
-		local spikeRounds = arenaOn and Workspace:GetAttribute(ArenaConfig.MODE) == "spike"
-		status.Text = if spikeRounds
-			then "SPIKE ROUNDS: EVERYTHING'S FREE (NO ECONOMY YET)"
-			elseif arenaOn then "SKIRMISH: EVERYTHING'S FREE"
-			else "THE COURSE: EVERYTHING'S FREE"
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
+		local wallet = credits()
+		if wallet then
+			local pay = stakes(arena)
+			status.Text = string.format("%d CREDITS", wallet)
+				.. if pay and pay.won == pay.lost
+					then string.format("     THIS ROUND PAYS +%d", pay.won)
+					elseif pay then string.format("     WIN +%d   LOSE +%d", pay.won, pay.lost)
+					else ""
+		else
+			status.Text = if arenaOn then "SKIRMISH: EVERYTHING'S FREE" else "THE COURSE: EVERYTHING'S FREE"
+		end
 		local endsAt = arena and arena:GetAttribute("PhaseEndsAt")
 		local phase = arena and arena:GetAttribute("Phase")
 		timer.Text = if arenaOn and phase == "buy" and typeof(endsAt) == "number"
@@ -498,10 +544,17 @@ function BuyMenu.start()
 		local inHand = if sim then loadout[sim.weapons.equipped] else nil
 		local shield = shieldWorn()
 		local sellable = bought()
+		local state = shopState()
+		local short: { [string]: boolean } = {}
 		for _, tile in tiles do
 			local owned = tile.id == shield or tile.id == loadout[1] or tile.id == loadout[2]
 			local canSell = sellable[tile.id] == true
+			local cant = wallet ~= nil and not owned and Shop.cost(state, tile.item) > wallet
+			short[tile.id] = cant
 			tile.button.BackgroundColor3 = if hovered == tile.id then TILE_HOVER else TILE
+			tile.button.BackgroundTransparency = if cant then 0.55 else 0.1
+			tile.name.TextColor3 = if cant then Ui.DIM else Ui.TEXT
+			tile.price.TextColor3 = if cant then SHORT else GOLD
 			tile.stroke.Transparency = if owned then 0.1 else 1
 			tile.stroke.Color = if canSell then SELLABLE else OWNED
 			tile.tag.Text = if tile.id == inHand then "IN HAND" elseif owned then "OWNED" else ""
@@ -524,7 +577,27 @@ function BuyMenu.start()
 			price.Text = ""
 			body.Text = "Point at a gun or a shield to see its numbers."
 		end
-		hint.Text = if id and sellable[id] then "Bought this buy phase: right-click to sell it back" else ""
+		local item = if id then Shop.item(id) else nil
+		local cost = if item then Shop.cost(state, item) else 0
+		hint.TextColor3 = SELLABLE
+		if not id or not item then
+			hint.Text = ""
+		elseif sellable[id] then
+			hint.Text = if wallet
+				then string.format("Bought this buy phase: right-click to sell it back for %d", Shop.refund(state, item))
+				else "Bought this buy phase: right-click to sell it back"
+		elseif short[id] then
+			hint.Text = string.format("Not enough credits: it costs %d", cost)
+			hint.TextColor3 = SHORT
+		elseif wallet and state.before[item.slot] == id then
+			hint.Text = string.format("Yours already: buying it back refunds %d", -cost)
+		elseif wallet and cost ~= item.price then
+			hint.Text = if cost < 0
+				then string.format("%d back, with what you bought for its slot sold back", -cost)
+				else string.format("%d, with what you bought for its slot sold back", cost)
+		else
+			hint.Text = ""
+		end
 	end)
 end
 
