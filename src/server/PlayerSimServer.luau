@@ -74,6 +74,8 @@ type Record = {
 	pacer: MovePacer.Pacer, -- the pose after each move, at the move's time
 	shown: PlayerCodec.Pose?, -- what this frame's snapshot shows
 	freshKit: boolean, -- the next life starts on the starting kit
+	kit: { string }?, -- that kit's weapons by slot (nil: WeaponConfig.DefaultLoadout)
+	kitShield: string?, -- and its shield ("" for none; nil: WeaponConfig.DefaultShield)
 	spawnAskedAt: number?, -- os.clock() when a new life was asked for, until it starts
 }
 
@@ -121,7 +123,8 @@ local seeds = Random.new()
 -- A life keeps the last one's weapons, unless it starts on the starting kit,
 -- but never the spike: a carrier drops it as they die.
 local function newSim(r: Record): PlayerSim.State
-	local loadout = if r.freshKit then nil else table.clone(r.sim.weapons.loadout)
+	local kit = r.kit
+	local loadout = if not r.freshKit then table.clone(r.sim.weapons.loadout) elseif kit then table.clone(kit) else nil
 	if loadout then
 		loadout[Spike.SLOT] = ""
 	end
@@ -209,7 +212,7 @@ local function onCharacter(r: Record, character: Model)
 	r.alive = true
 	restartPacing(r)
 	if r.freshKit then
-		Health.setShield(r.entity.health, WeaponConfig.DefaultShield)
+		Health.setShield(r.entity.health, r.kitShield or WeaponConfig.DefaultShield)
 		r.freshKit = false
 	end
 	Health.reset(r.entity.health)
@@ -280,6 +283,8 @@ local function onPlayerAdded(player: Player)
 		pacer = MovePacer.new(),
 		shown = nil,
 		freshKit = false,
+		kit = nil,
+		kitShield = nil,
 		spawnAskedAt = nil,
 	}
 	records[player] = r
@@ -377,12 +382,15 @@ function PlayerSimServer.holding(player: Player, slot: number): (string?, number
 	return w.loadout[slot], w.equipped
 end
 
--- From the player's next life, the starting kit (WeaponConfig.DefaultLoadout
--- and DefaultShield) in place of whatever they had, as a new match starts.
-function PlayerSimServer.resetKit(player: Player)
+-- From the player's next life, a starting kit in place of whatever they
+-- had, as a new match starts: `kit`'s weapons by slot and `shield` ("" for
+-- none), or by default WeaponConfig.DefaultLoadout and DefaultShield.
+function PlayerSimServer.resetKit(player: Player, kit: { string }?, shield: string?)
 	local r = records[player]
 	if r then
 		r.freshKit = true
+		r.kit = kit
+		r.kitShield = shield
 	end
 end
 

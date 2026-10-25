@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twelve research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the thirteen research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about two hours. Doing it in parts is fine; keep the order.
+It takes about two and a half hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -27,8 +27,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    the plugin.
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
-   need one and then two. Section 11 needs headphones. Section 15 needs one, and section 16 one
-   and then two.
+   need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 and
+   17 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -44,7 +44,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F10 | Hitbox and wall overlay |
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
 | N | The next enemy outline colour |
-| P | The arena on and off |
+| P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
@@ -407,7 +407,7 @@ From [07-arena.md](research/07-arena.md). Stop the game and press Play (F5), for
 start with. The arena is built off to the course's right, about 90 m from its spawn, so you only
 see it once you're in it. Keep the HUD on.
 
-- **A1 On.** Press P. The Output window shows `[VF] Arena on`, and you respawn in a small room with
+- **A1 On.** Press P. The Output window shows `[VF] Arena on: Skirmish`, and you respawn in a small room with
   a brown floor marked NORTH, looking out through its open side into a walled hall with a tall
   grey block in the middle. The score bar at the top of the screen shows `0` in blue on the left
   and `0` in red on the right, with `ARENA` and `FIRST TO 10` between them, and a banner reads
@@ -421,12 +421,14 @@ see it once you're in it. Keep the HUD on.
   room's opening, and whether the hall feels too big, about right or too small for a 1v1.
 - **A3 Waiting.** While you're alone there's no barrier: you can walk out of your room straight
   away, B opens the buy menu, and 5 to 9 give you any weapon.
-- **A4 Off and on.** Press P: the Output window shows `[VF] Arena off`, you're back at the course's
-  spawn, the score bar and banner are gone, and the dummies still have red outlines. Press P again
-  and you're back in the NORTH room, facing the hall. Then hold W and press P twice more, so each
-  new life starts while you're running. Each time you start at the spawn and run on from there
-  with no snap back, and the HUD's `max` correction stays at `0.0 mm`. The `corrections` count can
-  go up by one at each spawn, as at any spawn.
+- **A4 Off and on.** Press P three times, through the spike rounds (section 17): the Output window
+  shows `[VF] Arena on: the spike rounds, Standard`, then `[VF] Arena on: the spike rounds,
+  Swiftplay`, then `[VF] Arena off`, and you're back at the course's spawn, the score bar and
+  banner are gone, and the dummies still have red outlines. Press P again and you're back in the
+  NORTH room, facing the hall. Then hold W and press P four times more, so each new life starts
+  while you're running. Each time you start at a spawn and run on from there with no snap back,
+  and the HUD's `max` correction stays at `0.0 mm`. The `corrections` count can go up by one at
+  each spawn, as at any spawn.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9.
 
@@ -452,8 +454,8 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   before.
 - **A10 Leaving.** Close player 2's window. Player 1's banner goes back to
   `WAITING FOR AN OPPONENT`, the barrier goes if it was up, and the score stays.
-- **A11 Off again.** Press P in window 1. Player 1 is back on the course, on no team, and Teams is
-  empty.
+- **A11 Off again.** Press P three times in window 1, through the spike rounds. Player 1 is back
+  on the course, on no team, and Teams is empty.
 - **A12 Teammates (optional).** Stop the game, start a Local Server with 3 players and press P in
   window 1. Players 1 and 3 share the NORTH room, each on their own spot, and player 2 has SOUTH to
   themselves. Players 1 and 3 see each other with a faint blue outline, and their shots pass
@@ -749,8 +751,8 @@ it and `VFTestButtons` holds 4 (1024), G (2048) or crouch (32).
 - **D1 Waiting.** On Play, the spike lies on its tile 4 m behind the spawn: a dark squat case with
   a dim blue band, with `SPIKE` in red over it, seen through walls. The HUD reads `spike   on the
   ground at 0.0 4.0 m`, and `VFSpike` is `dropped`, `VFSpikeLayout` `course`, `VFSpikePosition`
-  (0, 0, 4) and `VFSpikeCarrier` 0. With the arena on (P) it reads `none here`, and with the arena
-  off again the spike is back on its tile.
+  (0, 0, 4) and `VFSpikeCarrier` 0. With the arena on (P) it reads `none here`. Press P three more
+  times, through the spike rounds to off, and the spike is back on its tile.
 - **D2 Picking it up.** Walk back over the tile: a metal latch as you reach it, the spike leaves
   the floor, `SPIKE  [4]` shows in red at the bottom right and the HUD reads `spike   carried by
   you`. `VFSpike` is `carried`, `VFSpikeCarrier` your UserId and `VFSpikePosition` gone. Press 4:
@@ -816,6 +818,87 @@ Then two players, as in section 9, on the course.
   where player 1 died, with a thud, and player 2 can pick it up. Plant it once more and let it go
   off with both standing at the spawn: both die.
 
+## 17. The spike rounds
+
+From [13-rounds.md](research/13-rounds.md). One player, then two, with the HUD on (F3). Outpost,
+the spike rounds' map, is built off the course's left, about 150 m from its spawn, so you only see
+it once you're in it. P moves on through Skirmish, the spike rounds, the spike rounds in
+Swiftplay's format, and off. Without keys, set Workspace's attributes from the server:
+`VFArenaMode` `spike`, `VFMatchFormat` `standard` or `swiftplay`, then `VFArenaOn` true (false
+for off). `VFMatchSkip` set true on Workspace from the server ends the phase being played and
+clears itself: a buy phase, a round (as its clock running out, so the defenders win it) or the
+wait for the next round, but never a planted spike's countdown. Skip whatever a check doesn't
+need to wait out.
+
+- **E1 On.** Press P twice. The Output window shows `[VF] Arena on: Skirmish`, then `[VF] Arena
+  on: the spike rounds, Standard`. You respawn in a room with a red floor marked ATTACKERS, facing
+  its door into mid, with the spike on the floor 4 m in front of you: `VFSpikeLayout` is
+  `outpost` and `VFSpikePosition` (-150, 0, 29). The top bar shows `0` and `0` with `SPIKE ROUNDS`
+  and `STANDARD` between them, and the banner reads `WAITING FOR AN OPPONENT`, with `Standard,
+  first to 13` under it. Teams holds Orange and Teal, and you're on Orange. You have the Classic
+  (2) and the knife (3), and no shield.
+- **E2 The map.** Walk round it. From the spawn, a door on the left leads through a lobby and A
+  main, a long corridor, to site A; the door ahead leads into mid; the door on the right to B the
+  same way. Each site has an amber plant area marked A or B with crates round it, the dark ones
+  low enough to shoot over standing and the light ones high enough to hide you. A link joins each
+  site to mid, past a pillar. The defenders' spawn is at the far end, with a blue floor marked
+  DEFENDERS, a door to mid and a back hall to each site. The walls are 5 m tall: you can't jump
+  out or see over them, and from anywhere in either spawn you can't see into the other. Nothing
+  else in the place pokes into it. **Send:** a screenshot from each site, and whether the map
+  feels too big, about right or too small for 1v1 and for 2v2.
+- **E3 Waiting.** Alone, there are no barriers, B opens the buy menu, and 5 to 9 give weapons.
+  Walk over the spike: you pick it up (`VFSpike` `carried`). In site A's plant area no `HOLD 4 TO
+  PLANT` shows and holding 4 plants nothing: `VFSpikePlantOpen` is false while you wait, and
+  `VFSpikeDefusers` is 2.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9.
+
+- **E4 Round 1.** Press P twice in window 1. Player 1 spawns in ATTACKERS and player 2 in
+  DEFENDERS, facing their door to mid. Both screens show the round's clock counting down from
+  `0:45`, `ROUND 1   ATTACK` under it for player 1 and `ROUND 1   DEFEND` for player 2, and a
+  banner counting down from `BUY PHASE 45`, its line reading `Attack: plant the spike at A or B
+  B buy menu` for player 1 and `Defend A and B   B buy menu` for player 2. Each spawn's three doors
+  have see-through barriers, red for the attackers' and blue for the defenders', and you can't
+  walk through them. Both players have the Classic and the knife, and no shield, and the spike lies
+  in front of player 1.
+- **E5 The buy phase.** B opens the menu, which reads `SPIKE ROUNDS: EVERYTHING'S FREE (NO ECONOMY
+  YET)`. Each player buys a Vandal and Heavy Armor. Player 1 walks over the spike and picks it up.
+  At `0:00` the barriers go, the menu closes, and the clock shows `1:40` and counts down.
+- **E6 Plant and defuse.** Player 1 takes the spike to site A and plants it. On both screens the
+  clock gives way to `SPIKE` in red, and `SPIKE PLANTED` shows. Standing by it, player 1 gets no
+  defuse prompt, and holding 4 does nothing. Player 2 comes and defuses it. Player 2's screen shows
+  `ROUND WON` in blue with `Spike defused` under it, player 1's `ROUND LOST` in red with the same
+  line, with no `SPIKE DEFUSED` over either, and player 2's side scores 1.
+- **E7 The next round.** About 7 s later both respawn for `ROUND 2`, in the same spawns, with a
+  buy phase from `BUY PHASE 30` and a new spike in front of player 1. Both still have the Vandal
+  and Heavy Armor.
+- **E8 A death costs the kit.** In round 2 player 1 kills player 2: `ROUND WON` with `Enemies
+  eliminated` for player 1, and `ROUND LOST` with `Your side was eliminated` for player 2. In
+  round 3 player 2 has only the Classic and the knife, with no shield, and player 1 still has the
+  Vandal and Heavy Armor.
+- **E9 Planted, then wiped out.** In round 3 player 1 plants, and player 2 kills player 1. The
+  round goes on, with `SPIKE` in the bar. Player 2 leaves the spike alone: it goes off, player 1's
+  screen shows `ROUND WON` with `Spike detonated`, and the blast kills player 2 if they're within
+  35 m of it.
+- **E10 Only attackers carry it.** In round 4, player 1 drops the spike in mid (G). Player 1 sees
+  its `SPIKE` marker through walls and player 2 doesn't. Player 2 walks over it: nothing (`VFSpike`
+  stays `dropped`). Nobody plants: skip the round (or wait out
+  its 100 s). `ROUND WON` with `Time ran out before a plant` for player 2.
+- **E11 The half.** Press P in window 1: `[VF] Arena on: the spike rounds, Swiftplay`, and a new
+  match at 0-0, with both players back on the Classic and the knife. Skip through the buy phases
+  and rounds: the defenders win each one on time. Round 4's buy phase adds `LAST ROUND OF THE
+  HALF`, and its end adds `SWITCHING SIDES`. Round 5 has player 2 in ATTACKERS with the spike in
+  front of them and player 1 in DEFENDERS, both on the Classic and the knife again, with a buy
+  phase from 45, and the bar reads `DEFEND` for player 1 and `ATTACK` for player 2. From round 5,
+  player 2's side is on 4, and its buy phases add `MATCH POINT`.
+- **E12 Sudden death.** Keep skipping, so player 1's side wins rounds 5 to 8 on time: 4-4. Round
+  9's buy phase reads `SUDDEN DEATH`, from 45, on the second half's sides. Skip it too: player 1
+  wins it 5-4 and their screen shows `VICTORY` and player 2's `DEFEAT`, each with the score. About
+  10 s later round 1 of a new match starts at 0-0, with player 1 attacking again and both on the
+  Classic and the knife.
+- **E13 Off.** Press P in window 1: `[VF] Arena off`. Both players are back on the course, on no
+  team, Teams is empty, and the course's spike is back on its tile (`VFSpikeLayout` `course`).
+
 ## Results
 
 ```
@@ -862,6 +945,11 @@ D6 died at the spawn: yes / no; Dummy 18: died / lived; Dummy 1 ___ m away: died
 D7 a whole defuse ___ s; from the half ___ s
 D8 crouching stopped the defuse: yes / no
 D9 dropped ___ m ahead; against the wall it landed ___ m short of it
+E2 Outpost: builds clean / something overlaps it (what); for 1v1 too big / about right / too small; for 2v2 too big / about right / too small
+E6 the defuse round's banners: ___
+E8 player 2's kit in round 3: ___
+E11 round 5's spawns: ___; SWITCHING SIDES shown: yes / no
+E12 the match ended ___ - ___, then a new match: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -937,3 +1025,9 @@ Didn't look right (IDs and what you saw):
 | 12 | The blast kills everyone within 35 m, through walls, and no one further | D6, D10 |
 | 12 | Another player sees the spike, its tells and the blast, and hears the plant and the defuse from where they are | D10 |
 | 12 | The sounds are at sensible levels next to the others | D4, D5, D6, D7, N4 |
+| 13 | Outpost builds at its origin with nothing overlapping it, and plays at the right scale | E1, E2 |
+| 13 | Each side spawns in its role's spawn facing out, and the spawns swap at the half | E1, E4, E11 |
+| 13 | The spike lies in front of the attackers each round, only attackers pick it up, plants work only while the round is live, and only defenders get the defuse prompt | E3, E5, E6, E7, E10 |
+| 13 | Each way of ending a round shows its banner and scores, the half and the overtime round are labelled, and a match ends and starts again | E6, E8, E9, E10, E11, E12 |
+| 13 | The Classic and the knife at each half and after a death, while survivors keep theirs | E4, E7, E8, E11, E12 |
+| 13 | The round's clock agrees with the server, and gives way to `SPIKE` at the plant | E4, E5, E6 |

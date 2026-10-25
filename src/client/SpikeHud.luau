@@ -106,14 +106,16 @@ function SpikeHud.start()
 		local sim: PlayerSim.State? = PlayerController.sim
 		local alive = PlayerController.alive and sim ~= nil
 
-		-- A banner as it's planted, defused or goes off.
+		-- A banner as it's planted, defused or goes off; in the spike rounds
+		-- the round's end says how it ended instead (ArenaHud).
 		if view.state ~= lastState then
 			local text, colour = "", Ui.TEXT
+			local course = view.layout == "course"
 			if view.state == "planted" then
 				text, colour = "SPIKE PLANTED", RED
-			elseif view.state == "defused" then
+			elseif view.state == "defused" and course then
 				text, colour = "SPIKE DEFUSED", CYAN
-			elseif view.state == "detonated" then
+			elseif view.state == "detonated" and course then
 				text, colour = "SPIKE DETONATED", RED
 			end
 			if text ~= "" then

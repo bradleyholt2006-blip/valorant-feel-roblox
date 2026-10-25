@@ -15,7 +15,8 @@
 -- close enough to defuse it, who the blast reaches and how fast it beeps.
 -- PlayerSim steps the plant and the defuse themselves (SpikeSim).
 --
--- No requires, so it runs in Studio and in the offline tests.
+-- Its only require is the spike rounds' map, for its sites (plain data), so
+-- it runs in Studio and in the offline tests.
 
 export type Status = "confirmed" | "community" | "estimate"
 export type Param = { value: number, status: Status, source: string }
@@ -42,6 +43,8 @@ export type Context = {
 	-- Whether the eye can see the spike (a defuse needs it); nil sees always.
 	sees: ((eye: vector, spike: vector) -> boolean)?,
 }
+
+local MatchMap = require("../Match/MatchMap")
 
 local Spike = {}
 
@@ -102,6 +105,11 @@ Spike.HALF = "VFSpikeHalf" -- a defuse has passed the half
 Spike.SITE = "VFSpikeSite" -- the site it was planted at
 Spike.ENDED_AT = "VFSpikeEndedAt" -- server time it was defused or detonated
 Spike.LAYOUT = "VFSpikeLayout" -- which sites there are: a key of Spike.Layouts
+-- Who may do what with it: in the spike rounds (system 13) its carrier may
+-- plant it only while a round is live, and only the defending side (a value
+-- of ArenaConfig.SIDE) may defuse it; on the course, any time and anyone (0).
+Spike.PLANT_OPEN = "VFSpikePlantOpen"
+Spike.DEFUSERS = "VFSpikeDefusers"
 
 -- The weapon id and the slot it's carried in ("Equip Spike" is 4).
 Spike.ID = "spike"
@@ -120,6 +128,7 @@ Spike.CourseStart = vector.create(0, 0, 4)
 -- The sites of each place there's a spike, by the name Spike.LAYOUT gives.
 Spike.Layouts = {
 	course = Spike.CourseSites,
+	[MatchMap.LAYOUT] = MatchMap.zones(),
 } :: { [string]: { Zone } }
 
 -- Rotates v about +Y by -yaw (world -> box local space), as Hitboxes does.

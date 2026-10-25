@@ -22,5 +22,6 @@ require("./sound")
 require("./melee")
 require("./settings")
 require("./spike")
+require("./match")
 
 H.finish()

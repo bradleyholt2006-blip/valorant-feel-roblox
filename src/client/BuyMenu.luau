@@ -480,7 +480,11 @@ function BuyMenu.start()
 		scale.Scale = math.min(1, (viewport.X - 40) / width, (viewport.Y - 40) / height)
 
 		local arenaOn = Workspace:GetAttribute(ArenaConfig.ON) == true
-		status.Text = if arenaOn then "SKIRMISH: EVERYTHING'S FREE" else "THE COURSE: EVERYTHING'S FREE"
+		local spikeRounds = arenaOn and Workspace:GetAttribute(ArenaConfig.MODE) == "spike"
+		status.Text = if spikeRounds
+			then "SPIKE ROUNDS: EVERYTHING'S FREE (NO ECONOMY YET)"
+			elseif arenaOn then "SKIRMISH: EVERYTHING'S FREE"
+			else "THE COURSE: EVERYTHING'S FREE"
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 		local endsAt = arena and arena:GetAttribute("PhaseEndsAt")
 		local phase = arena and arena:GetAttribute("Phase")
