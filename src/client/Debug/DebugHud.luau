@@ -111,9 +111,11 @@ function DebugHud.start(controller: any)
 	})
 
 	-- Key overlay ------------------------------------------------------------
+	-- Just above the ability bar (AbilityHud), which takes the bottom 70 px
+	-- between health and ammo.
 	local keys = Ui.frame(gui, {
 		Size = UDim2.fromOffset(166, 112),
-		Position = UDim2.new(0.5, -83, 1, -132),
+		Position = UDim2.new(0.5, -83, 1, -190),
 		BackgroundTransparency = 1,
 	})
 	local keyCells: { { frame: Frame, flag: number } } = {}

@@ -1101,9 +1101,10 @@ the ultimate's points and what it needs, as `C0/2 Q1/1 E1/1 X0/8`, with `lift` o
 - **U1 The bar.** At the bottom of the screen, between your health and your ammo, four squares:
   `C` CLOUDBURST, `Q` UPDRAFT, `E` TAILWIND and `X` BLADE STORM. C's square has two pips, Q's one
   and E's one, all lit; X's has eight, gold, since the course fills the ultimate's points (system
-  19), and reads `8/8` at its top right, in gold. Each name fits inside its square: BLADE STORM on
-  two lines, CLOUDBURST smaller. `VFKit` reads `C2/2 Q1/1 E1/1 X8/8`. **Send:** a screenshot of
-  the bar.
+  19), and reads `8/8` at its top right, in gold. Each name fits inside its square with no word
+  split across lines: BLADE STORM on two lines, CLOUDBURST on one, smaller. The HUD's key overlay
+  (W A S D, F3) sits just above the bar, clear of it. `VFKit` reads `C2/2 Q1/1 E1/1 X8/8`.
+  **Send:** a screenshot of the bar.
 - **U2 Updraft.** Stand still on open floor and press Q. You're thrown straight up at once, with
   a low gust, a ring of air spreading at your feet and six streaks rising. Q's square is outlined
   for the lift's 0.6 s, and its pip goes dark; `VFKit` reads `Q0/1`, with `lift` for those 0.6 s.
@@ -1423,7 +1424,7 @@ L1 the Vandal landed ___ m ahead
 L6 the prompt went at ___ m along the floor
 J1 a kill feed line stayed ___ s
 J9 player 2's ACS ___, from VFScore ___
-U1 the names: all fit / cut off (which)
+U1 the names: all fit, none split / cut off or split (which); the key overlay clear of the bar: yes / no
 U2 Updraft: rise ___ m, ___ s in the air; about ___ jump boxes (1.00 m) high; the pip back ___ s after the press
 U3 Updraft at the jump's top: rise ___ m
 U5 the dash stopped ___ m along the sprint lane; holding D it went right: yes / no
