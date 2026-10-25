@@ -431,7 +431,8 @@ it wasn't.
   Crouching is silent too, and so is standing still.
 - **N3 Jumps and landings.** Jump on the spot: a soft rustle as you leave the ground and a thud as
   you land. Jump up onto the 0.50 m red jump box: that landing is the softer one, which nobody else
-  hears. Step off it onto the floor: the heard thud again.
+  hears. Step off it onto the floor: the heard thud again. Spawning is silent: press P twice (the
+  arena on, then off) and you appear without a sound.
 - **N4 Shots.** Fire each weapon (4 to 8 give the Vandal, Phantom, Operator, Sheriff and Classic).
   Each has its own sound. The Phantom's is the quietest and dullest, and the Operator's the
   biggest. Hold fire with the Vandal: each shot is distinct and none is cut into a click.
