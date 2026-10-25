@@ -46,7 +46,12 @@ do
 		return PlayerCodec.decodeInputs(PlayerCodec.encodeInputs({ input }, 1, 1)) == nil
 	end
 	check("slot 0 is rejected", bad({ seq = 1, buttons = 0, slot = 0, yaw = 0, pitch = 0, viewTime = 0 }))
-	check("slot 4 (the spike) is taken and slot 5 is rejected", not bad({ seq = 1, buttons = 0, slot = 4, yaw = 0, pitch = 0, viewTime = 0 }) and bad({ seq = 1, buttons = 0, slot = 5, yaw = 0, pitch = 0, viewTime = 0 }))
+	check(
+		"slot 4 (the spike) and 5 (an ultimate's weapon) are taken, and 6 is rejected",
+		not bad({ seq = 1, buttons = 0, slot = 4, yaw = 0, pitch = 0, viewTime = 0 })
+			and not bad({ seq = 1, buttons = 0, slot = 5, yaw = 0, pitch = 0, viewTime = 0 })
+			and bad({ seq = 1, buttons = 0, slot = 6, yaw = 0, pitch = 0, viewTime = 0 })
+	)
 	check("NaN viewTime is rejected", bad({ seq = 1, buttons = 0, slot = 1, yaw = 0, pitch = 0, viewTime = 0 / 0 }))
 	check("truncated packets are rejected", PlayerCodec.decodeInputs(buffer.create(18)) == nil)
 	check("non-buffers are rejected", PlayerCodec.decodeInputs("hello") == nil)

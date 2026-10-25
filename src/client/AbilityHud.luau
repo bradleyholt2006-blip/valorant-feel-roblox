@@ -3,8 +3,9 @@
 -- the reference: C, Q, E and X, each with its key, its name, and a pip for
 -- each charge it can hold, lit for each it has; the ultimate's pips are its
 -- points. A readied gust (Tailwind) shows its windup and then the seconds
--- left to dash, and an ability under way lights its slot. What can't be
--- played yet is dimmed. It reads the local player's predicted kit
+-- left to dash, and an ability under way lights its slot: Blade Storm's
+-- while its knives last (system 19), its note the knives left. What can't
+-- be played yet is dimmed. It reads the local player's predicted kit
 -- (PlayerController.sim), so a cast shows on the tick it's pressed.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local MovementConfig = require(Shared.Movement.MovementConfig)
+local WeaponSim = require(Shared.Weapons.WeaponSim)
 
 local PlayerController = require(script.Parent.PlayerController)
 local Ui = require(script.Parent.Debug.Ui)
@@ -141,6 +143,11 @@ function AbilityHud.start()
 				setPips(slot, needed, kit.points, if full then GOLD else Ui.TEXT)
 				note = if needed > 0 then string.format("%d/%d", kit.points, needed) else ""
 				slot.note.TextColor3 = if full then GOLD else Ui.DIM
+				if kit.storm then
+					lit = true
+					note = string.format("x%d", s.weapons.ammo[WeaponSim.ULT])
+					slot.note.TextColor3 = LIT
+				end
 			else
 				setPips(slot, AbilitySim.maxCharges(kit, index), kit.charges[index], Ui.TEXT)
 				slot.note.TextColor3 = LIT

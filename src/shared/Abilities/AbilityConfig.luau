@@ -39,6 +39,7 @@ export type AbilityDef = {
 	free: number?, -- charges it's given free each round (the signature)
 	recharge: Recharge?,
 	points: Param?, -- ultimate points it needs (the ultimate)
+	weapon: string?, -- what its cast puts in hand, a WeaponConfig id (system 19)
 	description: string, -- for the buy menu and the HUD, in our words
 }
 
@@ -87,6 +88,7 @@ local P408 = "Patch 4.08"
 local WIKI = "VALORANT Wiki, Jett"
 local FANDOM = "Fandom wiki, Cloudburst"
 local MOBALYTICS = "Mobalytics, Jett"
+local BLADE = "VALORANT Wiki, Blade Storm"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -123,7 +125,8 @@ AbilityConfig.Defs = {
 		slot = AbilityConfig.X,
 		kind = "ultimate",
 		points = p(8, "confirmed", P704 .. ": ultimate points increased from 7 to 8"),
-		description = "Throwing knives that come back with each kill.",
+		weapon = "kunai",
+		description = "Five throwing knives. Fire throws one, and a kill brings them all back; alt fire throws all that are left.",
 	},
 } :: { [string]: AbilityDef }
 
@@ -183,6 +186,17 @@ AbilityConfig.Cloudburst = {
 	fade = p(0.3, "estimate", "Ours; frame-count a cloud's end in a public video"),
 	-- The gun is put away to throw, and back in hand this long after.
 	stow = p(0.25, "community", MOBALYTICS .. ": 'Unequip time: 0.25 seconds' (" .. P704 .. ": the re-equip slightly longer)"),
+}
+
+-- Jett's Blade Storm (system 19): X with the points full spends them and
+-- puts five knives in hand, a weapon of their own in the fifth slot
+-- (WeaponConfig's kunai, which has their throws and damage). She can draw
+-- her guns and use her other abilities meanwhile, and X draws the knives
+-- again. They're gone once they're all thrown with no kill to bring them
+-- back, when she dies, and with the round.
+AbilityConfig.BladeStorm = {
+	-- From the cast until the first knife can go.
+	windup = p(1.02, "community", BLADE .. ": 'Initial windup time' 1.02 s"),
 }
 
 return AbilityConfig

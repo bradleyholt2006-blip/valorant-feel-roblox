@@ -18,6 +18,11 @@
 -- right one stabs, and each swing comes out as an event the same way, for
 -- Melee to find what it caught.
 --
+-- An ultimate can put a weapon of its own in a fifth slot (system 19:
+-- Jett's Blade Storm knives). Its cast takes it in hand (arm), and so does
+-- its key again once a gun's been drawn (takeUp); with nothing left to
+-- throw it's gone, and the hand goes back to what it came from.
+--
 -- Times are seconds of simulation time (tick * dt). 1/128 is exact in binary,
 -- so client and server compute bit-identical times.
 
@@ -27,8 +32,9 @@ local WeaponConfig = require("./WeaponConfig")
 local Accuracy = require("./Accuracy")
 
 export type State = {
-	-- [slot] = weapon id, "" for empty: 1 primary, 2 secondary, 3 melee, and
-	-- 4 the spike while it's carried (system 12)
+	-- [slot] = weapon id, "" for empty: 1 primary, 2 secondary, 3 melee, 4
+	-- the spike while it's carried (system 12), and 5 an ultimate's weapon
+	-- while it lasts (system 19)
 	loadout: { string },
 	ammo: { number }, -- [slot]
 	reserve: { number }, -- [slot]
@@ -52,6 +58,12 @@ export type State = {
 	-- The knife's last slash's place in its combo, 1-3; 0 when the next one
 	-- starts it over (after a stab, a draw or a pause).
 	combo: number,
+	-- The ultimate's weapon (system 19): the slot it gives the hand back to
+	-- when it's gone. It comes into hand without the input's slot asking for
+	-- it, so `hold` is the slot the input was asking for as it did, which
+	-- doesn't put it away again; 0 once the input has asked for it.
+	back: number,
+	hold: number,
 }
 
 export type Shot = {
@@ -109,9 +121,11 @@ local Buttons = {
 
 local WeaponSim = {}
 
--- Slots a player has: the three weapons and the spike's.
-local SLOTS = 4
+-- Slots a player has: the three weapons, the spike's and the ultimate's.
+local SLOTS = 5
 WeaponSim.SLOTS = SLOTS
+local ULT = 5
+WeaponSim.ULT = ULT
 
 local EPS = 1e-9
 
@@ -121,12 +135,13 @@ local function has(buttons: number, flag: number): boolean
 	return bit32.band(buttons, flag) ~= 0
 end
 
+-- An ultimate's weapon never starts a life: a death ends the ultimate.
 function WeaponSim.newState(loadout: { string }?, seed: number?): State
 	local ids = loadout or WeaponConfig.DefaultLoadout
 	local s: State = {
-		loadout = { ids[1] or "", ids[2] or "", ids[3] or "", ids[4] or "" },
-		ammo = { 0, 0, 0, 0 },
-		reserve = { 0, 0, 0, 0 },
+		loadout = { ids[1] or "", ids[2] or "", ids[3] or "", ids[4] or "", "" },
+		ammo = { 0, 0, 0, 0, 0 },
+		reserve = { 0, 0, 0, 0, 0 },
 		equipped = 1,
 		equipEndTime = 0,
 		nextFireTime = 0,
@@ -144,6 +159,8 @@ function WeaponSim.newState(loadout: { string }?, seed: number?): State
 		burstNext = 0,
 		spin = 0,
 		combo = 0,
+		back = 1,
+		hold = 0,
 	}
 	for slot = 1, SLOTS do
 		WeaponSim.give(s, slot, s.loadout[slot])
@@ -173,6 +190,17 @@ local function draw(s: State, t: number)
 	s.burstNext = 0
 	s.spin = 0
 	s.combo = 0
+end
+
+-- Takes `slot` in hand, as a switch does. Drawing the ultimate's weapon
+-- remembers the slot it came from, to give the hand back to.
+local function switchTo(s: State, slot: number, t: number)
+	if slot == ULT and s.equipped ~= ULT then
+		s.back = s.equipped
+	end
+	s.equipped = slot
+	s.hold = 0
+	draw(s, t)
 end
 
 -- Puts a weapon in a slot with full ammo (server-side loadout changes), or
@@ -222,6 +250,59 @@ function WeaponSim.takeInHand(s: State, t: number): Dropped?
 	local dropped = { slot = slot, id = id, ammo = s.ammo[slot], reserve = s.reserve[slot] }
 	WeaponSim.give(s, slot, "", t)
 	return dropped
+end
+
+-- An ultimate's weapon `id` (system 19: Blade Storm's knives), put in its
+-- slot with a full magazine and taken in hand, ready `windup` seconds after
+-- `t`. `want` is the slot the input asks for on this tick, which leaves it
+-- in hand until the input catches up.
+function WeaponSim.arm(s: State, id: string, t: number, windup: number, want: number)
+	WeaponSim.give(s, ULT, id)
+	switchTo(s, ULT, t)
+	s.equipEndTime = t + windup
+	s.hold = want
+end
+
+-- The ultimate's weapon drawn again, as its key does (system 19), if it's
+-- carried and not in hand already. `want` as for arm.
+function WeaponSim.takeUp(s: State, t: number, want: number)
+	if s.loadout[ULT] == "" or s.equipped == ULT then
+		return
+	end
+	switchTo(s, ULT, t)
+	s.hold = want
+end
+
+-- A slot's magazine full again, if it holds a weapon (Blade Storm's knives,
+-- all back with a kill).
+function WeaponSim.refill(s: State, slot: number)
+	local id = s.loadout[slot]
+	if id ~= "" then
+		s.ammo[slot] = WeaponConfig.get(id).magazine.value
+	end
+end
+
+-- The ultimate's weapon gone: all thrown, or the ultimate over. If it was
+-- in hand, the slot it came from is drawn, or the first that holds
+-- something.
+function WeaponSim.putAway(s: State, t: number)
+	s.loadout[ULT], s.ammo[ULT], s.reserve[ULT] = "", 0, 0
+	if s.equipped ~= ULT then
+		return
+	end
+	local back = s.back
+	if back < 1 or back >= ULT or s.loadout[back] == "" then
+		back = 1
+		for slot = 1, ULT - 1 do
+			if s.loadout[slot] ~= "" then
+				back = slot
+				break
+			end
+		end
+	end
+	s.equipped = back
+	s.hold = 0
+	draw(s, t)
 end
 
 -- Draws the weapon in hand again, as after a switch (once the spike has
@@ -423,11 +504,26 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 	local alt = has(buttons, Buttons.AltFire)
 	local reload = has(buttons, Buttons.Reload)
 
-	-- 1. Weapon switch: requested slot differs and holds a weapon.
+	-- 0. An ultimate's weapon with nothing left to throw is gone: from the
+	-- hand once its last throw's time is up (a single knife's 0.167 s, a
+	-- burst's 0.45 s), and the hand goes back.
+	if s.loadout[ULT] ~= "" and s.ammo[ULT] == 0 and (s.equipped ~= ULT or (s.burstLeft == 0 and t >= s.nextFireTime - EPS)) then
+		WeaponSim.putAway(s, t)
+	end
+
+	-- 1. Weapon switch: requested slot differs and holds a weapon. The slot
+	-- the input was asking for as the ultimate's weapon came into hand keeps
+	-- it there, until the input asks for it, or for another.
 	local want: number = input.slot
+	if s.hold ~= 0 then
+		if s.equipped ~= ULT or want == ULT then
+			s.hold = 0
+		elseif want == s.hold then
+			want = ULT
+		end
+	end
 	if want ~= s.equipped and want >= 1 and want <= SLOTS and s.loadout[want] ~= "" then
-		s.equipped = want
-		draw(s, t)
+		switchTo(s, want, t)
 	end
 
 	local slot = s.equipped

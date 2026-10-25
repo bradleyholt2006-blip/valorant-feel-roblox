@@ -19,6 +19,8 @@
 -- The ability kit (system 17) is predicted with the rest: a cast moves you
 -- the tick you press it, and the server's changes to the kit between ticks
 -- (charges bought, points for kills) come back in the ack like a loadout.
+-- Blade Storm's knives ride in slot 5 (system 19): their cast and X draw
+-- them, and a kill that brings them all back comes in the ack too.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -172,9 +174,17 @@ end
 local function tick()
 	local s = sim :: PlayerSim.State
 	seq += 1
-	-- A slot emptied (the spike planted or dropped) stops being asked for.
-	if s.weapons.loadout[PlayerController.desiredSlot] == "" then
-		PlayerController.desiredSlot = s.weapons.equipped
+	-- A slot emptied (the spike planted or dropped) stops being asked for,
+	-- but for the ultimate's: a kill may have brought Blade Storm's knives
+	-- back on the server before this client put them away (system 19).
+	local w = s.weapons
+	if PlayerController.desiredSlot ~= WeaponSim.ULT and w.loadout[PlayerController.desiredSlot] == "" then
+		PlayerController.desiredSlot = w.equipped
+	end
+	-- The knives came into hand by themselves (their cast, or X again): from
+	-- now on they're asked for, so they stay.
+	if w.equipped == WeaponSim.ULT and w.hold ~= 0 and PlayerController.desiredSlot == w.hold then
+		PlayerController.desiredSlot = WeaponSim.ULT
 	end
 	local input: PlayerCodec.WireInput = {
 		seq = seq,
@@ -295,6 +305,8 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or gw.burstNext ~= sw.burstNext
 		or gw.spin ~= sw.spin
 		or gw.combo ~= sw.combo
+		or gw.back ~= sw.back
+		or gw.hold ~= sw.hold
 	then
 		return true, posErr
 	end
@@ -331,6 +343,7 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or ga.dashUntil ~= sa.dashUntil
 		or ga.dashX ~= sa.dashX
 		or ga.dashZ ~= sa.dashZ
+		or ga.storm ~= sa.storm
 	then
 		return true, posErr
 	end

@@ -95,7 +95,7 @@ do
 			and def.cost ~= nil
 			and def.cost.value == 200
 	)
-	check("and it can be played now", AbilitySim.playable("cloudburst") and not AbilitySim.playable("bladestorm"))
+	check("and it can be played now", AbilitySim.playable("cloudburst"))
 end
 
 -- The throw ----------------------------------------------------------------------------------

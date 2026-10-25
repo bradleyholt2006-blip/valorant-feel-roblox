@@ -388,8 +388,11 @@ do
 		if not (C :: any)[sounds.curve] then
 			table.insert(missing, id .. ": curve " .. sounds.curve)
 		end
-		if (WeaponConfig.get(id).fireMode == "none") ~= (sounds.reload == nil) then
-			table.insert(missing, id .. ": " .. (if sounds.reload then "the knife and the spike don't reload" else "no reload"))
+		local def = WeaponConfig.get(id)
+		local reloads = def.fireMode ~= "none" and not def.ultimate
+		if reloads ~= (sounds.reload ~= nil) then
+			local why = if sounds.reload then "the knife, the spike and Blade Storm's knives don't reload" else "no reload"
+			table.insert(missing, id .. ": " .. why)
 		end
 		local swings = sounds.slash ~= nil and sounds.stab ~= nil and sounds.hit ~= nil and sounds.wall ~= nil
 		if (WeaponConfig.get(id).melee ~= nil) ~= swings then

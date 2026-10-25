@@ -32,6 +32,10 @@
 --
 -- The spike (system 12) is held low and tipped toward the ground while it's
 -- planted, and a defuse puts the weapon away until it ends.
+--
+-- Blade Storm's knives (system 19) have no flash and no kick: the hand
+-- snaps forward as each goes, and each leaves a pale streak where it flew,
+-- wider and longer lasting than a bullet's tracer. Others' do too.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -94,6 +98,7 @@ type Viewmodel = { weapon: string, shape: Shape, parts: { { part: Part, offset: 
 
 local viewmodel: Viewmodel? = nil
 local kick = 0
+local flick = 0 -- 0 to 1: the hand snapping forward as a knife is thrown
 local adsBlend = 0
 local plantBlend = 0 -- 0 to 1: the spike held low, going down, while planting
 local flash: Part? = nil
@@ -162,6 +167,7 @@ local function holdCFrame(sim: PlayerSim.State, frameDt: number): (CFrame, boole
 	local target = if zoom > 1 then 1 else 0
 	adsBlend += (target - adsBlend) * math.min(frameDt / ADS_BLEND_TIME * 3, 1)
 	kick *= math.exp(-frameDt * 18)
+	flick *= math.exp(-frameDt * 12)
 
 	-- Drawing: comes up from below over the equip time.
 	local equipLeft = math.clamp((w.equipEndTime - t) / math.max(def.equipTime.value, 1e-3), 0, 1)
@@ -185,10 +191,14 @@ local function holdCFrame(sim: PlayerSim.State, frameDt: number): (CFrame, boole
 
 	local hold = HIP + (ADS - HIP) * adsBlend
 	local offset = hold
-		+ vector.create(0, -0.22 * equipLeft - 0.08 * reloadDip - 0.12 * plantBlend, 0.03 * kick - 0.06 * plantBlend)
+		+ vector.create(
+			0,
+			-0.22 * equipLeft - 0.08 * reloadDip - 0.12 * plantBlend + 0.03 * flick,
+			0.03 * kick - 0.06 * plantBlend - 0.1 * flick
+		)
 		+ swingOffset
 	local angles = CFrame.Angles(
-		math.rad(5 * kick) - math.rad(50) * equipLeft - math.rad(15) * reloadDip - math.rad(30) * plantBlend,
+		math.rad(5 * kick) - math.rad(50) * equipLeft - math.rad(15) * reloadDip - math.rad(30) * plantBlend - math.rad(15) * flick,
 		0,
 		math.rad(35) * reloadDip
 	)
@@ -248,7 +258,9 @@ local function fade(part: BasePart, duration: number, from: number)
 	table.insert(fades, { part = part, start = os.clock(), duration = duration, from = from })
 end
 
-local function tracer(from: Vector3, to: Vector3, color: Color3, width: number)
+-- A shot's line from `from` to `to` (studs), `width` metres across, gone
+-- after `duration` seconds (a bullet's by default).
+local function tracer(from: Vector3, to: Vector3, color: Color3, width: number, duration: number?)
 	local length = (to - from).Magnitude
 	if length < 1e-3 then
 		return
@@ -256,8 +268,13 @@ local function tracer(from: Vector3, to: Vector3, color: Color3, width: number)
 	local p = effectPart("Tracer", color, Enum.Material.Neon)
 	p.Size = Vector3.new(width * S, width * S, length)
 	p.CFrame = CFrame.lookAt((from + to) / 2, to)
-	fade(p, 0.07, 0.25)
+	fade(p, duration or 0.07, 0.25)
 end
+
+-- A thrown knife's streak (system 19).
+local STREAK_COLOR = Color3.fromRGB(190, 240, 255)
+local STREAK_WIDTH = 0.018
+local STREAK_TIME = 0.15
 
 local MARK_COLOR = Color3.fromRGB(20, 20, 24)
 
@@ -373,13 +390,18 @@ end
 local queued: { ClientShots.Record } = {}
 
 local function drawShot(record: ClientShots.Record)
-	if record.shot.pellet == 1 then
-		kick += 1 -- one kick and flash a round, however many pellets
-		flashUntil = os.clock() + 0.035
-	end
 	local outcome = record.predicted
 	local from = WeaponEffects.muzzlePosition()
-	tracer(from, Units.toStuds(outcome.point), Color3.fromRGB(255, 220, 140), 0.012)
+	if WeaponConfig.get(record.shot.weapon).ultimate then
+		flick = 1
+		tracer(from, Units.toStuds(outcome.point), STREAK_COLOR, STREAK_WIDTH, STREAK_TIME)
+	else
+		if record.shot.pellet == 1 then
+			kick += 1 -- one kick and flash a round, however many pellets
+			flashUntil = os.clock() + 0.035
+		end
+		tracer(from, Units.toStuds(outcome.point), Color3.fromRGB(255, 220, 140), 0.012)
+	end
 	drawWalls(record.shot.origin, record.shot.direction, outcome.penetration.walls, outcome.distance)
 	if outcome.targetId then
 		spark(outcome.point, Color3.fromRGB(255, 240, 200), 0.02) -- client-predicted, not a hit
@@ -466,13 +488,16 @@ local function onShotFx(fx: any)
 	if typeof(fx) ~= "table" or typeof(fx.from) ~= "Vector3" or typeof(fx.to) ~= "table" then
 		return
 	end
-	local class: WeaponConfig.PenetrationClass = WeaponConfig.get(if typeof(fx.weapon) == "string" then fx.weapon else "knife").penetration
+	local def = WeaponConfig.get(if typeof(fx.weapon) == "string" then fx.weapon else "knife")
+	local class: WeaponConfig.PenetrationClass = def.penetration
 	local from = Units.toMetres(fx.from)
 	for _, to in fx.to do
 		if typeof(to) ~= "Vector3" then
 			continue
 		end
-		if fx.tracers ~= false then
+		if def.ultimate then
+			tracer(fx.from, to, STREAK_COLOR, STREAK_WIDTH, STREAK_TIME)
+		elseif fx.tracers ~= false then
 			tracer(fx.from, to, Color3.fromRGB(150, 200, 255), 0.01)
 		end
 		local toMetres = Units.toMetres(to)

@@ -16,7 +16,10 @@
 --   * Cloudburst (C, system 18) throws a cloud from her eye the way she's
 --     looking, and puts her gun away for a moment. CloudSim flies it: this
 --     only says it was thrown
--- Blade Storm (X) isn't playable yet: its key does nothing.
+--   * Blade Storm (X, system 19) spends the ultimate's points once they're
+--     full, and while it lasts X draws its knives again. The knives are a
+--     weapon of their own (WeaponSim's fifth slot), which PlayerSim puts in
+--     hand: this says when, and it's over once they're gone
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -49,12 +52,16 @@ export type State = {
 	dashUntil: number,
 	dashX: number,
 	dashZ: number,
+	-- The ultimate under way (Blade Storm): its knives are carried.
+	-- PlayerSim ends it when they're gone.
+	storm: boolean,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
--- "ready", "dash" or "throw", where the player's feet and eye were, and the
--- way it goes (the dash's way, up for a lift, the way they faced for a
--- readied gust, the way they looked for a throw).
+-- "ready", "dash", "throw", "storm" (Blade Storm cast) or "draw" (its
+-- knives drawn again), where the player's feet and eye were, and the way it
+-- goes (the dash's way, up for a lift, the way they faced for a readied
+-- gust, the way they looked for the rest).
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -79,7 +86,7 @@ AbilitySim.BUTTONS = { B.AbilityC, B.AbilityQ, B.AbilityE, B.Ultimate }
 local ALL = bit32.bor(B.AbilityC, B.AbilityQ, B.AbilityE, B.Ultimate)
 
 -- Abilities whose casts are written; the rest can't be bought or cast yet.
-local PLAYABLE: { [string]: boolean } = { cloudburst = true, updraft = true, tailwind = true }
+local PLAYABLE: { [string]: boolean } = { cloudburst = true, updraft = true, tailwind = true, bladestorm = true }
 
 function AbilitySim.playable(id: string): boolean
 	return PLAYABLE[id] == true
@@ -101,6 +108,7 @@ function AbilitySim.new(agent: string?): State
 		dashUntil = 0,
 		dashX = 0,
 		dashZ = 0,
+		storm = false,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -139,12 +147,13 @@ function AbilitySim.pointsNeeded(s: State): number
 	return if def and def.points then def.points.value else 0
 end
 
--- Ends whatever's under way: a readied window, a lift, a dash. Nothing
--- carries into a new life or a new round.
+-- Ends whatever's under way: a readied window, a lift, a dash, the
+-- ultimate. Nothing carries into a new life or a new round.
 function AbilitySim.settle(s: State)
 	s.readyFrom, s.readyUntil = 0, 0
 	s.liftUntil = 0
 	s.dashUntil, s.dashX, s.dashZ = 0, 0, 0
+	s.storm = false
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -174,27 +183,43 @@ function AbilitySim.newHalf(s: State)
 	AbilitySim.newRound(s)
 end
 
+-- Whether the ultimate's points are full, and it can be cast.
+function AbilitySim.charged(s: State): boolean
+	local needed = AbilitySim.pointsNeeded(s)
+	return needed > 0 and s.points >= needed
+end
+
+-- Whether the ultimate is one that can be played.
+local function ultimatePlayable(s: State): boolean
+	local def = AbilitySim.def(s, X)
+	return def ~= nil and AbilitySim.playable(def.id)
+end
+
 -- Every charge the kit can hold, for the course and Skirmish, where nothing
--- is bought.
-function AbilitySim.fill(s: State)
+-- is bought; with `ultimate`, the ultimate's points too (the course), unless
+-- it's under way.
+function AbilitySim.fill(s: State, ultimate: boolean?)
 	for slot = C, E do
 		local def = AbilitySim.def(s, slot)
 		s.charges[slot] = if def and AbilitySim.playable(def.id) then AbilitySim.maxCharges(s, slot) else 0
 	end
 	s.regained = 0
 	s.kills = 0
+	if ultimate and ultimatePlayable(s) and not s.storm then
+		s.points = AbilitySim.pointsNeeded(s)
+	end
 end
 
--- Whether the kit is full: every playable charge there and nothing under
--- way.
-function AbilitySim.full(s: State): boolean
+-- Whether the kit is full: every playable charge there, and with
+-- `ultimate` the ultimate's points, unless it's under way.
+function AbilitySim.full(s: State, ultimate: boolean?): boolean
 	for slot = C, E do
 		local def = AbilitySim.def(s, slot)
 		if def and AbilitySim.playable(def.id) and s.charges[slot] < AbilitySim.maxCharges(s, slot) then
 			return false
 		end
 	end
-	return true
+	return not ultimate or not ultimatePlayable(s) or s.storm or AbilitySim.charged(s)
 end
 
 -- Whether anything's under way at `t`: a readied window, a lift or a dash.
@@ -261,13 +286,16 @@ end
 -- The kit in a few characters, for the server to tell clients (scripted
 -- checks read it): each slot's charges and most, the ultimate's points and
 -- what they need, and what's under way at `t`, as "C0/2 Q1/1 E0/1 X3/8
--- ready".
+-- ready", or "X0/8 storm" in Blade Storm.
 function AbilitySim.summary(s: State, t: number): string
 	local parts = {}
 	for slot = C, E do
 		table.insert(parts, string.format("%s%d/%d", AbilityConfig.KEYS[slot], s.charges[slot], AbilitySim.maxCharges(s, slot)))
 	end
 	table.insert(parts, string.format("X%d/%d", s.points, AbilitySim.pointsNeeded(s)))
+	if s.storm then
+		table.insert(parts, "storm")
+	end
 	if AbilitySim.dashing(s, t) then
 		table.insert(parts, "dash")
 	elseif AbilitySim.lifting(s, t) then
@@ -410,6 +438,24 @@ function AbilitySim.step(
 					position = feet,
 					origin = eye,
 					direction = facing,
+				})
+			elseif id == "bladestorm" and s.storm then
+				-- The knives drawn again, if they aren't in hand (PlayerSim).
+				local aim = Accuracy.aim(input.yaw, input.pitch)
+				started({ slot = slot, ability = id, kind = "draw", tick = tick, time = t, position = feet, origin = eye, direction = aim })
+			elseif id == "bladestorm" and AbilitySim.charged(s) then
+				s.points = 0
+				s.storm = true
+				local aim = Accuracy.aim(input.yaw, input.pitch)
+				started({
+					slot = slot,
+					ability = id,
+					kind = "storm",
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = aim,
 				})
 			end
 		end

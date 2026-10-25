@@ -31,9 +31,9 @@
 --                  then clears itself
 --   VFTestMenu     true opens the buy menu (if buying is open), false
 --                  closes it; then clears itself
---   VFTestSlot     1, 2, 3 or 4: draws that slot as its number key does (3
---                  is the knife, 4 the spike while it's carried), then
---                  clears itself
+--   VFTestSlot     1 to 5: draws that slot as its number key does (3 is
+--                  the knife, 4 the spike while it's carried), or as X
+--                  does for 5, Blade Storm's knives; then clears itself
 --   VFTestTake     true: takes the gun on the ground in view as F does
 --                  (system 15), then clears itself
 --   VFTestBoard    true holds the scoreboard open as Tab does (system 16),

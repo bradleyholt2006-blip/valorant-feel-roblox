@@ -511,6 +511,7 @@ do
 			and a.dashUntil == b.dashUntil
 			and a.dashX == b.dashX
 			and a.dashZ == b.dashZ
+			and a.storm == b.storm
 	end
 
 	local s = newPlayer()

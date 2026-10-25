@@ -7,6 +7,9 @@
 --     flash at the edges of the screen
 --   * Cloudburst: only heard here, as it's thrown and as it bursts;
 --     CloudView draws it in the air and the cloud (system 18)
+--   * Blade Storm's cast: for others, five blades circling the one who cast
+--     it through its windup (system 19). The knives themselves are a
+--     weapon, which WeaponEffects draws
 -- Your own casts show the tick you press them (PlayerController's
 -- castListeners); others' come from the server (the Ability remote) and
 -- wait for the frame on your screen to reach them, so they line up with
@@ -31,7 +34,9 @@ local Ui = require(script.Parent.Debug.Ui)
 local AbilityEffects = {}
 
 local AIR = Color3.fromRGB(205, 240, 255)
+local BLADE = Color3.fromRGB(150, 230, 255)
 local WAIST = 1 -- metres above the feet
+local CHEST = 1.3
 local STALE = 1 -- seconds: a cast the screen is this far past isn't shown
 
 type Due = { kind: string, at: number, position: vector, direction: vector, entity: number }
@@ -126,6 +131,25 @@ local function dash(feet: vector, direction: vector)
 	end)
 end
 
+-- Five blades circling the chest, each along its way round, once round
+-- over the windup and fading as they go.
+local function storm(feet: vector)
+	local centre = feet + vector.create(0, CHEST, 0)
+	local windup = AbilityConfig.BladeStorm.windup.value
+	for i = 1, 5 do
+		local p = newPart(vector.create(0.02, 0.04, 0.25), CFrame.new(Units.toStuds(centre)), 0.3)
+		p.Color = BLADE
+		local start = i / 5 * 2 * math.pi
+		animate(p, windup, function(k)
+			local angle = start + k * 2 * math.pi
+			local at = centre + vector.create(math.cos(angle) * 0.7, 0, math.sin(angle) * 0.7)
+			local ahead = vector.create(-math.sin(angle), 0, math.cos(angle))
+			p.CFrame = CFrame.lookAt(Units.toStuds(at), Units.toStuds(at + ahead))
+			p.Transparency = 0.3 + 0.7 * k * k
+		end)
+	end
+end
+
 -- What a cast shows, at `feet` (metres); `own` for the local player's.
 local function show(kind: string, feet: vector, direction: vector, own: boolean)
 	if kind == "lift" then
@@ -138,6 +162,8 @@ local function show(kind: string, feet: vector, direction: vector, own: boolean)
 		else
 			dash(feet, direction)
 		end
+	elseif kind == "storm" and not own then
+		storm(feet)
 	end
 end
 
