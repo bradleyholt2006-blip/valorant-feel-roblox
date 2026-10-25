@@ -6,8 +6,8 @@ a side is wiped out, the round's clock runs out before a plant, the spike is def
 off. The sides swap after twelve rounds, and the first side to thirteen wins. This system builds
 those rules, the match around them (halves, overtime, Swiftplay's shorter format), the spike played
 by side, the starting kits, the round's HUD, and Outpost, a small two-site map of our own to play
-it on. Credits and the economy are system 14; until then the buy menu costs nothing, as in
-Skirmish.
+it on. Credits and the economy are system 14 ([14-economy.md](14-economy.md)); until then the
+buy menu cost nothing, as in Skirmish.
 
 As before, everything comes from Riot's patch notes and from community wikis and guides. No game
 files, memory, network traffic or protected assets were used, and nothing reads the game while it

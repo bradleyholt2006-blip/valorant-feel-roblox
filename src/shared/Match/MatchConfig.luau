@@ -8,7 +8,8 @@
 -- The VALORANT Wiki (wiki.playvalorant.com) is written by players, so what
 -- only it says is "community".
 --
--- There's no economy yet: the buy menu costs nothing, as in Skirmish.
+-- And the economy (system 14): the credits each side has to buy with, from
+-- the reference's own rules (docs/research/14-economy.md).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -29,11 +30,17 @@ MatchConfig.FORMAT = "VFMatchFormat"
 -- played now and clears itself (MatchRules.skip): for scripted checks, which
 -- would otherwise wait out every buy phase and round.
 MatchConfig.SKIP = "VFMatchSkip"
+-- The player attribute the server keeps each player's credits in, while the
+-- spike rounds are on.
+MatchConfig.CREDITS = "VFCredits"
 
 -- How a match goes past a tie at the end of regulation: one more round
 -- whose winner takes it, or rounds on alternate sides until a side leads by
 -- two.
 export type Overtime = "suddenDeath" | "winByTwo"
+-- How a round's result is paid: the standard match's win, loss streak and
+-- survivors, or Swiftplay's schedule, the same whatever the result.
+export type Economy = "standard" | "swiftplay"
 
 export type Format = {
 	name: string,
@@ -41,6 +48,7 @@ export type Format = {
 	winScore: Param, -- rounds to win in regulation
 	overtime: Overtime,
 	overtimeSource: string,
+	economy: Economy,
 }
 
 MatchConfig.Formats = {
@@ -54,6 +62,7 @@ MatchConfig.Formats = {
 		winScore = p(13, "confirmed", "Patch 1.11: with that option on, 'the game will no longer end when a team reaches 13 wins'"),
 		overtime = "suddenDeath",
 		overtimeSource = "Patch 1.03: 'Unrated will still use the original Sudden Death format'; the VALORANT Wiki: 'a final Endgame round played should the game reach a 12-12 scoreline' (community)",
+		economy = "standard",
 	},
 	competitive = {
 		name = "Competitive",
@@ -61,6 +70,7 @@ MatchConfig.Formats = {
 		winScore = p(13, "confirmed", "As standard (Patch 1.11)"),
 		overtime = "winByTwo",
 		overtimeSource = "Patch 1.03: 'teams will alternate playing rounds on attack and defense until a team claims victory by being up by 2 rounds'",
+		economy = "standard",
 	},
 	swiftplay = {
 		name = "Swiftplay",
@@ -72,6 +82,7 @@ MatchConfig.Formats = {
 		winScore = p(5, "community", "ONE Esports: 'the objective is to win five rounds'; the VALORANT Wiki: 'a 5v5 best-of-nine mode'"),
 		overtime = "suddenDeath",
 		overtimeSource = "ONE Esports: the mode has 'sudden death overtime' (community)",
+		economy = "swiftplay",
 	},
 } :: { [string]: Format }
 
@@ -100,5 +111,49 @@ MatchConfig.Rules = {
 MatchConfig.StartingKit = { "", "classic", "knife" }
 MatchConfig.startingKitSource =
 	"The Classic costs nothing and everyone has one, as the knife (the VALORANT Wiki's weapon prices, docs/research/09-arsenal.md; community)"
+
+-- The economy (system 14). Everyone's credits start each half over, and are
+-- paid as the next round starts for how the last one went (a win, a loss,
+-- or a loss survived); kills and the plant are paid as they happen.
+local MOBALYTICS = "Mobalytics' economy guide"
+MatchConfig.Credits = {
+	start = p(800, "confirmed", "Patch 1.0: 'the 800 you receive on side swap rounds'; and at the start of the match"),
+	win = p(3000, "community", MOBALYTICS .. ": 'a round win will always give $3000'"),
+	-- A side's first loss in a row, its second, and its third and on: "it
+	-- resets to 1,900 the moment you win a round" (Turbosmurfs).
+	loss = {
+		p(1900, "community", MOBALYTICS .. ", ONE Esports, Turbosmurfs: 1900 for a loss"),
+		p(2400, "community", MOBALYTICS .. ", ONE Esports, Turbosmurfs: 2400 for two in a row"),
+		p(2900, "community", MOBALYTICS .. ", ONE Esports, Turbosmurfs: 2900 for three in a row and more"),
+	},
+	survived = p(
+		1000,
+		"confirmed",
+		"Patch 1.11: 'Attackers who lose but survive the entire round without planting the Spike receive a reduced number of credits (1,000)'; 'Defenders who lose but survive the entire round after the Spike has detonated also receive reduced credits (1,000)'"
+	),
+	kill = p(200, "community", MOBALYTICS .. ": '$200 is given for a kill'"),
+	plant = p(300, "community", MOBALYTICS .. ": 'the entire attacking team will gain $300 for planting the spike'"),
+	cap = p(9000, "community", MOBALYTICS .. ": 'the credit cap of $9000'; Patch 1.0 mentions 'the credit cap'"),
+	overtime = p(
+		5000,
+		"confirmed",
+		"Patch 1.03: in overtime 'each round will have a full reset, setting all players at 5000 credits'; the Valorant Fandom wiki: Unrated's Endgame round, 5000; the VALORANT Wiki's Swiftplay page: its Endgame, 5000 (community)"
+	),
+}
+
+-- Swiftplay pays every round the same, whatever the result, except the
+-- second of each half, where the side that won the first gets a bonus: by
+-- round of the half, what everyone gets as it starts (the first starts over
+-- at Credits.start). "No credit bonuses for loss streaks" (the VALORANT
+-- Wiki's Swiftplay page).
+local SWIFTPLAY = "The VALORANT Wiki's Swiftplay page"
+MatchConfig.Swiftplay = {
+	[2] = {
+		all = p(2400, "community", SWIFTPLAY .. ": Round 2, '+2400'"),
+		won = p(600, "community", SWIFTPLAY .. ": Round 2, '+600 bonus if team won previous round'"),
+	},
+	[3] = { all = p(4250, "community", SWIFTPLAY .. ": Round 3, '+4250'") },
+	[4] = { all = p(4250, "community", SWIFTPLAY .. ": Round 4, '+4250'") },
+} :: { [number]: { all: Param, won: Param? } }
 
 return MatchConfig

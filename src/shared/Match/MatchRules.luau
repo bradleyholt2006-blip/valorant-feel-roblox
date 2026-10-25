@@ -17,6 +17,14 @@
 -- With nobody on one of the sides it waits, and anyone who dies comes back
 -- after respawnTime.
 --
+-- And the economy (system 14): each member's credits, and each side's
+-- losses in a row. Everyone starts each half on Credits.start; each round
+-- after pays, as it starts, for how the last one went: a win, a loss (more
+-- for each in a row), or less for a loss survived; a kill pays the killer
+-- and a plant every attacker, as they happen; nobody holds more than the
+-- cap; and every overtime round starts everyone on Credits.overtime.
+-- Swiftplay pays its own schedule in place of the win and the loss.
+--
 -- No Roblox APIs here: the server says who joins, leaves and dies, when the
 -- spike is planted, defused or goes off, and what time it is, and spawns
 -- whoever these functions return, dead or alive.
@@ -24,6 +32,7 @@
 local MatchConfig = require("./MatchConfig")
 
 local R = MatchConfig.Rules
+local C = MatchConfig.Credits
 
 export type Phase = "waiting" | "buy" | "live" | "planted" | "roundOver" | "matchOver"
 -- How a round was won.
@@ -34,6 +43,7 @@ export type Member = {
 	order: number, -- when they joined, for their spawn spot
 	alive: boolean,
 	respawnAt: number?, -- while waiting: when they come back
+	credits: number,
 }
 
 export type State = {
@@ -53,8 +63,14 @@ export type State = {
 	roundWinner: number?, -- the side that won the round just played
 	reason: Reason?, -- and how
 	matchWinner: number?,
+	streak: { number }, -- by side: the rounds it has lost in a row
+	spikePlanted: boolean, -- in the round being played, or just played
 	version: number, -- goes up on every change, so the server knows to tell clients
 }
+
+-- What a round pays each side as the next starts, for winning it and for
+-- losing it.
+export type Payout = { won: number, lost: number }
 
 local MatchRules = {}
 
@@ -78,6 +94,8 @@ function MatchRules.new(format: string?): State
 		roundWinner = nil,
 		reason = nil,
 		matchWinner = nil,
+		streak = { 0, 0 },
+		spikePlanted = false,
 		version = 0,
 	}
 end
@@ -147,6 +165,33 @@ function MatchRules.matchPointOf(format: MatchConfig.Format, a: number, b: numbe
 	return { MatchRules.winner(format, a + 1, b) == 1, MatchRules.winner(format, a, b + 1) == 2 }
 end
 
+-- What round `round` pays as the next starts, to the side that wins it and
+-- to the side that loses it, `streak` the rounds the loser had lost in a row
+-- before it; nil when the next round starts everyone over (a new half, or
+-- overtime). Someone on the losing side who survives it, as an attacker
+-- without the spike planted or as a defender after it went off, gets
+-- Credits.survived instead (standard only).
+function MatchRules.payout(format: MatchConfig.Format, round: number, streak: number): Payout?
+	local half = format.halfRounds.value
+	local nextRound = round + 1
+	if MatchRules.overtime(format, nextRound) or nextRound == half + 1 or nextRound <= 1 then
+		return nil
+	end
+	if format.economy == "swiftplay" then
+		local step = MatchConfig.Swiftplay[(nextRound - 1) % half + 1]
+		if not step then
+			return nil
+		end
+		local bonus = step.won
+		return { won = step.all.value + (if bonus then bonus.value else 0), lost = step.all.value }
+	end
+	return { won = C.win.value, lost = C.loss[math.min(streak + 1, #C.loss)].value }
+end
+
+local function give(m: Member, amount: number)
+	m.credits = math.min(m.credits + amount, C.cap.value)
+end
+
 local function champion(s: State): number?
 	return MatchRules.winner(s.format, s.score[1], s.score[2])
 end
@@ -167,18 +212,68 @@ local function buyTime(s: State): number
 	return R.buyTime.value
 end
 
+-- Whether someone lost the round just played and survived it, on its terms:
+-- attacking, with the spike never planted; defending, with it gone off.
+local function survivedLoss(s: State, m: Member): boolean
+	if not m.alive or m.side == s.roundWinner then
+		return false
+	end
+	return if m.side == s.attackers then not s.spikePlanted else s.reason == "detonated"
+end
+
+-- Credits for the round about to start, s.round + 1: the half's or
+-- overtime's to start on, or the pay for the round just played, if it was
+-- played out (not when it starts again after a wait).
+local function payFor(s: State)
+	local format = s.format
+	local nextRound = s.round + 1
+	local half = format.halfRounds.value
+	if MatchRules.overtime(format, nextRound) or nextRound == 1 or nextRound == half + 1 then
+		local amount = if MatchRules.overtime(format, nextRound) then C.overtime.value else C.start.value
+		for _, m in s.members do
+			m.credits = amount
+		end
+		s.streak = { 0, 0 }
+		return
+	end
+	local winner = s.roundWinner
+	if format.economy == "swiftplay" then
+		local pay = MatchRules.payout(format, s.round, 0)
+		if pay then
+			for _, m in s.members do
+				give(m, if m.side == winner then pay.won else pay.lost)
+			end
+		end
+		return
+	end
+	if not winner then
+		return
+	end
+	local loser = 3 - winner
+	local pay = MatchRules.payout(format, s.round, s.streak[loser])
+	if pay then
+		for _, m in s.members do
+			give(m, if m.side == winner then pay.won elseif survivedLoss(s, m) then C.survived.value else pay.lost)
+		end
+	end
+	s.streak[winner] = 0
+	s.streak[loser] += 1
+end
+
 -- Everyone comes back, in their side's spawn, for the next round's buy
 -- phase.
 local function startRound(s: State, now: number): { number }
 	if s.phase == "matchOver" then
 		newMatch(s)
 	end
+	payFor(s)
 	s.round += 1
 	s.attackers = MatchRules.attackersIn(s.format, s.round)
 	s.phase = "buy"
 	s.phaseEndsAt = now + buyTime(s)
 	s.roundWinner = nil
 	s.reason = nil
+	s.spikePlanted = false
 	local out = {}
 	for id, m in s.members do
 		m.alive = true
@@ -243,16 +338,17 @@ local function wait(s: State, now: number)
 	s.version += 1
 end
 
--- Someone joins, on the side with fewer players (side 1 when level).
--- Returns who to spawn now: them, or everyone when they make the numbers
--- for a round to start.
+-- Someone joins, on the side with fewer players (side 1 when level), with
+-- Credits.start, or overtime's credits in overtime. Returns who to spawn
+-- now: them, or everyone when they make the numbers for a round to start.
 function MatchRules.join(s: State, id: number, now: number): { number }
 	if s.members[id] then
 		return {}
 	end
 	s.joins += 1
 	local side = if count(s, 2, false) < count(s, 1, false) then 2 else 1
-	s.members[id] = { side = side, order = s.joins, alive = true, respawnAt = nil }
+	local credits = if MatchRules.overtime(s.format, s.round) then C.overtime.value else C.start.value
+	s.members[id] = { side = side, order = s.joins, alive = true, respawnAt = nil, credits = credits }
 	s.version += 1
 	if s.phase == "waiting" and manned(s) then
 		return startRound(s, now)
@@ -276,12 +372,18 @@ function MatchRules.leave(s: State, id: number, now: number)
 	end
 end
 
-function MatchRules.died(s: State, id: number, now: number)
+-- Someone has died, killed by `killer` if anyone: a kill of someone on the
+-- other side, while a round is played, pays the killer.
+function MatchRules.died(s: State, id: number, now: number, killer: number?)
 	local m = s.members[id]
 	if not m or not m.alive then
 		return
 	end
 	m.alive = false
+	local by = if killer then s.members[killer] else nil
+	if by and by.side ~= m.side and (s.phase == "live" or s.phase == "planted") then
+		give(by, C.kill.value)
+	end
 	s.version += 1
 	if s.phase == "waiting" then
 		m.respawnAt = now + R.respawnTime.value
@@ -291,13 +393,20 @@ function MatchRules.died(s: State, id: number, now: number)
 end
 
 -- The spike has been planted, to go off at `detonateAt`: the round's clock
--- gives way to the spike's. Too late once the round is over.
+-- gives way to the spike's, and every attacker is paid for it, alive or
+-- not. Too late once the round is over.
 function MatchRules.planted(s: State, detonateAt: number)
 	if s.phase ~= "live" then
 		return
 	end
 	s.phase = "planted"
 	s.phaseEndsAt = detonateAt
+	s.spikePlanted = true
+	for _, m in s.members do
+		if m.side == s.attackers then
+			give(m, C.plant.value)
+		end
+	end
 	s.version += 1
 end
 
@@ -416,6 +525,26 @@ end
 -- Which sides win the match if they win the next round.
 function MatchRules.matchPoint(s: State): { boolean }
 	return MatchRules.matchPointOf(s.format, s.score[1], s.score[2])
+end
+
+-- Someone's credits, if they're playing.
+function MatchRules.credits(s: State, id: number): number?
+	local m = s.members[id]
+	return if m then m.credits else nil
+end
+
+-- Spends `amount` of someone's credits, a refund if it's negative, if they
+-- have that many. Returns whether they did.
+function MatchRules.spend(s: State, id: number, amount: number): boolean
+	local m = s.members[id]
+	if not m or amount > m.credits then
+		return false
+	end
+	if amount ~= 0 then
+		m.credits = math.min(m.credits - amount, C.cap.value)
+		s.version += 1
+	end
+	return true
 end
 
 return MatchRules

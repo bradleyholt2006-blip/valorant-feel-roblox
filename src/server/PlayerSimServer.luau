@@ -94,8 +94,8 @@ PlayerSimServer.spawnPicker = nil :: ((Player) -> SpawnPoint?)?
 -- Whether a player may change weapons now, when something other than the
 -- debug rule (Studio or the place owner) decides (the arena).
 PlayerSimServer.loadoutRule = nil :: ((Player) -> boolean?)?
--- Called when a player dies.
-PlayerSimServer.deathListeners = {} :: { (Player) -> () }
+-- Called when a player dies, with the player who killed them, if one did.
+PlayerSimServer.deathListeners = {} :: { (Player, Player?) -> () }
 -- Called when a player's new life starts.
 PlayerSimServer.spawnListeners = {} :: { (Player) -> () }
 -- What a player may do with the spike this tick, when there's one in play
@@ -111,6 +111,11 @@ PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
 -- character in about a third of a second in Studio (measured); one that
 -- hasn't come by this is taken as not coming.
 PlayerSimServer.SPAWN_WAIT = 5
+-- Whether a new life that keeps the last one's kit keeps its shield as it
+-- was, damaged or not, rather than a fresh one (the spike rounds: 'Even if
+-- you survive, you may still have to repurchase armor if you took damage',
+-- Hotspawn's economy guide; community).
+PlayerSimServer.keepShields = false
 
 local records: { [Player]: Record } = {}
 local world = RobloxWorld.new()
@@ -211,11 +216,15 @@ local function onCharacter(r: Record, character: Model)
 	r.ackDirty = true
 	r.alive = true
 	restartPacing(r)
+	local kept = if PlayerSimServer.keepShields and not r.freshKit then Health.keep(r.entity.health) else nil
 	if r.freshKit then
 		Health.setShield(r.entity.health, r.kitShield or WeaponConfig.DefaultShield)
 		r.freshKit = false
 	end
 	Health.reset(r.entity.health)
+	if kept then
+		Health.restore(r.entity.health, kept)
+	end
 	r.entity.sim = r.sim
 
 	-- The simulation moves the character; Roblox physics must not, and our
@@ -252,15 +261,16 @@ local function onPlayerAdded(player: Player)
 			-- Until the first move of this life has run, where it spawned.
 			return r.shown or currentPose(r)
 		end,
-		onKilled = function()
+		onKilled = function(attacker: Entities.Entity?)
 			r.alive = false
 			InputQueue.clear(r.inputs)
 			local humanoid = r.character and r.character:FindFirstChildOfClass("Humanoid")
 			if humanoid then
 				humanoid.Health = 0
 			end
+			local killer = if attacker and attacker.player ~= player then attacker.player else nil
 			for _, listener in PlayerSimServer.deathListeners do
-				listener(player)
+				listener(player, killer)
 			end
 		end,
 	}
@@ -345,11 +355,13 @@ local function onLoadout(player: Player, slot: any, id: any)
 end
 
 -- Puts a weapon in one of a player's slots with full ammo, drawn if it's the
--- slot in hand (the debug give and the buy menu). Returns whether it did.
+-- slot in hand (the debug give and the buy menu), or empties the primary or
+-- sidearm slot ("": a gun sold back). Returns whether it did.
 function PlayerSimServer.give(player: Player, slot: number, id: string): boolean
 	local r = records[player]
 	local def = WeaponConfig.Defs[id]
-	if not r or not def or def.slot ~= slot or def.spike then
+	local fits = if id == "" then slot == 1 or slot == 2 else def ~= nil and def.slot == slot and not def.spike
+	if not r or not fits then
 		return false
 	end
 	WeaponSim.give(r.sim.weapons, slot, id, r.sim.movement.tick * DT)

@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the thirteen research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fourteen research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about two and a half hours. Doing it in parts is fine; keep the order.
+It takes about two and three quarter hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -27,8 +27,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    the plugin.
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
-   need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 and
-   17 one and then two.
+   need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
+   18 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -861,8 +861,9 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   have see-through barriers, red for the attackers' and blue for the defenders', and you can't
   walk through them. Both players have the Classic and the knife, and no shield, and the spike lies
   in front of player 1.
-- **E5 The buy phase.** B opens the menu, which reads `SPIKE ROUNDS: EVERYTHING'S FREE (NO ECONOMY
-  YET)`. Each player buys a Vandal and Heavy Armor. Player 1 walks over the spike and picks it up.
+- **E5 The buy phase.** B opens the menu, which reads `800 CREDITS     WIN +3000   LOSE +1900` (the
+  economy, section 18). Each player presses 5 for a Vandal, which the debug keys give for free, and
+  buys Light Armor. Player 1 walks over the spike and picks it up.
   At `0:00` the barriers go, the menu closes, and the clock shows `1:40` and counts down.
 - **E6 Plant and defuse.** Player 1 takes the spike to site A and plants it. On both screens the
   clock gives way to `SPIKE` in red, and `SPIKE PLANTED` shows. Standing by it, player 1 gets no
@@ -871,11 +872,11 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   line, with no `SPIKE DEFUSED` over either, and player 2's side scores 1.
 - **E7 The next round.** About 7 s later both respawn for `ROUND 2`, in the same spawns, with a
   buy phase from `BUY PHASE 30` and a new spike in front of player 1. Both still have the Vandal
-  and Heavy Armor.
+  and Light Armor.
 - **E8 A death costs the kit.** In round 2 player 1 kills player 2: `ROUND WON` with `Enemies
   eliminated` for player 1, and `ROUND LOST` with `Your side was eliminated` for player 2. In
   round 3 player 2 has only the Classic and the knife, with no shield, and player 1 still has the
-  Vandal and Heavy Armor.
+  Vandal and Light Armor.
 - **E9 Planted, then wiped out.** In round 3 player 1 plants, and player 2 kills player 1. The
   round goes on, with `SPIKE` in the bar. Player 2 leaves the spike alone: it goes off, player 1's
   screen shows `ROUND WON` with `Spike detonated`, and the blast kills player 2 if they're within
@@ -898,6 +899,71 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   Classic and the knife.
 - **E13 Off.** Press P in window 1: `[VF] Arena off`. Both players are back on the course, on no
   team, Teams is empty, and the course's spike is back on its tile (`VFSpikeLayout` `course`).
+
+## 18. The economy
+
+From [14-economy.md](research/14-economy.md). One player, then two, with the HUD on (F3). Each
+player's credits are their `VFCredits` attribute (Players, the player, Properties), and each side's
+losses in a row are `Streak1` and `Streak2` on Workspace's `VFArena`. The expected numbers assume you
+buy only what a check says. `VFMatchSkip` (section 17) ends a buy phase or a round, as there.
+
+- **Q1 The pistol round's credits.** One player, on the course: B reads `THE COURSE: EVERYTHING'S
+  FREE`. Press P twice for the spike rounds. B now reads `800 CREDITS`. Every gun and shield that
+  costs more than 800 is dimmed with its price in red: everything from the Bucky (850) up, and Heavy
+  Armor (1000). The sidearms, Light Armor (400) and the Regen Shield (650) aren't.
+- **Q2 Buying and refunds.** Buy Light Armor: `400 CREDITS`. Now the Regen Shield isn't dimmed,
+  since the Light Armor goes back for it: hover it, and the panel reads `250, with what you bought
+  for its slot sold back`. Heavy Armor is dimmed. Buy the Regen Shield: `150 CREDITS`. Right-click
+  it: `800 CREDITS` and no shield. Buy a Sheriff: `0 CREDITS` and the Sheriff in hand. Every gun for
+  the primary slot and every shield is dimmed, and the other sidearms aren't, since the Sheriff goes
+  back for any of them. Right-click the Sheriff: `800 CREDITS` and the Classic back.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9.
+
+- **Q3 Round 1.** Press P twice in window 1. Both players' buy phase line starts with `800
+  CREDITS` in gold, and both have `VFCredits` 800. Player 1's menu reads `800 CREDITS     WIN +3000
+  LOSE +1900`.
+- **Q4 A kill pays at once.** Skip the buy phase. Player 1 kills player 2 with the Classic: player
+  1's `VFCredits` goes to 1000 as player 2 dies. Player 2's stays 800.
+- **Q5 The next round pays.** In round 2's buy phase player 1 has 4000 (800, the kill's 200 and the
+  win's 3000) and player 2 has 2700 (800 and a first loss's 1900). `Streak2` is 1 and `Streak1` 0.
+  Player 2's menu reads `WIN +3000   LOSE +2400`, and player 1's `WIN +3000   LOSE +1900`.
+- **Q6 Sold back to nothing.** Player 1 buys a Vandal: `1100 CREDITS`, the Vandal in hand. Right-click
+  it: `4000 CREDITS`, the primary slot empty and the Classic drawn. Buy a Spectre: `2400 CREDITS`.
+  Hover the Vandal: `1300, with what you bought for its slot sold back`. Buy it: `1100 CREDITS`, the
+  Vandal in hand and no Spectre. Buy Light Armor: `700 CREDITS`.
+- **Q7 A shield kept damaged.** Skip the buy phase. Player 2 shoots player 1 once in the body with
+  the Classic, and doesn't kill them. Player 1's HUD shows Light Armor down to about 8. Nobody
+  plants: skip the round. Player 2's side wins on time.
+- **Q8 A loss survived.** In round 3's buy phase, player 1 has 1700: 700 and the survivor's 1000,
+  not a loss's 1900, as they lived through the round without a plant. Player 2 has 5700 (2700 and the
+  win's 3000). Player 1 still has the Vandal, and Light Armor at the same 8 or so, not a fresh 25.
+  Buy Light Armor: a fresh 25 for `1300 CREDITS`. Right-click it: `1700 CREDITS`, and the shield is
+  back to its damaged 8.
+- **Q9 The plant pays every attacker.** Skip the buy phase. Player 1 plants at A: player 1's
+  `VFCredits` goes up 300 as the plant lands. Player 2 stays more than 35 m from the spike, and it
+  goes off.
+- **Q10 Surviving the blast.** In round 4's buy phase, player 2 has 6700: 5700 and the survivor's
+  1000, as they lived through the detonation. Player 1 has 5000 (1700, the plant's 300 and the
+  win's 3000).
+- **Q11 Swiftplay.** Press P in window 1 for Swiftplay: a new match, both on 800 with the Classic and
+  the knife. Skip every phase, so the defenders win each round on time:
+
+  | Round | Player 1 | Player 2 |
+  | --- | --- | --- |
+  | 2 | 3200 | 3800 |
+  | 3 | 7450 | 8050 |
+  | 4 | 9000 | 9000 |
+  | 5 | 800 | 800 |
+  | 6 | 3800 | 3200 |
+  | 9 | 5000 | 5000 |
+
+  Round 2 pays both 2400, and player 2's side the bonus of 600 for winning round 1. The attackers
+  get no survivor's credits in Swiftplay. Rounds 3 and 4 pay 4250 each, and nobody holds more than
+  9000. Round 5 starts the half over, and round 9, the Endgame, everyone on 5000. Round 3's menu
+  reads `THIS ROUND PAYS +4250`.
+- **Q12 Off.** Press P in window 1: `[VF] Arena off`. Neither player has
+  `VFCredits`, and B reads `THE COURSE: EVERYTHING'S FREE` again, with nothing dimmed.
 
 ## Results
 
@@ -950,6 +1016,10 @@ E6 the defuse round's banners: ___
 E8 player 2's kit in round 3: ___
 E11 round 5's spawns: ___; SWITCHING SIDES shown: yes / no
 E12 the match ended ___ - ___, then a new match: yes / no
+Q5 round 2's credits: player 1 ___, player 2 ___
+Q8 round 3's credits: player 1 ___, player 2 ___; player 1's shield ___
+Q10 round 4's credits: player 1 ___, player 2 ___
+Q11 Swiftplay's credits, rounds 2, 3, 4, 5, 6 and 9: player 1 ___, player 2 ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1031,3 +1101,8 @@ Didn't look right (IDs and what you saw):
 | 13 | Each way of ending a round shows its banner and scores, the half and the overtime round are labelled, and a match ends and starts again | E6, E8, E9, E10, E11, E12 |
 | 13 | The Classic and the knife at each half and after a death, while survivors keep theirs | E4, E7, E8, E11, E12 |
 | 13 | The round's clock agrees with the server, and gives way to `SPIKE` at the plant | E4, E5, E6 |
+| 14 | The buy menu's credits, stakes and dimmed tiles, and the hover panel's costs and refunds | Q1, Q2, Q5, Q6, Q11 |
+| 14 | Charging, refunds, buying back and selling back to nothing, all in a real buy phase | Q2, Q6, Q8 |
+| 14 | A shield carried damaged into the next round, the Regen Shield's pool with it, and renewing it | Q7, Q8 |
+| 14 | Kill pay with two players, and the plant's pay | Q4, Q9 |
+| 14 | The payouts over a few rounds, and the half's and Swiftplay's reset | Q5, Q8, Q10, Q11 |

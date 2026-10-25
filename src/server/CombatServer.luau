@@ -120,10 +120,13 @@ function CombatServer.step(now: number, dt: number)
 	end
 end
 
--- Puts a fresh shield of this kind on an entity ("" for none) and tells
--- clients (the buy menu).
-function CombatServer.setShield(entity: Entities.Entity, kind: string)
+-- Puts a fresh shield of this kind on an entity ("" for none), or one as
+-- `kept` describes, and tells clients (the buy menu).
+function CombatServer.setShield(entity: Entities.Entity, kind: string, kept: Health.Kept?)
 	Health.setShield(entity.health, kind)
+	if kept then
+		Health.restore(entity.health, kept)
+	end
 	local event = Entities.vitals(entity)
 	event.kind = "shield"
 	Remotes.get().Combat:FireAllClients(event)

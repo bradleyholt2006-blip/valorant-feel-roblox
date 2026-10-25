@@ -23,5 +23,6 @@ require("./melee")
 require("./settings")
 require("./spike")
 require("./match")
+require("./economy")
 
 H.finish()

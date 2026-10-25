@@ -73,6 +73,14 @@ Built one system at a time:
     the knife at each half and after a death; a top bar with the round's clock that gives way to
     the spike, and banners for match point, overtime, switching sides and how each round was won -
     [research and design](docs/research/13-rounds.md)
+14. **The economy**: credits in the spike rounds, paid as the reference pays them. 800 at the start
+    of each half; each round then pays 3000 for a win, or 1900, 2400 and 2900 for losses in a row,
+    or 1000 for a loss survived without a plant (or, defending, after the blast); 200 a kill and 300
+    to every attacker for the plant, as they happen; 9000 at most; everyone on 5000 in overtime,
+    and Swiftplay's own schedule. The buy menu charges for each purchase, less the refund of what it
+    replaces from the same buy phase, dims what you can't afford and shows what the round pays; a
+    survivor keeps their shield, damaged, into the next round - [research and
+    design](docs/research/14-economy.md)
 
 ## Running it
 
@@ -93,16 +101,18 @@ Built one system at a time:
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it, G drops it), B buy menu (on the course at any time; in the arena
-during the buy phase and while waiting for an opponent). Nothing costs anything yet.
+during the buy phase and while waiting for an opponent). The spike rounds charge credits; the
+course and the arena are free.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
 Arena: P moves on through the arena, the spike rounds, Swiftplay and off (Studio or place owner
 only). In either, the buy menu and the debug keys 5-9 (below) work for anyone during the buy
-phase, and while waiting for an opponent. A new match in the arena puts everyone back on its
-starting kit (Vandal, Classic, knife, Heavy Armor); in the spike rounds, each half and each death
-leaves you the Classic and the knife, with no shield.
+phase, and while waiting for an opponent; the debug keys stay free in the spike rounds. A new
+match in the arena puts everyone back on its starting kit (Vandal, Classic, knife, Heavy Armor);
+in the spike rounds, each half and each death leaves you the Classic and the knife, with no
+shield, and 800 credits at each half.
 Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (with the next
 shot's cone round the crosshair, how far the crosshair's lines have spread and the last jump
 measured; G with the HUD on shows the server ghost, unless the spike is in hand), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
@@ -129,6 +139,8 @@ that setting as its box in the menu would. Each of the last six clears itself.
 read. From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat`
 (`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
 set true ends the spike rounds' phase under way (a buy phase, a round or the wait for the next).
+In the spike rounds each player's credits are their `VFCredits` attribute, and each side's losses
+in a row `Streak1` and `Streak2` on the arena's model.
 
 ## Tests
 
@@ -137,8 +149,9 @@ what they catch, the spike's plant, defuse and drop, spread and recoil, hitboxes
 pose history, render clock, move pacing, lag compensation and wall penetration), the look's maths,
 the arena's rules and map, the sound's rules (footsteps, landings, distance curves, walls in the
 way, reload parts), the settings (crosshair codes and the pixels they draw, sensitivity and
-cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast) and the spike
-rounds' rules and map are pure Luau and run outside Roblox:
+cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast), the spike
+rounds' rules and map, and the economy (what each round pays, kills, the plant, the cap, what a
+purchase costs and the shield a survivor keeps) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

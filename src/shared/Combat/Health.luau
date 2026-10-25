@@ -111,6 +111,20 @@ function Health.step(s: State, now: number, dt: number): boolean
 	return true
 end
 
+-- A shield's points and its pool, to put back as they were: a survivor's,
+-- into the next round, and a damaged one, for a fresh one sold back.
+export type Kept = { shield: number, pool: number }
+
+function Health.keep(s: State): Kept
+	return { shield = s.shield, pool = s.pool }
+end
+
+-- Puts back what `kept` describes, on the shield of the same kind.
+function Health.restore(s: State, kept: Kept)
+	s.shield = math.min(kept.shield, s.maxShield)
+	s.pool = math.min(kept.pool, s.pool)
+end
+
 -- A new life: full health and a fresh shield of the kind worn.
 function Health.reset(s: State)
 	s.health = s.maxHealth

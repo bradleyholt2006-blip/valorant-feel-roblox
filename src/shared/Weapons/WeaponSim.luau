@@ -178,6 +178,18 @@ function WeaponSim.give(s: State, slot: number, id: string, t: number?)
 	s.loadout[slot] = id
 	if id == "" then
 		s.ammo[slot], s.reserve[slot] = 0, 0
+		if slot == s.equipped then
+			-- Nothing left in hand: the first slot with something in it.
+			for other = 1, SLOTS do
+				if s.loadout[other] ~= "" then
+					s.equipped = other
+					if t then
+						draw(s, t)
+					end
+					break
+				end
+			end
+		end
 		return
 	end
 	local def = WeaponConfig.get(id)

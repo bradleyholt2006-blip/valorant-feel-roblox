@@ -17,6 +17,13 @@
 -- lose any purchased weapons and armor' (Hotspawn's economy guide;
 -- community).
 --
+-- The spike rounds have the reference's economy (system 14): MatchRules
+-- keeps everyone's credits, the buy menu charges them (ShopServer.pay), and
+-- a survivor keeps their shield as it was into the next round, damaged or
+-- not. Each player's credits go to clients as a player attribute
+-- (MatchConfig.CREDITS), and each side's losses in a row as the arena
+-- model's Streak1 and Streak2.
+--
 -- P (Studio or the place owner) moves on through the arena, the spike rounds
 -- in the standard format, the spike rounds in Swiftplay's, and off. So do
 -- Workspace's attributes, set from the server, which is how scripted checks
@@ -41,6 +48,7 @@ local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
+local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
 local Tuning = require(script.Parent.Tuning)
 
@@ -289,6 +297,16 @@ local function publish()
 		root:SetAttribute("Format", if m then m.formatKey else nil)
 		root:SetAttribute("Attackers", if m then m.attackers else nil)
 		root:SetAttribute("Reason", if m then m.reason else nil)
+		root:SetAttribute("Streak1", if m then m.streak[1] else nil)
+		root:SetAttribute("Streak2", if m then m.streak[2] else nil)
+	end
+	if m then
+		for id, member in m.members do
+			local player = playerFor(id)
+			if player then
+				player:SetAttribute(MatchConfig.CREDITS, member.credits)
+			end
+		end
 	end
 	raise(barriers, s ~= nil and ArenaRules.barriersUp(s))
 	raise(mapBarriers, m ~= nil and MatchRules.barriersUp(m))
@@ -377,10 +395,12 @@ local function stop()
 	if was == "spike" then
 		SpikeServer.stopRounds()
 	end
+	PlayerSimServer.keepShields = false
 	for _, player in Players:GetPlayers() do
 		player.Team = nil
 		player.Neutral = true
 		player:SetAttribute(ArenaConfig.SIDE, nil)
+		player:SetAttribute(MatchConfig.CREDITS, nil)
 	end
 	for _, team in teams do
 		team:Destroy()
@@ -409,6 +429,7 @@ local function begin(wanted: Mode, format: string)
 	end
 	if wanted == "spike" then
 		SpikeServer.startRounds(spikeEvents)
+		PlayerSimServer.keepShields = true
 	end
 	-- The rounds decide when everyone spawns.
 	Players.CharacterAutoLoads = false
@@ -536,13 +557,23 @@ function Arena.start()
 		end
 		return nil
 	end
-	table.insert(PlayerSimServer.deathListeners, function(player: Player)
+	-- What a purchase costs, in the spike rounds.
+	ShopServer.pay = function(player: Player, amount: number): boolean
+		local m = match
+		if not m then
+			return true
+		end
+		local paid = MatchRules.spend(m, player.UserId, amount)
+		publish()
+		return paid
+	end
+	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
 		local s, m = skirmish, match
 		if s then
 			ArenaRules.died(s, player.UserId, now())
 			publish()
 		elseif m then
-			MatchRules.died(m, player.UserId, now())
+			MatchRules.died(m, player.UserId, now(), if killer then killer.UserId else nil)
 			-- What they bought is lost with them.
 			startingKit(player)
 			publish()

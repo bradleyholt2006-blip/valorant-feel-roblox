@@ -6,9 +6,10 @@
 -- round and the match ended. In the spike rounds the top bar also has the
 -- round's clock, which gives way to the spike once it's planted, and whether
 -- your side attacks or defends; the buy phase says what's at stake (match
--- point, overtime), and a round's end says how it was won and when the sides
--- swap. P asks the server for the next of: the arena, the spike rounds, the
--- spike rounds in Swiftplay's format, and off (Studio or the place owner).
+-- point, overtime) and your credits, and a round's end says how it was won
+-- and when the sides swap. P asks the server for the next of: the arena, the
+-- spike rounds, the spike rounds in Swiftplay's format, and off (Studio or
+-- the place owner).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -28,8 +29,9 @@ local Visuals = require(script.Parent.Visuals)
 
 local ArenaHud = {}
 
--- The spike's red, as its own HUD has it.
+-- The spike's red, as its own HUD has it, and the buy menu's gold for credits.
 local SPIKE_RED = Color3.fromRGB(235, 70, 60)
+local GOLD = Color3.fromRGB(230, 200, 120)
 
 -- How a round of the spike rounds was won, for the side that won it and the
 -- side that lost it (our words).
@@ -179,6 +181,10 @@ function ArenaHud.start()
 			elseif phase == "buy" then
 				title = string.format("BUY PHASE  %d", math.ceil(left))
 				local stakes = {}
+				local credits = me:GetAttribute(MatchConfig.CREDITS)
+				if typeof(credits) == "number" then
+					table.insert(stakes, string.format('<font color="#%s">%d CREDITS</font>', Ui.hex(GOLD), credits))
+				end
 				local point = MatchRules.matchPointOf(format, score[1], score[2])
 				if MatchRules.overtime(format, roundNumber) then
 					table.insert(stakes, if format.overtime == "suddenDeath" then "SUDDEN DEATH" else "OVERTIME")
