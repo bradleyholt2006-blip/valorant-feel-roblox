@@ -27,6 +27,9 @@
 --   * in gun game (system 23) there are none: every life starts with an
 --     empty kit, and nothing fills it. Nor in deathmatch (system 26), where
 --     the kit is no agent's at all, so Jett's glide is gone too
+--   * each player's kit is their own agent's, as they pick it (system 29,
+--     AgentServer): at once where they can have it (AbilityServer.choose),
+--     the kit starting over as the mode starts one, or with their next life
 -- Each cast is told to every client (the Ability remote) for its sound and
 -- look, when the frame on their screen reaches it, but Blade Storm's knives
 -- drawn again, which others see in hand. The caster's own client has
@@ -60,9 +63,10 @@ AbilityServer.refill = true
 -- Whether there are no abilities at all (gun game, as the reference's
 -- Escalation has 'No Agent-specific abilities').
 AbilityServer.off = false
--- The agent whose kit every life has: Jett's, or none at all in deathmatch
--- (AbilityConfig.NO_AGENT), with no passive either.
-AbilityServer.agent = AbilityConfig.DEFAULT_AGENT
+-- The agent whose kit every life has, where the mode has one for everyone:
+-- none at all in deathmatch (AbilityConfig.NO_AGENT), with no passive
+-- either. Nil where each player plays their own (system 29).
+AbilityServer.agent = nil :: string?
 -- How long the course waits, once nothing's under way, before it fills a
 -- kit again (ours).
 AbilityServer.REFILL_DELAY = 1.5
@@ -87,6 +91,8 @@ local shown: { [Player]: string } = {}
 -- (server time, 0 for none coming), and what its attribute says of them.
 local due: { [Player]: { number } } = {}
 local shownDue: { [Player]: string? } = {}
+-- Each player's own agent, as they last picked it (system 29).
+local chosen: { [Player]: string } = {}
 
 -- Changes a player's kit, if they're playing, and sends them the change.
 local function change(player: Player, apply: (AbilitySim.State) -> ())
@@ -104,6 +110,11 @@ local function needOf(agent: string): number
 	local def = AbilityConfig.abilityOf(agent, AbilityConfig.X)
 	local cost = if rules and def then rules.ultimate[def.id] else nil
 	return if cost then cost.value else 0
+end
+
+-- The agent whose kit a player's lives have: the mode's, or their own.
+function AbilityServer.agentOf(player: Player): string
+	return AbilityServer.agent or chosen[player] or AbilityConfig.DEFAULT_AGENT
 end
 
 -- How long a kit's ability in `slot` takes to bring a charge back in the
@@ -125,37 +136,71 @@ end
 function AbilityServer.reset(player: Player)
 	due[player] = nil
 	change(player, function(kit)
-		kit.agent = AbilityServer.agent
+		kit.agent = AbilityServer.agentOf(player)
 		kit.need = needOf(kit.agent)
 		AbilitySim.reset(kit)
 	end)
 end
 
--- A mode's own kit starting over at `now`, as a match of it starts (Team
--- Deathmatch's): no points, the signature's full charges, and every charge
--- short of its most that far towards coming back.
-function AbilityServer.fresh(player: Player, now: number)
+-- A kit of the player's agent starting over at `now`, as a match of the
+-- mode played starts: with a mode's own kit (Team Deathmatch's), no points,
+-- the signature's full charges, and every charge short of its most that far
+-- towards coming back.
+local function startOver(player: Player, kit: AbilitySim.State, now: number)
 	local rules = AbilityServer.rules
+	kit.agent = AbilityServer.agentOf(player)
+	kit.need = needOf(kit.agent)
+	AbilitySim.reset(kit)
+	if not rules then
+		return
+	end
+	local coming = { 0, 0, 0 }
+	for slot = AbilityConfig.C, AbilityConfig.E do
+		local def = AbilitySim.def(kit, slot)
+		local most = AbilitySim.maxCharges(kit, slot)
+		local signature = def ~= nil and def.kind == "signature" and AbilitySim.playable(def.id)
+		kit.charges[slot] = if signature then math.min(rules.signatureStart.value, most) else 0
+		local cooldown = cooldownOf(kit, slot)
+		if cooldown and kit.charges[slot] < most then
+			coming[slot] = now + cooldown * (1 - rules.headStart.value)
+		end
+	end
+	due[player] = coming
+end
+
+-- A mode's own kit starting over at `now`, as a match of it starts (Team
+-- Deathmatch's).
+function AbilityServer.fresh(player: Player, now: number)
 	change(player, function(kit)
-		kit.agent = AbilityServer.agent
-		kit.need = needOf(kit.agent)
-		AbilitySim.reset(kit)
-		if not rules then
-			return
-		end
-		local coming = { 0, 0, 0 }
-		for slot = AbilityConfig.C, AbilityConfig.E do
-			local def = AbilitySim.def(kit, slot)
-			local most = AbilitySim.maxCharges(kit, slot)
-			local signature = def ~= nil and def.kind == "signature" and AbilitySim.playable(def.id)
-			kit.charges[slot] = if signature then math.min(rules.signatureStart.value, most) else 0
-			local cooldown = cooldownOf(kit, slot)
-			if cooldown and kit.charges[slot] < most then
-				coming[slot] = now + cooldown * (1 - rules.headStart.value)
-			end
-		end
-		due[player] = coming
+		startOver(player, kit, now)
 	end)
+end
+
+-- Another agent's kit (system 29), as the mode played starts one, with
+-- nothing of the last agent's: in Team Deathmatch as a match of it starts,
+-- in gun game none, and elsewhere as a new match does, with every charge
+-- where nothing's bought (and on the course the ultimate's points too).
+local function newAgent(player: Player, kit: AbilitySim.State, now: number)
+	due[player] = nil
+	startOver(player, kit, now)
+	if AbilityServer.off then
+		AbilitySim.empty(kit)
+	elseif not AbilityServer.economy and not AbilityServer.rules then
+		AbilitySim.fill(kit, AbilityServer.refill)
+	end
+end
+
+-- A player's own agent, picked (AgentServer): their kit's from their next
+-- life, or with `atOnce` now. Returns whether their kit has changed now.
+function AbilityServer.choose(player: Player, agent: string, now: number, atOnce: boolean): boolean
+	chosen[player] = agent
+	local kit = PlayerSimServer.abilitiesOf(player)
+	if not atOnce or not kit or kit.agent == AbilityServer.agentOf(player) then
+		return false
+	end
+	newAgent(player, kit, now)
+	PlayerSimServer.markDirty(player)
+	return true
 end
 
 -- Ultimate points for a player (Team Deathmatch's Ultimate Orbs, system 28).
@@ -275,13 +320,16 @@ function AbilityServer.start()
 		}
 		Remotes.get().Ability:FireAllClients(event)
 	end)
-	-- Every life is the agent's, and on the course and in Skirmish starts
-	-- with every charge, and on the course with the ultimate's points full;
-	-- in gun game and deathmatch, with none. A mode's own kit carries on
-	-- from the last life.
+	-- Every life is the agent's, another agent's kit starting over (one
+	-- picked while it couldn't be had at once), and on the course and in
+	-- Skirmish starts with every charge, and on the course with the
+	-- ultimate's points full; in gun game and deathmatch, with none. A mode's
+	-- own kit carries on from the last life.
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
 		change(player, function(kit)
-			kit.agent = AbilityServer.agent
+			if kit.agent ~= AbilityServer.agentOf(player) then
+				newAgent(player, kit, Workspace:GetServerTimeNow())
+			end
 			kit.need = needOf(kit.agent)
 			if AbilityServer.off then
 				AbilitySim.empty(kit)
@@ -320,6 +368,7 @@ function AbilityServer.start()
 		shown[player] = nil
 		due[player] = nil
 		shownDue[player] = nil
+		chosen[player] = nil
 	end)
 end
 

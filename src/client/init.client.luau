@@ -20,6 +20,7 @@ local VoteScreen = require(script.VoteScreen)
 local PlayMenu = require(script.PlayMenu)
 local BuyMenu = require(script.BuyMenu)
 local LoadoutMenu = require(script.LoadoutMenu)
+local AgentMenu = require(script.AgentMenu)
 local ClientSettings = require(script.ClientSettings)
 local CrosshairView = require(script.CrosshairView)
 local SettingsMenu = require(script.SettingsMenu)
@@ -81,6 +82,8 @@ PlayMenu.start()
 BuyMenu.start()
 -- B in Team Deathmatch: the loadout to carry in each of its stages.
 LoadoutMenu.start()
+-- T: agent select (system 29), up by itself as each match's window opens.
+AgentMenu.start()
 -- Your sensitivity and crosshair, kept between sessions; O for the menu.
 ClientSettings.start()
 CrosshairView.start(PlayerController)

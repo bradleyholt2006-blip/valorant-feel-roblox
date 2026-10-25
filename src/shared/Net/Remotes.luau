@@ -30,6 +30,7 @@ local definitions: { [string]: string } = {
 	Vote = "RemoteEvent", -- client -> server, the player's vote for the next map (system 22)
 	Play = "RemoteEvent", -- both ways: PLAY for a mode, and how it went (system 24)
 	LoadoutPick = "RemoteEvent", -- client -> server, a loadout picked for a stage of Team Deathmatch (system 27)
+	AgentPick = "RemoteEvent", -- client -> server, an agent selected or locked in (system 29)
 }
 
 export type Remotes = {
@@ -51,6 +52,7 @@ export type Remotes = {
 	Vote: RemoteEvent,
 	Play: RemoteEvent,
 	LoadoutPick: RemoteEvent,
+	AgentPick: RemoteEvent,
 }
 
 local cached: Remotes? = nil

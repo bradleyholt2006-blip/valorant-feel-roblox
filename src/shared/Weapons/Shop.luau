@@ -21,7 +21,8 @@
 --
 -- Abilities (system 17) are sold a charge at a time, at their price a
 -- charge, up to what the kit holds (AbilitySim decides, through the
--- server). A charge bought this buy phase can be sold back for its price.
+-- server). A charge bought this buy phase can be sold back for its price,
+-- and another agent's kit (system 29) sells them all back.
 
 local WeaponConfig = require("./WeaponConfig")
 local AbilityConfig = require("../Abilities/AbilityConfig")
@@ -197,6 +198,21 @@ function Shop.sellCharge(s: State, item: Item): boolean
 		s.charges[item.id] = nil
 	end
 	return true
+end
+
+-- Every ability charge bought this buy phase sold back at once, as the kit
+-- they were bought into gives way to another agent's (system 29): what
+-- they refund.
+function Shop.sellCharges(s: State): number
+	local refund = 0
+	for id, n in s.charges do
+		local item = Shop.item(id)
+		if item then
+			refund += item.price * n
+		end
+	end
+	table.clear(s.charges)
+	return refund
 end
 
 -- Sells `item` back, if it was bought this buy phase: returns what its slot

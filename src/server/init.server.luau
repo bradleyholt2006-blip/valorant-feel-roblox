@@ -11,7 +11,7 @@
 -- thrown clouds whose thrower is dead fly on.
 -- Regen Shields refill after the shots. The arena's rounds move on last, so
 -- a round that ends in this frame's shots respawns its players after the
--- frame's snapshot.
+-- frame's snapshot, and agent select after them, as the rounds have it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -31,6 +31,7 @@ local SettingsServer = require(script.SettingsServer)
 local SpikeServer = require(script.SpikeServer)
 local GroundGunsServer = require(script.GroundGunsServer)
 local AbilityServer = require(script.AbilityServer)
+local AgentServer = require(script.AgentServer)
 local CloudServer = require(script.CloudServer)
 local PickupsServer = require(script.PickupsServer)
 local ModeServers = require(script.ModeServers)
@@ -41,6 +42,7 @@ Tuning.start()
 PlayerSimServer.start(CombatServer.onVolley, CombatServer.onSwing)
 ShopServer.start()
 AbilityServer.start()
+AgentServer.start()
 CloudServer.start()
 GroundGunsServer.start()
 PickupsServer.start()
@@ -64,6 +66,7 @@ RunService.Heartbeat:Connect(function(dt)
 	CombatServer.step(now, dt)
 	Replication.step(now)
 	Arena.step(now)
+	AgentServer.step(now)
 end)
 
 -- Checks wall penetration measures parts of known size (Output window).

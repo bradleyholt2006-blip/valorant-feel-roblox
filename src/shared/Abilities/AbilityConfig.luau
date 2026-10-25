@@ -49,6 +49,7 @@ export type AbilityDef = {
 export type Agent = {
 	id: string,
 	name: string,
+	role: string, -- as Riot's agent pages name it (Jett's "Duelist"), for agent select
 	abilities: { string }, -- ids, by slot: C, Q, E, X
 	passive: string?, -- what the agent always has, without a key (Jett's "drift")
 }
@@ -182,11 +183,24 @@ AbilityConfig.Defs = {
 	},
 } :: { [string]: AbilityDef }
 
+-- Jett's role is Riot's: 'Duelist', on playvalorant.com's page for her.
 AbilityConfig.Agents = {
-	jett = { id = "jett", name = "Jett", abilities = { "cloudburst", "updraft", "tailwind", "bladestorm" }, passive = "drift" },
+	jett = {
+		id = "jett",
+		name = "Jett",
+		role = "Duelist",
+		abilities = { "cloudburst", "updraft", "tailwind", "bladestorm" },
+		passive = "drift",
+	},
 } :: { [string]: Agent }
 
--- Everyone plays this agent until there's an agent select.
+-- What each passive does, for agent select (system 29), in our words.
+AbilityConfig.Passives = {
+	drift = { name = "Drift", description = "Hold jump while you fall to glide." },
+} :: { [string]: { name: string, description: string } }
+
+-- The agent each player plays until they pick another (agent select,
+-- system 29).
 AbilityConfig.DEFAULT_AGENT = "jett"
 -- A kit of no agent's: no abilities, and no passive (deathmatch, system 26:
 -- 'No abilities (yes, that means Jett can't glide...)', Riot Support).
@@ -203,6 +217,17 @@ function AbilityConfig.abilityOf(agent: string, slot: number): AbilityDef?
 	local id = a and a.abilities[slot]
 	return if id then AbilityConfig.Defs[id] else nil
 end
+
+-- Agent select (system 29): how long each player has to lock an agent in,
+-- once a match, from its start or from when they join it under way.
+AbilityConfig.Select = {
+	time = p(
+		10,
+		"estimate",
+		"Ours, inside every mode's first phase, Skirmish's 15 s first buy phase the shortest; the reference's lobby takes 90 s"
+			.. " (VALORANT Wiki, 'Unrated': 'Agent Select, which lasts for 90 seconds')"
+	),
+}
 
 -- Jett's movement (system 17). The timings come from Riot's patch notes and
 -- the VALORANT Wiki; nothing public gives the distances or speeds as

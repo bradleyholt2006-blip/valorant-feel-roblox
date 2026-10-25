@@ -182,6 +182,16 @@ Built one system at a time:
     and Blade Storm needs 60 points, 3 a kill. The tests hold every pickup out on the floor and
     about as quick a run from either side's spawn -
     [research and design](docs/research/28-tdm-pickups.md)
+29. **Agent select**: each player plays their own agent in Skirmish, the spike rounds and Team
+    Deathmatch. Once a match you have 10 s to pick one, from the match's start or from when you
+    join it under way: T opens the agent select screen, with a card for each agent, the kit of the
+    one selected, what your teammates have selected and LOCK IN, and when the time's up the agent
+    selected is locked in for the rest of the match. On the course and while a mode waits for
+    players, an agent picked is yours at once, as in the reference's Range. An agent locked in goes
+    on your kit at once where nothing's lost by it (a buy phase, the pre-game, your own spawn room,
+    or while you're down), or else with your next life, and in the spike rounds what you'd bought
+    into the last agent's kit this buy phase is sold back. Jett is the only agent for now, so the
+    screen has her card alone - [research and design](docs/research/29-agent-select.md)
 
 ## Running it
 
@@ -215,13 +225,14 @@ held the scoreboard (the arena and the spike rounds), mouse 1 and 2, while you'r
 the next or the last teammate to watch,
 a click on a map card, during the vote after a match, your vote for the next map,
 M the Play menu (a click picks a mode's card, and PLAY plays it),
+T agent select (a click selects an agent's card, and LOCK IN locks it in),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
 Drift). The spike rounds charge credits; the course and the arena are free. On the course a spent
 charge comes back 1.5 s after it's done, and the ultimate's points are full at every life and fill
-again 1.5 s after Blade Storm ends; in the arena and Team Deathmatch every life starts with every
-charge, and gun game and deathmatch have no abilities.
+again 1.5 s after Blade Storm ends; in the arena every life starts with every charge, in Team
+Deathmatch spent charges come back over time, and gun game and deathmatch have no abilities.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -259,12 +270,17 @@ closes the settings menu, `VFTestSetting` set to `key=value` (`sensitivity=0.8`,
 `dpi=1600` or `crosshair=0;P;c;5`) enters that setting as its box in the menu would, `VFTestTake`
 set to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as Tab does
 or lets it go, `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would,
-`VFTestPlayMenu` set to true or false opens or closes the Play menu, and `VFTestPlay` set to a
-mode's key (`skirmish`, `gungame`, `standard`, `competitive` or `swiftplay`) presses PLAY for it.
-Each of the last eleven clears itself.
+`VFTestPlayMenu` set to true or false opens or closes the Play menu, `VFTestPlay` set to a mode's
+key (`skirmish`, `gungame`, `deathmatch`, `teamdeathmatch`, `standard`, `competitive` or
+`swiftplay`) presses PLAY for it, `VFTestLoadouts` set to true or false opens or closes Team
+Deathmatch's loadout menu, `VFTestPick` set to `2,3` picks the second stage's third loadout as a
+click would, `VFTestAgents` set to true or false opens or closes agent select as T does, and
+`VFTestAgent` set to an agent's id (`jett`) selects it as a click on its card would, or set to
+`lock` locks in. Each of the last fifteen clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
-From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame` or `spike`), `VFMatchFormat`
-(`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
+From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame`, `spike`, `deathmatch` or
+`teamdeathmatch`), `VFMatchFormat` (`standard`, `competitive` or `swiftplay`) and `VFArenaOn`
+choose what's played, and `VFMatchSkip`
 set true ends the phase under way (a buy phase, a round, the wait for the next, a gun game match,
 the victory screen or the vote; a Skirmish round goes to side 1, and a gun game match to whoever is
 furthest up). The arena's model says which map is played (`Map`: `A`, `B` or `C` in the arena,
@@ -282,7 +298,10 @@ their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`,
 line while both sides are full. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
 what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide), and
-`VFTestBuy` set to `updraft` buys a charge. Where a player's last Cloudburst burst is their
+`VFTestBuy` set to `updraft` buys a charge. A player's agent is their `VFAgent` attribute, what
+they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
+`open` or `locked`, unset where nobody picks), and while their window's open, when it closes
+(server time) `VFAgentCloses`. Where a player's last Cloudburst burst is their
 `VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the air and each
 cloud as parts. Workspace's `VFPlayMenu` is whether players start in the Play menu (always on a
 live server; in Studio, tick it in the place before you press Play), and `VFModeCounts` how many
@@ -308,9 +327,10 @@ deaths, assists and the average), who plays on which side (dropping in, the line
 sides out), the ability kit (charges through rounds, halves, kills and deaths, buying them,
 Updraft's height and Tailwind's dash, and the kit on the wire), Cloudburst (the throw, its flight,
 its curve and what stops it, and the cloud's life), Blade Storm (the cast, single throws and the
-burst, the kills that bring the knives back, swapping, and what ends it) and Drift (the glide from a
-jump, a ledge and Updraft, a press in a fall, landing with jump held, and what it leaves alone) are
-pure Luau and run outside Roblox:
+burst, the kills that bring the knives back, swapping, and what ends it), Drift (the glide from a
+jump, a ledge and Updraft, a press in a fall, landing with jump held, and what it leaves alone) and
+agent select (where each player picks, the window, locking in, the time running out, a swap at
+once or with the next life, and what's sold back) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
