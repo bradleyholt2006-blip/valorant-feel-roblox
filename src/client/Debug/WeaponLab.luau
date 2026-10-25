@@ -7,6 +7,8 @@
 --   * fire rate measured from the simulation's own shot times over the last
 --     burst, next to the configured rate and any footage measurement
 --   * reload and draw-to-first-shot times, measured the same way
+--   * the knife's two swings (rate, reach, width, damage from in front and
+--     from behind), where the combo is, and the time between swings
 --   * shot log: what the client predicted each shot hit vs what the server
 --     decided, with the round trip, how far the server rewound and an
 --     agreement rate. The server rewinds targets to what you saw, so they
@@ -32,6 +34,7 @@ local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Ui = require(script.Parent.Ui)
 local ReferenceData = require(script.Parent.ReferenceData)
 local ClientShots = require(script.Parent.Parent.Combat.ClientShots)
+local ClientMelee = require(script.Parent.Parent.Combat.ClientMelee)
 
 local DT = 1 / MovementConfig.TickRate.value
 local LOG_ROWS = 10
@@ -158,6 +161,19 @@ function WeaponLab.start(controller: any)
 		end
 	end)
 
+	-- The knife's swings, and the time from the one before.
+	local lastSwing: WeaponSim.Swing? = nil
+	local swingGap: number? = nil
+	table.insert(controller.swingListeners, function(swing: WeaponSim.Swing)
+		local prev = lastSwing
+		swingGap = if prev and prev.weapon == swing.weapon and swing.time > prev.time then swing.time - prev.time else nil
+		lastSwing = swing
+		if drawStart then
+			lastDrawToShot = swing.time - drawStart
+			drawStart = nil
+		end
+	end)
+
 	table.insert(controller.tickListeners, function(info: any)
 		local w = info.sim.weapons
 		local t = info.sim.movement.tick * DT
@@ -238,6 +254,23 @@ function WeaponLab.start(controller: any)
 		if spinUp then
 			table.insert(ways, string.format("held: rises to %.1f rps over %.1fs (now %.0f%%)", spinUp.maxRate.value, spinUp.time.value, w.spin * 100))
 		end
+		local melee = def.melee
+		if melee then
+			local function attackText(name: string, attack: WeaponConfig.SwingDef): string
+				return string.format(
+					"%s %.2f a second, %.1f m out, %.1f m wide, %d / %d from behind",
+					name,
+					attack.rate.value,
+					attack.reach.value,
+					attack.radius.value * 2,
+					attack.front.value,
+					attack.back.value
+				)
+			end
+			table.insert(ways, attackText("slash", melee.slash))
+			table.insert(ways, attackText("stab", melee.stab))
+			table.insert(ways, if w.combo > 0 then string.format("combo %d of 3", w.combo) else "combo starts over")
+		end
 		if #ways > 0 then
 			table.insert(lines, "       " .. table.concat(ways, "   "))
 		end
@@ -272,7 +305,21 @@ function WeaponLab.start(controller: any)
 
 		-- Timing ---------------------------------------------------------------
 		local mean, n = burstStats(if current and #current.intervals > 0 then current else lastBurst)
-		if mean and mode.spin then
+		local swung = lastSwing
+		if melee then
+			if swung and swung.weapon == def.id then
+				local attack = if swung.kind == "stab" then melee.stab else melee.slash
+				table.insert(lines, string.format(
+					"swings     last %s   %s after the one before   held, a %s every %.0fms",
+					if swung.kind == "stab" then "stab" else string.format("slash %d", swung.combo),
+					if swingGap then string.format("%.1fms", swingGap * 1000) else "--",
+					swung.kind,
+					1000 / attack.rate.value
+				))
+			else
+				table.insert(lines, "swings     -- (left click slashes, right click stabs; hold either)")
+			end
+		elseif mean and mode.spin then
 			table.insert(lines, string.format(
 				"fire rate  %.2f rps (%.1f ms, n=%d)  expect %.2f rising to %.2f  %s",
 				1 / mean,
@@ -470,6 +517,8 @@ function WeaponLab.start(controller: any)
 		end
 		if input.KeyCode == Enum.KeyCode.Backspace then
 			ClientShots.reset()
+			ClientMelee.reset()
+			lastSwing, swingGap = nil, nil
 			current, lastBurst, lastShot = nil, nil, nil
 			lastReload, lastDrawToShot = nil, nil
 		end

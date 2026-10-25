@@ -283,7 +283,9 @@ local function parseWalls(list: any): { WallReport }
 	return out
 end
 
-local function parseTested(list: any): { [number]: Tested }
+-- The targets a verdict says the server tested (ClientMelee reads swings'
+-- the same way).
+function ClientShots.parseTested(list: any): { [number]: Tested }
 	local out: { [number]: Tested } = {}
 	if typeof(list) ~= "table" then
 		return out
@@ -401,7 +403,7 @@ local function onPellet(v: any, p: any, killed: { [number]: boolean }): Record?
 		clamped = v.clamped == true,
 		origin = asVector(v.origin),
 		direction = asVector(p.direction),
-		tested = parseTested(v.tested),
+		tested = ClientShots.parseTested(v.tested),
 	}
 	record.verdict = verdict
 	record.verdictAt = os.clock()

@@ -153,7 +153,7 @@ end
 
 local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
-	+ 3 + 3 + 6 + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 -- weapons
+	+ 3 + 3 + 6 + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 -- weapons
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -205,6 +205,7 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, math.clamp(w.burstLeft, 0, 255))
 	wf64(c, w.burstNext)
 	wf64(c, w.spin)
+	w8(c, w.combo)
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -269,6 +270,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local burstLeft = r8(c)
 	local burstNext = rf64(c)
 	local spin = rf64(c)
+	local combo = r8(c)
 	local weapons = {
 		loadout = loadout,
 		ammo = ammo,
@@ -289,6 +291,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		burstLeft = burstLeft,
 		burstNext = burstNext,
 		spin = spin,
+		combo = combo,
 	}
 
 	local tagUntilTick = r32(c)

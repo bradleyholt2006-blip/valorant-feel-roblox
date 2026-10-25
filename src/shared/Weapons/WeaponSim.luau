@@ -14,6 +14,10 @@
 -- itself. A round is a volley of bullets: one, or a shotgun's pellets, which
 -- share the round's recoil and each take their own place in its cone.
 --
+-- The knife swings instead (system 10): the left button slashes and the
+-- right one stabs, and each swing comes out as an event the same way, for
+-- Melee to find what it caught.
+--
 -- Times are seconds of simulation time (tick * dt). 1/128 is exact in binary,
 -- so client and server compute bit-identical times.
 
@@ -43,6 +47,9 @@ export type State = {
 	burstLeft: number, -- rounds still to come in the burst under way
 	burstNext: number, -- when its next round fires
 	spin: number, -- 0-1: how far a spinning fire rate has risen (the Odin)
+	-- The knife's last slash's place in its combo, 1-3; 0 when the next one
+	-- starts it over (after a stab, a draw or a pause).
+	combo: number,
 }
 
 export type Shot = {
@@ -71,6 +78,21 @@ export type Shot = {
 	offsetAngle: number, -- radians around the centre, 0 = right
 	moveState: Accuracy.MoveState,
 	scoped: number,
+}
+
+export type SwingKind = "slash" | "stab"
+
+-- A knife swing, on the tick it starts.
+export type Swing = {
+	tick: number,
+	time: number,
+	weapon: string,
+	kind: SwingKind,
+	combo: number, -- a slash's place in its combo, 1-3; 0 for a stab
+	origin: vector, -- eye position, metres
+	yaw: number,
+	pitch: number,
+	direction: vector, -- where the crosshair pointed
 }
 
 local Buttons = {
@@ -111,6 +133,7 @@ function WeaponSim.newState(loadout: { string }?, seed: number?): State
 		burstLeft = 0,
 		burstNext = 0,
 		spin = 0,
+		combo = 0,
 	}
 	for slot = 1, 3 do
 		WeaponSim.give(s, slot, s.loadout[slot])
@@ -139,6 +162,7 @@ local function draw(s: State, t: number)
 	s.burstLeft = 0
 	s.burstNext = 0
 	s.spin = 0
+	s.combo = 0
 end
 
 -- Puts a weapon in a slot with full ammo (server-side loadout changes). When
@@ -287,11 +311,46 @@ local function fireRound(s: State, def: WeaponConfig.WeaponDef, mode: WeaponConf
 	return shots
 end
 
+-- A knife's swing this tick, if one starts. The left button slashes and the
+-- right one stabs, again and again while held (the reference's melee is
+-- automatic), each once the knife is drawn and the last swing's recovery is
+-- over, the left first when both are down. Slashes one after another go
+-- round the three-swing combo; one that comes more than comboReset after it
+-- could have starts it over.
+local function swing(s: State, def: WeaponConfig.WeaponDef, melee: WeaponConfig.MeleeDef, fire: boolean, alt: boolean, t: number, dt: number, origin: vector, tick: number, input: any): Swing?
+	if not (fire or alt) or t < s.equipEndTime - EPS or t < s.nextFireTime - EPS then
+		return nil
+	end
+	local kind: SwingKind = if fire then "slash" else "stab"
+	local attack = if fire then melee.slash else melee.stab
+	-- Held through the recovery keeps the exact cadence, as a trigger does.
+	local late = t - s.nextFireTime
+	local nominal = if late < dt - EPS then s.nextFireTime else t
+	if kind == "slash" then
+		s.combo = if s.combo == 0 or late > melee.comboReset.value + EPS then 1 else s.combo % 3 + 1
+	else
+		s.combo = 0
+	end
+	s.lastShotTime = t
+	s.nextFireTime = nominal + 1 / attack.rate.value
+	return {
+		tick = tick,
+		time = t,
+		weapon = def.id,
+		kind = kind,
+		combo = s.combo,
+		origin = origin,
+		yaw = input.yaw,
+		pitch = input.pitch,
+		direction = Accuracy.aim(input.yaw, input.pitch),
+	}
+end
+
 -- Advance one tick. `t` is the simulation time of this tick, `origin` the eye
 -- position after this tick's movement and `ctx` what the shooter is doing
--- (for the cone and recoil). Returns the bullets fired this tick, if any:
--- one round's, at most.
-function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vector, tick: number, ctx: Accuracy.Context?): { Shot }?
+-- (for the cone and recoil). Returns the bullets fired this tick, if any
+-- (one round's, at most), and the knife swing that started, if one did.
+function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vector, tick: number, ctx: Accuracy.Context?): ({ Shot }?, Swing?)
 	local buttons: number = input.buttons
 	local fire = has(buttons, Buttons.Fire)
 	local alt = has(buttons, Buttons.AltFire)
@@ -306,6 +365,15 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 
 	local slot = s.equipped
 	local def = WeaponConfig.get(s.loadout[slot])
+
+	-- A knife swings, and has nothing to reload, zoom or fire.
+	local melee = def.melee
+	if melee then
+		local swung = swing(s, def, melee, fire, alt, t, dt, origin, tick, input)
+		s.fireHeld = fire
+		s.altHeld = alt
+		return nil, swung
+	end
 
 	-- 2. A reload step completes: the whole magazine at the end, or one
 	-- round, then the next, until it's full or the reserve runs out.
@@ -397,7 +465,7 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 
 	s.fireHeld = fire
 	s.altHeld = alt
-	return shots
+	return shots, nil
 end
 
 return WeaponSim

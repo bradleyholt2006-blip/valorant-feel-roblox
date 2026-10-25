@@ -23,6 +23,12 @@
 -- confirm only comes with the server's verdict, spawned "at the location of
 -- the hit on the character" and staying attached to it as the character
 -- moves, turns or crouches.
+--
+-- The knife (system 10) swings across the view, each slash of its combo its
+-- own way, and stabs forward. Where the client's guess has it strike the
+-- level it leaves a cut at once (Patch 4.01: "Knifing walls now has instant
+-- feedback when slicing up walls"), and others' swings leave theirs; its hit
+-- confirm comes with the server's verdict, as a bullet's does.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -43,6 +49,7 @@ local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local NetSim = require(script.Parent.Parent.NetSim)
 local ClientShots = require(script.Parent.ClientShots)
+local ClientMelee = require(script.Parent.ClientMelee)
 local WeaponLooks = require(script.Parent.WeaponLooks)
 
 local S = Units.STUDS_PER_METRE
@@ -59,6 +66,12 @@ type Shape = WeaponLooks.Shape
 local HIP = vector.create(0.17, -0.17, -0.36)
 local ADS = vector.create(0, -0.075, -0.3)
 local ADS_BLEND_TIME = 0.12
+
+-- The knife's swing (stand-in animation): out fast over STRIKE_TIME, since
+-- the swing is decided on the tick it starts, then back to rest by
+-- SWING_TIME.
+local STRIKE_TIME = 0.1
+local SWING_TIME = 0.35
 
 local function effectPart(name: string, color: Color3, material: Enum.Material?): Part
 	local p = Instance.new("Part")
@@ -109,6 +122,30 @@ local function viewmodelFor(weaponId: string): Viewmodel
 	return built
 end
 
+-- Where a knife swing has the grip `since` seconds in (camera space,
+-- metres), and its turn. The slashes of the combo go right to left (1), left
+-- to right (2) and down from the top right (3); a stab (0) thrusts forward.
+local function swingPose(combo: number, since: number): (vector, CFrame)
+	if since < 0 or since >= SWING_TIME then
+		return vector.zero, CFrame.identity
+	end
+	local strike = math.clamp(since / STRIKE_TIME, 0, 1)
+	local back = math.clamp((since - STRIKE_TIME) / (SWING_TIME - STRIKE_TIME), 0, 1)
+	local hold = 1 - back * back * (3 - 2 * back) -- 1 through the strike, easing to 0
+	if combo == 0 then
+		local out = math.sin(strike * math.pi / 2) * hold
+		return vector.create(-0.06, 0.04, -0.2) * out, CFrame.Angles(math.rad(-8) * out, math.rad(10) * out, 0)
+	end
+	local from = if combo == 2 then -1 else 1 -- +1: from the right
+	local ease = strike * strike * (3 - 2 * strike)
+	local side = from * (1 - 2 * ease)
+	local drop = if combo == 3 then 1 else 0
+	local amount = math.min(strike * 4, 1) * hold
+	local offset = vector.create(-0.15 + 0.2 * side, 0.03 + 0.1 * drop * side, -0.05) * amount
+	-- The blade turned across the view, leading the way it goes.
+	return offset, CFrame.Angles(0, math.rad(75) * from * amount, (math.rad(25) * side + math.rad(30) * drop) * amount)
+end
+
 -- Grip transform this frame, in camera space (studs).
 local function holdCFrame(sim: PlayerSim.State, frameDt: number): (CFrame, boolean)
 	local w = sim.weapons
@@ -133,10 +170,15 @@ local function holdCFrame(sim: PlayerSim.State, frameDt: number): (CFrame, boole
 		reloadDip = if def.reloadPerRound then 0.6 + 0.4 * math.sin(progress * math.pi) else math.sin(progress * math.pi)
 	end
 
+	local swingOffset, swingTurn = vector.zero, CFrame.identity
+	if def.melee then
+		swingOffset, swingTurn = swingPose(w.combo, t - w.lastShotTime)
+	end
+
 	local hold = HIP + (ADS - HIP) * adsBlend
-	local offset = hold + vector.create(0, -0.22 * equipLeft - 0.08 * reloadDip, 0.03 * kick)
+	local offset = hold + vector.create(0, -0.22 * equipLeft - 0.08 * reloadDip, 0.03 * kick) + swingOffset
 	local angles = CFrame.Angles(math.rad(5 * kick) - math.rad(50) * equipLeft - math.rad(15) * reloadDip, 0, math.rad(35) * reloadDip)
-	return CFrame.new(Units.toStuds(offset)) * angles, hidden
+	return CFrame.new(Units.toStuds(offset)) * angles * swingTurn, hidden
 end
 
 local function updateViewmodel(frameDt: number)
@@ -202,11 +244,10 @@ local function tracer(from: Vector3, to: Vector3, color: Color3, width: number)
 	fade(p, 0.07, 0.25)
 end
 
-local function mark(point: vector, normal: vector)
-	local p = effectPart("Mark", Color3.fromRGB(20, 20, 24))
-	p.Size = Vector3.new(0.04 * S, 0.04 * S, 0.004 * S)
-	local at = Units.toStuds(point + normal * 0.003)
-	p.CFrame = CFrame.lookAt(at, at + Units.asVector3(normal))
+local MARK_COLOR = Color3.fromRGB(20, 20, 24)
+
+-- Keeps a mark up, and the newest MAX_MARKS of them.
+local function keep(p: BasePart)
 	p.Parent = marksFolder
 	table.insert(marks, p)
 	if #marks > MAX_MARKS then
@@ -215,6 +256,45 @@ local function mark(point: vector, normal: vector)
 			oldest:Destroy()
 		end
 	end
+end
+
+local function mark(point: vector, normal: vector)
+	local p = effectPart("Mark", MARK_COLOR)
+	p.Size = Vector3.new(0.04 * S, 0.04 * S, 0.004 * S)
+	local at = Units.toStuds(point + normal * 0.003)
+	p.CFrame = CFrame.lookAt(at, at + Units.asVector3(normal))
+	keep(p)
+end
+
+local function cross(a: vector, b: vector): vector
+	return vector.create(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)
+end
+
+-- How long a knife's cut is: a slash's line, or a stab's short gash.
+local SLASH_CUT = 0.22
+local STAB_CUT = 0.05
+
+-- The way a knife swing along `direction` crosses a surface facing `normal`:
+-- across the view, or down from the top right for the combo's third slash,
+-- laid flat on the surface.
+local function sweepAcross(direction: vector, combo: number, normal: vector): vector
+	local right = cross(direction, vector.create(0, 1, 0))
+	right = if vector.magnitude(right) > 1e-3 then vector.normalize(right) else vector.create(1, 0, 0)
+	local up = cross(right, direction)
+	local sweep = if combo == 3 then right + up * 0.6 else right
+	local flat = sweep - normal * vector.dot(sweep, normal)
+	if vector.magnitude(flat) < 1e-3 then
+		flat = up - normal * vector.dot(up, normal)
+	end
+	return if vector.magnitude(flat) > 1e-6 then vector.normalize(flat) else vector.create(1, 0, 0)
+end
+
+-- A knife's cut in the level, `length` metres along `along` (in the surface).
+local function cut(point: vector, normal: vector, along: vector, length: number)
+	local p = effectPart("Cut", MARK_COLOR)
+	p.Size = Vector3.new(length * S, 0.008 * S, 0.003 * S)
+	p.CFrame = CFrame.fromMatrix(Units.toStuds(point + normal * 0.003), Units.asVector3(along), Units.asVector3(cross(normal, along)))
+	keep(p)
 end
 
 local function spark(point: vector, color: Color3, size: number)
@@ -291,35 +371,58 @@ local function drawShot(record: ClientShots.Record)
 	end
 end
 
+-- The local player's knife swing, as the client guessed it: a spark where
+-- it met a target (not a hit), or a cut where the blade struck the level.
+local function drawSwing(record: ClientMelee.Record)
+	local swing, predicted = record.swing, record.predicted
+	local hit, wall = predicted.hit, predicted.wall
+	if hit then
+		spark(hit.point, Color3.fromRGB(255, 240, 200), 0.02)
+	elseif wall then
+		local point = swing.origin + swing.direction * wall.distance
+		cut(point, wall.normal, sweepAcross(swing.direction, swing.combo, wall.normal), if swing.kind == "stab" then STAB_CUT else SLASH_CUT)
+		spark(point + wall.normal * 0.01, RICOCHET_COLOR, 0.02)
+	end
+end
+
 -- Server hit confirms, each pinned to a spot on a region's box.
 local CONFIRM_TIME = 0.35
 local CONFIRM_COLOR = Color3.fromRGB(200, 30, 40)
 type Confirm = { id: number, region: Hitboxes.Region, fraction: vector, start: number, size: number, part: BasePart }
 local confirms: { Confirm } = {}
 
-local function onVerdict(record: ClientShots.Record)
-	local verdict = record.verdict
-	if not verdict or not verdict.targetId or not verdict.region then
-		return
-	end
-	RemoteEntities.flashRegion(verdict.targetId, verdict.region)
-	-- Where on the target, from the pose the server hit.
-	local tested = verdict.tested[verdict.targetId]
-	local hitPoint = verdict.hitPoint
-	local region: Hitboxes.Region = verdict.region :: Hitboxes.Region
+-- A hit confirm at `hitPoint` on a target's region, placed on the pose the
+-- server hit (`tested`), so it stays on that spot as the target moves.
+local function confirm(targetId: number, regionName: string, tested: ClientShots.Tested?, hitPoint: vector?)
+	RemoteEntities.flashRegion(targetId, regionName)
+	local region: Hitboxes.Region = regionName :: Hitboxes.Region
 	local box = if tested then Hitboxes.region(tested.pose, region) else nil
 	if not box or not hitPoint then
 		return
 	end
-	local confirm: Confirm = {
-		id = verdict.targetId,
+	local c: Confirm = {
+		id = targetId,
 		region = region,
 		fraction = Hitboxes.boxFraction(box, hitPoint),
 		start = os.clock(),
 		size = if region == "head" then 0.07 else 0.08, -- Patch 1.07 scaled headshot effects down slightly
 		part = effectPart("HitConfirm", CONFIRM_COLOR, Enum.Material.Neon),
 	}
-	table.insert(confirms, confirm)
+	table.insert(confirms, c)
+end
+
+local function onVerdict(record: ClientShots.Record)
+	local verdict = record.verdict
+	if verdict and verdict.targetId and verdict.region then
+		confirm(verdict.targetId, verdict.region, verdict.tested[verdict.targetId], verdict.hitPoint)
+	end
+end
+
+local function onSwingVerdict(record: ClientMelee.Record)
+	local verdict = record.verdict
+	if verdict and verdict.targetId and verdict.region then
+		confirm(verdict.targetId, verdict.region, verdict.tested[verdict.targetId], verdict.point)
+	end
 end
 
 local function updateConfirms()
@@ -367,6 +470,18 @@ local function onShotFx(fx: any)
 	end
 end
 
+-- Someone else's knife swing: the cut where the server has it strike the
+-- level.
+local function onSwingFx(fx: any)
+	if typeof(fx) ~= "table" or typeof(fx.wall) ~= "Vector3" or typeof(fx.normal) ~= "Vector3" or typeof(fx.direction) ~= "Vector3" then
+		return
+	end
+	local point, normal = Units.toMetres(fx.wall), Units.asVector(fx.normal)
+	local combo = if typeof(fx.combo) == "number" then fx.combo else 1
+	cut(point, normal, sweepAcross(Units.asVector(fx.direction), combo, normal), if fx.kind == "stab" then STAB_CUT else SLASH_CUT)
+	spark(point + normal * 0.01, RICOCHET_COLOR, 0.02)
+end
+
 function WeaponEffects.start()
 	local folder = Instance.new("Folder")
 	folder.Name = "VFEffects"
@@ -394,6 +509,9 @@ function WeaponEffects.start()
 	end)
 	table.insert(ClientShots.verdictListeners, onVerdict)
 	NetSim.on(Remotes.get().ShotFx, onShotFx)
+	table.insert(ClientMelee.firedListeners, drawSwing)
+	table.insert(ClientMelee.verdictListeners, onSwingVerdict)
+	NetSim.on(Remotes.get().SwingFx, onSwingFx)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if not processed and input.KeyCode == Enum.KeyCode.Backspace then

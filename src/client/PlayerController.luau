@@ -7,8 +7,8 @@
 -- the predicted result, and send the input to the server. When an ack arrives
 -- we compare our prediction for that seq with the server's state; on mismatch
 -- we rewind to the server state and replay the inputs it hasn't processed
--- yet. Shots re-simulated during a replay are not re-fired: effects only play
--- for the live tick. Visual position error from a correction is blended out
+-- yet. Shots and knife swings re-simulated during a replay are not re-fired:
+-- effects only play for the live tick. Visual position error from a correction is blended out
 -- over a few frames instead of snapping the camera.
 
 local Players = game:GetService("Players")
@@ -60,6 +60,7 @@ export type TickInfo = {
 	maxSpeed: number, -- run speed of the equipped weapon
 	accurateFraction: number, -- deadzone fraction of that speed
 	shots: { WeaponSim.Shot }?, -- the bullets fired this tick: one round's
+	swing: WeaponSim.Swing?, -- the knife swing that started this tick
 }
 
 export type Profile = {
@@ -96,6 +97,9 @@ PlayerController.tickListeners = {} :: { (TickInfo) -> () }
 -- round), with the input that fired it (live ticks only; replays after a
 -- correction don't re-fire).
 PlayerController.shotListeners = {} :: { (WeaponSim.Shot, PlayerCodec.WireInput) -> () }
+-- Called for each knife swing the local player starts, with its input (live
+-- ticks only, like shots).
+PlayerController.swingListeners = {} :: { (WeaponSim.Swing, PlayerCodec.WireInput) -> () }
 -- Called when the local player (re)spawns with a fresh simulation.
 PlayerController.spawnListeners = {} :: { (PlayerSim.State) -> () }
 -- Increments on every spawn; shot numbers restart each life.
@@ -152,7 +156,7 @@ local function tick()
 	}
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
-	local shots = PlayerSim.step(s, input, PlayerController.cfg, world, DT)
+	local shots, swing = PlayerSim.step(s, input, PlayerController.cfg, world, DT)
 	simTime += DT
 	PlayerController.buttons = input.buttons
 
@@ -167,6 +171,11 @@ local function tick()
 			end
 		end
 	end
+	if swing then
+		for _, listener in PlayerController.swingListeners do
+			listener(swing, input)
+		end
+	end
 
 	local profile = PlayerController.profile()
 	local info: TickInfo = {
@@ -178,6 +187,7 @@ local function tick()
 		maxSpeed = profile.maxSpeed,
 		accurateFraction = profile.accurateFraction,
 		shots = shots,
+		swing = swing,
 	}
 	for _, listener in PlayerController.tickListeners do
 		listener(info)
@@ -238,6 +248,7 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or gw.burstLeft ~= sw.burstLeft
 		or gw.burstNext ~= sw.burstNext
 		or gw.spin ~= sw.spin
+		or gw.combo ~= sw.combo
 	then
 		return true, posErr
 	end

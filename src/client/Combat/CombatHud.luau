@@ -1,7 +1,8 @@
 --!strict
 -- Player-facing combat HUD (original layout): health and shields, ammo and
 -- weapon, a reload / equip bar, server-confirmed hit markers and damage
--- numbers, a kill feed, the death notice and a scope overlay.
+-- numbers, a kill feed (who, with what, whom), the death notice and a scope
+-- overlay.
 --
 -- Hit markers and damage numbers only ever come from the server's verdict,
 -- never from the client's guess, so they show what actually counted.
@@ -185,8 +186,8 @@ function CombatHud.start()
 
 	-- Kill feed ---------------------------------------------------------------
 	local feed = Ui.label(feedGui, {
-		Size = UDim2.fromOffset(320, FEED_ROWS * 18),
-		Position = UDim2.new(1, -332, 0, 12),
+		Size = UDim2.fromOffset(400, FEED_ROWS * 18),
+		Position = UDim2.new(1, -412, 0, 12),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextStrokeTransparency = 0.5,
 	})
@@ -236,7 +237,14 @@ function CombatHud.start()
 		if typeof(event) ~= "table" or event.kind ~= "damage" or not event.killed then
 			return
 		end
-		local text = string.format("%s  >  %s%s", nameOf(event.attacker), nameOf(event.target), if event.region == "head" then "  (head)" else "")
+		local def = if typeof(event.weapon) == "string" then WeaponConfig.Defs[event.weapon] else nil
+		local text = string.format(
+			"%s  [%s]  %s%s",
+			nameOf(event.attacker),
+			if def then def.name else "?",
+			nameOf(event.target),
+			if event.region == "head" then "  (head)" else ""
+		)
 		table.insert(feedRows, { text = text, at = os.clock() })
 		if #feedRows > FEED_ROWS then
 			table.remove(feedRows, 1)
