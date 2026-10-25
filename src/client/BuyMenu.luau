@@ -12,6 +12,11 @@
 -- show at the top, with what the round pays, and anything you can't afford
 -- is dimmed. Elsewhere everything's free, and prices show what the
 -- reference charges.
+--
+-- Under the shields are the abilities sold by the charge (system 17), each
+-- with a pip for every charge it holds, lit for each you have: click buys a
+-- charge, right-click sells back one bought this buy phase. One that can't
+-- be played yet is shown, dimmed, and can't be bought.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,6 +32,8 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Shop = require(Shared.Weapons.Shop)
 local Remotes = require(Shared.Net.Remotes)
 local MovementConfig = require(Shared.Movement.MovementConfig)
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 
 local PlayerController = require(script.Parent.PlayerController)
 local CameraController = require(script.Parent.CameraController)
@@ -70,8 +77,11 @@ local CATEGORY: { [string]: string } = {
 local COLUMNS = { { "Sidearms" }, { "SMGs", "Shotguns" }, { "Rifles" }, { "Snipers", "Machine guns" } }
 
 type Tile = { id: string, item: Shop.Item, button: TextButton, stroke: UIStroke, tag: TextLabel, name: TextLabel, price: TextLabel }
+-- An ability's tile has a pip for each charge it can hold.
+type AbilityTile = Tile & { pips: { Frame } }
 
 local tiles: { Tile } = {}
+local abilityTiles: { AbilityTile } = {}
 local hovered: string? = nil
 local me = Players.LocalPlayer
 
@@ -207,6 +217,26 @@ local function weaponLines(def: WeaponConfig.WeaponDef): { string }
 		table.insert(lines, "")
 		table.insert(lines, "Suppressed: quieter, and the other side sees no tracers")
 	end
+	return lines
+end
+
+local function abilityLines(def: AbilityConfig.AbilityDef): { string }
+	local lines = {}
+	local max = if def.charges then def.charges.value else 0
+	table.insert(lines, string.format("Ability, on %s", AbilityConfig.KEYS[def.slot]))
+	table.insert(lines, "")
+	table.insert(lines, def.description)
+	table.insert(lines, "")
+	table.insert(lines, row("Charges", string.format("up to %d", max)))
+	if def.cost then
+		table.insert(lines, row("A charge", string.format("%d credits", def.cost.value)))
+	end
+	if def.id == "updraft" then
+		local J = AbilityConfig.Jett
+		table.insert(lines, row("Lift", string.format("%s m, in %s s", num(J.updraftApex.value), num(J.updraftTime.value))))
+	end
+	table.insert(lines, "")
+	table.insert(lines, "Unused charges carry into the next round, and through a death; a new half takes them away.")
 	return lines
 end
 
@@ -355,6 +385,105 @@ local function makeTile(parent: Frame, id: string, name: string, price: number, 
 	return tile
 end
 
+-- An ability's tile: its key large where a gun's look goes, and a pip for
+-- each charge it can hold.
+local function makeAbilityTile(parent: Frame, def: AbilityConfig.AbilityDef, x: number, y: number): AbilityTile?
+	local item = Shop.item(def.id)
+	if not item then
+		return nil
+	end
+	local id = def.id
+	local button = Instance.new("TextButton")
+	button.Name = id
+	button.AutoButtonColor = false
+	button.Text = ""
+	button.BorderSizePixel = 0
+	button.BackgroundColor3 = TILE
+	button.BackgroundTransparency = 0.1
+	button.Position = UDim2.fromOffset(x, y)
+	button.Size = UDim2.fromOffset(TILE_W, TILE_H)
+	button.Parent = parent
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Thickness = 2
+	stroke.Transparency = 1
+	stroke.Parent = button
+	Ui.label(button, {
+		Text = AbilityConfig.KEYS[def.slot],
+		Font = Enum.Font.GothamBold,
+		TextSize = 24,
+		TextColor3 = Ui.DIM,
+		Position = UDim2.fromOffset(12, 18),
+		Size = UDim2.fromOffset(30, 28),
+		ZIndex = 5,
+	})
+	local max = if def.charges then def.charges.value else 0
+	local pips: { Frame } = {}
+	for i = 1, max do
+		table.insert(
+			pips,
+			Ui.frame(button, {
+				BackgroundTransparency = 0,
+				Position = UDim2.fromOffset(48 + (i - 1) * 22, 28),
+				Size = UDim2.fromOffset(18, 6),
+				ZIndex = 5,
+			})
+		)
+	end
+	local nameLabel = Ui.label(button, {
+		Text = def.name:upper(),
+		Font = Enum.Font.GothamBold,
+		TextSize = 13,
+		Position = UDim2.fromOffset(8, TILE_H - 20),
+		Size = UDim2.fromOffset(TILE_W - 16, 16),
+		ZIndex = 5,
+	})
+	local priceLabel = Ui.label(button, {
+		Text = tostring(item.price),
+		Font = Enum.Font.GothamBold,
+		TextSize = 12,
+		TextColor3 = GOLD,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Position = UDim2.fromOffset(8, 4),
+		Size = UDim2.fromOffset(TILE_W - 16, 14),
+		ZIndex = 5,
+	})
+	local tag = Ui.label(button, {
+		Text = "",
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
+		Position = UDim2.fromOffset(8, 5),
+		Size = UDim2.fromOffset(TILE_W - 60, 12),
+		ZIndex = 5,
+	})
+	button.MouseEnter:Connect(function()
+		hovered = id
+	end)
+	button.MouseLeave:Connect(function()
+		if hovered == id then
+			hovered = nil
+		end
+	end)
+	button.MouseButton1Click:Connect(function()
+		BuyMenu.request("buy", id)
+	end)
+	button.MouseButton2Click:Connect(function()
+		BuyMenu.request("sell", id)
+	end)
+	local tile: AbilityTile = {
+		id = id,
+		item = item,
+		button = button,
+		stroke = stroke,
+		tag = tag,
+		name = nameLabel,
+		price = priceLabel,
+		pips = pips,
+	}
+	table.insert(abilityTiles, tile)
+	return tile
+end
+
 local function groupNamed(name: string): { ids: { string } }?
 	for _, group in WeaponConfig.Arsenal do
 		if group.name == name then
@@ -446,6 +575,16 @@ function BuyMenu.start()
 	for i, id in WeaponConfig.ShieldIds do
 		local def = WeaponConfig.Shields[id]
 		makeTile(root, id, def.name, def.price.value, shieldX, TOP + HEADER_H + (i - 1) * (TILE_H + GAP))
+	end
+	-- The abilities sold by the charge, of the agent everyone plays.
+	local abilityY = TOP + HEADER_H + #WeaponConfig.ShieldIds * (TILE_H + GAP) + GROUP_GAP
+	header(root, "Abilities", shieldX, abilityY)
+	abilityY += HEADER_H
+	for slot = AbilityConfig.C, AbilityConfig.E do
+		local def = AbilityConfig.abilityOf(AbilityConfig.DEFAULT_AGENT, slot)
+		if def and def.cost and makeAbilityTile(root, def, shieldX, abilityY) then
+			abilityY += TILE_H + GAP
+		end
 	end
 
 	-- What the item under the cursor does.
@@ -560,11 +699,39 @@ function BuyMenu.start()
 			tile.tag.Text = if tile.id == inHand then "IN HAND" elseif owned then "OWNED" else ""
 			tile.tag.TextColor3 = if canSell then SELLABLE else OWNED
 		end
+		-- The abilities: the charges in our kit, as predicted.
+		local kit = if sim then sim.abilities else nil
+		local chargesBought = Shop.chargesFrom(me:GetAttribute(Shop.CHARGES_ATTRIBUTE) :: string?)
+		for _, tile in abilityTiles do
+			local slot = if kit then AbilitySim.slotOf(kit, tile.id) else nil
+			local have = if kit and slot then kit.charges[slot] else 0
+			local max = if kit and slot then AbilitySim.maxCharges(kit, slot) else 0
+			local playable = AbilitySim.playable(tile.id)
+			local canSell = (chargesBought[tile.id] or 0) > 0
+			local cant = not playable or have >= max or (wallet ~= nil and tile.item.price > wallet)
+			short[tile.id] = wallet ~= nil and playable and have < max and tile.item.price > wallet
+			tile.button.BackgroundColor3 = if hovered == tile.id then TILE_HOVER else TILE
+			tile.button.BackgroundTransparency = if cant and have < max then 0.55 else 0.1
+			tile.name.TextColor3 = if not playable then Ui.DIM else Ui.TEXT
+			tile.price.TextColor3 = if short[tile.id] then SHORT else GOLD
+			tile.stroke.Transparency = if have > 0 then 0.1 else 1
+			tile.stroke.Color = if canSell then SELLABLE else OWNED
+			tile.tag.Text = if not playable then "NOT YET" elseif have >= max then "FULL" else ""
+			tile.tag.TextColor3 = if canSell then SELLABLE else OWNED
+			for i, pip in tile.pips do
+				pip.BackgroundColor3 = if i <= have then OWNED else Color3.fromRGB(70, 72, 80)
+			end
+		end
 
 		local id = hovered
 		local def = id and WeaponConfig.Defs[id]
 		local shieldDef = id and WeaponConfig.Shields[id]
-		if def then
+		local abilityDef = id and AbilityConfig.Defs[id]
+		if abilityDef then
+			title.Text = abilityDef.name:upper()
+			price.Text = if abilityDef.cost then tostring(abilityDef.cost.value) else ""
+			body.Text = table.concat(abilityLines(abilityDef), "\n")
+		elseif def then
 			title.Text = def.name:upper()
 			price.Text = tostring(def.price.value)
 			body.Text = table.concat(weaponLines(def), "\n")
@@ -575,13 +742,33 @@ function BuyMenu.start()
 		else
 			title.Text = ""
 			price.Text = ""
-			body.Text = "Point at a gun or a shield to see its numbers."
+			body.Text = "Point at a gun, a shield or an ability to see its numbers."
 		end
 		local item = if id then Shop.item(id) else nil
 		local cost = if item then Shop.cost(state, item) else 0
 		hint.TextColor3 = SELLABLE
+		local slot = if kit and abilityDef then AbilitySim.slotOf(kit, abilityDef.id) else nil
 		if not id or not item then
 			hint.Text = ""
+		elseif abilityDef then
+			local have = if kit and slot then kit.charges[slot] else 0
+			local max = if kit and slot then AbilitySim.maxCharges(kit, slot) else 0
+			if not AbilitySim.playable(id) then
+				hint.Text = "Not playable yet: it comes with a later system"
+				hint.TextColor3 = Ui.DIM
+			elseif (chargesBought[id] or 0) > 0 then
+				hint.Text = if wallet
+					then string.format("Right-click to sell a charge bought this buy phase back for %d", item.price)
+					else "Right-click to sell back a charge bought this buy phase"
+			elseif have >= max then
+				hint.Text = string.format("Full: you have its %d", max)
+				hint.TextColor3 = OWNED
+			elseif short[id] then
+				hint.Text = string.format("Not enough credits: a charge costs %d", item.price)
+				hint.TextColor3 = SHORT
+			else
+				hint.Text = ""
+			end
 		elseif sellable[id] then
 			hint.Text = if wallet
 				then string.format("Bought this buy phase: right-click to sell it back for %d", Shop.refund(state, item))

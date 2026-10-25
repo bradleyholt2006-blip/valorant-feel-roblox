@@ -21,7 +21,8 @@
 --
 --   VFTestButtons  PlayerSim button flags held on top of the real input
 --                  while set (Fire 128, AltFire 256, Reload 512, Crouch 32,
---                  Use 1024 for the spike's 4 held, Drop 2048 for G;
+--                  Use 1024 for the spike's 4 held, Drop 2048 for G, and
+--                  the abilities' C 4096, Q 8192, E 16384 and X 32768;
 --                  MovementSim.Buttons has the rest)
 --   VFTestGive     a weapon id: asks for it as the debug give does, then
 --                  clears itself ("spike" hands over the course's spike)
@@ -103,7 +104,7 @@ function TestAim.start(controller: any)
 	RunService:BindToRenderStep("VFTestAim", Enum.RenderPriority.Camera.Value, function()
 		local player = Players.LocalPlayer
 		local buttons = player:GetAttribute("VFTestButtons")
-		InputSampler.extraButtons = if typeof(buttons) == "number" then bit32.band(buttons, 4095) else 0
+		InputSampler.extraButtons = if typeof(buttons) == "number" then bit32.band(buttons, 65535) else 0
 		local give = player:GetAttribute("VFTestGive")
 		if typeof(give) == "string" and give ~= "" then
 			player:SetAttribute("VFTestGive", nil)

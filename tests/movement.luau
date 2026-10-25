@@ -718,8 +718,30 @@ do
 		landed ~= nil and landed.side > 1 and math.abs(landed.forward) < 1e-3 and math.abs(landed.bend) < 1e-3 and #analyzer.history == 1,
 		if landed then string.format("side %.2f m, forward %.3f m, %.2f s", landed.side, landed.forward, landed.airtime) else "never landed"
 	)
+	check("and rises nothing", landed ~= nil and landed.rise == 0)
 	JumpAnalyzer.clear(analyzer)
 	check("clearing the jump analyzer forgets every jump", #analyzer.history == 0)
+end
+
+do
+	-- A standing jump rises to the jump's apex, as the analyzer (the HUD's
+	-- jump line) measures it: to within a tick's rise at take-off (5 m/s
+	-- over 128 ticks a second, 4 cm), as the ticks step over the top.
+	local floor = FakeWorld.new():addFloor()
+	local s = spawn(floor)
+	local analyzer = JumpAnalyzer.new()
+	local t, landed = 0, nil
+	JumpAnalyzer.tick(analyzer, t, s.position, s.velocity, s.grounded, 0)
+	for i = 1, 256 do
+		MovementSim.step(s, input(if i == 1 then B.Jump else 0), cfg, RIFLE, floor, DT)
+		t += DT
+		landed = JumpAnalyzer.tick(analyzer, t, s.position, s.velocity, s.grounded, 0) or landed
+	end
+	check(
+		"the analyzer's rise for a standing jump is the jump's apex",
+		landed ~= nil and near(landed.rise, cfg.jumpApexHeight, 0.04),
+		if landed then string.format("%.3f m", landed.rise) else "never landed"
+	)
 end
 
 return nil

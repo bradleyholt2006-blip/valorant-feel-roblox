@@ -158,8 +158,8 @@ cleared when what's played stops.
   though the scoreboard shows the other side's credits only as the round started and none of
   their guns. A client reading the attributes sees more than the reference would tell it. Telling
   each side only its own would take a remote per client in place of the attributes.
-- **Ultimates and ping** on the scoreboard. There are no abilities, and the Hit Reg Lab shows the
-  ping.
+- **Ultimates and ping** on the scoreboard. The ultimate's points came with system 17 and aren't on
+  it yet, and the Hit Reg Lab shows the ping.
 - **Non-damaging assists** and the assist's icon in the kill feed (Patch 12.05), with abilities.
 - **Agent portraits.** There are no agents, so the tiles and the rows carry names.
 - **Icons.** The kill feed and the scoreboard name the weapon in words, as there are no icons yet.
@@ -200,3 +200,13 @@ cleared when what's played stops.
 3. From a stat site's round-by-round combat score for a public match, check a round's score
    against its damage and kills by the rules above, and adjust `MatchConfig.Score` or the overkill
    rule if they don't agree.
+
+## Known gaps to check in Studio
+
+- The kill feed's lines, their colours, the headshot and wall marks, and the gold outline.
+- The players' tiles beside the top bar, dimmed when they die.
+- Tab holds the scoreboard in the spike rounds, in place of Roblox's player list.
+- The record and the ACS as the tests have them, on every client.
+- Your side's credits and loadouts, and the other side's credits only as the round started.
+
+Section 20 of the [Studio checklist](../studio-checklist.md) covers these.

@@ -34,6 +34,11 @@
 -- (kills, deaths, assists, combat score and rounds played), which
 -- MatchRules keeps from every hit between players and every death.
 --
+-- Abilities (system 17, AbilityServer): in the spike rounds charges are
+-- bought, a new match starts everyone on a new kit, each half takes away
+-- what was bought, and each round gives the signature its free charge. In
+-- Skirmish every life has every charge.
+--
 -- P (Studio or the place owner) moves on through the arena, the spike rounds
 -- in the standard format, the spike rounds in Swiftplay's, and off. So do
 -- Workspace's attributes, set from the server, which is how scripted checks
@@ -62,6 +67,7 @@ local CombatServer = require(script.Parent.CombatServer)
 local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
+local AbilityServer = require(script.Parent.AbilityServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -358,8 +364,9 @@ local function publish()
 end
 
 -- A round has started since this last looked: the ground cleared, and in
--- the spike rounds a new spike in front of the attackers and, at the start
--- of each half, everyone back on the starting kit.
+-- the spike rounds a new spike in front of the attackers, each kit's round
+-- (system 17) and, at the start of each half, everyone back on the starting
+-- kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -374,14 +381,17 @@ local function roundStarted()
 		return
 	end
 	SpikeServer.reset()
-	if MatchRules.startsHalf(m) then
-		for id in m.members do
-			local player = playerFor(id)
-			if player then
-				kitMatch[player] = m.match
-				startingKit(player)
-			end
+	local half = MatchRules.startsHalf(m)
+	for id in m.members do
+		local player = playerFor(id)
+		if not player then
+			continue
 		end
+		if half then
+			kitMatch[player] = m.match
+			startingKit(player)
+		end
+		AbilityServer.roundStarted(player, if m.round == 1 then "match" elseif half then "half" else "round")
 	end
 end
 
@@ -447,7 +457,10 @@ local function stop()
 	PlayerSimServer.keepShields = false
 	GroundGunsServer.dropOnDeath = false
 	GroundGunsServer.clear()
+	AbilityServer.economy = false
+	AbilityServer.refill = true
 	for _, player in Players:GetPlayers() do
+		AbilityServer.reset(player)
 		player.Team = nil
 		player.Neutral = true
 		player:SetAttribute(ArenaConfig.SIDE, nil)
@@ -487,6 +500,8 @@ local function begin(wanted: Mode, format: string)
 		PlayerSimServer.keepShields = true
 		GroundGunsServer.dropOnDeath = true
 	end
+	AbilityServer.economy = wanted == "spike"
+	AbilityServer.refill = false
 	-- The rounds decide when everyone spawns.
 	Players.CharacterAutoLoads = false
 	published = -2

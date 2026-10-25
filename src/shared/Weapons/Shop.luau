@@ -18,12 +18,18 @@
 -- for the new life (`hold`) and made once it starts (`takeWaiting`), so it
 -- isn't lost with the dead player's old life or reset away with the living
 -- one's.
+--
+-- Abilities (system 17) are sold a charge at a time, at their price a
+-- charge, up to what the kit holds (AbilitySim decides, through the
+-- server). A charge bought this buy phase can be sold back for its price.
 
 local WeaponConfig = require("./WeaponConfig")
+local AbilityConfig = require("../Abilities/AbilityConfig")
 
-export type Kind = "weapon" | "shield"
+export type Kind = "weapon" | "shield" | "ability"
 
--- `slot`: where it goes, "1" the primary, "2" the sidearm or "shield".
+-- `slot`: where it goes, "1" the primary, "2" the sidearm or "shield"; for
+-- an ability, its key ("C", "Q").
 export type Item = { id: string, kind: Kind, name: string, price: number, slot: string }
 
 -- A buy or a sell held for the life on its way, asked for `at` seconds.
@@ -34,6 +40,8 @@ export type State = {
 	-- the phase began, and what's been bought into it since.
 	before: { [string]: string },
 	bought: { [string]: string },
+	-- By ability id: the charges bought this buy phase.
+	charges: { [string]: number },
 	waiting: { Request }, -- oldest first
 }
 
@@ -51,9 +59,13 @@ Shop.MAX_WAITING = 8
 Shop.SHIELD_ATTRIBUTE = "VFShield"
 Shop.BOUGHT_ATTRIBUTE = "VFBought"
 Shop.BEFORE_ATTRIBUTE = "VFBoughtOver"
+-- And the ability charges bought this buy phase: an ability's id for each
+-- (comma-separated, "updraft" or "cloudburst,cloudburst").
+Shop.CHARGES_ATTRIBUTE = "VFBoughtCharges"
 
 -- The item with this id, if it's on sale: any gun but not the knife, which
--- everyone has, or the spike, which is never sold, and the shields.
+-- everyone has, or the spike, which is never sold, the shields, and the
+-- abilities sold by the charge.
 function Shop.item(id: string): Item?
 	local def = WeaponConfig.Defs[id]
 	if def and def.category ~= "melee" and def.category ~= "spike" then
@@ -63,11 +75,16 @@ function Shop.item(id: string): Item?
 	if shield then
 		return { id = id, kind = "shield", name = shield.name, price = shield.price.value, slot = Shop.SHIELD }
 	end
+	local ability = AbilityConfig.Defs[id]
+	local cost = if ability then ability.cost else nil
+	if ability and cost then
+		return { id = id, kind = "ability", name = ability.name, price = cost.value, slot = AbilityConfig.KEYS[ability.slot] }
+	end
 	return nil
 end
 
 function Shop.new(): State
-	return { before = {}, bought = {}, waiting = {} }
+	return { before = {}, bought = {}, charges = {}, waiting = {} }
 end
 
 -- A new buy phase: nothing bought in it yet. Requests held for the life it
@@ -75,6 +92,7 @@ end
 function Shop.reset(s: State)
 	table.clear(s.before)
 	table.clear(s.bought)
+	table.clear(s.charges)
 end
 
 -- Holds a request, made at `now`, for the life on its way.
@@ -138,8 +156,12 @@ end
 
 -- What buying `item` costs now, a refund if negative: its price, less the
 -- price of what's been bought into its slot this buy phase, which goes back;
--- and only that refund when it's what the slot began the phase with.
+-- and only that refund when it's what the slot began the phase with. An
+-- ability's charge costs its price.
 function Shop.cost(s: State, item: Item): number
+	if item.kind == "ability" then
+		return item.price
+	end
 	local slot = item.slot
 	local refund = priceOf(s.bought[slot])
 	if s.bought[slot] ~= nil and s.before[slot] == item.id and s.bought[slot] ~= item.id then
@@ -149,9 +171,32 @@ function Shop.cost(s: State, item: Item): number
 end
 
 -- What selling `item` back refunds: its price, if it was bought this buy
--- phase.
+-- phase (for an ability, a charge of it).
 function Shop.refund(s: State, item: Item): number
+	if item.kind == "ability" then
+		return if (s.charges[item.id] or 0) > 0 then item.price else 0
+	end
 	return if s.bought[item.slot] == item.id then item.price else 0
+end
+
+-- A charge of the ability `item` bought this buy phase.
+function Shop.buyCharge(s: State, item: Item)
+	s.charges[item.id] = (s.charges[item.id] or 0) + 1
+end
+
+-- A charge of the ability `item` sold back; false if none was bought this
+-- buy phase.
+function Shop.sellCharge(s: State, item: Item): boolean
+	local n = s.charges[item.id] or 0
+	if n <= 0 then
+		return false
+	end
+	if n > 1 then
+		s.charges[item.id] = n - 1
+	else
+		s.charges[item.id] = nil
+	end
+	return true
 end
 
 -- Sells `item` back, if it was bought this buy phase: returns what its slot
@@ -187,6 +232,34 @@ function Shop.boughtList(s: State): { string }
 		if id then
 			table.insert(out, id)
 		end
+	end
+	return out
+end
+
+-- The ability charges bought this buy phase: an id for each, by slot.
+function Shop.chargeList(s: State): { string }
+	local ids = {}
+	for id in s.charges do
+		table.insert(ids, id)
+	end
+	table.sort(ids, function(a: string, b: string): boolean
+		return AbilityConfig.Defs[a].slot < AbilityConfig.Defs[b].slot
+	end)
+	local out = {}
+	for _, id in ids do
+		for _ = 1, s.charges[id] do
+			table.insert(out, id)
+		end
+	end
+	return out
+end
+
+-- The charges bought this buy phase by ability id, from chargeList's
+-- attribute (a client's copy).
+function Shop.chargesFrom(text: string?): { [string]: number }
+	local out: { [string]: number } = {}
+	for id in string.gmatch(text or "", "[^,]+") do
+		out[id] = (out[id] or 0) + 1
 	end
 	return out
 end

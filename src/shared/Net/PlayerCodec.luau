@@ -8,6 +8,7 @@
 -- Pure buffer code (no Roblox APIs), so the offline tests round-trip it.
 
 local WeaponConfig = require("../Weapons/WeaponConfig")
+local AbilityConfig = require("../Abilities/AbilityConfig")
 
 local PlayerCodec = {}
 
@@ -136,7 +137,7 @@ function PlayerCodec.decodeInputs(b: any): { WireInput }?
 	local out = table.create(len // INPUT_SIZE)
 	while c.o < len do
 		local seq = r32(c)
-		local buttons = bit32.band(r16(c), 4095)
+		local buttons = r16(c)
 		local slot = r8(c)
 		local yaw = unpackAngle(r16(c))
 		local pitch = ri16(c) / 10000
@@ -157,6 +158,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
+	+ 1 + 3 + 4 + 8 * 6 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -216,6 +218,23 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, k.channelEnd)
 	w8(c, (if k.halfStart then 1 else 0) + (if k.dropHeld then 2 else 0) + (if k.holdOver then 4 else 0))
 	w8(c, k.lastSlot)
+
+	local a = s.abilities
+	w8(c, AbilityConfig.AgentIndex[a.agent] or 0)
+	for slot = 1, 3 do
+		w8(c, math.clamp(a.charges[slot], 0, 255))
+	end
+	w8(c, math.clamp(a.regained, 0, 255))
+	w8(c, math.clamp(a.kills, 0, 255))
+	w8(c, math.clamp(a.points, 0, 255))
+	-- The kit's keys, a bit a slot (their buttons are the input's top four).
+	w8(c, bit32.rshift(a.held, 12))
+	wf64(c, a.readyFrom)
+	wf64(c, a.readyUntil)
+	wf64(c, a.liftUntil)
+	wf64(c, a.dashUntil)
+	wf64(c, a.dashX)
+	wf64(c, a.dashZ)
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -319,12 +338,40 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		lastSlot = lastSlot,
 	}
 
+	local agent = AbilityConfig.AgentIds[r8(c)] or AbilityConfig.DEFAULT_AGENT
+	local charges = { r8(c), r8(c), r8(c), 0 }
+	local regained = r8(c)
+	local kills = r8(c)
+	local points = r8(c)
+	local held = bit32.lshift(r8(c), 12)
+	local readyFrom = rf64(c)
+	local readyUntil = rf64(c)
+	local liftUntil = rf64(c)
+	local dashUntil = rf64(c)
+	local dashX = rf64(c)
+	local dashZ = rf64(c)
+	local abilities = {
+		agent = agent,
+		charges = charges,
+		regained = regained,
+		kills = kills,
+		points = points,
+		held = held,
+		readyFrom = readyFrom,
+		readyUntil = readyUntil,
+		liftUntil = liftUntil,
+		dashUntil = dashUntil,
+		dashX = dashX,
+		dashZ = dashZ,
+	}
+
 	local tagUntilTick = r32(c)
 	local tagMultiplier = rf64(c)
 	return seq, {
 		movement = movement,
 		weapons = weapons,
 		spike = spike,
+		abilities = abilities,
 		tagUntilTick = tagUntilTick,
 		tagMultiplier = tagMultiplier,
 	}

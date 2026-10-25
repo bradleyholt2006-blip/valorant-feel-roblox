@@ -69,7 +69,22 @@ local Buttons = {
 	Reload = 512,
 	Use = 1024, -- 4 held: the spike's plant and defuse (system 12)
 	Drop = 2048, -- G: drops the spike from the hand, or the gun in hand (system 15)
+	-- The ability kit's keys (system 17, AbilitySim): C, Q, E and X.
+	AbilityC = 4096,
+	AbilityQ = 8192,
+	AbilityE = 16384,
+	Ultimate = 32768,
 }
+
+-- What an ability under way does to one tick of movement (system 17,
+-- AbilitySim), in place of what the keys would:
+--   * dash: the velocity this tick, level, with no gravity or braking. On the
+--     ground it follows the floor and steps up stairs; off it, it flies level
+--   * lift: an upward speed held this tick in place of gravity. It takes the
+--     player off the ground, and the keys steer as in the air
+--   * cap: the most speed along the ground kept from the last tick, before
+--     anything else this one (what's left of a dash as it ends)
+export type Motion = { dash: vector?, lift: number?, cap: number? }
 
 -- Unreal's constants: a braking player under 10 cm/s stops dead, and a speed
 -- counts as over the limit only beyond 1% (of its square) to absorb rounding.
@@ -430,8 +445,9 @@ local function updateCrouch(s: State, world: World, buttons: number, dt: number,
 	end
 end
 
--- Advance the state by one fixed tick. Mutates and returns s.
-function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: number, world: World, dt: number): State
+-- Advance the state by one fixed tick, with what an ability under way does
+-- to it, if anything. Mutates and returns s.
+function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: number, world: World, dt: number, motion: Motion?): State
 	s.tick += 1
 	local buttons = input.buttons
 
@@ -440,13 +456,31 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	local wishDir = MovementSim.wishDirection(buttons, input.yaw)
 	local wishSpeed = MovementSim.wishSpeed(s, buttons, cfg, weaponMaxSpeed)
 	local vel = s.velocity
+	local dash = if motion then motion.dash else nil
+	local lift = if motion then motion.lift else nil
+	local cap = if motion then motion.cap else nil
+	if cap then
+		local h = horizontal(vel)
+		local speed = vector.magnitude(h)
+		if speed > cap then
+			h *= cap / speed
+			vel = vector.create(h.x, vel.y, h.z)
+		end
+	end
 
 	local jumpHeld = has(buttons, Buttons.Jump)
 	if not jumpHeld then
 		s.jumpLatched = false
 	end
 
-	if s.grounded and jumpHeld and not s.jumpLatched then
+	if dash then
+		vel = vector.create(dash.x, 0, dash.z)
+	elseif lift then
+		s.grounded = false
+		local airWishSpeed = if has(buttons, Buttons.Walk) then weaponMaxSpeed * cfg.walkMultiplier else weaponMaxSpeed
+		vel = airVelocity(vel, wishDir, airWishSpeed, dt, cfg)
+		vel = vector.create(vel.x, lift, vel.z)
+	elseif s.grounded and jumpHeld and not s.jumpLatched then
 		s.grounded = false
 		s.jumpLatched = true
 		s.lastJumpTick = s.tick
@@ -461,7 +495,7 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 		vel = airVelocity(vel, wishDir, airWishSpeed, dt, cfg)
 	end
 
-	if not s.grounded then
+	if not s.grounded and not dash and not lift then
 		vel -= UP * (cfg.gravity * dt)
 	end
 

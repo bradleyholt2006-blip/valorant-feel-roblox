@@ -6,7 +6,8 @@
 --     the reference's crosshair options do)
 --   * how far the crosshair's lines are spread, and by what
 --   * stats panel: speed, % of max, accuracy state, flags, the last jump
---     (airtime, distance, how far it bent, speed leaving and landing),
+--     (airtime, distance, how high, how far it bent, speed leaving and
+--     landing),
 --     netcode health
 --   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
 --   * ghost box at the last authoritative server position (toggle G while the
@@ -278,7 +279,7 @@ function DebugHud.start(controller: any)
 			end
 			jumpLines = {
 				string.format("jump    %.2f s  %.2f m  %s", j.airtime, j.distance, across(j.side, "%.2f m")),
-				string.format("        path bent %s", across(j.bend, "%.0f\u{B0}")),
+				string.format("        rise %.2f m, path bent %s", j.rise, across(j.bend, "%.0f\u{B0}")),
 				string.format("        speed %.2f > %.2f m/s, top %.2f", j.takeoffSpeed, j.landingSpeed, j.peakSpeed),
 			}
 		end

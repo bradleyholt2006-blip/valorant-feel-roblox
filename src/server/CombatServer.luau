@@ -31,7 +31,8 @@
 --
 -- Each damage event says whether the bullets went through a wall first, for
 -- the kill feed (system 16), and every hit that took something is told to
--- damageListeners, for the match's record.
+-- damageListeners, for the match's record. Every kill is told to
+-- killListeners, for the ability kit's points (system 17).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -63,6 +64,9 @@ local CombatServer = {}
 -- Called with every hit that took health or shield: who did it (nil for the
 -- spike's blast), to whom, and how much, before a kill's death listeners.
 CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, number) -> () }
+-- Called with every kill, players' and dummies' alike: who did it (nil for
+-- the spike's blast) and who died, before the death listeners.
+CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity) -> () }
 
 local level = RobloxLevel.new()
 local history = LagCompensation.new()
@@ -98,6 +102,9 @@ local function damage(attacker: Entities.Entity?, victim: Entities.Entity, amoun
 	event.wallbang = wallbang == true
 	Remotes.get().Combat:FireAllClients(event)
 	if result.killed then
+		for _, listener in CombatServer.killListeners do
+			listener(attacker, victim)
+		end
 		victim.onKilled(attacker)
 	end
 	return result

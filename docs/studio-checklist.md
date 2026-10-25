@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the sixteen research
-docs, in an order where each step only relies on things earlier steps showed working.
+Studio can show. It goes through every "Known gaps to check in Studio" item in the seventeen
+research docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about three and a half hours. Doing it in parts is fine; keep the order.
+It takes about four hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
-   20 one and then two.
+   21 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -47,6 +47,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | N | The next enemy outline colour |
 | P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the spike rounds |
+| Q / E | Updraft, and Tailwind: E readies the gust and E again dashes (C and X, Cloudburst and Blade Storm, aren't playable yet) |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
@@ -67,12 +68,13 @@ attribute `VFTestSlot` set to 1, 2, 3 or 4 draws that slot as its key would. `VF
 `spike` hands you the course's spike. A number attribute `VFTestButtons` holds buttons down while
 it's set, without the mouse or keys: 128 is the left button (fire, or the knife's slash), 256 the
 right (zoom, or the stab), 1024 is 4 held (the spike's plant and defuse), 2048 is G, 32 crouches
-and 1 is W; add them to hold several. A boolean attribute `VFTestTake` set to true presses F
-for you, and clears itself, and `VFTestBoard` set to true or false holds the scoreboard open as Tab
-does or lets it go. `VFTestSettingsMenu` set to
-true or false opens or closes the settings menu, and a string attribute `VFTestSetting` enters a
-setting as its box in the menu would: `sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or
-`crosshair=` and a code.
+and 1 is W; add them to hold several. The ability keys are 4096 for C, 8192 Q, 16384 E and 32768
+X; an ability casts as its key goes down, so set the attribute and clear it again for each cast.
+A boolean attribute `VFTestTake` set to true presses F for you, and clears itself, and
+`VFTestBoard` set to true or false holds the scoreboard open as Tab does or lets it go.
+`VFTestSettingsMenu` set to true or false opens or closes the settings menu, and a string
+attribute `VFTestSetting` enters a setting as its box in the menu would: `sensitivity=0.8`,
+`scoped=0.5`, `dpi=1600` or `crosshair=` and a code.
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -1081,6 +1083,86 @@ Two of them share a side (Teams shows who).
 - **J11 Assists.** Skip the buy phase. One of the pair shoots the player on their own once, then
   the other kills them: the first one's row shows `0 0 1`, and the killer's `1 0 0`.
 
+## 21. The ability kit
+
+From [17-abilities.md](research/17-abilities.md). One player on the course with the HUD on (F3),
+then two in Skirmish and the spike rounds. Each player's kit is their `VFKit` attribute (select
+them under Players, then Properties, Attributes): each slot's charges and the most it holds, then
+the ultimate's points and what it needs, as `C0/2 Q1/1 E1/1 X0/8`, with `lift` or `dash`, and
+`windup` or `ready`, after it while one's under way. Without keys, `VFTestButtons` presses Q
+(8192) or E (16384): set it, then clear it.
+
+- **U1 The bar.** At the bottom of the screen, between your health and your ammo, four squares:
+  `C` CLOUDBURST, `Q` UPDRAFT, `E` TAILWIND and `X` BLADE STORM. Cloudburst's and Blade Storm's
+  are dimmed. Q's square has one pip and E's one, both lit; C's has two and X's eight, all dark,
+  and X's reads `0/8` at its top right. Each name fits inside its square: BLADE STORM on two lines,
+  CLOUDBURST smaller. `VFKit` reads `C0/2 Q1/1 E1/1 X0/8`. **Send:** a screenshot of the bar.
+- **U2 Updraft.** Stand still on open floor and press Q. You're thrown straight up at once, with
+  a low gust, a ring of air spreading at your feet and six streaks rising. Q's square is outlined
+  for the lift's 0.6 s, and its pip goes dark; `VFKit` reads `Q0/1`, with `lift` for those 0.6 s.
+  You top out about 0.95 s after the press and land about 1.7 s after it: the HUD's jump line
+  reads about `1.67 s` and `rise 4.00 m`. The pip lights again about 2 s after the press, 1.5 s
+  after the lift ended. **Send:** how high it looked next to the red 1.00 m jump box (we expect
+  about four of them stacked), and the jump line.
+- **U3 In the air.** Jump, and press Q at the top of the jump: you're lifted again from there.
+  The jump line's rise reads more than 4 m, up to about 4.8 m if Q came right at the top.
+- **U4 Tailwind's gust.** Stand still facing down the target lane and press E: a thin swish, and
+  a ring of air round your waist that narrows as it fades. E's square reads `WINDUP` and its pip
+  goes dark, and `VFKit` reads `E0/1` with `windup`. After 1 s the square is outlined and counts
+  down from `7.5`, and `VFKit` reads `ready`.
+- **U5 The dash.** Stand at the start of the sprint lane, facing along it. Ready a gust as in U4,
+  and once the countdown shows, press E with no other keys held. You dash along the lane with a
+  whoosh, the edges of the screen flash, and you stop about 7.5 m along it: 7 m in the dash's
+  0.45 s, then a short slide. The outline and the countdown go. Once the pip's back, ready
+  another and dash holding D: you go to the right, across the lane. Then run along the lane
+  holding W with the Vandal and dash: the HUD's speed reads no more than `6.75` as you come out
+  of it, the run speed with the knife, and is back to the Vandal's `5.40` a moment later.
+  **Send:** where you stopped, in metres along the lane.
+- **U6 The window closes.** Press E and then nothing else: the countdown runs to nothing 8.5 s
+  after the press and the outline goes. Pressing E then does nothing, until the pip lights again
+  1.5 s later.
+- **U7 Nothing fires in a dash.** With the Vandal, ready a gust, hold the left button, and press E
+  while it's firing: the Vandal stops for the dash, about half a second, and fires again after it.
+  Zoom in with the right button and dash: the zoom comes off. Ready another, dash and press 2
+  during the dash: the Classic comes out as the dash ends, not during it.
+- **U8 A dash ends a lift.** Ready a gust, press Q, and while you're still rising press E: the rise
+  stops at once, you dash level through the air, and then you fall.
+- **U9 The sounds.** Open the Sound Lab (F2 four times). Updraft logs `gust` from `you`, and no
+  `jump`; a gust readied logs `windup`, and the dash `dash`. Dash from standing still: the log
+  shows the `dash` and no more than one `step` after it, where running the same 7 m logs four.
+- **U10 Planting.** Set `VFTestGive` to `spike`, walk into site B and hold 4: the plant starts.
+  Press Q while it's going: nothing happens, and `VFKit` still reads `Q1/1`. Let go of 4. Ready a
+  gust, and once the countdown shows set `VFTestButtons` to 17408 (4 and E together): the plant
+  starts and you don't dash. Clear it: the plant stops, and E's countdown is still running.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9.
+
+- **U11 Others' casts.** Press P once in window 1 (Skirmish). After the buy phase, bring the two
+  players about 10 m apart in view of each other. In window 2, cast Updraft, ready a gust and dash
+  past player 1. Window 1 sees the ring and the streaks at player 2's feet as they go up, the ring
+  at their waist, and a pale streak about 7 m long at their waist along the way they dashed, each
+  where player 2 is drawn at the moment. Window 1's Sound Lab logs `gust`, `windup` and `dash`
+  from player 2 at about how far away they were. Window 2 sees the edges of its screen flash in
+  the dash, and no streak. In Skirmish a spent charge doesn't come back until the next round:
+  player 2's Q pip stays dark.
+- **U12 The spike rounds' kit.** Press P again in window 1 (the spike rounds). In round 1's buy
+  phase both `VFKit`s read `C0/2 Q0/1 E1/1 X0/8`: Updraft has to be bought, and Tailwind's charge
+  is free. In window 1, B opens the menu: under the shields, an `Abilities` group has Cloudburst
+  (`C`, 200, dimmed, `NOT YET`) and Updraft (`Q`, 150). Pointing at Updraft shows `Ability, on Q`
+  and rows for `Charges` (`up to 1`), `A charge` (`150 credits`) and `Lift` (`4 m, in 0.6 s`).
+  Click it: the credits go from 800 to 650, its pip lights and it shows `FULL`, the bar's Q pip
+  lights, and `VFKit` reads `Q1/1`. Right-click it: back to 800 and `Q0/1`. Click it again to
+  keep it. Clicking Cloudburst does nothing. **Send:** a screenshot of the menu with Updraft
+  bought.
+- **U13 Kept through a death.** Skip the buy phase. Player 2 kills player 1, who hasn't used
+  Updraft. Player 2's `VFKit` reads `X1/8`, for the kill, and player 1's `X1/8` too, for the death.
+  In round 2's buy phase, player 1's still reads `Q1/1`, and their bar shows the pip lit.
+- **U14 Tailwind every round.** After round 2's buy phase, player 1 readies a gust and dashes:
+  `E0/1`. Skip the round. In round 3's buy phase it reads `E1/1` again. If a round has a plant or a
+  defuse (as in E6), whoever made it gets a point too.
+- **U15 Off.** Press P in window 1 until `[VF] Arena off`. Within 2 s on the course both kits read
+  `C0/2 Q1/1 E1/1 X0/8` again: full, and the points gone.
+
 ## Results
 
 ```
@@ -1140,6 +1222,11 @@ L1 the Vandal landed ___ m ahead
 L6 the prompt went at ___ m along the floor
 J1 a kill feed line stayed ___ s
 J9 player 2's ACS ___, from VFScore ___
+U1 the names: all fit / cut off (which)
+U2 Updraft: rise ___ m, ___ s in the air; about ___ jump boxes (1.00 m) high; the pip back ___ s after the press
+U3 Updraft at the jump's top: rise ___ m
+U5 the dash stopped ___ m along the sprint lane; holding D it went right: yes / no
+U11 the other player's casts lined up with where they were drawn: yes / no (what)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1238,3 +1325,10 @@ Didn't look right (IDs and what you saw):
 | 16 | Tab holds the scoreboard in the spike rounds, in place of Roblox's player list | J5, J7, J10 |
 | 16 | The record and the ACS as the tests have them, on every client | J7, J9, J11 |
 | 16 | Your side's credits and loadouts, and the other side's credits only as the round started | J7, J8 |
+| 17 | The bar shows the kit as the tests have it, and lights and counts down as casts go | U1, U2, U4, U12 |
+| 17 | Updraft throws you about 4 m up from the ground and from the air, and you land as from a jump | U2, U3 |
+| 17 | Tailwind's windup, its window and its dash, the way you're moving or forward, about 7 m, and no faster than a run after it | U4, U5, U6 |
+| 17 | Nothing fires during a dash, the zoom comes off, and a dash ends a lift | U7, U8 |
+| 17 | Nothing casts while planting, and a plant doesn't start in a dash | U10 |
+| 17 | Another player sees and hears each cast where you are on their screen | U9, U11 |
+| 17 | The spike rounds' kit: charges bought and sold back, kept through a death, and the ultimate's points | U12, U13, U14, U15 |

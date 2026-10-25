@@ -23,6 +23,8 @@ local ClientSpike = require(script.ClientSpike)
 local SpikeView = require(script.SpikeView)
 local SpikeHud = require(script.SpikeHud)
 local GroundGunsView = require(script.GroundGunsView)
+local AbilityHud = require(script.AbilityHud)
+local AbilityEffects = require(script.AbilityEffects)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
 local DebugHud = require(script.Debug.DebugHud)
@@ -77,6 +79,10 @@ GroundGunsView.start()
 -- Roblox's own character sounds switched off.
 DefaultSounds.start()
 GameSounds.start()
+-- The ability kit (system 17): C, Q, E and X on the bar at the bottom, and
+-- each cast's look and sound.
+AbilityHud.start()
+AbilityEffects.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

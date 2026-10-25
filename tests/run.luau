@@ -26,5 +26,6 @@ require("./match")
 require("./economy")
 require("./groundguns")
 require("./scoreboard")
+require("./abilities")
 
 H.finish()

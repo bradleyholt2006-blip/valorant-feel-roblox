@@ -2,9 +2,9 @@
 -- Measures each time in the air (a jump, or a step off a ledge) from a
 -- stream of movement ticks, so air control can be compared with footage of
 -- the reference game: how long it lasted, where it landed (along where you
--- faced when you left the ground, and to the side of that), the speed along
--- the ground leaving and landing, the fastest in between, and how far the
--- path turned on the way (air strafing bends it).
+-- faced when you left the ground, and to the side of that), how high the
+-- feet rose, the speed along the ground leaving and landing, the fastest in
+-- between, and how far the path turned on the way (air strafing bends it).
 --
 -- Pure module: used by the HUD (F3) and by the offline tests.
 
@@ -13,6 +13,7 @@ export type Jump = {
 	distance: number, -- m along the ground from take-off to landing
 	forward: number, -- m of that along where you faced at take-off
 	side: number, -- m of it to the right of that (negative: left)
+	rise: number, -- m the feet rose above take-off at their highest (0 off a ledge)
 	takeoffSpeed: number, -- m/s along the ground on the first tick in the air
 	landingSpeed: number, -- m/s along the ground on landing
 	peakSpeed: number, -- m/s, the fastest along the ground in between
@@ -22,6 +23,7 @@ export type Jump = {
 type Flight = {
 	time: number,
 	position: vector,
+	top: number, -- the feet's highest so far
 	yaw: number,
 	takeoffSpeed: number,
 	peakSpeed: number,
@@ -78,6 +80,7 @@ function JumpAnalyzer.tick(a: Analyzer, time: number, position: vector, velocity
 		a.flight = {
 			time = last.time,
 			position = last.position,
+			top = math.max(last.position.y, position.y),
 			yaw = last.yaw,
 			takeoffSpeed = speed,
 			peakSpeed = speed,
@@ -88,6 +91,7 @@ function JumpAnalyzer.tick(a: Analyzer, time: number, position: vector, velocity
 	end
 
 	flight.peakSpeed = math.max(flight.peakSpeed, speed)
+	flight.top = math.max(flight.top, position.y)
 	if speed > MOVING then
 		local dir = h / speed
 		local prev = flight.lastDir
@@ -111,6 +115,7 @@ function JumpAnalyzer.tick(a: Analyzer, time: number, position: vector, velocity
 		distance = vector.magnitude(moved),
 		forward = vector.dot(moved, vector.create(-s, 0, -c)),
 		side = vector.dot(moved, vector.create(c, 0, -s)),
+		rise = flight.top - flight.position.y,
 		takeoffSpeed = flight.takeoffSpeed,
 		landingSpeed = speed,
 		peakSpeed = flight.peakSpeed,

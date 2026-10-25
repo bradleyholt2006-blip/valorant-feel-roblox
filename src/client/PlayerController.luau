@@ -15,6 +15,10 @@
 -- plants or defuses it (InputSampler's Use). What the player may do with it
 -- each tick is the `objective` hook's (ClientSpike), the server's state of
 -- it as last heard.
+--
+-- The ability kit (system 17) is predicted with the rest: a cast moves you
+-- the tick you press it, and the server's changes to the kit between ticks
+-- (charges bought, points for kills) come back in the ack like a loadout.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,6 +36,7 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Accuracy = require(Shared.Weapons.Accuracy)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
 local Remotes = require(Shared.Net.Remotes)
@@ -69,6 +74,7 @@ export type TickInfo = {
 	shots: { WeaponSim.Shot }?, -- the bullets fired this tick: one round's
 	swing: WeaponSim.Swing?, -- the knife swing that started this tick
 	act: SpikeSim.Act?, -- what happened with the spike this tick
+	casts: { AbilitySim.Cast }?, -- the abilities cast this tick
 }
 
 export type Profile = {
@@ -111,6 +117,9 @@ PlayerController.swingListeners = {} :: { (WeaponSim.Swing, PlayerCodec.WireInpu
 -- Called with what happened with the spike in the local player's
 -- simulation (live ticks only, like shots).
 PlayerController.spikeListeners = {} :: { (SpikeSim.Act, PlayerCodec.WireInput) -> () }
+-- Called with each ability the local player casts (live ticks only, like
+-- shots).
+PlayerController.castListeners = {} :: { (AbilitySim.Cast, PlayerCodec.WireInput) -> () }
 -- What the local player may do with the spike now (ClientSpike); nothing
 -- without.
 PlayerController.objective = nil :: (() -> Spike.Context)?
@@ -179,7 +188,7 @@ local function tick()
 	}
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
-	local shots, swing, act = PlayerSim.step(s, input, PlayerController.cfg, world, DT, objective())
+	local shots, swing, act, _, casts = PlayerSim.step(s, input, PlayerController.cfg, world, DT, objective())
 	simTime += DT
 	PlayerController.buttons = input.buttons
 
@@ -204,6 +213,13 @@ local function tick()
 			listener(act, input)
 		end
 	end
+	if casts then
+		for _, cast in casts do
+			for _, listener in PlayerController.castListeners do
+				listener(cast, input)
+			end
+		end
+	end
 
 	local profile = PlayerController.profile()
 	local info: TickInfo = {
@@ -217,6 +233,7 @@ local function tick()
 		shots = shots,
 		swing = swing,
 		act = act,
+		casts = casts,
 	}
 	for _, listener in PlayerController.tickListeners do
 		listener(info)
@@ -293,6 +310,27 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or gs.lastSlot ~= ss.lastSlot
 		or gs.dropHeld ~= ss.dropHeld
 		or gs.holdOver ~= ss.holdOver
+	then
+		return true, posErr
+	end
+	local ga, sa = guess.abilities, server.abilities
+	for slot = 1, #sa.charges do
+		if ga.charges[slot] ~= sa.charges[slot] then
+			return true, posErr
+		end
+	end
+	if
+		ga.agent ~= sa.agent
+		or ga.regained ~= sa.regained
+		or ga.kills ~= sa.kills
+		or ga.points ~= sa.points
+		or ga.held ~= sa.held
+		or ga.readyFrom ~= sa.readyFrom
+		or ga.readyUntil ~= sa.readyUntil
+		or ga.liftUntil ~= sa.liftUntil
+		or ga.dashUntil ~= sa.dashUntil
+		or ga.dashX ~= sa.dashX
+		or ga.dashZ ~= sa.dashZ
 	then
 		return true, posErr
 	end
@@ -479,12 +517,19 @@ local function onCharacter(character: Model)
 		CameraController.yaw = yaw
 		CameraController.pitch = 0
 	end
-	-- The last life's weapons, as the server keeps them, but not the spike.
-	local loadout = if sim then table.clone(sim.weapons.loadout) else nil
+	-- The last life's weapons, as the server keeps them, but not the spike,
+	-- and its ability kit, with nothing under way.
+	local last = sim
+	local loadout = if last then table.clone(last.weapons.loadout) else nil
 	if loadout then
 		loadout[Spike.SLOT] = ""
 	end
-	sim = PlayerSim.new(feet, loadout)
+	local fresh = PlayerSim.new(feet, loadout)
+	if last then
+		fresh.abilities = AbilitySim.copy(last.abilities)
+		AbilitySim.settle(fresh.abilities)
+	end
+	sim = fresh
 	PlayerController.sim = sim
 	PlayerController.desiredSlot = (sim :: PlayerSim.State).weapons.equipped
 	PlayerController.alive = true
