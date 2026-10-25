@@ -5,7 +5,8 @@
 -- that history.
 -- All three work to the same server time, the one the snapshot carries.
 -- The spike moves on after the moves that planted, defused or picked it up,
--- so its blast is in the frame's snapshot.
+-- so its blast is in the frame's snapshot; the guns on the ground after the
+-- moves that walked over them.
 -- Regen Shields refill after the shots. The arena's rounds move on last, so
 -- a round that ends in this frame's shots respawns its players after the
 -- frame's snapshot.
@@ -26,12 +27,14 @@ local Replication = require(script.Replication)
 local ShopServer = require(script.ShopServer)
 local SettingsServer = require(script.SettingsServer)
 local SpikeServer = require(script.SpikeServer)
+local GroundGunsServer = require(script.GroundGunsServer)
 
 TestRange.buildIfMissing()
 Arena.buildIfMissing()
 Tuning.start()
 PlayerSimServer.start(CombatServer.onVolley, CombatServer.onSwing)
 ShopServer.start()
+GroundGunsServer.start()
 SettingsServer.start()
 Dummies.start()
 Arena.start()
@@ -43,6 +46,7 @@ RunService.Heartbeat:Connect(function(dt)
 	Dummies.step(now)
 	PlayerSimServer.step(dt, now)
 	SpikeServer.step(now)
+	GroundGunsServer.step()
 	CombatServer.step(now, dt)
 	Replication.step(now)
 	Arena.step(now)

@@ -24,6 +24,10 @@
 -- (MatchConfig.CREDITS), and each side's losses in a row as the arena
 -- model's Streak1 and Streak2.
 --
+-- Guns on the ground (system 15, GroundGunsServer): each round of either
+-- starts with the ground cleared, and in the spike rounds the dead drop
+-- their gun where they fall.
+--
 -- P (Studio or the place owner) moves on through the arena, the spike rounds
 -- in the standard format, the spike rounds in Swiftplay's, and off. So do
 -- Workspace's attributes, set from the server, which is how scripted checks
@@ -50,6 +54,7 @@ local Units = require(Shared.Units)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
+local GroundGunsServer = require(script.Parent.GroundGunsServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -110,7 +115,8 @@ local teams: { Team } = {}
 local published = -1
 local queued: { [Player]: boolean } = {} -- spawns asked for and not started yet
 local kitMatch: { [Player]: number } = {} -- the match each player last got the starting kit for
--- The spike rounds: the round the spike and the kits were last set for.
+-- The round the ground was last cleared for, and in the spike rounds the
+-- spike and the kits were last set for.
 local seenMatch, seenRound = 0, 0
 
 local function now(): number
@@ -315,15 +321,22 @@ local function publish()
 	end
 end
 
--- A round of the spike rounds has started since this last looked: a new
--- spike in front of the attackers, and at the start of each half, everyone
--- back on the starting kit.
+-- A round has started since this last looked: the ground cleared, and in
+-- the spike rounds a new spike in front of the attackers and, at the start
+-- of each half, everyone back on the starting kit.
 local function roundStarted()
-	local m = match
-	if not m or m.phase ~= "buy" or (m.match == seenMatch and m.round == seenRound) then
+	local s, m = skirmish, match
+	local phase = if s then s.phase elseif m then m.phase else nil
+	local matchNumber = if s then s.match elseif m then m.match else 0
+	local round = if s then s.round elseif m then m.round else 0
+	if phase ~= "buy" or (matchNumber == seenMatch and round == seenRound) then
 		return
 	end
-	seenMatch, seenRound = m.match, m.round
+	seenMatch, seenRound = matchNumber, round
+	GroundGunsServer.clear()
+	if not m then
+		return
+	end
 	SpikeServer.reset()
 	if MatchRules.startsHalf(m) then
 		for id in m.members do
@@ -396,6 +409,8 @@ local function stop()
 		SpikeServer.stopRounds()
 	end
 	PlayerSimServer.keepShields = false
+	GroundGunsServer.dropOnDeath = false
+	GroundGunsServer.clear()
 	for _, player in Players:GetPlayers() do
 		player.Team = nil
 		player.Neutral = true
@@ -419,6 +434,7 @@ local function begin(wanted: Mode, format: string)
 	end
 	table.clear(kitMatch)
 	seenMatch, seenRound = 0, 0
+	GroundGunsServer.clear()
 	for side, info in SIDES do
 		local team = Instance.new("Team")
 		team.Name = if wanted == "skirmish" then info.name else info.colour
@@ -430,6 +446,7 @@ local function begin(wanted: Mode, format: string)
 	if wanted == "spike" then
 		SpikeServer.startRounds(spikeEvents)
 		PlayerSimServer.keepShields = true
+		GroundGunsServer.dropOnDeath = true
 	end
 	-- The rounds decide when everyone spawns.
 	Players.CharacterAutoLoads = false

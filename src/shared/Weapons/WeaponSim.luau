@@ -82,6 +82,10 @@ export type Shot = {
 	scoped: number,
 }
 
+-- A gun let go of (G, system 15): its slot, and the rounds it takes to the
+-- ground with it.
+export type Dropped = { slot: number, id: string, ammo: number, reserve: number }
+
 export type SwingKind = "slash" | "stab"
 
 -- A knife swing, on the tick it starts.
@@ -171,10 +175,11 @@ local function draw(s: State, t: number)
 	s.combo = 0
 end
 
--- Puts a weapon in a slot with full ammo (server-side loadout changes). When
--- the slot is the one in hand, pass the simulation time `t` so the new weapon
--- has to be drawn like any other switch.
-function WeaponSim.give(s: State, slot: number, id: string, t: number?)
+-- Puts a weapon in a slot with full ammo (server-side loadout changes), or
+-- with the rounds given (a gun picked up off the ground keeps what it had).
+-- When the slot is the one in hand, pass the simulation time `t` so the new
+-- weapon has to be drawn like any other switch.
+function WeaponSim.give(s: State, slot: number, id: string, t: number?, ammo: number?, reserve: number?)
 	s.loadout[slot] = id
 	if id == "" then
 		s.ammo[slot], s.reserve[slot] = 0, 0
@@ -193,11 +198,30 @@ function WeaponSim.give(s: State, slot: number, id: string, t: number?)
 		return
 	end
 	local def = WeaponConfig.get(id)
-	s.ammo[slot] = def.magazine.value
-	s.reserve[slot] = def.reserve.value
+	s.ammo[slot] = ammo or def.magazine.value
+	s.reserve[slot] = reserve or def.reserve.value
 	if t and slot == s.equipped then
 		draw(s, t)
 	end
+end
+
+-- Lets go of the gun in hand (G, system 15): a primary or a sidearm, never
+-- the knife, and never the spike, which SpikeSim lets go of. The next weapon
+-- is drawn, as when any slot in hand empties. Returns what was let go of,
+-- with its rounds, if anything was.
+function WeaponSim.takeInHand(s: State, t: number): Dropped?
+	local slot = s.equipped
+	local id = s.loadout[slot]
+	if (slot ~= 1 and slot ~= 2) or id == "" then
+		return nil
+	end
+	local def = WeaponConfig.get(id)
+	if def.melee or def.spike then
+		return nil
+	end
+	local dropped = { slot = slot, id = id, ammo = s.ammo[slot], reserve = s.reserve[slot] }
+	WeaponSim.give(s, slot, "", t)
+	return dropped
 end
 
 -- Draws the weapon in hand again, as after a switch (once the spike has

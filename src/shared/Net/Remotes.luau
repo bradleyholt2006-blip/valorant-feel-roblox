@@ -25,6 +25,7 @@ local definitions: { [string]: string } = {
 	Buy = "RemoteEvent", -- client -> server, buy or sell an item from the buy menu
 	Arena = "RemoteEvent", -- client -> server, turn the arena on or off (Studio / owner only)
 	Settings = "RemoteEvent", -- client -> server, the player's settings to keep (sensitivity, crosshair)
+	GroundGun = "RemoteEvent", -- client -> server, F: pick up the gun on the ground in view (system 15)
 }
 
 export type Remotes = {
@@ -41,6 +42,7 @@ export type Remotes = {
 	Buy: RemoteEvent,
 	Arena: RemoteEvent,
 	Settings: RemoteEvent,
+	GroundGun: RemoteEvent,
 }
 
 local cached: Remotes? = nil

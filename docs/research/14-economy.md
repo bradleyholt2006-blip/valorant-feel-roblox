@@ -215,9 +215,9 @@ your credits, in gold, to the buy phase's line.
 
 - **Dropping and picking up guns.** In the reference, a gun replaced in the buy menu or dropped by
   someone who dies lies on the ground for anyone to take. That's how teammates buy for each other
-  and how a side takes the other's guns. Here, a replaced gun is gone. That needs drops, a later
-  system.
-- **Buying for a teammate**, which needs drops.
+  and how a side takes the other's guns. Here, a replaced gun is gone. System 15
+  ([15-ground-guns.md](15-ground-guns.md)) adds G, death drops and pickups, so a gun can be
+  bought and dropped for a teammate; a replaced gun still isn't dropped.
 - **Ultimate points**, and the credits for agents' abilities. There are no agents yet.
 - **A defuse bonus.** Most guides don't list one.
 

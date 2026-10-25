@@ -153,6 +153,17 @@ local function onBuy(player: Player, action: any, id: any)
 	publish(player)
 end
 
+-- Forgets what was bought into one of a player's gun slots this buy phase,
+-- once its gun has left it (system 15: dropped, or swapped for one off the
+-- ground), so it can't be sold back (Shop.forget).
+function ShopServer.forget(player: Player, slot: number)
+	local s = states[player]
+	if s then
+		Shop.forget(s, tostring(slot))
+		publish(player)
+	end
+end
+
 function ShopServer.start()
 	Remotes.get().Buy.OnServerEvent:Connect(onBuy)
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)

@@ -10,8 +10,8 @@
 --     netcode health
 --   * key overlay (W A S D Shift Ctrl Space) for frame-by-frame comparison
 --   * ghost box at the last authoritative server position (toggle G while the
---     HUD is on and the spike isn't in hand, when G drops it; not F7, which
---     Studio takes for Start)
+--     HUD is on and the knife is in hand: with a gun or the spike in hand, G
+--     drops it; not F7, which Studio takes for Start)
 --   * whether the look (Visuals) is on, and the enemy outline colour
 --   * the spike: where it is, the time left once planted, a saved half, and
 --     how far your plant or defuse has got
@@ -28,6 +28,7 @@ local MovementSim = require(Shared.Movement.MovementSim)
 local JumpAnalyzer = require(Shared.Movement.JumpAnalyzer)
 local PlayerSim = require(Shared.PlayerSim)
 local Accuracy = require(Shared.Weapons.Accuracy)
+local GroundGuns = require(Shared.Weapons.GroundGuns)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local Units = require(Shared.Units)
@@ -42,6 +43,12 @@ local Visuals = require(script.Parent.Parent.Visuals)
 local B = MovementSim.Buttons
 
 local DebugHud = {}
+
+-- Whether G drops what's in hand (the spike, or a gun), so isn't the ghost's.
+local function dropsInHand(sim: PlayerSim.State): boolean
+	local w = sim.weapons
+	return SpikeSim.inHand(w) or GroundGuns.slotOf(w.loadout[w.equipped]) ~= nil
+end
 
 -- The spike, as this client has it, and your plant or defuse under way.
 local function spikeLine(sim: PlayerSim.State?): string
@@ -186,7 +193,7 @@ function DebugHud.start(controller: any)
 			visible = not visible
 			panel.Visible = visible
 			keys.Visible = visible
-		elseif input.KeyCode == Enum.KeyCode.G and visible and not (controller.sim and SpikeSim.inHand(controller.sim.weapons)) then
+		elseif input.KeyCode == Enum.KeyCode.G and visible and not (controller.sim and dropsInHand(controller.sim)) then
 			ghostVisible = not ghostVisible
 			-- Placed before it's shown, so it never shows a frame at the origin.
 			ghost.Parent = if ghostVisible and placeGhost() then Workspace else nil

@@ -20,6 +20,7 @@ local SettingsMenu = require(script.SettingsMenu)
 local ClientSpike = require(script.ClientSpike)
 local SpikeView = require(script.SpikeView)
 local SpikeHud = require(script.SpikeHud)
+local GroundGunsView = require(script.GroundGunsView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
 local DebugHud = require(script.Debug.DebugHud)
@@ -63,6 +64,8 @@ SettingsMenu.start()
 -- The spike in the world (its beeps and blast too) and on the HUD.
 SpikeView.start()
 SpikeHud.start()
+-- Guns on the ground, and F to pick one up.
+GroundGunsView.start()
 -- Footsteps, landings, gunshots, reloads, draws and hit sounds, with
 -- Roblox's own character sounds switched off.
 DefaultSounds.start()

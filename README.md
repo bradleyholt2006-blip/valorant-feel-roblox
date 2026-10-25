@@ -81,6 +81,12 @@ Built one system at a time:
     replaces from the same buy phase, dims what you can't afford and shows what the round pays; a
     survivor keeps their shield, damaged, into the next round - [research and
     design](docs/research/14-economy.md)
+15. **Guns on the ground**: G drops the gun in hand, a little ahead of you, and the next weapon
+    comes out; in the spike rounds the dead drop their primary, or their sidearm without one.
+    Anyone can pick one up, on either side: walking over it fills an empty slot, and F swaps the
+    gun you're looking at for yours, which goes down in its place. Guns keep their rounds on the
+    ground, the drop is predicted on your screen, and the ground is cleared as each round starts -
+    [research and design](docs/research/15-ground-guns.md)
 
 ## Running it
 
@@ -100,7 +106,8 @@ Built one system at a time:
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
-while you carry it (hold 4 to plant it in a site or to defuse it, G drops it), B buy menu (on the course at any time; in the arena
+while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
+in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent). The spike rounds charge credits; the
 course and the arena are free.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
@@ -115,7 +122,7 @@ in the spike rounds, each half and each death leaves you the Classic and the kni
 shield, and 800 credits at each half.
 Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (with the next
 shot's cone round the crosshair, how far the crosshair's lines have spread and the last jump
-measured; G with the HUD on shows the server ghost, unless the spike is in hand), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
+measured; G with the HUD on and the knife in hand shows the server ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
 CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot, 5-9 give
 Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only). F7 and F8 are left
 alone because Studio takes them for Start and Run.
@@ -132,15 +139,17 @@ stab, 512 reload, 1024 the spike's 4 held, 2048 G), `VFTestGive` set to a weapon
 weapon as 5-9 would (`spike` hands over the course's spike), `VFTestBuy` set
 to an id buys it as the menu would (`-` and the id sells it back), `VFTestMenu` set to true or
 false opens or closes the menu, `VFTestSlot` set to 1, 2, 3 or 4 draws that slot,
-`VFTestSettingsMenu` set to true or false opens or closes the settings menu, and `VFTestSetting`
+`VFTestSettingsMenu` set to true or false opens or closes the settings menu, `VFTestSetting`
 set to `key=value` (`sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or `crosshair=0;P;c;5`) enters
-that setting as its box in the menu would. Each of the last six clears itself.
+that setting as its box in the menu would, and `VFTestTake` set to true presses F. Each of the
+last seven clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still
 read. From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat`
 (`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
 set true ends the spike rounds' phase under way (a buy phase, a round or the wait for the next).
 In the spike rounds each player's credits are their `VFCredits` attribute, and each side's losses
-in a row `Streak1` and `Streak2` on the arena's model.
+in a row `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in
+Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes.
 
 ## Tests
 
@@ -150,8 +159,9 @@ pose history, render clock, move pacing, lag compensation and wall penetration),
 the arena's rules and map, the sound's rules (footsteps, landings, distance curves, walls in the
 way, reload parts), the settings (crosshair codes and the pixels they draw, sensitivity and
 cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast), the spike
-rounds' rules and map, and the economy (what each round pays, kills, the plant, the cap, what a
-purchase costs and the shield a survivor keeps) are pure Luau and run outside Roblox:
+rounds' rules and map, the economy (what each round pays, kills, the plant, the cap, what a
+purchase costs and the shield a survivor keeps) and guns on the ground (G's drop, what the dead
+drop, walking over one and the one in view) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

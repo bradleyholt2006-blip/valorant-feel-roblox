@@ -33,6 +33,8 @@
 --   VFTestSlot     1, 2, 3 or 4: draws that slot as its number key does (3
 --                  is the knife, 4 the spike while it's carried), then
 --                  clears itself
+--   VFTestTake     true: takes the gun on the ground in view as F does
+--                  (system 15), then clears itself
 --   VFTestSettingsMenu  true opens the settings menu, false closes it; then
 --                  clears itself
 --   VFTestSetting  "key=value": enters a setting as its box in the settings
@@ -52,6 +54,7 @@ local Units = require(Shared.Units)
 
 local CameraController = require(script.Parent.Parent.CameraController)
 local BuyMenu = require(script.Parent.Parent.BuyMenu)
+local GroundGunsView = require(script.Parent.Parent.GroundGunsView)
 local SettingsMenu = require(script.Parent.Parent.SettingsMenu)
 local InputSampler = require(script.Parent.Parent.InputSampler)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
@@ -134,6 +137,10 @@ function TestAim.start(controller: any)
 		if typeof(slot) == "number" then
 			player:SetAttribute("VFTestSlot", nil)
 			controller.selectSlot(slot)
+		end
+		if player:GetAttribute("VFTestTake") == true then
+			player:SetAttribute("VFTestTake", nil)
+			GroundGunsView.take()
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

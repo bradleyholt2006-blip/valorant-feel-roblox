@@ -24,5 +24,6 @@ require("./settings")
 require("./spike")
 require("./match")
 require("./economy")
+require("./groundguns")
 
 H.finish()

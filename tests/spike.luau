@@ -253,7 +253,7 @@ do
 	check("and the Vandal comes back", s.weapons.equipped == 1)
 	local t = newPlayer(OUTSIDE, true)
 	acts = run(t, B.Drop, 3, 1, course())
-	check("with the spike not in hand, G does nothing", #acts == 0 and t.weapons.loadout[4] == "spike")
+	check("with the spike not in hand, G leaves it be (the gun in hand goes instead)", #acts == 0 and t.weapons.loadout[4] == "spike")
 end
 
 -- The defuse -----------------------------------------------------------------------------

@@ -167,6 +167,16 @@ function Shop.sell(s: State, item: Item): string?
 	return back
 end
 
+-- Forgets what was bought into a gun's slot this buy phase, once the gun
+-- has left it (system 15: dropped, or swapped for one off the ground):
+-- there's nothing left there to sell back, and what the slot began the phase
+-- with doesn't come back for nothing (ours: a refund for a gun someone else
+-- has picked up would be a gun for free).
+function Shop.forget(s: State, slot: string)
+	s.before[slot] = nil
+	s.bought[slot] = nil
+end
+
 local SLOTS = { "1", "2", Shop.SHIELD }
 
 -- What's been bought this buy phase, primary first.
