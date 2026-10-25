@@ -101,8 +101,15 @@ Built one system at a time:
     work: Updraft throws you straight up about 4 m, and Tailwind readies a gust that, after a
     second's windup, dashes you about 7 m the way you're moving, and comes back with two kills.
     Casts are predicted on your screen and decided by the server, and others see and hear them
-    where you're drawn. Her Cloudburst and Blade Storm are in the kit but not playable yet -
+    where you're drawn. Her Blade Storm is in the kit but not playable yet -
     [research and design](docs/research/17-abilities.md)
+18. **Cloudburst**, Jett's smoke: C throws it at once from your eye the way you look, and puts
+    your gun away for a quarter of a second. It flies at 30 m/s, and holding C curves it towards
+    your crosshair. It bursts where it hits the level, or in mid-air after 2 s, into a ball of
+    smoke 3.35 m in radius that lasts 2.5 s and hides what's behind it, enemy outlines included;
+    from inside it, the screen is smoke. The server flies each throw on its thrower's ticks, and
+    your screen flies yours the same way, so your cloud forms at once where the server's will -
+    [research and design](docs/research/18-cloudburst.md)
 
 ## Running it
 
@@ -125,10 +132,10 @@ R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs),
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent), Tab held the scoreboard (the spike
-rounds), Q Updraft and E Tailwind (E readies the gust, and E again within its window dashes; C
-and X, Cloudburst and Blade Storm, aren't playable yet). The spike rounds charge credits; the
-course and the arena are free. On the course a spent charge comes back 1.5 s after it's done, and
-in the arena every life starts with every charge.
+rounds), C Cloudburst (held, it curves the throw), Q Updraft and E Tailwind (E readies the gust,
+and E again within its window dashes; X, Blade Storm, isn't playable yet). The spike rounds
+charge credits; the course and the arena are free. On the course a spent charge comes back 1.5 s
+after it's done, and in the arena every life starts with every charge.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -174,7 +181,9 @@ Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attribute
 record is in their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds` and
 `VFStartCredits` in the spike rounds, and `VFAlive` and `VFLoadout` in either. Each player's ability kit is
 their `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points),
-with what's under way after it, and `VFTestBuy` set to `updraft` buys a charge.
+with what's under way after it, and `VFTestBuy` set to `updraft` buys a charge. Where a player's
+last Cloudburst burst is their `VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds
+each throw in the air and each cloud as parts.
 
 ## Tests
 
@@ -188,8 +197,9 @@ rounds' rules and map, the economy (what each round pays, kills, the plant, the 
 purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the dead
 drop, walking over one and the one in view), the match's record (the combat score, kills,
 deaths, assists and the average) and the ability kit (charges through rounds, halves, kills and
-deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire) are pure Luau
-and run outside Roblox:
+deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire) and Cloudburst
+(the throw, its flight, its curve and what stops it, and the cloud's life) are pure Luau and run
+outside Roblox:
 
 ```
 luau tests/run.luau

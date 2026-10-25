@@ -169,7 +169,12 @@ do
 
 	check("a charge of Updraft can be bought", AbilitySim.buy(k, "updraft") and k.charges[Q] == 1)
 	check("but not a second: it holds one", not AbilitySim.canBuy(k, "updraft") and not AbilitySim.buy(k, "updraft") and k.charges[Q] == 1)
-	check("Cloudburst can't be bought until it can be played", not AbilitySim.buy(k, "cloudburst") and k.charges[C] == 0)
+	check(
+		"Cloudburst is sold a charge at a time, up to two",
+		AbilitySim.buy(k, "cloudburst") and AbilitySim.buy(k, "cloudburst") and k.charges[C] == 2
+	)
+	check("but not a third", not AbilitySim.canBuy(k, "cloudburst") and not AbilitySim.buy(k, "cloudburst") and k.charges[C] == 2)
+	check("and both sell back", AbilitySim.sell(k, "cloudburst") and AbilitySim.sell(k, "cloudburst") and k.charges[C] == 0)
 	check(
 		"Tailwind and Blade Storm aren't sold",
 		not AbilitySim.buy(k, "tailwind") and not AbilitySim.buy(k, "bladestorm") and k.charges[E] == 1
@@ -210,9 +215,9 @@ do
 	AbilitySim.fill(k)
 	check(
 		"the course and Skirmish fill every charge that can be played",
-		k.charges[Q] == 1 and k.charges[E] == 1 and k.charges[C] == 0 and AbilitySim.full(k)
+		k.charges[Q] == 1 and k.charges[E] == 1 and k.charges[C] == 2 and AbilitySim.full(k)
 	)
-	check("the kit in a few characters", AbilitySim.summary(k, 0) == "C0/2 Q1/1 E1/1 X0/8", AbilitySim.summary(k, 0))
+	check("the kit in a few characters", AbilitySim.summary(k, 0) == "C2/2 Q1/1 E1/1 X0/8", AbilitySim.summary(k, 0))
 end
 
 do
@@ -469,9 +474,10 @@ do
 	-- Rooted by a plant or a defuse, nothing casts.
 	local k = AbilitySim.new()
 	AbilitySim.fill(k)
-	local motion, casts = AbilitySim.step(k, input(B.AbilityQ), 1, DT, 128, vector.create(0, 0, 0), true, cfg)
+	local feet, eye = vector.create(0, 0, 0), vector.create(0, 1.62, 0)
+	local motion, casts = AbilitySim.step(k, input(B.AbilityQ), 1, DT, 128, feet, eye, true, cfg)
 	check("nothing casts while a plant or a defuse roots you", casts == nil and motion.lift == nil and k.charges[Q] == 1)
-	local _, after = AbilitySim.step(k, input(B.AbilityQ), 1 + DT, DT, 129, vector.create(0, 0, 0), false, cfg)
+	local _, after = AbilitySim.step(k, input(B.AbilityQ), 1 + DT, DT, 129, feet, eye, false, cfg)
 	check("and a key held through it doesn't cast as it ends", after == nil)
 end
 

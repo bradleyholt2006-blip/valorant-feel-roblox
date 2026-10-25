@@ -13,8 +13,10 @@
 --     if she isn't), straight and level for the dash's time, whatever was
 --     under way. A dash ends a lift, and nothing fires during it. As it ends
 --     she keeps no more than her run speed
--- Cloudburst (C) and Blade Storm (X) aren't playable yet: their keys do
--- nothing and they can't be bought.
+--   * Cloudburst (C, system 18) throws a cloud from her eye the way she's
+--     looking, and puts her gun away for a moment. CloudSim flies it: this
+--     only says it was thrown
+-- Blade Storm (X) isn't playable yet: its key does nothing.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -25,6 +27,7 @@
 
 local AbilityConfig = require("./AbilityConfig")
 local MovementSim = require("../Movement/MovementSim")
+local Accuracy = require("../Weapons/Accuracy")
 
 export type State = {
 	agent: string, -- an AbilityConfig.Agents id
@@ -49,8 +52,9 @@ export type State = {
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
--- "ready" or "dash", where the player's feet were, and the way it goes (the
--- dash's way, up for a lift, the way they faced for a readied gust).
+-- "ready", "dash" or "throw", where the player's feet and eye were, and the
+-- way it goes (the dash's way, up for a lift, the way they faced for a
+-- readied gust, the way they looked for a throw).
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -58,6 +62,7 @@ export type Cast = {
 	tick: number,
 	time: number,
 	position: vector,
+	origin: vector,
 	direction: vector,
 }
 
@@ -74,7 +79,7 @@ AbilitySim.BUTTONS = { B.AbilityC, B.AbilityQ, B.AbilityE, B.Ultimate }
 local ALL = bit32.bor(B.AbilityC, B.AbilityQ, B.AbilityE, B.Ultimate)
 
 -- Abilities whose casts are written; the rest can't be bought or cast yet.
-local PLAYABLE: { [string]: boolean } = { updraft = true, tailwind = true }
+local PLAYABLE: { [string]: boolean } = { cloudburst = true, updraft = true, tailwind = true }
 
 function AbilitySim.playable(id: string): boolean
 	return PLAYABLE[id] == true
@@ -319,10 +324,11 @@ local function dashDirection(buttons: number, yaw: number): vector
 	return vector.normalize(dir)
 end
 
--- One tick at time `t`, before movement: casts what's been pressed.
--- `rooted` says a plant or a defuse holds the player, and nothing casts
--- then; nor does anything during a dash. Returns what this tick does to
--- movement, and the casts that started, if any.
+-- One tick at time `t`, before movement: casts what's been pressed, from
+-- `feet` and `eye` where the last tick left them. `rooted` says a plant or
+-- a defuse holds the player, and nothing casts then; nor does anything
+-- during a dash. Returns what this tick does to movement, and the casts
+-- that started, if any.
 function AbilitySim.step(
 	s: State,
 	input: any,
@@ -330,6 +336,7 @@ function AbilitySim.step(
 	dt: number,
 	tick: number,
 	feet: vector,
+	eye: vector,
 	rooted: boolean,
 	cfg: any
 ): (MovementSim.Motion, { Cast }?)
@@ -361,10 +368,23 @@ function AbilitySim.step(
 			end
 			local def = AbilitySim.def(s, slot)
 			local id = if def then def.id else ""
-			if id == "updraft" and s.charges[slot] > 0 then
+			if id == "cloudburst" and s.charges[slot] > 0 then
+				s.charges[slot] -= 1
+				local aim = Accuracy.aim(input.yaw, input.pitch)
+				started({
+					slot = slot,
+					ability = id,
+					kind = "throw",
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = aim,
+				})
+			elseif id == "updraft" and s.charges[slot] > 0 then
 				s.charges[slot] -= 1
 				s.liftUntil = t + J.updraftTime.value
-				started({ slot = slot, ability = id, kind = "lift", tick = tick, time = t, position = feet, direction = UP })
+				started({ slot = slot, ability = id, kind = "lift", tick = tick, time = t, position = feet, origin = eye, direction = UP })
 			elseif id == "tailwind" and AbilitySim.ready(s, t) then
 				local dir = dashDirection(buttons, input.yaw)
 				local velocity = dir * AbilitySim.dashSpeed(dt)
@@ -372,7 +392,7 @@ function AbilitySim.step(
 				s.dashX, s.dashZ = velocity.x, velocity.z
 				s.readyFrom, s.readyUntil = 0, 0
 				s.liftUntil = 0
-				started({ slot = slot, ability = id, kind = "dash", tick = tick, time = t, position = feet, direction = dir })
+				started({ slot = slot, ability = id, kind = "dash", tick = tick, time = t, position = feet, origin = eye, direction = dir })
 				-- Nothing else casts in the dash.
 				break
 			elseif id == "tailwind" and s.readyUntil == 0 and s.charges[slot] > 0 then
@@ -381,7 +401,16 @@ function AbilitySim.step(
 				s.readyUntil = s.readyFrom + J.window.value
 				local yaw: number = input.yaw
 				local facing = vector.create(-math.sin(yaw), 0, -math.cos(yaw))
-				started({ slot = slot, ability = id, kind = "ready", tick = tick, time = t, position = feet, direction = facing })
+				started({
+					slot = slot,
+					ability = id,
+					kind = "ready",
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = facing,
+				})
 			end
 		end
 	end

@@ -234,6 +234,10 @@ local function abilityLines(def: AbilityConfig.AbilityDef): { string }
 	if def.id == "updraft" then
 		local J = AbilityConfig.Jett
 		table.insert(lines, row("Lift", string.format("%s m, in %s s", num(J.updraftApex.value), num(J.updraftTime.value))))
+	elseif def.id == "cloudburst" then
+		local CB = AbilityConfig.Cloudburst
+		table.insert(lines, row("Cloud", string.format("%s m across, for %s s", num(2 * CB.radius.value), num(CB.duration.value))))
+		table.insert(lines, row("Flight", string.format("%s m/s, at most %s s", num(CB.speed.value), num(CB.maxFlight.value))))
 	end
 	table.insert(lines, "")
 	table.insert(lines, "Unused charges carry into the next round, and through a death; a new half takes them away.")

@@ -5,6 +5,8 @@
 --   * Tailwind readied: a ring of air around the waist through its windup
 --   * Tailwind's dash: a streak along its way, and for the one dashing a
 --     flash at the edges of the screen
+--   * Cloudburst: only heard here, as it's thrown and as it bursts;
+--     CloudView draws it in the air and the cloud (system 18)
 -- Your own casts show the tick you press them (PlayerController's
 -- castListeners); others' come from the server (the Ability remote) and
 -- wait for the frame on your screen to reach them, so they line up with
@@ -153,6 +155,9 @@ local function onCast(event: any)
 	end
 	if event.entity == PlayerController.entityId then
 		return -- predicted already
+	end
+	if event.kind == "flight" then
+		return -- a throw on its way: CloudView's
 	end
 	table.insert(due, {
 		kind = event.kind,

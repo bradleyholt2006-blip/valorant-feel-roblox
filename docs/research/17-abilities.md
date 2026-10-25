@@ -10,9 +10,9 @@ This system adds that kit, and plays the first agent's movement through it: Jett
 throws her straight up, and her Tailwind, which readies a gust and then dashes her the way she's
 moving. They're the abilities that most need what the simulation already does, since they move the
 player: each cast is predicted on your screen on the tick you press it and decided by the server,
-which runs the same ticks. Her other two, the Cloudburst smoke and the Blade Storm knives, are in
-the kit and the buy menu but can't be bought or cast yet. Everyone plays Jett until there's an
-agent select.
+which runs the same ticks. Her other two, the Cloudburst smoke and the Blade Storm knives, were
+in the kit and the buy menu but couldn't be bought or cast yet; Cloudburst came next, in system 18
+([18-cloudburst.md](18-cloudburst.md)). Everyone plays Jett until there's an agent select.
 
 As before, everything comes from Riot's patch notes and from community wikis and guides. No game
 files, memory, network traffic or protected assets were used, and nothing reads the game while it
@@ -183,9 +183,9 @@ both ends.
 
 ### Not here yet
 
-- **Cloudburst and Blade Storm.** In the bar and the menu, dimmed: they can't be bought or cast.
-  Both are thrown, and most of the reference's abilities are equipped first and then used with
-  the fire buttons, which needs an equipped state between the kit and the weapons.
+- **Blade Storm.** In the bar, dimmed: it can't be cast. Like most of the reference's abilities
+  it's equipped first and then used with the fire buttons, which needs an equipped state between
+  the kit and the weapons. Cloudburst, thrown at once, came in system 18.
 - **Drift**, Jett's glide.
 - **Other agents and an agent select.** Everyone is Jett.
 - **Cooldown recharges.** The config can hold one, but no ability uses it yet.
