@@ -100,7 +100,7 @@ All values live in `src/shared/Net/NetConfig.luau`, each with its status and sou
 | Hit confirm size and lifetime | 7 cm head, 8 cm body, 0.35 s | Estimate (smaller for heads is confirmed) |
 | Network Buffering | +0, +15.6, +31.25 ms over our minimum | Confirmed steps (Riot: 1, 3 and 5 frames) |
 | Snapshot rate | 60 Hz: every server frame at Roblox's 60 Hz, and 60 a second from a server that steps faster (Studio's, at about 217 Hz) | Roblox's frame rate (the reference: 128 Hz) |
-| Render delay | measured: the 98th percentile of how late snapshots arrive, plus one send interval, plus 2 ms; snapshots handled at one moment count once, and the first half second's don't count | Estimate (the reference: a fixed 7.8125 ms) |
+| Render delay | measured: the 98th percentile of how late snapshots arrive, plus one send interval, plus 2 ms; snapshots handled at one moment count once, and the first 3 s of them don't count | Estimate (the reference: a fixed 7.8125 ms) |
 | Render clock correction | eases (63% of a gap in 0.1 s), at most 10% faster or slower; jumps only when more than 0.25 s off | Estimate |
 | Players and dummies in the snapshots | paced: each tick shown at its own time, as far behind the server's time as the newest tick was on all but 1% of the last 2 s of frames, plus 2 ms; eased like the render clock; never past the newest tick | Estimate (the reference runs queued moves on its own 128 Hz tick, half a frame behind on average) |
 | History | 64 snapshots per entity (about a second) | Estimate (needs only to cover the cap) |
@@ -223,9 +223,12 @@ and speeding up again reach 0.36 m/s, so the lab calls a jump under 0.5 smooth.
   at the worst of them, and the percentile is over moments. Joining is the big case: Roblox holds
   a remote's events until its first listener connects, so a client that has just joined gets
   seconds of old snapshots at once. That held the delay at 660 ms in the offline test, and in
-  Studio every shot in the first 3 s after joining was rewound to the cap. The first half
-  second's arrivals don't count at all, and until there are some to measure the delay is two
-  send intervals.
+  Studio every shot in the first 3 s after joining was rewound to the cap. Nor do the first 3 s
+  of arrivals count at all, and until there are some to measure the delay is two send intervals.
+  Half a second wasn't enough: in Studio the held-back snapshots came over several frames, and
+  the next 2 s in clumps while the client finished loading, so the delay read 1.7 s, then 195 ms
+  for a second, and the clock took another second to ease back down at its 10%. While they
+  clump, other players hold their poses between clumps for those first seconds instead.
 - **Paced snapshots.** The server runs a player's moves the moment they arrive, and they arrive in
   bunches: a client at 60 fps sends two or three 128 Hz moves a packet, and each 60 Hz server
   frame runs whatever has come in since the last. Sending each frame's newest pose made other

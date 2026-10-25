@@ -123,7 +123,9 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
 - **M4 Crouch tunnel.** You can't walk into it standing. Crouched you can, and if you let go of
   crouch inside, you stay crouched until you come out.
 - **M5 Jump boxes.** You can jump onto the 0.50 m and 0.70 m boxes. You just miss the 0.85 m one,
-  because our jump peaks at 0.83 m, and 1.00 m is out of reach.
+  because our jump peaks at 0.83 m, and 1.00 m is out of reach. Jump pressed against a box or
+  with a walk-up: from a standstill further out you fall short, because in the air you only
+  reach 0.57 m/s, about 0.37 m in a jump (from 0.39 m out at rest, 0.02 m short in Studio).
 - **M6 Ramps.** You walk up and down the 30 and 45 degree ramps with no bouncing or sticking. The
   50 degree ramp is too steep to walk up. The ramps are rotated parts. The offline tests now
   model them, but Roblox's own collision queries are what count here.
@@ -184,7 +186,10 @@ From [02-weapon-firing.md](research/02-weapon-firing.md). Press F2 once for the 
   straight away: those first shots say `ok` too. The server's first message after you spawn sets
   your spray seed ([03-spread-recoil.md](research/03-spread-recoil.md)), and it has to arrive
   before your first shot. Their rewind column reads about 40-55 ms like later shots, never
-  `140ms!`, which used to happen for the first 3 s after joining.
+  `140ms!`, which used to happen for the first 3 s after joining. The Hit Reg Lab's render delay
+  reads about 33 ms for the first 3 s, then the measured value, never hundreds of milliseconds.
+  Other players and dummies may hold their poses for a moment now and then in those first
+  seconds, while the snapshots come in clumps.
 - **W6 Your own body.** Look down at your feet and fire. The marks land on the floor, not in the
   air above it, which would mean your own body is getting in the way of your shots. No part of
   your Roblox avatar shows when you look down, straight after pressing Play as well as after a

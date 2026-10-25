@@ -24,9 +24,11 @@
 --     client that stalls for a moment handles everything that came in
 --     meanwhile at once, and draws nothing until it has, so one stall
 --     mustn't raise the delay as if each of those snapshots had been late.
---     Nor do the first half second's arrivals count: Roblox holds a remote's
---     events until its first listener connects, so a client that has just
---     joined gets seconds of old snapshots all at once.
+--     Nor do the first three seconds' arrivals count: Roblox holds a
+--     remote's events until its first listener connects, so a client that
+--     has just joined gets seconds of old snapshots, over a few frames, and
+--     then more in clumps while it finishes loading (for about 2 s in
+--     Studio, measured).
 --   * The render time eases toward (local time + offset - delay), closing
 --     most of a gap in a tenth of a second and running at most 10% fast or
 --     slow, so changes in latency never make remote players jump or move
@@ -58,7 +60,7 @@ local InterpClock = {}
 local DEFAULT_DELAY = 2 / NetConfig.SNAPSHOT_RATE -- until there are arrivals to measure
 local SNAP_ERROR = 0.25 -- seconds off target before the clock jumps instead of easing
 local BATCH_GAP = 0.001 -- seconds between arrivals handled at the same moment
-local WARMUP = 0.5 -- seconds after the first snapshot before arrivals are measured
+local WARMUP = 3 -- seconds after the first snapshot before arrivals are measured
 
 function InterpClock.new(extra: number?): Clock
 	return {
