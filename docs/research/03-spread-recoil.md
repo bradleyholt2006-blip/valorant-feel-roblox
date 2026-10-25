@@ -92,7 +92,7 @@ measure impact marks on the wall: `angle = atan(offset / distance)`.
 | Measurement | Method | Gives us |
 | --- | --- | --- |
 | First-shot cone | 30+ single taps with a full second between them, crosshair on a fixed spot; the radius that holds all but the odd one | `firingError` at bullet 1 |
-| ADS and crouch | The same aiming down sights, crouched, and both | `adsReduction`, `crouchMultiplier` |
+| ADS and crouch | The same aiming down sights, crouched, and both | `ads.accuracy.firingError`, `crouchMultiplier` |
 | Spray pattern | A full spray at the wall with the mouse untouched, 5+ times; average position of each bullet is the recoil path, the scatter around it the firing error | `recoil.pitch`, `swayStart`, `swayStep`, `swayMax`, `swayFlipChance`, `firingError` |
 | Recovery | Pairs of taps with a growing gap (0.1, 0.15, 0.2 ... s, from a metronome or frame counting); the gap at which the second bullet is always as tight as the first | `recoveryTime`, `tapEfficiency` |
 | Movement error | Shots while walking, running, crouch-walking and in the air; the game's "Show movement error" and "firing error" crosshair options draw the error as the lines spread | `walkError`, `runError`, `crouchMoveError`, `airError` |
@@ -112,22 +112,25 @@ All values live in `src/shared/Weapons/WeaponConfig.luau` (`accuracy`, `recoil` 
 | Parameter | Value | Status |
 | --- | --- | --- |
 | Deadzone | 27.5% of run speed (Operator 15%) | Confirmed |
-| Recovery time, tap efficiency | Vandal 0.375 s, 6; Phantom 0.35 s, 4 | Confirmed |
+| Recovery time, tap efficiency | Vandal 0.375 s, 6; Phantom 0.35 s, 4; Outlaw 0.15 s | Confirmed |
+| Recovery counts from when the gun can fire again | So a held trigger never recovers, and the Outlaw's 0.15 s means something | Estimate (the patch notes don't say where it counts from) |
 | Rifle movement error | run 6, walk 3, crouch-walk 0.8 | Confirmed |
 | Classic movement error | run 2.3, walk 1.1, crouch-walk 0.5 | Confirmed |
 | Sheriff movement error | run 3.0, walk 1.2, crouch-walk 0.5 | Confirmed |
 | Jump landing | +7 for 0.225 s | Confirmed |
 | Running climb | x1.8 Vandal and Phantom | Confirmed |
 | Crouched, still sideways recoil | x0.85 Vandal (Phantom by the same statement) | Confirmed |
-| First-shot spread | 0.25 / 0.20 / 5 (0 scoped) / 0.4 / 0.25° | Community |
-| ADS reduction | Vandal 0.093, Phantom 0.09 (flat, as Riot describes) | Community |
-| Crouch multiplier | 0.85 | Community (rifles), estimate (others) |
-| Firing error after bullet 1 | curves by bullet, shaped tight for 3 bullets then rising | Estimate |
+| First-shot spread | 0.25 / 0.20 / 5 (0 scoped) / 0.4 / 0.25° (Vandal / Phantom / Operator / Classic / Sheriff); every other gun in [09-arsenal](09-arsenal.md) | Community |
+| The most the cone grows to | Vandal 1.0°, Phantom 0.9°, Classic 1.8°, Sheriff 2.75° | Community |
+| Zoomed | Its own curve for each gun, from the wiki's zoomed first shot and maximum: Vandal 0.157 to 1.02°, Phantom 0.11 to 0.91°; scoped snipers 0 | Community |
+| Crouch multiplier | Rifles, SMGs and shotguns x0.85, pistols x0.75, snipers x0.9, machine guns x0.6 | Community |
+| Firing error between bullet 1 and the maximum | Our shape: tight for 3 bullets, a jump at bullets 4 and 5, then levelling off; rifles reach the maximum at bullet 25 | Estimate |
 | Recoil climb | Vandal to 6.4°, Phantom to 5.5°, levelling off by bullet 16 | Estimate |
-| Sideways drift | from bullet 8 (Vandal) / 9 (Phantom), 0.55 / 0.45° a bullet, up to 2.6 / 2.2°, 12% chance a bullet to reverse | Estimate |
-| Airborne error | rifles 8, Classic 3.5, Sheriff 4.5, Operator 12 | Estimate |
-| Operator movement error | run 9, walk 4.5, crouch-walk 2 | Estimate |
-| Pistol and Operator recovery | Classic 0.3 s / 2, Sheriff 0.45 s / 1.5, Operator 1.0 s | Estimate |
+| Sideways drift | From bullet 7 (Vandal) and 9 (Phantom), the bullets before it "protected"; a 10% chance a bullet to reverse | Community (Patch 11.08 in the wiki's history) |
+| Drift size | 0.55 / 0.45° a bullet, up to 2.6 / 2.2° | Estimate |
+| Airborne error | Rifles, SMGs and machine guns 10, pistols 7, shotguns 4, Marshal and Outlaw 20, Operator 15 | Community |
+| Sniper movement error | Run 15, walk 10, crouch-walk 7.5 | Community |
+| Pistol recovery | Classic 0.3 s / 2, Sheriff 0.25 s / 1.5 (after it can fire again) | Estimate |
 | Error power | 1.0 standing, 0.6 moving | Estimate (direction confirmed) |
 | Camera share of recoil | hip 0.25, ADS 0.9 (rifles) | Estimate |
 | ADS recoil multiplier | 0.9 | Estimate |
@@ -136,15 +139,18 @@ What the simulation produces (from `luau tests/run.luau`), standing still:
 
 | Vandal bullet | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 16 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cone radius (°) | 0.25 | 0.28 | 0.30 | 0.55 | 0.90 | 1.10 | 1.43 | 1.70 | 1.82 | 2.02 |
-| Climb (°) | 0 | 0.3 | 0.75 | 1.4 | 2.1 | 2.8 | 4.0 | 4.9 | 5.6 | 6.1 |
+| Cone radius (°) | 0.25 | 0.26 | 0.27 | 0.37 | 0.50 | 0.58 | 0.70 | 0.81 | 0.85 | 0.93 |
+| Climb (°) | 0 | 0.3 | 0.8 | 1.4 | 2.1 | 2.8 | 4.0 | 4.9 | 5.6 | 6.1 |
 
-| Tapping, where the 10th tap lands | every 0.15 s | 0.20 s | 0.25 s | 0.30 s |
-| --- | --- | --- | --- | --- |
-| Vandal | bullet 1.65 (0.27°) | 1.08 (0.25°) | 1.01 | 1.00 |
-| Phantom | 1.71 (0.21°) | 1.13 (0.20°) | 1.03 | 1.00 |
-| Classic | 10 (fire rate, 2.2°) | 1.72 (0.51°) | 1.13 (0.42°) | 1.00 |
-| Sheriff | 4.04 (fire rate, 3.0°) | 4.04 | 4.04 | 2.21 (1.21°) |
+| Tapping, where the 10th tap lands | every 0.15 s | 0.20 s | 0.25 s | 0.30 s | 0.40 s |
+| --- | --- | --- | --- | --- | --- |
+| Vandal | bullet 1.84 (0.26°) | 1.18 (0.25°) | 1.05 | 1.01 | 1.00 |
+| Phantom | 1.95 (0.21°) | 1.27 (0.20°) | 1.10 | 1.03 | 1.00 |
+| Classic | 10 (fire rate, 1.80°) | 2.95 (1.46°) | 1.77 (0.79°) | 1.34 (0.43°) | 1.03 |
+| Sheriff | 6 (fire rate, 2.75°) | 6 | 6 | 3.16 (2.58°) | 1.35 (0.57°) |
+
+The Sheriff can't fire faster than every 0.25 s, so tapping any faster just fires it at its rate.
+Most of the climb a spray shows is recoil, not cone: the Vandal's cone never passes 1°.
 
 The Vandal's first shot is a 4.4 cm radius at 10 m and 13 cm at 30 m, about the width of a head:
 that is why first-shot misses at long range are a common complaint about the reference.
@@ -165,16 +171,18 @@ that is why first-shot misses at long range are a common complaint about the ref
 ```
 
 - **Spray position and recovery.** Each shot reads the curves at a bullet number. Holding the
-  trigger counts 1, 2, 3 ... After a pause of `e` seconds the spray so far is scaled by
-  `(1 - p) ^ tapEfficiency`, where `p` runs from 0 at the grace time to 1 at the recovery time.
-  The grace time is one fire interval plus one tick (capped at half the recovery time), so a held
-  trigger, which lands each shot within a tick of its cadence, never recovers. At the recovery
-  time the next shot is a first shot again, exactly as the patch notes describe, and a higher tap
-  efficiency forgives more of a short pause. Partly recovered sprays sit between bullets, which is
-  why the curves have values between bullets.
-- **Cone.** Firing error at the bullet number, less a flat amount when aiming down sights (the
-  scoped Operator has its own curve instead), times a percentage when crouched; then the movement
-  error for the state and the landing penalty are added on top.
+  trigger counts 1, 2, 3 ... The recovery time counts from the moment the gun can fire again, not
+  from the last shot. A shot fired `e` seconds after that scales the spray so far by
+  `(1 - e / recovery) ^ tapEfficiency`, so a held trigger, or a click on the first tick the gun
+  is ready, recovers nothing. At the recovery time the next shot is a first shot again, exactly as
+  the patch notes describe, and a higher tap efficiency forgives more of a short pause. Partly
+  recovered sprays sit between bullets, which is why the curves have values between bullets.
+  Counting from the shot instead would make a slow gun's recovery meaningless: the Outlaw fires
+  every 0.36 s, so its 0.15 s (Patch 13.01) would always be over before it could fire again.
+- **Cone.** Firing error at the bullet number, from the zoomed curve when aiming down sights or
+  scoped, times a percentage when crouched; then the movement error for the state and the landing
+  penalty are added on top. Each mode a gun fires in has its own accuracy
+  (`WeaponConfig.mode`): from the hip, zoomed, and the Classic's right click.
 - **Movement state** is binary, like the reference: in the air; still (below the deadzone);
   crouch-walking; walking (walk key held at walking speed); running. Slowing from a run to a stop
   without the walk key never passes through walk accuracy. The deadzone test is strictly below
@@ -242,7 +250,7 @@ checks every tick of the slow.
 ## 8. Refinement loop
 
 1. Measure first-shot cones (hip, ADS, crouched) for each weapon and enter `firstShotError`;
-   correct bullet 1 of each `firingError` curve and the ADS and crouch values.
+   correct bullet 1 of each `firingError` curve, hip and zoomed, and the crouch values.
 2. Record five full sprays per rifle, average them into `sprayPattern`, and fit the climb curve,
    drift start, step and limit until the spray lab's dots sit on the blue reference.
 3. Measure recovery with tap pairs and set `tapEfficiency` (and recovery time where not

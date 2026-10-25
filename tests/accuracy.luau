@@ -1,6 +1,6 @@
 --!strict
 -- Spread and recoil (system 3): firing error, recovery and tap efficiency,
--- movement error by state, crouch and ADS, error power, the recoil climb and
+-- movement error by state, crouch and zoom, error power, the recoil climb and
 -- sideways drift, and determinism of the per-shot randomness.
 
 local MovementConfig = require("../src/shared/Movement/MovementConfig")
@@ -40,8 +40,8 @@ end
 local function run(s: PlayerSim.State, buttons: number, ticks: number): { WeaponSim.Shot }
 	local shots = {}
 	for _ = 1, ticks do
-		local shot = PlayerSim.step(s, input(buttons, s.weapons.equipped), cfg, floor, DT)
-		if shot then
+		local fired = PlayerSim.step(s, input(buttons, s.weapons.equipped), cfg, floor, DT)
+		for _, shot in fired or {} do
 			table.insert(shots, shot)
 		end
 	end
@@ -62,9 +62,9 @@ local function spray(s: PlayerSim.State, count: number, buttons: number?): { Wea
 		local w = s.weapons
 		local ready = (s.movement.tick + 1) * DT >= w.nextFireTime - 1e-9 and not w.fireHeld
 		local fire = if def.fireMode == "auto" or ready then B.Fire else 0
-		local shot = PlayerSim.step(s, input(held + fire, w.equipped), cfg, floor, DT)
-		if shot then
-			table.insert(shots, shot)
+		local fired = PlayerSim.step(s, input(held + fire, w.equipped), cfg, floor, DT)
+		if fired then
+			table.insert(shots, fired[1])
 			if #shots == count then
 				break
 			end
@@ -78,9 +78,9 @@ local function taps(s: PlayerSim.State, interval: number, count: number): { Weap
 	local shots = {}
 	local every = math.max(math.floor(interval / DT + 0.5), 2)
 	for i = 0, every * count - 1 do
-		local shot = PlayerSim.step(s, input(if i % every == 0 then B.Fire else 0, s.weapons.equipped), cfg, floor, DT)
-		if shot then
-			table.insert(shots, shot)
+		local fired = PlayerSim.step(s, input(if i % every == 0 then B.Fire else 0, s.weapons.equipped), cfg, floor, DT)
+		if fired then
+			table.insert(shots, fired[1])
 		end
 	end
 	return shots
@@ -118,7 +118,7 @@ for _, id in { "vandal", "phantom", "classic", "sheriff", "operator" } do
 	end
 	print("    tapping, 10th tap: " .. table.concat(tapCells, ", "))
 
-	local first = Accuracy.cone(def, { moveState = "still", crouched = false, landing = false }, 1, false).radius
+	local first = Accuracy.cone(def.accuracy, { moveState = "still", crouched = false, landing = false }, 1).radius
 	print(string.format(
 		"    first shot %.2f deg: %.1f cm radius at 10 m, %.1f at 20 m, %.1f at 30 m (a head is about 24 cm wide)",
 		first,
@@ -151,20 +151,33 @@ do
 			end
 		end
 	end
-	for id, def in WeaponConfig.Defs do
-		for key, v in def.accuracy :: any do
-			if key == "firingError" or key == "scopedFiringError" then
+	local function accuracy(id: string, acc: any)
+		for key, v in acc do
+			if key == "firingError" then
 				curve(id, key, v)
 			else
 				param(id, key, v)
 			end
 		end
-		for key, v in def.recoil :: any do
+	end
+	local function recoil(id: string, rec: any)
+		for key, v in rec do
 			if key == "pitch" then
 				curve(id, key, v)
 			else
 				param(id, key, v)
 			end
+		end
+	end
+	for id, def in WeaponConfig.Defs do
+		accuracy(id, def.accuracy)
+		recoil(id, def.recoil)
+		if def.ads then
+			accuracy(id .. " zoomed", def.ads.accuracy)
+		end
+		if def.alt then
+			accuracy(id .. " right click", def.alt.accuracy)
+			recoil(id .. " right click", def.alt.recoil)
 		end
 	end
 	for key, v in WeaponConfig.Accuracy :: any do
@@ -196,15 +209,15 @@ end
 do
 	local vandal = WeaponConfig.get("vandal")
 	local acc = vandal.accuracy
-	local interval = WeaponSim.fireInterval(vandal, 0)
-	local f = function(e: number): number
-		return Accuracy.recoveryFactor(acc, interval, e, DT)
+	-- Seconds after the gun could fire again.
+	local f = function(since: number): number
+		return Accuracy.recoveryFactor(acc, since, DT)
 	end
-	check("a held trigger does not recover (up to one tick late)", f(interval + DT) == 1 and f(interval - DT) == 1)
-	check("waiting the recovery time recovers the whole spray (Vandal 0.375 s)", f(0.375) == 0 and f(10) == 0 and f(math.huge) == 0)
+	check("a trigger that keeps up with the gun does not recover (fired within a tick of it being ready)", f(-DT) == 1 and f(0) == 1 and f(DT * 0.99) == 1)
+	check("waiting the recovery time once the gun is ready recovers the whole spray (Vandal 0.375 s)", f(0.375) == 0 and f(10) == 0 and f(math.huge) == 0)
 	local monotonic = true
 	local prev = 1
-	for e = interval, 0.375, 0.005 do
+	for e = DT, 0.375, 0.005 do
 		local v = f(e)
 		monotonic = monotonic and v <= prev
 		prev = v
@@ -212,7 +225,7 @@ do
 	check("recovery only ever goes one way", monotonic)
 	local low = table.clone(acc)
 	low.tapEfficiency = { value = 4, status = "estimate", source = "test" } :: any
-	check("higher tap efficiency recovers faster when re-firing early", f(0.2) < Accuracy.recoveryFactor(low, interval, 0.2, DT))
+	check("higher tap efficiency recovers faster when re-firing early", f(0.1) < Accuracy.recoveryFactor(low, 0.1, DT))
 end
 
 do
@@ -241,7 +254,7 @@ do
 	check("a held spray numbers its bullets 1..25 without recovering", #shots == 25 and wholeBullets)
 	check("each bullet's cone follows the firing error curve", conesMatch)
 	check("each bullet climbs by the recoil curve (Vandal bullet 9: 4.6 deg)", pitchMatch and near(shots[9].recoilPitch, 4.6, 1e-12))
-	check("no sideways drift for the first 8 bullets, then it starts", noEarlyYaw and shots[9].recoilYaw ~= 0)
+	check("no sideways drift for the first 6 bullets, then it starts (the Vandal's protected bullets, Patch 11.08)", noEarlyYaw and shots[7].recoilYaw ~= 0)
 	check("sideways drift stays within its limit", yawBounded)
 	check("every bullet lands inside its cone around the recoiled aim", inside)
 end
@@ -250,9 +263,11 @@ do
 	local def = WeaponConfig.get("vandal")
 	local s = newPlayer()
 	spray(s, 10)
-	run(s, 0, ticksFor(def.accuracy.recoveryTime.value))
+	-- The gun is ready again a shot's interval after the last one, and the
+	-- recovery time counts from then.
+	run(s, 0, ticksFor(WeaponSim.fireInterval(def, 0) + def.accuracy.recoveryTime.value))
 	local fresh = run(s, B.Fire, 1)[1]
-	check("waiting out the recovery time makes the next shot a first shot", fresh ~= nil and fresh.bullet == 1 and fresh.recoilPitch == 0 and fresh.recoilYaw == 0 and near(fresh.cone.radius, 0.25, 1e-12))
+	check("waiting out the recovery time once the gun is ready makes the next shot a first shot", fresh ~= nil and fresh.bullet == 1 and fresh.recoilPitch == 0 and fresh.recoilYaw == 0 and near(fresh.cone.radius, 0.25, 1e-12))
 
 	local p = newPlayer()
 	spray(p, 10)
@@ -292,7 +307,7 @@ do
 	local air = newPlayer()
 	run(air, B.Jump, 10)
 	local airShot = run(air, B.Fire, 1)[1]
-	check("airborne: air error added", airShot ~= nil and airShot.moveState == "air" and near(airShot.cone.radius, 0.25 + 8, 1e-9), if airShot then string.format("%s %.3f", airShot.moveState, airShot.cone.radius) else "")
+	check("airborne: the rifles' air error 10 added (the wiki)", airShot ~= nil and airShot.moveState == "air" and near(airShot.cone.radius, 0.25 + 10, 1e-9), if airShot then string.format("%s %.3f", airShot.moveState, airShot.cone.radius) else "")
 
 	-- Land, then shoot inside and after the 0.225 s landing penalty.
 	local landed = newPlayer()
@@ -346,13 +361,13 @@ do
 	run(s, B.AltFire, 1)
 	run(s, 0, 1)
 	local ads = run(s, B.Fire, 1)[1]
-	check("ADS takes a flat 0.093 off the Vandal's first shot (0.25 -> 0.157)", ads ~= nil and near(ads.cone.radius, 0.157, 1e-9), if ads then string.format("%.4f", ads.cone.radius) else "")
+	check("zoomed, the Vandal's first shot is 0.157 (0.25 from the hip)", ads ~= nil and ads.mode == "zoom" and near(ads.cone.radius, 0.157, 1e-9), if ads then string.format("%.4f", ads.cone.radius) else "")
 
 	local c = newPlayer(nil, 1, B.Crouch)
 	run(c, B.Crouch + B.AltFire, 1)
 	run(c, B.Crouch, 1)
 	local both = run(c, B.Crouch + B.Fire, 1)[1]
-	check("crouched and ADS: the reduction, then the percentage", both ~= nil and near(both.cone.radius, 0.157 * 0.85, 1e-9), if both then string.format("%.4f", both.cone.radius) else "")
+	check("crouched and zoomed: the zoomed curve, then the crouch percentage", both ~= nil and near(both.cone.radius, 0.157 * 0.85, 1e-9), if both then string.format("%.4f", both.cone.radius) else "")
 end
 
 do
@@ -445,9 +460,8 @@ do
 	spray(s, 8)
 	local w = s.weapons
 	local t = s.movement.tick * DT
-	local interval = WeaponSim.fireInterval(def, 0)
-	local nowBullet = Accuracy.next(def, w, t, DT, interval)
-	local laterBullet = Accuracy.next(def, w, w.lastShotTime + def.accuracy.recoveryTime.value, DT, interval)
+	local nowBullet = Accuracy.next(def, w, t, DT)
+	local laterBullet = Accuracy.next(def, w, w.nextFireTime + def.accuracy.recoveryTime.value, DT)
 	check("right after a spray the next bullet carries on from it", nowBullet == 9, tostring(nowBullet))
 	check("once recovered the view kick is gone (next bullet is a first shot)", laterBullet == 1)
 

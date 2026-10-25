@@ -32,6 +32,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
+local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local Penetration = require(Shared.Combat.Penetration)
@@ -90,23 +91,102 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.028, 0.03, 0.1), offset = vector.create(0, 0, 0) }, -- handle
 		},
 	},
+	quietPistol = {
+		muzzle = vector.create(0, 0.03, -0.33),
+		pieces = {
+			{ size = vector.create(0.035, 0.05, 0.19), offset = vector.create(0, 0.03, -0.08) }, -- slide
+			{ size = vector.create(0.032, 0.11, 0.05), offset = vector.create(0, -0.04, 0.0), accent = true }, -- grip
+			{ size = vector.create(0.03, 0.03, 0.13), offset = vector.create(0, 0.03, -0.24) }, -- suppressor
+		},
+	},
+	sawnOff = {
+		muzzle = vector.create(0, 0.03, -0.27),
+		pieces = {
+			{ size = vector.create(0.05, 0.07, 0.16), offset = vector.create(0, 0.025, -0.06) }, -- action
+			{ size = vector.create(0.045, 0.035, 0.14), offset = vector.create(0, 0.035, -0.19) }, -- two barrels
+			{ size = vector.create(0.032, 0.11, 0.05), offset = vector.create(0, -0.04, 0.02), accent = true }, -- grip
+		},
+	},
+	smg = {
+		muzzle = vector.create(0, 0.03, -0.42),
+		pieces = {
+			{ size = vector.create(0.055, 0.085, 0.3), offset = vector.create(0, 0.02, -0.1) }, -- receiver
+			{ size = vector.create(0.026, 0.026, 0.12), offset = vector.create(0, 0.03, -0.31) }, -- barrel
+			{ size = vector.create(0.035, 0.15, 0.05), offset = vector.create(0, -0.1, -0.08), accent = true }, -- magazine
+			{ size = vector.create(0.03, 0.05, 0.14), offset = vector.create(0, 0, 0.12) }, -- stock
+			{ size = vector.create(0.035, 0.1, 0.04), offset = vector.create(0, -0.07, 0.03) }, -- grip
+		},
+	},
+	shotgun = {
+		muzzle = vector.create(0, 0.035, -0.66),
+		pieces = {
+			{ size = vector.create(0.065, 0.09, 0.36), offset = vector.create(0, 0.02, -0.08) }, -- receiver
+			{ size = vector.create(0.04, 0.04, 0.36), offset = vector.create(0, 0.035, -0.45) }, -- barrel
+			{ size = vector.create(0.045, 0.045, 0.22), offset = vector.create(0, -0.02, -0.38), accent = true }, -- pump
+			{ size = vector.create(0.05, 0.09, 0.2), offset = vector.create(0, -0.01, 0.2) }, -- stock
+			{ size = vector.create(0.035, 0.1, 0.04), offset = vector.create(0, -0.07, 0.03) }, -- grip
+		},
+	},
+	heavy = {
+		muzzle = vector.create(0, 0.03, -0.7),
+		pieces = {
+			{ size = vector.create(0.08, 0.11, 0.48), offset = vector.create(0, 0.02, -0.12) }, -- receiver
+			{ size = vector.create(0.035, 0.035, 0.3), offset = vector.create(0, 0.03, -0.52) }, -- barrel
+			{ size = vector.create(0.09, 0.1, 0.12), offset = vector.create(0, -0.1, -0.12), accent = true }, -- box magazine
+			{ size = vector.create(0.05, 0.09, 0.18), offset = vector.create(0, 0, 0.2) }, -- stock
+			{ size = vector.create(0.035, 0.1, 0.04), offset = vector.create(0, -0.07, 0.03) }, -- grip
+			{ size = vector.create(0.06, 0.02, 0.2), offset = vector.create(0, 0.085, -0.15) }, -- top cover
+		},
+	},
 }
 
+-- Each weapon's stand-in shape and accent colour (original placeholders,
+-- one colour per gun so they can be told apart).
 local SHAPE_OF: { [string]: string } = {
-	vandal = "rifle",
-	phantom = "rifle",
-	operator = "sniper",
 	classic = "pistol",
+	shorty = "sawnOff",
+	frenzy = "pistol",
+	ghost = "quietPistol",
+	bandit = "pistol",
 	sheriff = "pistol",
+	stinger = "smg",
+	spectre = "smg",
+	bucky = "shotgun",
+	judge = "shotgun",
+	bulldog = "rifle",
+	guardian = "rifle",
+	phantom = "rifle",
+	vandal = "rifle",
+	warden = "rifle",
+	marshal = "sniper",
+	outlaw = "sniper",
+	operator = "sniper",
+	ares = "heavy",
+	odin = "heavy",
 	knife = "knife",
 }
 
 local ACCENT: { [string]: Color3 } = {
-	vandal = Color3.fromRGB(200, 70, 60),
-	phantom = Color3.fromRGB(60, 170, 170),
-	operator = Color3.fromRGB(140, 90, 200),
 	classic = Color3.fromRGB(150, 150, 160),
+	shorty = Color3.fromRGB(170, 120, 80),
+	frenzy = Color3.fromRGB(230, 120, 40),
+	ghost = Color3.fromRGB(110, 140, 190),
+	bandit = Color3.fromRGB(190, 80, 140),
 	sheriff = Color3.fromRGB(210, 170, 70),
+	stinger = Color3.fromRGB(230, 200, 60),
+	spectre = Color3.fromRGB(80, 110, 200),
+	bucky = Color3.fromRGB(150, 100, 60),
+	judge = Color3.fromRGB(120, 160, 90),
+	bulldog = Color3.fromRGB(160, 130, 90),
+	guardian = Color3.fromRGB(90, 140, 110),
+	phantom = Color3.fromRGB(60, 170, 170),
+	vandal = Color3.fromRGB(200, 70, 60),
+	warden = Color3.fromRGB(200, 200, 210),
+	marshal = Color3.fromRGB(100, 170, 80),
+	outlaw = Color3.fromRGB(180, 60, 60),
+	operator = Color3.fromRGB(140, 90, 200),
+	ares = Color3.fromRGB(110, 120, 70),
+	odin = Color3.fromRGB(80, 80, 90),
 	knife = Color3.fromRGB(190, 195, 205),
 }
 local BODY = Color3.fromRGB(38, 40, 46)
@@ -179,11 +259,14 @@ local function holdCFrame(sim: PlayerSim.State, frameDt: number): (CFrame, boole
 
 	-- Drawing: comes up from below over the equip time.
 	local equipLeft = math.clamp((w.equipEndTime - t) / math.max(def.equipTime.value, 1e-3), 0, 1)
-	-- Reloading: dips and rolls for the middle of the reload.
+	-- Reloading: dips and rolls for the middle of the reload, or of each
+	-- round for a gun that loads a round at a time.
 	local reloadDip = 0
 	if w.reloadEndTime > 0 then
-		local progress = 1 - math.clamp((w.reloadEndTime - t) / math.max(def.reloadTime.value, 1e-3), 0, 1)
-		reloadDip = math.sin(progress * math.pi)
+		local slot = w.equipped
+		local step = WeaponSim.reloadStep(def, w.ammo[slot], w.reserve[slot])
+		local progress = 1 - math.clamp((w.reloadEndTime - t) / math.max(step, 1e-3), 0, 1)
+		reloadDip = if def.reloadPerRound then 0.6 + 0.4 * math.sin(progress * math.pi) else math.sin(progress * math.pi)
 	end
 
 	local hold = HIP + (ADS - HIP) * adsBlend
@@ -331,8 +414,10 @@ end
 local queued: { ClientShots.Record } = {}
 
 local function drawShot(record: ClientShots.Record)
-	kick += 1
-	flashUntil = os.clock() + 0.035
+	if record.shot.pellet == 1 then
+		kick += 1 -- one kick and flash a round, however many pellets
+		flashUntil = os.clock() + 0.035
+	end
 	local outcome = record.predicted
 	local from = WeaponEffects.muzzlePosition()
 	tracer(from, Units.toStuds(outcome.point), Color3.fromRGB(255, 220, 140), 0.012)
@@ -393,20 +478,29 @@ local function updateConfirms()
 	end
 end
 
+-- Someone else's round: a tracer for each bullet (unless their gun is
+-- suppressed and they're on the other side) and the holes it made.
 local function onShotFx(fx: any)
-	if typeof(fx) ~= "table" or typeof(fx.from) ~= "Vector3" or typeof(fx.to) ~= "Vector3" then
+	if typeof(fx) ~= "table" or typeof(fx.from) ~= "Vector3" or typeof(fx.to) ~= "table" then
 		return
 	end
-	tracer(fx.from, fx.to, Color3.fromRGB(150, 200, 255), 0.01)
-	local from, to = Units.toMetres(fx.from), Units.toMetres(fx.to)
-	local length = vector.magnitude(to - from)
-	if length < 1e-3 then
-		return
-	end
-	local dir = (to - from) / length
 	local class: WeaponConfig.PenetrationClass = WeaponConfig.get(if typeof(fx.weapon) == "string" then fx.weapon else "knife").penetration
-	local trace = Penetration.trace(ClientShots.level, from, dir, class, length + 0.01)
-	drawWalls(from, dir, trace.walls, length)
+	local from = Units.toMetres(fx.from)
+	for _, to in fx.to do
+		if typeof(to) ~= "Vector3" then
+			continue
+		end
+		if fx.tracers ~= false then
+			tracer(fx.from, to, Color3.fromRGB(150, 200, 255), 0.01)
+		end
+		local toMetres = Units.toMetres(to)
+		local length = vector.magnitude(toMetres - from)
+		if length >= 1e-3 then
+			local dir = (toMetres - from) / length
+			local trace = Penetration.trace(ClientShots.level, from, dir, class, length + 0.01)
+			drawWalls(from, dir, trace.walls, length)
+		end
+	end
 end
 
 function WeaponEffects.start()

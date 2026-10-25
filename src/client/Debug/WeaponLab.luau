@@ -132,9 +132,12 @@ function WeaponLab.start(controller: any)
 	local prevReloadEnd = 0
 
 	table.insert(controller.shotListeners, function(shot: WeaponSim.Shot)
+		if shot.pellet > 1 then
+			return -- a round's other pellets
+		end
 		local prev = lastShot
 		local def = WeaponConfig.get(shot.weapon)
-		local interval = WeaponSim.fireInterval(def, shot.scoped)
+		local interval = WeaponConfig.mode(def, shot.scoped, shot.mode == "alt").interval
 		if prev and prev.weapon == shot.weapon and shot.time - prev.time < interval * 1.5 and shot.time > prev.time then
 			local burst = current
 			if not burst or burst.weapon ~= shot.weapon then
@@ -198,24 +201,55 @@ function WeaponLab.start(controller: any)
 		local ref: any = ReferenceData[def.id] or {}
 		local lines = {}
 
-		local interval = WeaponSim.fireInterval(def, w.scoped)
+		local mode = WeaponConfig.mode(def, w.scoped)
+		local interval = mode.interval
 		table.insert(lines, string.format(
-			"<b>Weapon Lab</b>  %s  %s  %.2f rps (%.1f ms)  mag %d  reload %.2fs  equip %.2fs  run %.2f m/s",
+			"<b>Weapon Lab</b>  %s  %s %s  %d credits  %.2f rps (%.1f ms)%s  mag %d  reload %.2fs  equip %.2fs  run %.2f m/s",
 			def.name,
+			def.category,
 			def.fireMode,
+			def.price.value,
 			def.fireRate.value,
-			interval * 1000,
+			if def.fireRate.value > 0 then 1000 / def.fireRate.value else 0,
+			if def.pellets then string.format("  %d pellets", def.pellets.value) else "",
 			def.magazine.value,
 			def.reloadTime.value,
 			def.equipTime.value,
 			PlayerSim.weaponSpeed(sim, cfg)
 		))
+		-- How it fires zoomed, with its right click, and while held.
+		local ways = {}
+		local ads = def.ads
+		if ads then
+			local zoomMode = WeaponConfig.mode(def, 1)
+			table.insert(ways, string.format(
+				"zoom %s: %s",
+				table.concat(ads.zoom, "x, ") .. "x",
+				if zoomMode.burstRounds > 1
+					then string.format("%d-round bursts at %.2f rps, %.3f a second", zoomMode.burstRounds, zoomMode.rate, 1 / zoomMode.burstInterval)
+					else string.format("%.2f rps", zoomMode.rate)
+			))
+		end
+		local altMode = WeaponConfig.altMode(def)
+		if altMode then
+			table.insert(ways, string.format("right click: %d bullets, %.2f a second, %d rounds", altMode.pellets, altMode.rate, altMode.ammo))
+		end
+		local spinUp = def.spinUp
+		if spinUp then
+			table.insert(ways, string.format("held: rises to %.1f rps over %.1fs (now %.0f%%)", spinUp.maxRate.value, spinUp.time.value, w.spin * 100))
+		end
+		if #ways > 0 then
+			table.insert(lines, "       " .. table.concat(ways, "   "))
+		end
 		local states = {}
 		if t < w.equipEndTime then
 			table.insert(states, string.format("drawing %.2fs", w.equipEndTime - t))
 		end
 		if w.reloadEndTime > 0 then
-			table.insert(states, string.format("reloading %.2fs", w.reloadEndTime - t))
+			table.insert(states, string.format("reloading %.2fs%s", w.reloadEndTime - t, if def.reloadPerRound then " (this round)" else ""))
+		end
+		if w.burstLeft > 0 then
+			table.insert(states, string.format("burst, %d to come", w.burstLeft))
 		end
 		if w.scoped > 0 and def.ads then
 			table.insert(states, string.format("scoped %.2fx (move %.0f%%, rate x%.2f)", def.ads.zoom[w.scoped], def.ads.moveMultiplier.value * 100, def.ads.fireRateMultiplier.value))
@@ -238,7 +272,17 @@ function WeaponLab.start(controller: any)
 
 		-- Timing ---------------------------------------------------------------
 		local mean, n = burstStats(if current and #current.intervals > 0 then current else lastBurst)
-		if mean then
+		if mean and mode.spin then
+			table.insert(lines, string.format(
+				"fire rate  %.2f rps (%.1f ms, n=%d)  expect %.2f rising to %.2f  %s",
+				1 / mean,
+				mean * 1000,
+				n,
+				mode.rate,
+				mode.spin.maxRate.value,
+				refText(ref.fireInterval, mean, "ms", 1000)
+			))
+		elseif mean then
 			local ok = math.abs(mean - interval) <= DT
 			table.insert(lines, string.format(
 				'fire rate  %.2f rps (%.1f ms, n=%d)  expect %.2f  <font color="#%s">%s</font>  %s',
@@ -253,10 +297,15 @@ function WeaponLab.start(controller: any)
 		else
 			table.insert(lines, "fire rate  -- (hold fire, or tap as fast as you can)")
 		end
+		local perRound, oneRound = def.reloadPerRound, def.reloadOneRound
 		table.insert(lines, string.format(
-			"reload     %s  expect %.0fms  %s",
+			"reload     %s  expect %.0fms%s  %s",
 			if lastReload then string.format("%.0fms", lastReload * 1000) else "--",
 			def.reloadTime.value * 1000,
+			if perRound
+				then string.format(" full, %.0fms a round", perRound.value * 1000)
+				elseif oneRound then string.format(" full, %.0fms for one round", oneRound.value * 1000)
+				else "",
 			refText(ref.reloadTime, lastReload, "ms", 1000)
 		))
 		table.insert(lines, string.format(

@@ -8,13 +8,14 @@
 --     the last bullet's cone (ring). A measured reference spray
 --     (ReferenceData.sprayPattern) is drawn in blue for comparison
 --   * the last shot's cone, piece by piece: firing error at its bullet
---     number, ADS, crouch, movement state, landing, error power, recoil
+--     number (the zoomed curve when zoomed), crouch, movement state,
+--     landing, error power, recoil
 --   * the next shot right now: its bullet number after recovery and its cone
 --   * the weapon's curves by bullet, and where tapping at a few steady
 --     rhythms settles (from the same recovery maths the simulation uses)
 --
--- The spray starts over whenever a shot comes out as a fresh first bullet.
--- Backspace clears it.
+-- The spray starts over whenever a round comes out as a fresh first bullet
+-- (a shotgun's pellets all plot, as its pattern). Backspace clears it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -94,14 +95,15 @@ local function place(f: Frame, at: Vector2, size: number)
 end
 
 -- Where tapping every `rhythm` seconds settles: the bullet number of the
--- tenth tap, using the simulation's own recovery maths.
-local function tapSettle(def: WeaponConfig.WeaponDef, rhythm: number): number
-	local interval = WeaponSim.fireInterval(def, 0)
+-- tenth tap, using the simulation's own recovery maths (recovery counts from
+-- when the gun could fire again).
+local function tapSettle(mode: WeaponConfig.Mode, rhythm: number): number
+	local interval = mode.burstInterval
 	local elapsed = math.max(math.floor(rhythm / DT + 0.5), math.ceil(interval / DT - 1e-9)) * DT
-	local factor = Accuracy.recoveryFactor(def.accuracy, interval, elapsed, DT)
+	local factor = Accuracy.recoveryFactor(mode.accuracy, elapsed - interval, DT)
 	local spray = 0
 	for _ = 1, 9 do
-		spray = spray * factor + 1
+		spray = spray * factor + mode.burstRounds -- a tap of a burst mode fires a burst
 	end
 	return spray * factor + 1
 end
@@ -170,7 +172,7 @@ function SprayLab.start(controller: any)
 	local spray: { Entry } = {}
 
 	table.insert(controller.shotListeners, function(shot: WeaponSim.Shot)
-		if shot.bullet <= 1 + 1e-9 or (spray[1] and spray[1].shot.weapon ~= shot.weapon) then
+		if shot.pellet == 1 and (shot.bullet <= 1 + 1e-9 or (spray[1] and spray[1].shot.weapon ~= shot.weapon)) then
 			table.clear(spray)
 		end
 		if #spray < MAX_DOTS then
@@ -190,8 +192,8 @@ function SprayLab.start(controller: any)
 		end
 		local def = PlayerSim.def(sim)
 		local w = sim.weapons
-		local acc, rec = def.accuracy, def.recoil
-		local scoped = w.scoped > 0 and def.ads ~= nil
+		local mode = WeaponConfig.mode(def, w.scoped)
+		local acc, rec = mode.accuracy, mode.recoil
 		local ref: any = ReferenceData[def.id] or {}
 
 		-- Plot ------------------------------------------------------------------
@@ -224,7 +226,7 @@ function SprayLab.start(controller: any)
 				f.Visible = false
 			end
 		end
-		caption.Text = string.format("<b>Spray Lab</b>  %s  %s  %d bullets  (1 square = 1 deg)", def.name, if scoped then "ADS" else "hip", #spray)
+		caption.Text = string.format("<b>Spray Lab</b>  %s  %s  %d bullets  (1 square = 1 deg)", def.name, if mode.zoomed then "zoomed" else "hip", #spray)
 		legend.Text = table.concat({
 			string.format('<font color="#%s">dots</font> where each bullet went, from your aim at that moment', Ui.hex(Ui.GOOD)),
 			string.format('<font color="#%s">grey</font> recoil centre   <font color="#%s">ring</font> last cone', Ui.hex(Ui.DIM), Ui.hex(Ui.TEXT)),
@@ -240,9 +242,8 @@ function SprayLab.start(controller: any)
 		if last then
 			local shot = last.shot
 			local cone = shot.cone
-			table.insert(lines, string.format("<b>last shot</b>  #%d  bullet %.2f  %s%s", shot.shotNumber, shot.bullet, shot.moveState, if shot.scoped > 0 then "  ADS" else ""))
-			table.insert(lines, string.format("  firing error   %5.2f   curve at bullet %.2f", cone.curve, shot.bullet))
-			table.insert(lines, string.format("  ADS            %+5.2f", -cone.adsReduction))
+			table.insert(lines, string.format("<b>last shot</b>  #%d  bullet %.2f  %s  %s%s", shot.shotNumber, shot.bullet, shot.moveState, shot.mode, if shot.pellets > 1 then string.format("  pellet %d of %d", shot.pellet, shot.pellets) else ""))
+			table.insert(lines, string.format("  firing error   %5.2f   %s curve at bullet %.2f", cone.curve, if shot.mode == "zoom" then "zoomed" else shot.mode, shot.bullet))
 			table.insert(lines, string.format("  crouch         x%4.2f", cone.crouchMultiplier))
 			table.insert(lines, string.format("  movement       %+5.2f   %s", cone.movement, shot.moveState))
 			table.insert(lines, string.format("  landing        %+5.2f", cone.landing))
@@ -258,10 +259,9 @@ function SprayLab.start(controller: any)
 		table.insert(lines, "")
 
 		local now = sim.movement.tick * DT
-		local interval = WeaponSim.fireInterval(def, w.scoped)
-		local bullet = Accuracy.next(def, w, now, DT, interval)
+		local bullet = Accuracy.next(def, w, now, DT)
 		local ctx = PlayerSim.accuracyContext(sim, controller.buttons, controller.cfg, DT)
-		local nextCone = Accuracy.cone(def, ctx, bullet, scoped)
+		local nextCone = Accuracy.cone(acc, ctx, bullet)
 		local left = if w.sprayIndex > 0 then (bullet - 1) / w.sprayIndex else 0
 		table.insert(lines, string.format("<b>next shot now</b>  bullet %.2f (%.0f%% of the spray left)  cone %.2f  %s", bullet, left * 100, nextCone.radius, ctx.moveState))
 		local tan = math.tan(math.rad(nextCone.radius))
@@ -302,12 +302,17 @@ function SprayLab.start(controller: any)
 			status(rec.crouchYawMultiplier.status),
 			rec.adsMultiplier.value
 		))
-		table.insert(lines, string.format("camera follows %.0f%% of the recoil (ADS %.0f%%)", rec.cameraFraction.value * 100, rec.adsCameraFraction.value * 100))
+		table.insert(lines, string.format(
+			"camera follows %.0f%% of the recoil (zoomed %.0f%%)%s",
+			rec.cameraFraction.value * 100,
+			rec.adsCameraFraction.value * 100,
+			if rec.viewKick then string.format(", and kicks %.1f deg a shot", rec.viewKick.value) else ""
+		))
 		table.insert(lines, "")
 
 		local taps = {}
 		for _, rhythm in TAP_RHYTHMS do
-			table.insert(taps, string.format("%.2fs b%.2f", rhythm, tapSettle(def, rhythm)))
+			table.insert(taps, string.format("%.2fs b%.2f", rhythm, tapSettle(mode, rhythm)))
 		end
 		table.insert(lines, "<b>tapping</b>, where the 10th tap lands in the spray:")
 		table.insert(lines, "  " .. table.concat(taps, "   "))

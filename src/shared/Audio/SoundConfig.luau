@@ -111,7 +111,7 @@ SoundConfig.Curves = {
 		"Heard map-wide; louder up close than footsteps' flat curve, since a shot says where it came from"
 	),
 	-- The Phantom's built-in suppressor: 'hard to hear' (community: MeinMMO,
-	-- after RoyGallant).
+	-- after RoyGallant). The Ghost and the Spectre are suppressed too.
 	suppressed = curve({ { 0, 1 }, { 4, 1 }, { 20, 0.5 }, { 50, 0.2 }, { 70, 0 } }, "estimate", "A suppressed shot carries a third as far as a rifle's"),
 }
 
@@ -248,6 +248,10 @@ SoundConfig.Sounds = {
 	latch = sound(0.7, 0.03, 2, {
 		asset(9116722545, "Metal Latches 1 (SFX)", 0.47),
 	}, 1.15),
+	-- A shell or a single round going in: the magazine's click, smaller.
+	shell = sound(0.6, 0.05, 3, {
+		asset(9113104517, "Ammo Magazine 2 (SFX)", 0.72, 0.22),
+	}, 1.35),
 	-- Draws
 	drawRifle = sound(0.6, 0.03, 2, {
 		asset(9116362481, "Machine Gun Movement 2 (SFX)", 0.60, 0.08),
@@ -274,22 +278,56 @@ SoundConfig.Sounds = {
 	}),
 }
 
--- Which sounds each weapon makes, by WeaponConfig id. Reloads play in parts
--- as they go, at fractions of the weapon's reload time (estimates: Riot
--- publishes how long a reload takes, not when its parts sound). The last
--- part's recording is skipped to just before its click, so the click comes
--- on its time, before the reload ends.
+-- Which sounds each weapon makes, by WeaponConfig id. The library has five
+-- gunshots (a rifle, a suppressed pistol, a big rifle, a revolver and a
+-- pistol), so each gun takes the nearest and its own pitch (playback
+-- speed): higher for a lighter gun, lower for a heavier one, so no two
+-- sound the same. Reloads play in parts as they go, at fractions of the
+-- reload's time (estimates: Riot publishes how long a reload takes, not
+-- when its parts sound); a gun that loads a round at a time plays its parts
+-- for each round. The last part's recording is skipped to just before its
+-- click, so the click comes on its time, before the reload ends.
 local MAGAZINE = { cue(0.12, "magOut"), cue(0.55, "magIn"), cue(0.82, "rack") }
 local BOLT = { cue(0.08, "boltOpen"), cue(0.5, "magIn"), cue(0.82, "rack") }
 local CYLINDER = { cue(0.1, "latch"), cue(0.5, "magIn"), cue(0.82, "latch") }
+local ROUND = { cue(0.6, "shell") } -- each round of a round-at-a-time reload
+local BREAK = { cue(0.12, "latch"), cue(0.5, "shell"), cue(0.85, "latch") } -- open, load, close
+local BOX = { cue(0.08, "latch"), cue(0.3, "magOut"), cue(0.6, "magIn"), cue(0.8, "latch"), cue(0.9, "rack") } -- a machine gun's cover and box
+
+export type WeaponSounds = {
+	shot: string?,
+	pitch: number?, -- times the shot sound's own pitch
+	reload: { Cue }?,
+	draw: string,
+	curve: string,
+}
+
+local function gun(shot: string, pitch: number, reload: { Cue }, draw: string, curve: string?): WeaponSounds
+	return { shot = shot, pitch = pitch, reload = reload, draw = draw, curve = curve or "gunshot" }
+end
 
 SoundConfig.Weapons = {
-	vandal = { shot = "rifle", reload = MAGAZINE, draw = "drawRifle", curve = "gunshot" },
-	phantom = { shot = "suppressed", reload = MAGAZINE, draw = "drawRifle", curve = "suppressed" },
-	operator = { shot = "sniper", reload = BOLT, draw = "drawRifle", curve = "gunshot" },
-	sheriff = { shot = "revolver", reload = CYLINDER, draw = "drawPistol", curve = "gunshot" },
-	classic = { shot = "pistol", reload = MAGAZINE, draw = "drawPistol", curve = "gunshot" },
-	knife = { shot = nil, reload = nil, draw = "knife", curve = "gunshot" },
-} :: { [string]: { shot: string?, reload: { Cue }?, draw: string, curve: string } }
+	classic = gun("pistol", 1, MAGAZINE, "drawPistol"),
+	shorty = gun("sniper", 0.8, BREAK, "drawPistol"),
+	frenzy = gun("pistol", 1.15, MAGAZINE, "drawPistol"),
+	ghost = gun("suppressed", 1.12, MAGAZINE, "drawPistol", "suppressed"),
+	bandit = gun("revolver", 1.12, MAGAZINE, "drawPistol"),
+	sheriff = gun("revolver", 1, CYLINDER, "drawPistol"),
+	stinger = gun("rifle", 1.2, MAGAZINE, "drawRifle"),
+	spectre = gun("suppressed", 1.05, MAGAZINE, "drawRifle", "suppressed"),
+	bucky = gun("sniper", 0.72, ROUND, "drawRifle"),
+	judge = gun("sniper", 0.85, MAGAZINE, "drawRifle"),
+	bulldog = gun("rifle", 1.06, MAGAZINE, "drawRifle"),
+	guardian = gun("rifle", 0.92, MAGAZINE, "drawRifle"),
+	phantom = gun("suppressed", 1, MAGAZINE, "drawRifle", "suppressed"),
+	vandal = gun("rifle", 1, MAGAZINE, "drawRifle"),
+	warden = gun("rifle", 0.88, MAGAZINE, "drawRifle"),
+	marshal = gun("sniper", 1.12, ROUND, "drawRifle"),
+	outlaw = gun("sniper", 0.92, BREAK, "drawRifle"),
+	operator = gun("sniper", 1, BOLT, "drawRifle"),
+	ares = gun("rifle", 0.94, BOX, "drawRifle"),
+	odin = gun("rifle", 0.86, BOX, "drawRifle"),
+	knife = { shot = nil, pitch = nil, reload = nil, draw = "knife", curve = "gunshot" },
+} :: { [string]: WeaponSounds }
 
 return SoundConfig

@@ -59,7 +59,7 @@ export type TickInfo = {
 	wishDir: vector,
 	maxSpeed: number, -- run speed of the equipped weapon
 	accurateFraction: number, -- deadzone fraction of that speed
-	shot: WeaponSim.Shot?,
+	shots: { WeaponSim.Shot }?, -- the bullets fired this tick: one round's
 }
 
 export type Profile = {
@@ -92,8 +92,9 @@ PlayerController.stats = {
 }
 -- Called once per live simulated tick (debug tools hook in here).
 PlayerController.tickListeners = {} :: { (TickInfo) -> () }
--- Called for each shot the local player fires, with the input that fired it
--- (live ticks only; replays after a correction don't re-fire).
+-- Called for each bullet the local player fires (each pellet of a shotgun
+-- round), with the input that fired it (live ticks only; replays after a
+-- correction don't re-fire).
 PlayerController.shotListeners = {} :: { (WeaponSim.Shot, PlayerCodec.WireInput) -> () }
 -- Called when the local player (re)spawns with a fresh simulation.
 PlayerController.spawnListeners = {} :: { (PlayerSim.State) -> () }
@@ -151,7 +152,7 @@ local function tick()
 	}
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
-	local shot = PlayerSim.step(s, input, PlayerController.cfg, world, DT)
+	local shots = PlayerSim.step(s, input, PlayerController.cfg, world, DT)
 	simTime += DT
 	PlayerController.buttons = input.buttons
 
@@ -159,9 +160,11 @@ local function tick()
 	table.insert(unsent, input)
 	predicted[seq] = PlayerSim.copy(s)
 
-	if shot then
-		for _, listener in PlayerController.shotListeners do
-			listener(shot, input)
+	if shots then
+		for _, shot in shots do
+			for _, listener in PlayerController.shotListeners do
+				listener(shot, input)
+			end
 		end
 	end
 
@@ -174,7 +177,7 @@ local function tick()
 		wishDir = MovementSim.wishDirection(input.buttons, input.yaw),
 		maxSpeed = profile.maxSpeed,
 		accurateFraction = profile.accurateFraction,
-		shot = shot,
+		shots = shots,
 	}
 	for _, listener in PlayerController.tickListeners do
 		listener(info)
@@ -232,6 +235,9 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or gw.swayDir ~= sw.swayDir
 		or gw.shotCounter ~= sw.shotCounter
 		or gw.seed ~= sw.seed
+		or gw.burstLeft ~= sw.burstLeft
+		or gw.burstNext ~= sw.burstNext
+		or gw.spin ~= sw.spin
 	then
 		return true, posErr
 	end
@@ -305,19 +311,28 @@ end
 
 -- The view follows a share of the recoil (the weapon's camera fraction) of
 -- the bullet that would fire next, so it climbs with a spray and settles as
--- the spray recovers. Eased so each shot reads as a kick, not a snap. Visual
--- only: the aim sent to the server never includes it.
+-- the spray recovers. A sniper's bullets don't climb, so each of its shots
+-- also kicks the view up by its view kick, settling over viewKickTime.
+-- Eased so each shot reads as a kick, not a snap. Visual only: the aim sent
+-- to the server never includes it.
 local function updateKick(s: PlayerSim.State, frameDt: number)
 	local def = PlayerSim.def(s)
 	local w = s.weapons
-	local scoped = w.scoped > 0 and def.ads ~= nil
 	local t = (s.movement.tick + accumulator / DT) * DT
-	local bullet, sway = Accuracy.next(def, w, t, DT, WeaponSim.fireInterval(def, w.scoped))
+	local bullet, sway, mode = Accuracy.next(def, w, t, DT)
 	local ctx = PlayerSim.accuracyContext(s, PlayerController.buttons, PlayerController.cfg, DT)
-	local up, right = Accuracy.recoil(def, ctx, bullet, sway, scoped)
-	local fraction = Accuracy.cameraFraction(def, scoped)
+	local up, right = Accuracy.recoil(mode.recoil, ctx, bullet, sway, mode.zoomed)
+	local fraction = Accuracy.cameraFraction(mode.recoil, mode.zoomed)
+	local kick = 0
+	local viewKick = mode.recoil.viewKick
+	local settle = WeaponConfig.Accuracy.viewKickTime.value
+	local since = t - w.lastShotTime
+	if viewKick and since >= 0 and since < settle then
+		local left = 1 - since / settle
+		kick = viewKick.value * left * left
+	end
 	local k = 1 - math.exp(-frameDt * KICK_RATE)
-	CameraController.kickPitch += (math.rad(up * fraction) - CameraController.kickPitch) * k
+	CameraController.kickPitch += (math.rad(up * fraction + kick) - CameraController.kickPitch) * k
 	-- Positive camera yaw turns left; positive recoil yaw is to the right.
 	CameraController.kickYaw += (-math.rad(right * fraction) - CameraController.kickYaw) * k
 end

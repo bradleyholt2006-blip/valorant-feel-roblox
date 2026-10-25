@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the eight research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the nine research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about an hour and a quarter. Doing it in parts is fine; keep the order.
+It takes about an hour and a half. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -26,7 +26,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 2. Install Rojo 7.x and its Studio plugin, run `rojo serve` in this repository and connect from
    the plugin.
 3. Open the Output window (View tab, Output).
-4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 and 11
+4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 12
    need one and then two. Section 11 needs headphones.
 
 | Key | What it does |
@@ -47,6 +47,13 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
 | 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
+
+Any other gun comes from an attribute until there's a buy menu: with the game running, select
+your player under Players in the Explorer, add a string attribute `VFTestGive` and set it to the
+gun's id (`classic`, `shorty`, `frenzy`, `ghost`, `bandit`, `sheriff`, `stinger`, `spectre`,
+`bucky`, `judge`, `bulldog`, `guardian`, `phantom`, `vandal`, `warden`, `marshal`, `outlaw`,
+`operator`, `ares` or `odin`). You get it as 4 to 8 would give it, and the attribute clears
+itself, ready for the next one.
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -188,15 +195,16 @@ From [03-spread-recoil.md](research/03-spread-recoil.md). Press F2 twice for the
   facing the back wall, which is 10 m away. Hold fire with the Vandal for a whole magazine without
   touching the mouse. On the wall, the first three marks are close together. Then they climb,
   reaching about 80 cm above where you aimed by bullet 9 and 1.1 m by bullet 16, with a side to
-  side drift from bullet 9 on. The Spray Lab's dots should make the same shape as the marks
+  side drift from bullet 7 on. The Spray Lab's dots should make the same shape as the marks
   (1 square is 1 degree, which is 17.5 cm at 10 m). **Send:** one screenshot with the wall and the
   plot both in view.
 - **R2 Cone ring.** With the HUD on, fire single shots half a second apart. The ring around the
   crosshair is green, and each mark lands inside it.
 - **R3 Moving error.** While you run, the ring turns red and grows, and shots spread wide. Walking,
   it's smaller. Crouched and still, it's smallest.
-- **R4 Recovery.** After a spray, wait about 0.4 s. The Spray Lab's `next shot now` line reads
-  `bullet 1.00`, and the next shot lands on the crosshair.
+- **R4 Recovery.** After a spray, wait about half a second (the Vandal's 0.375 s counts from when
+  it could fire again). The Spray Lab's `next shot now` line reads `bullet 1.00`, and the next
+  shot lands on the crosshair.
 - **R5 Camera kick at 60 and 240 fps.** The view kicks up with each shot and settles back as the
   spray recovers. If the Roblox menu (Esc, Settings) has Maximum Frame Rate, spray once at 60 and
   once at 240 (the HUD shows `fps`). The kick should feel the same and the marks on the wall
@@ -475,6 +483,45 @@ arena on (P in window 1), keep the Sound Lab open in window 1, and play through 
   attribute `VFTestMute`, ticked. Player 1 hears nothing, the lab shows `MUTED (VFTestMute)`, and
   the meters still move when player 1 fires. Untick it and the sound comes back.
 
+## 12. The arsenal
+
+From [09-arsenal.md](research/09-arsenal.md). One player, on the course, with the Weapon Lab open
+(F2 once). Give yourself each gun with `VFTestGive` (above).
+
+- **G1 Every gun.** Give yourself each of the 20 in turn. Each appears in your hands in its own
+  shape and colour: pistols, the Ghost with a suppressor, the Shorty sawn-off, SMGs, shotguns
+  with a pump, rifles, snipers with a scope, the Ares and the Odin with a box under them. Each
+  has a draw sound and a gunshot of its own. The Weapon Lab's first line names the gun, its group
+  and its price. **Send:** any gun that doesn't come, or that looks or sounds like another.
+- **G2 Shotguns.** With the Bucky, shoot the static dummy at 10 m: a tracer for each of the 15
+  pellets and a hole for each that misses, but one hit marker and one number for the pellets that
+  hit, 13 each in the body. From 5 m, one shot at the middle of its body kills it: 9 of the 15
+  pellets at 17 are enough. The Judge
+  fires while you hold the trigger, 3.5 shots a second; the Shorty once a click.
+- **G3 Bursts.** With the Bulldog, zoom (mouse 2) and click once: three rounds come out quickly.
+  Hold fire: bursts of three, about two a second, the lab's state line showing `burst, 2 to
+  come` as each starts. Unzoomed it's an automatic, 10 a second. The Stinger zoomed fires bursts
+  of four.
+- **G4 The Odin.** Hold fire at the back wall. The lab's second line shows it rising to 100%
+  within a second, and its fire rate line reads about 15 rps against `expect 12.00 rising to
+  15.60`. Let go and fire again: it starts at 12 again. Zoomed, it fires at 15.6 from the first
+  shot.
+- **G5 The Classic's right click.** With the Classic, right-click: three bullets at once, spread
+  wider than a left click. Four right clicks empty the magazine, and it reloads itself.
+- **G6 A round at a time.** Fire two shots with the Bucky and press R: a shell sound about every
+  half second, the ammo counting 3, 4, 5, and the lab's state line reading `reloading ... (this
+  round)`. Fire four and press R, then click after the second shell: it fires, and the reload
+  stops with those shells in. The Marshal does the same. The Outlaw: one shot then R takes
+  2300 ms on the lab's reload line, two shots then R 3800 ms.
+- **G7 Scopes.** The Marshal and the Outlaw zoom 3.5x, the Warden 2x and the Guardian 1.5x; the
+  Sheriff doesn't zoom at all now. Each sniper shot kicks the view up, and it settles back.
+
+Then two players, as in section 9, with the arena on (P in window 1).
+
+- **G8 Others' shots.** Player 2 fires a Bucky past player 1: player 1 sees 15 tracers. Player 2
+  takes the Spectre or the Ghost: player 1, on the other side, sees the holes but no tracers and
+  hears a quieter shot. **Send:** a screenshot of player 1's screen just after a Bucky shot.
+
 ## Results
 
 ```
@@ -502,6 +549,9 @@ N1 sounds loaded ___ of ___ (still loading after 10 s: ___)
 N4 too loud: ___; too quiet: ___
 N8 the 15 m strafer stops being heard at ___ m
 N10 steps behind the middle block sound duller: yes / no
+G1 guns missing or looking or sounding like another: ___
+G2 Bucky at 10 m, the number: ___
+G4 Odin held, fire rate: ___ rps
 Didn't look right (IDs and what you saw):
 ```
 
@@ -547,3 +597,8 @@ Didn't look right (IDs and what you saw):
 | 08 | Nothing is heard twice with voice chat on | N12 |
 | 08 | Your own steps don't cover anyone else's | N10 |
 | 08 | The buy phase is silent from the other side | N9 |
+| 09 | Every gun can be given, draws in its own shape and colour, and fires as the weapon lab says | G1, G3, G4, G5, G7 |
+| 09 | A shotgun draws each pellet but shows one hit marker and number | G2 |
+| 09 | A round-at-a-time reload, with a sound for each round, stopped by a shot | G6 |
+| 09 | Others see a Bucky's tracers, and no suppressed tracers from the other side | G8 |
+| 09 | Each gun's shot sounds like its own | G1 |

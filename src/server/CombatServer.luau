@@ -1,17 +1,20 @@
 --!strict
 -- Resolves shots on the server and applies damage.
 --
--- A shot comes out of the shooter's PlayerSim on the tick it was fired, with
+-- A round comes out of the shooter's PlayerSim on the tick it was fired, with
 -- that tick's viewTime: the snapshot time the shooter's screen was showing.
 -- The server rewinds every other living entity to that time (lag
 -- compensation, capped at 140 ms like the reference since Patch 6.02),
--- traces the shot through the level (Penetration, over Roblox raycasts) and
--- against those entities' analytic hitboxes (ShotResolver), applies damage by
--- region, range and the walls it went through, slows the victim ("tagging")
--- and tells everyone what happened. In the push model Riot describes,
--- clients get hit events, not polled health.
+-- traces each of the round's bullets (a shotgun's pellets) through the level
+-- (Penetration, over Roblox raycasts) and against those entities' analytic
+-- hitboxes (ShotResolver), works out each bullet's damage by region, range
+-- and the walls it went through, applies each target's total at once
+-- (Volley), slows the victim ("tagging") and tells everyone what happened.
+-- In the push model Riot describes, clients get hit events, not polled
+-- health.
 --
--- The verdict sent back to the shooter also says what the server tested:
+-- The verdict sent back to the shooter, one per round, also says what the
+-- server tested:
 -- how far it rewound, the rewound pose of every target near the ray and the
 -- snapshots it came from, the shot's origin, where the level stopped it and
 -- the walls on the way. That is what the debug tools use to draw the
@@ -28,6 +31,7 @@ local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local ShotResolver = require(Shared.Combat.ShotResolver)
+local Volley = require(Shared.Combat.Volley)
 local LagCompensation = require(Shared.Combat.LagCompensation)
 local Penetration = require(Shared.Combat.Penetration)
 local RobloxLevel = require(Shared.Combat.RobloxLevel)
@@ -119,76 +123,104 @@ local function describeTarget(t: LagCompensation.Target): { [string]: any }
 	}
 end
 
-function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, viewTime: number)
-	if not shooter.health.alive then
+-- One round: its bullets, all fired on the same tick from the same eye.
+function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot }, viewTime: number)
+	local first = shots[1]
+	if not first or not shooter.health.alive then
 		return -- a dead player's queued shots are rejected, as in the reference
 	end
-	local def = WeaponConfig.get(shot.weapon)
+	local def = WeaponConfig.get(first.weapon)
 	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
 	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
 		local entity = Entities.get(id)
 		return id ~= shooter.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil and not teammates(shooter, entity)
 	end)
-	local trace = Penetration.trace(level, shot.origin, shot.direction, def.penetration, WeaponConfig.MaxRange)
-	local blockedAt = trace.stop
-	local hit = ShotResolver.resolve(shot.origin, shot.direction, LagCompensation.shotTargets(rewound), blockedAt, shooter.id)
+	local targets = LagCompensation.shotTargets(rewound)
 
-	local tested = {}
-	for _, t in rewound do
-		if ShotResolver.nearRay(shot.origin, shot.direction, t.pose, blockedAt) then
-			table.insert(tested, describeTarget(t))
+	-- Each bullet: where it ended, what it hit and the damage it did. The
+	-- targets tested are those near any bullet's ray.
+	local tested, testedIds = {}, {}
+	local pellets = table.create(#shots)
+	local ends = table.create(#shots)
+	local hits: { Volley.Hit } = {}
+	for _, shot in shots do
+		local trace = Penetration.trace(level, shot.origin, shot.direction, def.penetration, WeaponConfig.MaxRange)
+		local blockedAt = trace.stop
+		local hit = ShotResolver.resolve(shot.origin, shot.direction, targets, blockedAt, shooter.id)
+		for _, t in rewound do
+			if not testedIds[t.id] and ShotResolver.nearRay(shot.origin, shot.direction, t.pose, blockedAt) then
+				testedIds[t.id] = true
+				table.insert(tested, describeTarget(t))
+			end
 		end
+		local endPoint = if hit then hit.point else shot.origin + shot.direction * blockedAt
+		local endDistance = if hit then hit.distance else blockedAt
+		local multiplier = Penetration.multiplierAt(trace, endDistance)
+		local pellet: { [string]: any } = {
+			shotNumber = shot.shotNumber,
+			endPoint = Units.toStuds(endPoint),
+			direction = Units.asVector3(shot.direction),
+			blockedAt = blockedAt,
+			multiplier = multiplier,
+			walls = describeWalls(trace, endDistance),
+		}
+		if hit then
+			local victim = Entities.get(hit.targetId)
+			if victim and victim.health.alive then
+				-- What the bullet did, not the health it took: a 160 headshot
+				-- on a 150 HP target still reads 160, so damage values can be
+				-- checked.
+				local amount = Penetration.damage(WeaponConfig.damageAt(def, hit.region, hit.distance), multiplier)
+				pellet.target = hit.targetId
+				pellet.region = hit.region
+				pellet.distance = hit.distance
+				pellet.hitPoint = Units.asVector3(hit.point)
+				pellet.damage = amount
+				table.insert(hits, { target = hit.targetId, region = hit.region :: string, damage = amount })
+			end
+		end
+		table.insert(pellets, pellet)
+		table.insert(ends, pellet.endPoint)
 	end
-	local endPoint = if hit then hit.point else shot.origin + shot.direction * blockedAt
-	local endDistance = if hit then hit.distance else blockedAt
-	local multiplier = Penetration.multiplierAt(trace, endDistance)
-	local verdict: { [string]: any } = {
-		shotNumber = shot.shotNumber,
-		tick = shot.tick,
-		weapon = shot.weapon,
-		endPoint = Units.toStuds(endPoint),
-		viewTime = viewTime,
-		rewindTime = rewind.time,
-		rewind = rewind.amount,
-		clamped = rewind.clamped,
-		origin = Units.asVector3(shot.origin),
-		direction = Units.asVector3(shot.direction),
-		blockedAt = blockedAt,
-		multiplier = multiplier,
-		walls = describeWalls(trace, endDistance),
-		tested = tested,
-	}
-	if hit then
-		local victim = Entities.get(hit.targetId)
+
+	-- Each target takes the round's damage as one hit.
+	local results = {}
+	for _, total in Volley.totals(hits) do
+		local victim = Entities.get(total.target)
 		if victim and victim.health.alive then
-			local amount = Penetration.damage(WeaponConfig.damageAt(def, hit.region, hit.distance), multiplier)
-			local result = damage(shooter, victim, amount, hit.region)
-			verdict.target = hit.targetId
-			verdict.region = hit.region
-			verdict.distance = hit.distance
-			verdict.hitPoint = Units.asVector3(hit.point)
-			-- What the shot did, not the health it took: a 160 headshot on a
-			-- 150 HP target still reads 160, so damage values can be checked.
-			verdict.damage = amount
-			verdict.killed = result.killed
+			local result = damage(shooter, victim, total.damage, total.region)
+			table.insert(results, { target = total.target, region = total.region, damage = total.damage, pellets = total.pellets, killed = result.killed })
 		end
 	end
 
 	local remotes = Remotes.get()
 	if shooter.player then
-		remotes.ShotResult:FireClient(shooter.player, verdict)
+		remotes.ShotResult:FireClient(shooter.player, {
+			volley = first.volley,
+			tick = first.tick,
+			weapon = first.weapon,
+			viewTime = viewTime,
+			rewindTime = rewind.time,
+			rewind = rewind.amount,
+			clamped = rewind.clamped,
+			origin = Units.asVector3(first.origin),
+			tested = tested,
+			pellets = pellets,
+			hits = results,
+		})
 	end
-	-- Other clients trace the walls again themselves to draw the holes.
-	local fx = {
-		shooter = shooter.id,
-		weapon = shot.weapon,
-		from = Units.toStuds(shot.origin),
-		to = verdict.endPoint,
-		hit = verdict.target ~= nil,
-	}
+	-- Other clients trace the walls again themselves to draw the holes. A
+	-- suppressed gun's tracers show only to the shooter's own side.
 	for _, entity in Entities.all() do
 		if entity.player and entity ~= shooter then
-			remotes.ShotFx:FireClient(entity.player, fx)
+			remotes.ShotFx:FireClient(entity.player, {
+				shooter = shooter.id,
+				weapon = first.weapon,
+				from = Units.toStuds(first.origin),
+				to = ends,
+				hit = #results > 0,
+				tracers = not def.suppressed or teammates(shooter, entity),
+			})
 		end
 	end
 end

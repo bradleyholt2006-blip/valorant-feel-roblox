@@ -34,6 +34,9 @@ InputSampler.Bindings = {
 local latched = 0
 local started = false
 
+-- Buttons held on top of the real ones (TestAim's VFTestButtons, Studio only).
+InputSampler.extraButtons = 0
+
 local function flagFor(input: InputObject): number
 	for _, binding in InputSampler.Bindings do
 		if binding.keys and table.find(binding.keys, input.KeyCode) then
@@ -63,7 +66,7 @@ function InputSampler.sample(): number
 		latched = 0
 		return 0
 	end
-	local buttons = latched
+	local buttons = bit32.bor(latched, InputSampler.extraButtons)
 	latched = 0
 	for _, binding in InputSampler.Bindings do
 		if bit32.band(buttons, binding.flag) ~= 0 then

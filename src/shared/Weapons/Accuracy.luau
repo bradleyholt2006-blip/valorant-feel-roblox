@@ -7,16 +7,17 @@
 --
 -- The model, from Riot's patch notes (docs/research/03-spread-recoil.md):
 --
---   * Each shot gets a bullet number in the current spray. Firing again
---     before the weapon's Gun Recovery Time has passed carries the spray on;
---     waiting part of it recovers part of the spray, and tap efficiency sets
---     how fast that happens. Waiting the whole time makes the next shot a
---     first shot again.
---   * The cone of fire is the firing error curve at that bullet number (less
---     a flat amount when aiming down sights, times a percentage crouched),
---     plus a movement error for the movement state, plus the jump landing
---     penalty. Each bullet lands at a random point in the cone, biased
---     toward the centre when standing still ("error power").
+--   * Each shot gets a bullet number in the current spray. The Gun Recovery
+--     Time counts from the moment the gun can fire again: firing as soon as
+--     it can carries the spray on, waiting part of the recovery time
+--     recovers part of the spray, and tap efficiency sets how fast that
+--     happens. Waiting the whole time makes the next shot a first shot again.
+--   * The cone of fire is the firing error curve at that bullet number (the
+--     zoomed curve when aiming down sights or scoped, times a percentage
+--     crouched), plus a movement error for the movement state, plus the jump
+--     landing penalty. Each bullet lands at a random point in the cone,
+--     biased toward the centre when standing still ("error power"). A
+--     shotgun's pellets each land at their own point in the same cone.
 --   * Recoil moves the cone's centre: up by the recoil curve at the bullet
 --     number, and, after the first few bullets, sideways in a drift that
 --     changes direction at random.
@@ -38,8 +39,7 @@ export type Context = {
 -- How the cone of one shot was put together, for the debug tools.
 export type Cone = {
 	radius: number,
-	curve: number, -- firing error at this bullet before modifiers
-	adsReduction: number,
+	curve: number, -- firing error at this bullet before modifiers (the zoomed curve when zoomed)
 	crouchMultiplier: number,
 	movement: number,
 	landing: number,
@@ -71,25 +71,30 @@ end
 
 -- Recovery -------------------------------------------------------------------
 
--- Share of the spray left after `elapsed` seconds without firing (1 = all of
--- it, 0 = fully recovered). Nothing recovers while the trigger keeps up with
--- the fire rate (a held trigger lands within one tick of its cadence); after
--- that the spray falls away over the rest of the recovery time, faster the
--- higher the tap efficiency.
+-- Share of the spray left when a shot fires `sinceReady` seconds after the
+-- gun could fire again (1 = all of it, 0 = fully recovered). A trigger that
+-- keeps up with the gun (held, or a click on the first tick it's ready)
+-- recovers nothing; after that the spray falls away over the recovery time,
+-- faster the higher the tap efficiency.
+--
+-- Counting from readiness rather than from the last shot is what makes a
+-- slow gun's recovery mean anything: the Outlaw fires every 0.36 s, so a
+-- recovery of 0.15 s counted from the shot would always be over before it
+-- could fire again, and Patch 13.01's change to it (0.1 >>> 0.15, with
+-- spread and recoil after the first shot) would do nothing.
 --
 -- The result is rounded to 1/65536: `^` comes from the C maths library,
 -- which may differ in the last bit between the client's and the server's
 -- machines, and this value feeds simulation state that both must agree on.
-function Accuracy.recoveryFactor(acc: WeaponConfig.AccuracyDef, interval: number, elapsed: number, dt: number): number
-	local recovery = acc.recoveryTime.value
-	local grace = math.min(interval + dt, recovery * 0.5)
-	if elapsed <= grace then
+function Accuracy.recoveryFactor(acc: WeaponConfig.AccuracyDef, sinceReady: number, dt: number): number
+	if sinceReady < dt - 1e-9 then
 		return 1
-	elseif elapsed >= recovery then
+	end
+	local recovery = acc.recoveryTime.value
+	if sinceReady >= recovery then
 		return 0
 	end
-	local progress = (elapsed - grace) / (recovery - grace)
-	local left = (1 - progress) ^ acc.tapEfficiency.value
+	local left = (1 - sinceReady / recovery) ^ acc.tapEfficiency.value
 	return math.floor(left * 65536 + 0.5) / 65536
 end
 
@@ -108,28 +113,17 @@ function Accuracy.movementError(acc: WeaponConfig.AccuracyDef, state: MoveState)
 	return 0
 end
 
--- The cone for a shot with this bullet number. `scoped` means aiming down
--- sights or through a scope.
-function Accuracy.cone(def: WeaponConfig.WeaponDef, ctx: Context, bullet: number, scoped: boolean): Cone
-	local acc = def.accuracy
-	local scopedCurve = acc.scopedFiringError
-	local curve = if scoped and scopedCurve then scopedCurve else acc.firingError
-	local raw = Accuracy.curve(curve.points, bullet)
-	local base = raw
-	local reduction = 0
-	if scoped and not scopedCurve then
-		reduction = math.min(acc.adsReduction.value, base)
-		base -= reduction
-	end
+-- The cone for a shot with this bullet number, from the accuracy of the
+-- mode it fires in (WeaponConfig.mode).
+function Accuracy.cone(acc: WeaponConfig.AccuracyDef, ctx: Context, bullet: number): Cone
+	local raw = Accuracy.curve(acc.firingError.points, bullet)
 	local crouch = if ctx.crouched and ctx.moveState ~= "air" then acc.crouchMultiplier.value else 1
-	base *= crouch
 	local movement = Accuracy.movementError(acc, ctx.moveState)
 	local landing = if ctx.landing then WeaponConfig.Accuracy.landError.value else 0
 	local power = if ctx.moveState == "still" then WeaponConfig.Accuracy.errorPower.value else WeaponConfig.Accuracy.moveErrorPower.value
 	return {
-		radius = base + movement + landing,
+		radius = raw * crouch + movement + landing,
 		curve = raw,
-		adsReduction = reduction,
 		crouchMultiplier = crouch,
 		movement = movement,
 		landing = landing,
@@ -141,8 +135,7 @@ end
 
 -- Recoil offset of a bullet: degrees up, and degrees right given the current
 -- sideways drift `sway` (already recovered).
-function Accuracy.recoil(def: WeaponConfig.WeaponDef, ctx: Context, bullet: number, sway: number, scoped: boolean): (number, number)
-	local rec = def.recoil
+function Accuracy.recoil(rec: WeaponConfig.RecoilDef, ctx: Context, bullet: number, sway: number, zoomed: boolean): (number, number)
 	local pitch = Accuracy.curve(rec.pitch.points, bullet)
 	local yaw = sway
 	if ctx.moveState == "run" then
@@ -151,7 +144,7 @@ function Accuracy.recoil(def: WeaponConfig.WeaponDef, ctx: Context, bullet: numb
 	if ctx.crouched and ctx.moveState == "still" then
 		yaw *= rec.crouchYawMultiplier.value
 	end
-	if scoped then
+	if zoomed then
 		pitch *= rec.adsMultiplier.value
 		yaw *= rec.adsMultiplier.value
 	end
@@ -180,8 +173,8 @@ function Accuracy.advanceSway(rec: WeaponConfig.RecoilDef, bullet: number, sway:
 end
 
 -- Which share of the recoil the camera shows.
-function Accuracy.cameraFraction(def: WeaponConfig.WeaponDef, scoped: boolean): number
-	return if scoped then def.recoil.adsCameraFraction.value else def.recoil.cameraFraction.value
+function Accuracy.cameraFraction(rec: WeaponConfig.RecoilDef, zoomed: boolean): number
+	return if zoomed then rec.adsCameraFraction.value else rec.cameraFraction.value
 end
 
 -- Randomness --------------------------------------------------------------------
@@ -240,10 +233,13 @@ end
 
 -- Live state ---------------------------------------------------------------------
 
--- Bullet number and drift the next shot would get if fired at time `t`.
-function Accuracy.next(def: WeaponConfig.WeaponDef, weapons: any, t: number, dt: number, interval: number): (number, number)
-	local factor = Accuracy.recoveryFactor(def.accuracy, interval, t - weapons.lastShotTime, dt)
-	return weapons.sprayIndex * factor + 1, weapons.recoilYaw * factor
+-- Bullet number and drift the next shot would get if fired at time `t`
+-- (WeaponSim state), and the mode it would fire in: hip or zoomed, as the
+-- weapon is held now. The rest of a burst under way doesn't recover.
+function Accuracy.next(def: WeaponConfig.WeaponDef, weapons: any, t: number, dt: number): (number, number, WeaponConfig.Mode)
+	local mode = WeaponConfig.mode(def, weapons.scoped)
+	local factor = if weapons.burstLeft > 0 then 1 else Accuracy.recoveryFactor(mode.accuracy, t - weapons.nextFireTime, dt)
+	return weapons.sprayIndex * factor + 1, weapons.recoilYaw * factor, mode
 end
 
 return Accuracy

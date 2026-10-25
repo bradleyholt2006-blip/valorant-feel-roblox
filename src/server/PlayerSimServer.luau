@@ -69,7 +69,9 @@ type Record = {
 	shown: PlayerCodec.Pose?, -- what this frame's snapshot shows
 }
 
-export type ShotHandler = (shooter: Entities.Entity, shot: WeaponSim.Shot, viewTime: number) -> ()
+-- Called with the bullets of each round a player fires (several for a
+-- shotgun), and the input's viewTime.
+export type ShotHandler = (shooter: Entities.Entity, shots: { WeaponSim.Shot }, viewTime: number) -> ()
 export type SpawnPoint = { feet: vector, yaw: number }
 
 local PlayerSimServer = {}
@@ -303,11 +305,11 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.buttons = input.buttons
 		r.yaw = input.yaw
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
-		local shot = PlayerSim.step(r.sim, input, cfg, world, DT)
+		local shots = PlayerSim.step(r.sim, input, cfg, world, DT)
 		MovePacer.push(r.pacer, input.seq * DT, currentPose(r))
 		r.ackDirty = true
-		if shot then
-			onShot(r.entity, shot, input.viewTime)
+		if shots then
+			onShot(r.entity, shots, input.viewTime)
 		end
 		return true
 	end
