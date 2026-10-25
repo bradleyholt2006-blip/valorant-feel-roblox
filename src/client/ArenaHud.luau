@@ -4,8 +4,8 @@
 -- side's in the enemy colour, with the round between them, like the
 -- reference's top bar; and in the middle, the buy phase's countdown and how a
 -- round ended (the match's end is the victory screen's, Scoreboard's, and the
--- vote for the next map VoteScreen's), and as a match starts in Skirmish,
--- which of its maps it's on (system 22). In the spike rounds the top bar also
+-- vote for the next map VoteScreen's), and as a match starts, which of its
+-- mode's maps it's on (systems 22 and 25). In the spike rounds the top bar also
 -- has the round's clock, which gives way to the spike once it's planted, and
 -- whether your side attacks or defends; the buy phase says what's at stake
 -- (match point, overtime) and your credits, and a round's end says how it was
@@ -35,6 +35,7 @@ local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
+local SpikeMaps = require(Shared.Match.SpikeMaps)
 local PlayerSim = require(Shared.PlayerSim)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
@@ -333,6 +334,10 @@ function ArenaHud.start()
 			elseif phase == "buy" then
 				title = string.format("BUY PHASE  %d", math.ceil(left))
 				local stakes = {}
+				local map = SpikeMaps.Maps[arena:GetAttribute("Map") or ""]
+				if roundNumber == 1 and map then
+					table.insert(stakes, string.upper(map.NAME))
+				end
 				local credits = me:GetAttribute(MatchConfig.CREDITS)
 				if typeof(credits) == "number" then
 					table.insert(stakes, string.format('<font color="#%s">%d CREDITS</font>', Ui.hex(GOLD), credits))

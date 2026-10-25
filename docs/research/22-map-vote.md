@@ -7,8 +7,9 @@ after each match's victory screen (system 21) it holds a vote between them. The 
 is Counter-Strike's end of match, the one setting out how long players get and what happens when
 nobody votes.
 
-The spike rounds still have one map, Outpost, so there's no vote there. Gun game and the menu to
-pick a mode are systems 23 and 24.
+The spike rounds still had one map, Outpost, so there was no vote there. System 25 adds two more
+and the same vote ([25-spike-maps.md](25-spike-maps.md)). Gun game and the menu to pick a mode are
+systems 23 and 24.
 
 As before, everything comes from public sources: Riot's patch notes, the Skirmish minimaps
 credited to Riot in Sheep Esports' article on the mode (measured earlier, and neither kept nor
@@ -85,7 +86,7 @@ read as measuring error, and all three use A's hall.
 | Rule | Ours | Status |
 | --- | --- | --- |
 | Skirmish's maps | A, B and C, sharing A's hall and its rooms | Confirmed (three layouts); community (the same hall) |
-| The spike rounds' maps | Outpost only, so no vote | Ours |
+| The spike rounds' maps | Outpost only, so no vote (system 25: three, with the same vote) | Ours |
 | The first match on a server | On one of the three at random | Confirmed ("randomly selected each match") |
 | When the vote comes | After the victory screen's 10 s | Ours (the goal: a victory screen, then the vote) |
 | What's offered | Three maps, chosen at random from the mode's, the one just played among them like any other. With three maps, all three | Ours (the goal); community (Counter-Strike's list is random from the group) |
@@ -208,8 +209,8 @@ its number in the list, and the rules decide whether it counts.
 
 ### Not here yet
 
-- **More maps.** The vote already picks three at random from more. A second map for the spike
-  rounds would give them a vote too.
+- **More maps.** The vote already picks three at random from more. The spike rounds got theirs
+  in system 25, with Quarry and Foundry beside Outpost ([25-spike-maps](25-spike-maps.md)).
 - **A Play menu.** System 24. Gun game, system 23, is played on the same three maps with the same
   vote after each match ([23-gun-game](23-gun-game.md)).
 

@@ -129,7 +129,7 @@ The rules are in `src/shared/Match/MatchRules.luau`, their numbers in
 | Survivors | Keep their guns and shield into the next round, the shield refilled | Community (keeping them); estimate (the refill: see the gaps) |
 | Sides | Each player joins the side with fewer players, side 1 when level, five a side with anyone over in line, and the sides are evened out before each round ([21-drop-in.md](21-drop-in.md)); side 1 attacks first | Confirmed (five a side); community and estimate (the rest) |
 | Nobody to play | With a side empty: waiting, the barriers down, buying open, anyone who dies back in 3 s, and the spike can be carried but not planted | Estimate (as the arena) |
-| The map | Outpost, our own: section 5 | Estimate |
+| The map | Outpost, our own: section 5. System 25 adds Quarry and Foundry, for five a side, with a vote between the three after each match ([25-spike-maps.md](25-spike-maps.md)) | Estimate |
 | Competitive's draw vote | Not built | |
 | Credits | Not built: the buy menu is free | (system 14) |
 
@@ -208,7 +208,9 @@ The tests check the plan rather than trusting it:
 - Running with the knife, defenders reach each site's plant area in 4.8 s and attackers in 7.5 s,
   so the defenders can get set first.
 
-It's built at x -150 m, off the course's other side from the arena.
+It's built at x -150 m, off the course's other side from the arena. System 25 makes it one of
+three, with Quarry and Foundry beside it, and writes its plan down as a `MapPlan`
+([25-spike-maps.md](25-spike-maps.md)).
 
 ### The HUD
 

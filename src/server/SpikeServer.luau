@@ -18,7 +18,8 @@
 -- map's sites: only the attacking side picks it up, its carrier can plant
 -- it only while a round is live, only the defending side can defuse it, and
 -- the rounds hear when it's planted, defused or goes off. A new one waits in
--- front of the attackers as each round starts, and none before.
+-- front of the attackers as each round starts, and none before. Each match
+-- is on one of the rounds' maps (system 25), and Arena says which.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,7 +27,6 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
-local MatchMap = require(Shared.Match.MatchMap)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
@@ -82,6 +82,7 @@ local stepOff: Player? = nil
 -- attacking (0 on the course: anyone may carry and defuse it) and whether a
 -- plant is open.
 local events: Events? = nil
+local roundsLayout: string? = nil -- their map's sites
 local attackers = 0
 local plantOpen = true
 
@@ -383,26 +384,41 @@ function SpikeServer.step(time: number)
 	end
 end
 
--- The sites in play: the spike rounds' while they're played; the course's
--- while it's played on; none in Skirmish.
+-- The sites in play: the spike rounds' map's while they're played; the
+-- course's while it's played on; none in Skirmish.
 local function wanted(): string?
 	if events then
-		return MatchMap.LAYOUT
+		return roundsLayout
 	end
 	local arena = Workspace:GetAttribute(ArenaConfig.ON) == true
 	return if not arena and Workspace:FindFirstChild("VFTestRange") then "course" else nil
 end
 
--- The spike rounds start (Arena), telling `e` what happens to the spike.
-function SpikeServer.startRounds(e: Events)
+-- The spike rounds start (Arena) on the map whose sites are `sites` (a key
+-- of Spike.Layouts), with the spike starting at `start`, telling `e` what
+-- happens to it.
+function SpikeServer.startRounds(e: Events, sites: string, start: vector)
 	events = e
-	startAt = MatchMap.origin + MatchMap.spikeStart
+	roundsLayout = sites
+	startAt = start
+	setLayout(wanted())
+end
+
+-- The spike rounds' next match is on another map (system 25): its sites,
+-- and a new spike at its start.
+function SpikeServer.setMap(sites: string, start: vector)
+	if events == nil then
+		return
+	end
+	roundsLayout = sites
+	startAt = start
 	setLayout(wanted())
 end
 
 -- The spike rounds are over: back to the course's spike, or none.
 function SpikeServer.stopRounds()
 	events = nil
+	roundsLayout = nil
 	attackers = 0
 	plantOpen = true
 	startAt = Spike.CourseStart

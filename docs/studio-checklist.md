@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-four
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-five
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, section 25 three and then one, and sections 26 to 28 two.
+   one and then two, section 25 three and then one, and sections 26 to 29 two.
 
 | Key | What it does |
 | --- | --- |
@@ -48,7 +48,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | P | The next of: the arena (Skirmish), gun game, the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
-| Click a map | During the vote for the next map, after a match in the arena: votes for it, or moves your vote to it |
+| Click a map | During the vote for the next map, after a match in the arena or the spike rounds: votes for it, or moves your vote to it |
 | C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes |
 | X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
 | Space | Jump; held in the air, Jett's glide (Drift) slows the fall until you land or let go |
@@ -435,9 +435,10 @@ see it once you're in it. Keep the HUD on.
   room's opening, and whether the hall feels too big, about right or too small for a 1v1.
 - **A3 Waiting.** While you're alone there's no barrier: you can walk out of your room straight
   away, B opens the buy menu, and 5 to 9 give you any weapon.
-- **A4 Off and on.** Press P three times, through the spike rounds (section 17): the Output window
-  shows `[VF] Arena on: the spike rounds, Standard`, then `[VF] Arena on: the spike rounds,
-  Swiftplay`, then `[VF] Arena off`, and you're back at the course's spawn, the score bar and
+- **A4 Off and on.** Press P four times, through gun game and the spike rounds (sections 27 and
+  17): the Output window shows `[VF] Arena on: gun game, Skirmish A` (or `B` or `C`), then `[VF]
+  Arena on: the spike rounds, Standard, on Outpost` (or `Quarry` or `Foundry`), then the same with
+  `Swiftplay`, then `[VF] Arena off`, and you're back at the course's spawn, the score bar and
   banner are gone, and the dummies still have red outlines. Press P again and you're back in the
   NORTH room, facing the hall. Then hold W and press P four times more, so each new life starts
   while you're running. Each time you start at a spawn and run on from there with no snap back,
@@ -468,8 +469,8 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   before.
 - **A10 Leaving.** Close player 2's window. Player 1's banner goes back to
   `WAITING FOR AN OPPONENT`, the barrier goes if it was up, and the score stays.
-- **A11 Off again.** Press P three times in window 1, through the spike rounds. Player 1 is back
-  on the course, on no team, and Teams is empty.
+- **A11 Off again.** Press P four times in window 1, through gun game and the spike rounds.
+  Player 1 is back on the course, on no team, and Teams is empty.
 - **A12 Teammates (optional).** Stop the game, start a Local Server with 3 players and press P in
   window 1. Players 1 and 3 share the NORTH room, each on their own spot, and player 2 has SOUTH to
   themselves. Players 1 and 3 see each other with a faint blue outline, and their shots pass
@@ -491,9 +492,9 @@ it wasn't.
   Crouching is silent too, and so is standing still.
 - **N3 Jumps and landings.** Jump on the spot: a soft rustle as you leave the ground and a thud as
   you land. Jump up onto the 0.50 m red jump box: that landing is the softer one, which nobody else
-  hears. Step off it onto the floor: the heard thud again. Spawning is silent: press P twice (the
-  arena on, then off) and you appear without a sound. Nothing else plays with any of these:
-  Roblox's own character sounds are off.
+  hears. Step off it onto the floor: the heard thud again. Spawning is silent: press P five times
+  (the arena, gun game, the spike rounds twice, then off) and you appear each time without a sound.
+  Nothing else plays with any of these: Roblox's own character sounds are off.
 - **N4 Shots.** Fire each weapon (5 to 9 give the Vandal, Phantom, Operator, Sheriff and Classic).
   Each has its own sound. The Phantom's is the quietest and dullest, and the Operator's the
   biggest. Hold fire with the Vandal: each shot is distinct and none is cut into a click. With the
@@ -765,8 +766,8 @@ it and `VFTestButtons` holds 4 (1024), G (2048) or crouch (32).
 - **D1 Waiting.** On Play, the spike lies on its tile 4 m behind the spawn: a dark squat case with
   a dim blue band, with `SPIKE` in red over it, seen through walls. The HUD reads `spike   on the
   ground at 0.0 4.0 m`, and `VFSpike` is `dropped`, `VFSpikeLayout` `course`, `VFSpikePosition`
-  (0, 0, 4) and `VFSpikeCarrier` 0. With the arena on (P) it reads `none here`. Press P three more
-  times, through the spike rounds to off, and the spike is back on its tile.
+  (0, 0, 4) and `VFSpikeCarrier` 0. With the arena on (P) it reads `none here`. Press P four more
+  times, through gun game and the spike rounds to off, and the spike is back on its tile.
 - **D2 Picking it up.** Walk back over the tile: a metal latch as you reach it, the spike leaves
   the floor, `SPIKE  [4]` shows in red at the bottom right and the HUD reads `spike   carried by
   you`. `VFSpike` is `carried`, `VFSpikeCarrier` your UserId and `VFSpikePosition` gone. Press 4:
@@ -834,33 +835,37 @@ Then two players, as in section 9, on the course.
 
 ## 17. The spike rounds
 
-From [13-rounds.md](research/13-rounds.md). One player, then two, with the HUD on (F3). Outpost,
-the spike rounds' map, is built off the course's left, about 150 m from its spawn, so you only see
-it once you're in it. P moves on through Skirmish, the spike rounds, the spike rounds in
-Swiftplay's format, and off. Without keys, set Workspace's attributes from the server:
-`VFArenaMode` `spike`, `VFMatchFormat` `standard` or `swiftplay`, then `VFArenaOn` true (false
-for off). `VFMatchSkip` set true on Workspace from the server ends the phase being played and
-clears itself: a buy phase, a round (as its clock running out, so the defenders win it) or the
-wait for the next round, but never a planted spike's countdown. Skip whatever a check doesn't
-need to wait out.
+From [13-rounds.md](research/13-rounds.md). One player, then two, with the HUD on (F3). The spike
+rounds' three maps, Outpost, Quarry and Foundry, are built off the course's left, 150 to 450 m from
+its spawn, so you only see them once you're in one. A server's first match is on one of them at
+random, and each match after it on the one the vote picks (section 29). P moves on through Skirmish,
+gun game, the spike rounds, the spike rounds in Swiftplay's format, and off. Without keys, set
+Workspace's attributes from the server: `VFArenaMode` `spike`, `VFMatchFormat` `standard` or
+`swiftplay`, then `VFArenaOn` true (false for off). `VFMatchSkip` set true on Workspace from the
+server ends the phase being played and clears itself: a buy phase, a round (as its clock running
+out, so the defenders win it) or the wait for the next round, but never a planted spike's countdown.
+Skip whatever a check doesn't need to wait out.
 
-- **E1 On.** Press P twice. The Output window shows `[VF] Arena on: Skirmish`, then `[VF] Arena
-  on: the spike rounds, Standard`. You respawn in a room with a red floor marked ATTACKERS, facing
-  its door into mid, with the spike on the floor 4 m in front of you: `VFSpikeLayout` is
-  `outpost` and `VFSpikePosition` (-150, 0, 29). The top bar shows `0` and `0` with `SPIKE ROUNDS`
-  and `STANDARD` between them, and the banner reads `WAITING FOR AN OPPONENT`, with `Standard,
-  first to 13. Anyone who joins plays for the other side   B buy menu` under it. Teams holds
-  Orange and Teal, and you're on Orange. You have the Classic (2) and the knife (3), and no
-  shield.
-- **E2 The map.** Walk round it. From the spawn, a door on the left leads through a lobby and A
-  main, a long corridor, to site A; the door ahead leads into mid; the door on the right to B the
-  same way. Each site has an amber plant area marked A or B with crates round it, the dark ones
-  low enough to shoot over standing and the light ones high enough to hide you. A link joins each
-  site to mid, past a pillar. The defenders' spawn is at the far end, with a blue floor marked
-  DEFENDERS, a door to mid and a back hall to each site. The walls are 5 m tall: you can't jump
-  out or see over them, and from anywhere in either spawn you can't see into the other. Nothing
-  else in the place pokes into it. **Send:** a screenshot from each site, and whether the map
-  feels too big, about right or too small for 1v1 and for 2v2.
+- **E1 On.** Press P three times. The Output window shows `[VF] Arena on: Skirmish A` (or `B` or
+  `C`), then gun game's line, then `[VF] Arena on: the spike rounds, Standard, on Outpost` (or
+  `Quarry` or `Foundry`). You respawn in a room with a red floor marked ATTACKERS, facing its door
+  into mid, with the spike on the floor about 4 m in front of you: `VFSpikeLayout` is the map's key
+  (`outpost`, `quarry` or `foundry`) and `VFSpikePosition` (-150, 0, 29), (-300, 0, 30) or (-450, 0,
+  34). The top bar shows `0` and `0` with `SPIKE ROUNDS` and `STANDARD` between them, and the banner
+  reads `WAITING FOR AN OPPONENT`, with `Standard, first to 13. Anyone who joins plays for the other
+  side   B buy menu` under it. Teams holds Orange and Teal, and you're on Orange. You have the
+  Classic (2) and the knife (3), and no shield.
+- **E2 The map.** Walk round it. On each of the three, the spawn's door on the left leads to site
+  A, the one ahead into mid, and the one on the right to site B. Each site has an amber plant area
+  marked A or B with crates round it, the dark ones low enough to shoot over standing and the light
+  ones high enough to hide you. The defenders' spawn is at the far end, with a blue floor marked
+  DEFENDERS, a door to mid and a hall to each site. The walls are 5 m tall: you can't jump out or
+  see over them, and from anywhere in either spawn you can't see into the other. Nothing else in
+  the place pokes into it. On Outpost, a lobby leads to each site's main, a long corridor, and a
+  link joins each site to mid, past a pillar; Quarry and Foundry are drawn in
+  [25-spike-maps.md](research/25-spike-maps.md), and section 29 visits the other two. **Send:** a
+  screenshot from each site, the map's name, and whether it feels too big, about right or too
+  small for 1v1 and for 2v2.
 - **E3 Waiting.** Alone, there are no barriers, B opens the buy menu, and 5 to 9 give weapons.
   Walk over the spike: you pick it up (`VFSpike` `carried`). In site A's plant area no `HOLD 4 TO
   PLANT` shows and holding 4 plants nothing: `VFSpikePlantOpen` is false while you wait, and
@@ -868,14 +873,14 @@ need to wait out.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9.
 
-- **E4 Round 1.** Press P twice in window 1. Player 1 spawns in ATTACKERS and player 2 in
+- **E4 Round 1.** Press P three times in window 1. Player 1 spawns in ATTACKERS and player 2 in
   DEFENDERS, facing their door to mid. Both screens show the round's clock counting down from
-  `0:45`, `ROUND 1   ATTACK` under it for player 1 and `ROUND 1   DEFEND` for player 2, and a
-  banner counting down from `BUY PHASE 45`, its line reading `Attack: plant the spike at A or B
-  B buy menu` for player 1 and `Defend A and B   B buy menu` for player 2. Each spawn's three doors
-  have see-through barriers, red for the attackers' and blue for the defenders', and you can't
-  walk through them. Both players have the Classic and the knife, and no shield, and the spike lies
-  in front of player 1.
+  `0:45`, `ROUND 1   ATTACK` under it for player 1 and `ROUND 1   DEFEND` for player 2, and a banner
+  counting down from `BUY PHASE 45`. Its line reads the map's name, your credits, and then `Attack:
+  plant the spike at A or B   B buy menu` for player 1, as `QUARRY   800 CREDITS   Attack: ...`,
+  and `Defend A and B   B buy menu` for player 2. Each spawn's three doors have see-through
+  barriers, red for the attackers' and blue for the defenders', and you can't walk through them.
+  Both have the Classic and the knife, and no shield, and the spike lies in front of player 1.
 - **E5 The buy phase.** B opens the menu, which reads `800 CREDITS     WIN +3000   LOSE +1900` (the
   economy, section 18). Each player presses 5 for a Vandal, which the debug keys give for free, and
   buys Light Armor. Player 1 walks over the spike and picks it up.
@@ -900,18 +905,20 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   its `SPIKE` marker through walls and player 2 doesn't. Player 2 walks over it: nothing (`VFSpike`
   stays `dropped`). Nobody plants: skip the round (or wait out
   its 100 s). `ROUND WON` with `Time ran out before a plant` for player 2.
-- **E11 The half.** Press P in window 1: `[VF] Arena on: the spike rounds, Swiftplay`, and a new
-  match at 0-0, with both players back on the Classic and the knife. Skip through the buy phases
-  and rounds: the defenders win each one on time. Round 4's buy phase adds `LAST ROUND OF THE
-  HALF`, and its end adds `SWITCHING SIDES`. Round 5 has player 2 in ATTACKERS with the spike in
-  front of them and player 1 in DEFENDERS, both on the Classic and the knife again, with a buy
-  phase from 45, and the bar reads `DEFEND` for player 1 and `ATTACK` for player 2. From round 5,
-  player 2's side is on 4, and both players' buy phases add `MATCH POINT`.
+- **E11 The half.** Press P in window 1: `[VF] Arena on: the spike rounds, Swiftplay, on` one of the
+  three maps, and a new match at 0-0 on it, with both players back on the Classic and the knife.
+  Skip through the buy phases and rounds: the defenders win each one on time. Round 4's buy phase
+  adds `LAST ROUND OF THE HALF`, and its end adds `SWITCHING SIDES`. Round 5 has player 2 in
+  ATTACKERS with the spike in front of them and player 1 in DEFENDERS, both on the Classic and the
+  knife again, with a buy phase from 45, and the bar reads `DEFEND` for player 1 and `ATTACK` for
+  player 2. From round 5, player 2's side is on 4, and both players' buy phases add `MATCH POINT`.
 - **E12 Sudden death.** Keep skipping, so player 1's side wins rounds 5 to 8 on time: 4-4. Round
   9's buy phase reads `SUDDEN DEATH`, from 45, on the second half's sides. Skip it too: player 1
-  wins it 5-4 and their screen shows `VICTORY` and player 2's `DEFEAT`, each with the score. About
-  10 s later round 1 of a new match starts at 0-0, with player 1 attacking again and both on the
-  Classic and the knife.
+  wins it 5-4 and their screen shows `VICTORY` and player 2's `DEFEAT`, each with the score, and
+  `MAP VOTE IN 10` under it. About 10 s later the vote for the next map comes up (section 29 covers
+  it): let it run out. 15 s later round 1 of a new match starts at 0-0, on the map with the most
+  votes or, with none, any of the three, with player 1 attacking again and both on the Classic and
+  the knife.
 - **E13 Off.** Press P in window 1: `[VF] Arena off`. Both players are back on the course, on no
   team, Teams is empty, and the course's spike is back on its tile (`VFSpikeLayout` `course`).
 
@@ -923,9 +930,9 @@ losses in a row are `Streak1` and `Streak2` on Workspace's `VFArena`. The expect
 buy only what a check says. `VFMatchSkip` (section 17) ends a buy phase or a round, as there.
 
 - **Q1 The pistol round's credits.** One player, on the course: B reads `THE COURSE: EVERYTHING'S
-  FREE`. Press P twice for the spike rounds. B now reads `800 CREDITS`. Every gun and shield that
-  costs more than 800 is dimmed with its price in red: everything from the Bucky (850) up, and Heavy
-  Armor (1000). The sidearms, Light Armor (400) and the Regen Shield (650) aren't.
+  FREE`. Press P three times for the spike rounds. B now reads `800 CREDITS`. Every gun and shield
+  that costs more than 800 is dimmed with its price in red: everything from the Bucky (850) up, and
+  Heavy Armor (1000). The sidearms, Light Armor (400) and the Regen Shield (650) aren't.
 - **Q2 Buying and refunds.** Buy Light Armor: `400 CREDITS`. Now the Regen Shield isn't dimmed,
   since the Light Armor goes back for it: hover it, and the panel reads `250, with what you bought
   for its slot sold back`. Heavy Armor is dimmed. Buy the Regen Shield: `150 CREDITS`. Right-click
@@ -935,9 +942,9 @@ buy only what a check says. `VFMatchSkip` (section 17) ends a buy phase or a rou
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9.
 
-- **Q3 Round 1.** Press P twice in window 1. Both players' buy phase line starts with `800
-  CREDITS` in gold, and both have `VFCredits` 800. Player 1's menu reads `800 CREDITS     WIN +3000
-  LOSE +1900`.
+- **Q3 Round 1.** Press P three times in window 1. Both players' buy phase line starts with the
+  map's name and then `800 CREDITS` in gold, and both have `VFCredits` 800. Player 1's menu reads
+  `800 CREDITS     WIN +3000   LOSE +1900`.
 - **Q4 A kill pays at once.** Skip the buy phase. Player 1 kills player 2 with the Classic: player
   1's `VFCredits` goes to 1000 as player 2 dies. Player 2's stays 800.
 - **Q5 The next round pays.** In round 2's buy phase player 1 has 4000 (800, the kill's 200 and the
@@ -1022,8 +1029,8 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **L10 The other player sees it.** On the course, player 1 drops the Vandal with G. In window 2
   it lands where player 1 threw it. Player 2 walks up to it, looks at it and presses F: window 1
   sees it go, and player 2's Vandal lands in its place.
-- **L11 The dead drop theirs.** Press P twice in window 1 for the spike rounds. In round 1's buy
-  phase, player 1 presses 5 for a Vandal. Skip the buy phase. Player 2 kills player 1 with the
+- **L11 The dead drop theirs.** Press P three times in window 1 for the spike rounds. In round 1's
+  buy phase, player 1 presses 5 for a Vandal. Skip the buy phase. Player 2 kills player 1 with the
   Classic. A Vandal lies where player 1 fell, with `Ammo` 25, and no Classic beside it.
 - **L12 Kept into the next round.** Before round 2 starts (the round's end lasts a few seconds),
   player 2 walks over the Vandal and picks it up, as their primary slot is empty. In round 2's buy phase player 2 still has it, and player 1 is back on the Classic
@@ -1064,11 +1071,11 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **J5 Skirmish.** Press P once in window 1. Beside the top bar, window 1 shows a tile with the
   first two letters of player 1's name on its left, in blue, and one for player 2 on its right, in
   red; window 2 the other way round. Tab opens Roblox's own player list, not ours.
-- **J6 The tiles in the spike rounds.** Press P again: the tiles stay. Skip round 1's buy phase
-  (`VFMatchSkip`). Player 1 kills player 2 with the Classic, and player 2 doesn't shoot back.
-  Player 2's tile dims on both screens. Both kill feeds read `Player1   Classic   Player2`,
-  outlined in gold on both, as both are in it: in window 1 player 1's name is blue, and in window
-  2 it's red.
+- **J6 The tiles in the spike rounds.** Press P twice more, through gun game to the spike rounds:
+  the tiles stay. Skip round 1's buy phase (`VFMatchSkip`). Player 1 kills player 2 with the
+  Classic, and player 2 doesn't shoot back. Player 2's tile dims on both screens. Both kill feeds
+  read `Player1   Classic   Player2`, outlined in gold on both, as both are in it: in window 1
+  player 1's name is blue, and in window 2 it's red.
 - **J7 The scoreboard.** In window 1, hold Tab. Roblox's player list doesn't open. Ours has `1`
   and `0` either side of `STANDARD   ROUND 1` across its top, then player 1's row, their name in
   gold on a gold-tinted row: `1 0 0`, ACS `170` (100 damage and 70 for the kill, over one round),
@@ -1086,8 +1093,8 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **J10 Off.** Press P in window 1 until `[VF] Arena off`. The tiles go, Tab opens Roblox's player
   list again, and neither player has `VFKills` or the other record attributes any more.
 
-With three players (optional): start a Local Server with 3 players, and press P twice in window 1.
-Two of them share a side (Teams shows who).
+With three players (optional): start a Local Server with 3 players, and press P three times in
+window 1 (the spike rounds). Two of them share a side (Teams shows who).
 
 - **J11 Assists.** Skip the buy phase. One of the pair shoots the player on their own once, then
   the other kills them: the first one's row shows `0 0 1`, and the killer's `1 0 0`.
@@ -1158,14 +1165,14 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   from player 2 at about how far away they were. Window 2 sees the edges of its screen flash in
   the dash, and no streak. In Skirmish a spent charge doesn't come back until the next round:
   player 2's Q pip stays dark.
-- **U12 The spike rounds' kit.** Press P again in window 1 (the spike rounds). In round 1's buy
-  phase both `VFKit`s read `C0/2 Q0/1 E1/1 X0/8`: Cloudburst and Updraft have to be bought, and
-  Tailwind's charge is free. In window 1, B opens the menu: under the shields, an `Abilities`
-  group has Cloudburst (`C`, 200) and Updraft (`Q`, 150). Pointing at Updraft shows `Ability, on Q`
-  and rows for `Charges` (`up to 1`), `A charge` (`150 credits`) and `Lift` (`4 m, in 0.6 s`).
-  Click it: the credits go from 800 to 650, its pip lights and it shows `FULL`, the bar's Q pip
-  lights, and `VFKit` reads `Q1/1`. Right-click it: back to 800 and `Q0/1`. Click it again to
-  keep it. (Y12 buys Cloudburst.) **Send:** a screenshot of the menu with Updraft bought.
+- **U12 The spike rounds' kit.** Press P twice more in window 1 (gun game, then the spike rounds).
+  In round 1's buy phase both `VFKit`s read `C0/2 Q0/1 E1/1 X0/8`: Cloudburst and Updraft have to be
+  bought, and Tailwind's charge is free. In window 1, B opens the menu: under the shields, an
+  `Abilities` group has Cloudburst (`C`, 200) and Updraft (`Q`, 150). Pointing at Updraft shows
+  `Ability, on Q` and rows for `Charges` (`up to 1`), `A charge` (`150 credits`) and `Lift` (`4 m,
+  in 0.6 s`). Click it: the credits go from 800 to 650, its pip lights and it shows `FULL`, the
+  bar's Q pip lights, and `VFKit` reads `Q1/1`. Right-click it: back to 800 and `Q0/1`. Click it
+  again to keep it. (Y12 buys Cloudburst.) **Send:** a screenshot of the menu with Updraft bought.
 - **U13 Kept through a death.** Skip the buy phase. Player 2 kills player 1, who hasn't used
   Updraft. Player 2's `VFKit` reads `X1/8`, for the kill, and player 1's `X1/8` too, for the death.
   In round 2's buy phase, player 1's still reads `Q1/1`, and their bar shows the pip lit.
@@ -1241,11 +1248,11 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **Y11 After the thrower dies.** In window 2, look up (`VFTestPitch` 30) and throw, and in
   window 1 kill player 2 at once, within the 2 s it flies. The ball flies on, straight, and
   bursts in mid-air 2 s after the throw, 60 m along its way, in both windows.
-- **Y12 The spike rounds.** Press P again in window 1 (the spike rounds). In round 1's buy phase
-  B opens the menu. Pointing at Cloudburst shows `Ability, on C` and rows for `Charges`
-  (`up to 2`), `A charge` (`200 credits`), `Cloud` (`6.7 m across, for 2.5 s`) and `Flight`
-  (`30 m/s, at most 2 s`). Click it twice: the credits go from 800 to 600 to 400, both its pips
-  light and it shows `FULL`, and `VFKit` reads `C2/2`. Right-click it once: 600, and `C1/2`.
+- **Y12 The spike rounds.** Press P twice more in window 1 (gun game, then the spike rounds). In
+  round 1's buy phase B opens the menu. Pointing at Cloudburst shows `Ability, on C` and rows for
+  `Charges` (`up to 2`), `A charge` (`200 credits`), `Cloud` (`6.7 m across, for 2.5 s`) and
+  `Flight` (`30 m/s, at most 2 s`). Click it twice: the credits go from 800 to 600 to 400, both its
+  pips light and it shows `FULL`, and `VFKit` reads `C2/2`. Right-click it once: 600, and `C1/2`.
 
 ## 23. Blade Storm
 
@@ -1507,6 +1514,51 @@ Start a Local Server with 2 players, as in section 9. Both start on the course, 
   you're straight in gun game with no menu. A second player doing the same lands on the same
   server.
 
+## 29. The spike rounds' maps
+
+From [25-spike-maps.md](research/25-spike-maps.md). A quick play of what changed, with two players.
+`workspace:SetAttribute("VFMatchSkip", true)` in the server's command bar ends the phase under way,
+and a skipped round goes to the defenders, as its clock running out.
+
+Start a Local Server with 2 players, as in section 9, and press P four times in window 1 (Skirmish,
+gun game, the spike rounds, then the spike rounds in Swiftplay's format).
+
+- **SM1 The first map.** The Output's last line says `[VF] Arena on: the spike rounds, Swiftplay,
+  on Outpost`, `Quarry` or `Foundry`, and round 1's buy phase names that map first on its line, as
+  `QUARRY   800 CREDITS   Attack: plant the spike at A or B   B buy menu`. Player 1 spawns behind
+  red barriers in the map's ATTACKERS, with the spike in front of them, and player 2 behind blue
+  ones in its DEFENDERS. In the Explorer, `Workspace.VFSpikeMap` holds three models: Outpost,
+  Quarry and Foundry.
+- **SM2 To the vote.** In the server's command bar run this, which skips through the match, the
+  defenders winning every round so it ends 5-4 after sudden death, and then the victory screen:
+
+  ```lua
+  for _ = 1, 60 do
+  	workspace:SetAttribute("VFMatchSkip", true)
+  	task.wait(0.3)
+  	if workspace.VFArena:GetAttribute("Phase") == "vote" then break end
+  end
+  ```
+
+- **SM3 The vote.** Both windows show `VOTE FOR THE NEXT MAP`: three cards, OUTPOST, QUARRY and
+  FOUNDRY, each with its plan from above, the defenders' blue spawn at the top, the attackers' red
+  one at the bottom and A on the left, the amber plant areas and the cover. Each reads `NO VOTES`,
+  the map just played has `JUST PLAYED`, and 15 counts down at the top right. **Send:** a
+  screenshot.
+- **SM4 Voting.** In both windows, click QUARRY, or FOUNDRY if Quarry was just played: it's
+  outlined in gold, and reads `2 VOTES` in both windows.
+- **SM5 The second map.** At 0 both players spawn for round 1 of a new match at 0-0 on that map,
+  which the buy phase names: player 1 behind its red barriers with the spike in front of them, and
+  player 2 behind its blue ones. Skip the buy phase. Player 1 picks up the spike, takes it into
+  site B's plant area and plants it: `SPIKE` shows in the bar, so the spike's sites are this
+  map's. In the rounds after, skipping the buy phases, walk round the map: its lanes and sites are
+  as drawn in [25-spike-maps.md](research/25-spike-maps.md), the walls are 5 m tall, and nowhere
+  in either spawn sees into the other. **Send:** a screenshot from each site, and whether the map
+  feels too big, about right or too small for 2v2.
+- **SM6 The third map.** Run SM2's loop again. At the vote, both players vote for the map not
+  played yet, and at 0 the next match is on it. As in SM5: its barriers, the spike in front of
+  player 1, a plant, at site A this time, and a walk round it. **Send:** as in SM5.
+
 ## Results
 
 ```
@@ -1553,11 +1605,11 @@ D6 died at the spawn: yes / no; Dummy 18: died / lived; Dummy 1 ___ m away: died
 D7 a whole defuse ___ s; from the half ___ s
 D8 crouching stopped the defuse: yes / no
 D9 dropped ___ m ahead; against the wall it landed ___ m short of it
-E2 Outpost: builds clean / something overlaps it (what); for 1v1 too big / about right / too small; for 2v2 too big / about right / too small
+E2 the map ___: builds clean / something overlaps it (what); for 1v1 too big / about right / too small; for 2v2 too big / about right / too small
 E6 the defuse round's banners: ___
 E8 player 2's kit in round 3: ___
 E11 round 5's spawns: ___; SWITCHING SIDES shown: yes / no
-E12 the match ended ___ - ___, then a new match: yes / no
+E12 the match ended ___ - ___, then the vote and a new match: yes / no
 Q5 round 2's credits: player 1 ___, player 2 ___
 Q8 round 3's credits: player 1 ___, player 2 ___; player 1's shield ___
 Q10 round 4's credits: player 1 ___, player 2 ___
@@ -1598,6 +1650,10 @@ GG5 MATCH MVP on ___, TEAM MVP on ___
 PM1 anything on the cards that read differently: ___
 PM4 the GUN GAME card's count: ___
 PM6 (live) PLAY GUN GAME took ___ s to land; the second player on the same server: yes / no
+SM1 the first map: ___; VFSpikeMap holds Outpost, Quarry and Foundry: yes / no
+SM3 anything on the cards that read differently: ___
+SM5 the second map: ___; the plant at B: yes / no; for 2v2 too big / about right / too small
+SM6 the third map: ___; the plant at A: yes / no; for 2v2 too big / about right / too small
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1753,3 +1809,6 @@ Didn't look right (IDs and what you saw):
 | 24 | PLAY for the mode the server plays closes the menu, and nothing else changes | PM4 |
 | 24 | The vote and the victory screen hide while the menu is open | PM5 |
 | 24 | On a live server only: the menu is up as you join, PLAY for Skirmish drops you into the match, and PLAY for another mode teleports you to a server playing it | PM6 |
+| 25 | All three maps build at their origins with nothing overlapping them, and play at the right scale for five a side | E2, SM1, SM5, SM6 |
+| 25 | A server's first match is on one of them at random, named in round 1's buy phase: everyone spawns in its spawns, behind its barriers, with the spike in front of the attackers | E1, E4, SM1 |
+| 25 | After a match, the vote shows the three spike maps' cards with their plans, and the next match is on the winner: the spawns, the barriers and the spike's sites all the new map's | E12, SM2, SM3, SM4, SM5, SM6 |
