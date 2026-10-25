@@ -3,8 +3,9 @@
 This covers every gun the reference sells and the knife, with each one's way of firing: semi and
 automatic fire, bursts while aiming down sights, the Classic's three-bullet right click, shotgun
 pellets, shell-by-shell reloads, the Odin's rising fire rate and every scope. It also covers the
-three shields and the buy menu that sells all of it. Knife attacks, abilities, dropping and
-picking up weapons, and the standard mode's economy are separate work.
+three shields and the buy menu that sells all of it. The knife's attacks are
+[system 10](10-knife.md); abilities, dropping and picking up weapons, and the standard mode's
+economy are separate work.
 
 As before, everything comes from Riot's patch notes and from community stat sites and wikis. The
 main community source is the VALORANT Wiki at wiki.playvalorant.com, run by Weird Gloop and not
@@ -253,7 +254,7 @@ first:
 | How far a suppressed shot is heard | Silent at 70 m (system 8's curve) | Estimate |
 | Sounds | The library's five gunshots, each gun taking the nearest at a pitch of its own; reloads in parts, a round-at-a-time reload for each round | Estimate |
 | Looks | Stand-in shapes in nine kinds (pistol, suppressed pistol, sawn-off, SMG, shotgun, rifle, sniper, machine gun, knife) and a colour for each gun | Estimate (placeholders) |
-| The knife | 6.75 m/s and a 0.6 s draw; it doesn't attack yet | Community |
+| The knife | 6.75 m/s and a 0.6 s draw; its attacks are [system 10](10-knife.md) | Community |
 | The Bucky's right click | Not built yet: it does nothing | |
 
 The shields:
@@ -529,4 +530,27 @@ session can confirm:
   bought this buy phase, and nothing else.
 - The HUD shows Light Armor's split and the Regen Shield refilling as the tests have them.
 - A new match in the arena puts everyone back on the starting kit.
+
+### Checked in BRINK
+
+Playtests in BRINK on main at ff93950, solo and then with two players, with purchases made
+through `VFTestBuy` and the menu read from the player's GUI (measured):
+
+- The menu (B1 to B6): 1200 by 608 px at full size in a 1398 by 672 view, the four columns and
+  the shields as laid out, the mouse freed while it was open and the view still; a click on it
+  didn't fire, and W still moved. The tiles, the hover panel's numbers (the Odin's, the Bucky's
+  pellet table, the Regen Shield's rules), buying, selling back and the three shields' HUD lines
+  all read as section 4 has them.
+- Two players (B7 to B9). A Vandal body shot through Heavy Armor read `87 | +24`, and the fourth
+  killed. A Classic body shot (26) through Light Armor read `92 | +8`. The Regen Shield took a
+  whole Classic hit (`99`, no shield), started refilling 3.00 s after it and was full at 4.95 s,
+  25 in about 2 s; it refilled once more, to `REGEN 0 LEFT`, and then not again. Turning the
+  arena on put both players back on the starting kit, whatever they'd bought on the course, and
+  so did a new match after 10-0.
+- Others' shots (G8), 21 m apart: a Bucky shot showed the other player 15 tracers, 15 holes and
+  15 sparks; a Ghost shot from the other side showed its hole and spark but no tracer, and was
+  heard at about half the Bucky's volume.
+- Two findings. A purchase in the first third of a second of a buy phase is lost: the new life
+  starts 0.32 s after the phase does, and its reset wipes what was bought, so a buy 0.15 s in
+  never landed. And at death the HUD's health read `-0`.
 

@@ -113,6 +113,8 @@ SoundConfig.Curves = {
 	-- The Phantom's built-in suppressor: 'hard to hear' (community: MeinMMO,
 	-- after RoyGallant). The Ghost and the Spectre are suppressed too.
 	suppressed = curve({ { 0, 1 }, { 4, 1 }, { 20, 0.5 }, { 50, 0.2 }, { 70, 0 } }, "estimate", "A suppressed shot carries a third as far as a rifle's"),
+	-- A knife's swings and strikes: heard close by, not across the map.
+	melee = curve({ { 0, 1 }, { 2, 1 }, { 6, 0.6 }, { 10, 0.25 }, { 12, 0 } }, "estimate", "Shorter than a reload's; no published radius"),
 }
 
 -- Walls -------------------------------------------------------------------------
@@ -263,6 +265,26 @@ SoundConfig.Sounds = {
 		asset(9116190984, "Knife Fast Scraping Draws Pull Out 1 (SFX)", 0.10),
 		asset(9116190959, "Knife Fast Scraping Draws Pull Out 17 (SFX)", 0.19, 0.2),
 	}),
+	-- The knife's swings and strikes (system 10): sharp sword swishes for
+	-- the slash, heavy arm-swing whooshes for the stab, a knife into flesh
+	-- for a hit, and a blade striking a metal rod, a little lower, for a
+	-- wall (the library has no blade striking stone).
+	slash = sound(0.7, 0.05, 3, {
+		asset(9126014013, "Swish Med High End Sharp Swords Fast Punches (SFX)", 0.66, 0.15),
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.42, 0.22),
+	}),
+	stab = sound(0.8, 0.04, 2, {
+		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.63, 0.11),
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.70, 0.15),
+	}),
+	knifeHit = sound(0.8, 0.04, 3, {
+		asset(9114487207, "Flesh Stab 9 (SFX)", 0.19, 0.12),
+		asset(9114487004, "Flesh Stab 5 (SFX)", 0.15, 0.07),
+	}),
+	knifeWall = sound(0.6, 0.05, 3, {
+		asset(9113449513, "Blade Hits Metal Rod On Knife Impacts 9 (SFX)", 0.56),
+		asset(9113449377, "Blade Hits Metal Rod On Knife Impacts 5 (SFX)", 0.54),
+	}, 0.9),
 	-- Hits
 	hitBody = sound(0.6, 0.03, 4, {
 		asset(9113518281, "Body Hits Thuds 1 (SFX)", 0.48),
@@ -300,6 +322,13 @@ export type WeaponSounds = {
 	reload: { Cue }?,
 	draw: string,
 	curve: string,
+	-- A knife's: its two swings, the blade going in (the one swinging hears
+	-- it when the server confirms the hit, and the others where it happens)
+	-- and striking the level.
+	slash: string?,
+	stab: string?,
+	hit: string?,
+	wall: string?,
 }
 
 local function gun(shot: string, pitch: number, reload: { Cue }, draw: string, curve: string?): WeaponSounds
@@ -327,7 +356,7 @@ SoundConfig.Weapons = {
 	operator = gun("sniper", 1, BOLT, "drawRifle"),
 	ares = gun("rifle", 0.94, BOX, "drawRifle"),
 	odin = gun("rifle", 0.86, BOX, "drawRifle"),
-	knife = { shot = nil, pitch = nil, reload = nil, draw = "knife", curve = "gunshot" },
+	knife = { draw = "knife", curve = "melee", slash = "slash", stab = "stab", hit = "knifeHit", wall = "knifeWall" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

@@ -221,7 +221,8 @@ How they were found, all from inside Studio in BRINK, without playing anything:
 2. Searching by keyword alone ranks other uploads first, and Pro Sound Effects' best matches often
    aren't in the first 30. With `AudioSearchParams.Artist` set to "Pro Sound Effects" (an exact
    match), every result is theirs: "assault rifle", "footsteps" and "ding" gave 30 of 30, against
-   24, 13 and 3 of 30 without it.
+   24, 13 and 3 of 30 without it. Set `AudioSubType` to `SoundEffect` too: it defaults to `Music`,
+   and then "knife" finds only songs and the artist filter finds almost nothing.
 3. Each listing's description is Pro Sound Effects' own note on the recording (the gun, the
    surface, close or distant, "Very Good"), read with `MarketplaceService:GetProductInfo`. That
    caught two mistakes a title wouldn't: the "Pistol Single Shots" are two guns, a silenced 9 mm and
@@ -256,6 +257,8 @@ How they were found, all from inside Studio in BRINK, without playing anything:
 | `hitBody` | your hit on a body | Body Hits Thuds 1 to 4 (9113518281, 9113518286, 9113518280, 9113518397) | "Body Hits, Impacts with Rubber Glove, Thuds" | 0.48, 0.68, 0.51, 0.63 | - |
 | `headshot` | your headshot | Anvil Hits Ringing Metal Clinks Some Muted 3 (9125362418) | "CU Ringing Metal Clink, Blacksmith, Sharp Dinging Impact" | 0.42 | - |
 | `kill` | your kill, higher with each kill of a life | Synth Sparkle Tone High Pitch Bell Tone Ding (9126073318) | "High Pitch Bell Tone, Ding, Ring, UI" | 0.13 | 0.09 s |
+
+The knife's swings and strikes are in [10-knife](10-knife.md) section 5.
 
 Stand-ins, where the library had nothing closer: the steps are foot stomps on a hard carpeted
 floor, not single running footsteps on concrete; the Phantom is a suppressed pistol; the Classic is

@@ -45,6 +45,12 @@ Built one system at a time:
    Light Armor, Heavy Armor and the Regen Shield, each taking its share of a hit; and a buy menu
    on B with every gun and shield, its numbers on hover, click to buy and right-click to sell back -
    [research and design](docs/research/09-arsenal.md)
+10. **The knife**: a slash on the left button round a three-swing combo and a harder, slower stab
+    on the right; double damage from behind, judged on a 180-degree arc, so a stab in the back
+    kills through any shield; one target a swing, the one nearest the aim, never through a wall;
+    lag compensated like a bullet, guessed on your screen at once with a cut where it strikes the
+    level, and the library's knife recordings for its sounds -
+    [research and design](docs/research/10-knife.md)
 
 ## Running it
 
@@ -61,7 +67,7 @@ Built one system at a time:
    system's Studio checks in order, with what each lab should read.
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
-R reload, 1/2/3 primary / secondary / knife, B buy menu (on the course at any time; in the arena
+R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent). Nothing costs anything yet.
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
@@ -82,18 +88,19 @@ In the sound lab: `[` / `]` footstep radius (this client only), Y practice dummi
 Scripted playtests (Studio only): a tool that can press keys but can't move the mouse aims by
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
 `VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
-`VFTestButtons` holds input flags on top of the real ones (128 fire, 256 right click, 512 reload),
-`VFTestGive` set to a weapon id gives that weapon as 4-8 would, `VFTestBuy` set to an id buys
-it as the menu would (`-` and the id sells it back), and `VFTestMenu` set to true or false opens
-or closes the menu. Each of the last three clears itself.
+`VFTestButtons` holds input flags on top of the real ones (128 fire or slash, 256 right click or
+stab, 512 reload), `VFTestGive` set to a weapon id gives that weapon as 4-8 would, `VFTestBuy` set
+to an id buys it as the menu would (`-` and the id sells it back), `VFTestMenu` set to true or
+false opens or closes the menu, and `VFTestSlot` set to 1, 2 or 3 draws that slot. Each of the
+last four clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still
 read.
 
 ## Tests
 
-The shared simulation (movement, weapons and every gun's way of firing, spread and recoil,
-hitboxes, wire formats, pose history, render clock, move pacing, lag compensation and wall
-penetration), the look's maths, the arena's rules and map, and the sound's rules (footsteps,
+The shared simulation (movement, weapons and every gun's way of firing, the knife's swings and
+what they catch, spread and recoil, hitboxes, wire formats, pose history, render clock, move
+pacing, lag compensation and wall penetration), the look's maths, the arena's rules and map, and the sound's rules (footsteps,
 landings, distance curves, walls in the way, reload parts) are pure Luau and run outside Roblox:
 
 ```

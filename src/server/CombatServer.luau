@@ -20,6 +20,12 @@
 -- the walls on the way. That is what the debug tools use to draw the
 -- server's boxes and walls next to the client's and to say why the two
 -- disagree when they do.
+--
+-- A knife swing comes out of the simulation the same way, on the tick it
+-- starts, and is checked against the same rewound targets (Melee): of those
+-- in reach, the one nearest the aim that the level doesn't hide takes it,
+-- for the swing's damage from in front or from behind. Its verdict goes back
+-- to the one swinging with what the server tested, and the others hear it.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -34,6 +40,7 @@ local ShotResolver = require(Shared.Combat.ShotResolver)
 local Volley = require(Shared.Combat.Volley)
 local LagCompensation = require(Shared.Combat.LagCompensation)
 local Penetration = require(Shared.Combat.Penetration)
+local Melee = require(Shared.Combat.Melee)
 local RobloxLevel = require(Shared.Combat.RobloxLevel)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
@@ -55,7 +62,7 @@ function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 	LagCompensation.record(history, time, poses)
 end
 
-local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount: number, region: string)
+local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount: number, region: string, weapon: string)
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
 	local hp = WeaponConfig.Health
 	if result.damage > 0 and victim.sim and not result.killed then
@@ -68,6 +75,7 @@ local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount
 	event.kind = "damage"
 	event.attacker = attacker.id
 	event.region = region
+	event.weapon = weapon
 	event.damage = result.damage
 	event.killed = result.killed
 	Remotes.get().Combat:FireAllClients(event)
@@ -149,6 +157,17 @@ local function describeTarget(t: LagCompensation.Target): { [string]: any }
 	}
 end
 
+-- Every living entity `attacker` can hurt, posed as the attacker's screen
+-- showed them at `viewTime` (as far back as the cap allows).
+local function rewindFor(attacker: Entities.Entity, viewTime: number): (LagCompensation.Rewind, { LagCompensation.Target })
+	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
+	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
+		local entity = Entities.get(id)
+		return id ~= attacker.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil and not teammates(attacker, entity)
+	end)
+	return rewind, rewound
+end
+
 -- One round: its bullets, all fired on the same tick from the same eye.
 function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot }, viewTime: number)
 	local first = shots[1]
@@ -156,11 +175,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 		return -- a dead player's queued shots are rejected, as in the reference
 	end
 	local def = WeaponConfig.get(first.weapon)
-	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
-	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
-		local entity = Entities.get(id)
-		return id ~= shooter.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil and not teammates(shooter, entity)
-	end)
+	local rewind, rewound = rewindFor(shooter, viewTime)
 	local targets = LagCompensation.shotTargets(rewound)
 
 	-- Each bullet: where it ended, what it hit and the damage it did. The
@@ -214,7 +229,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 	for _, total in Volley.totals(hits) do
 		local victim = Entities.get(total.target)
 		if victim and victim.health.alive then
-			local result = damage(shooter, victim, total.damage, total.region)
+			local result = damage(shooter, victim, total.damage, total.region, first.weapon)
 			table.insert(results, { target = total.target, region = total.region, damage = total.damage, pellets = total.pellets, killed = result.killed })
 		end
 	end
@@ -247,6 +262,79 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 				hit = #results > 0,
 				tracers = not def.suppressed or teammates(shooter, entity),
 			})
+		end
+	end
+end
+
+-- One knife swing, from the eye along the aim on the tick it started.
+function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing, viewTime: number)
+	local melee = WeaponConfig.get(swing.weapon).melee
+	if not melee or not attacker.health.alive then
+		return -- a dead player's queued swings are rejected, like their shots
+	end
+	local attack = if swing.kind == "stab" then melee.stab else melee.slash
+	local rewind, rewound = rewindFor(attacker, viewTime)
+	local result = Melee.resolve(level, swing.origin, swing.direction, attack, LagCompensation.shotTargets(rewound), attacker.id)
+	local tested = {}
+	for _, t in rewound do
+		if Melee.nearby(swing.origin, attack, t.pose) then
+			table.insert(tested, describeTarget(t))
+		end
+	end
+
+	local verdict: { [string]: any } = {
+		tick = swing.tick,
+		weapon = swing.weapon,
+		kind = swing.kind,
+		combo = swing.combo,
+		viewTime = viewTime,
+		rewindTime = rewind.time,
+		rewind = rewind.amount,
+		clamped = rewind.clamped,
+		origin = Units.asVector3(swing.origin),
+		direction = Units.asVector3(swing.direction),
+		tested = tested,
+		hidden = result.hidden,
+	}
+	local hit, wall = result.hit, result.wall
+	local wallPoint = if wall then swing.origin + swing.direction * wall.distance else nil
+	local victim = if hit then Entities.get(hit.targetId) else nil
+	if hit and victim and victim.health.alive then
+		-- What the swing did, not the health it took, as for a bullet.
+		local outcome = damage(attacker, victim, result.damage, hit.region, swing.weapon)
+		verdict.target = hit.targetId
+		verdict.region = hit.region
+		verdict.point = Units.asVector3(hit.point)
+		verdict.offset = hit.offset
+		verdict.distance = hit.distance
+		verdict.back = result.back
+		verdict.damage = result.damage
+		verdict.killed = outcome.killed
+	elseif wall and wallPoint then
+		verdict.wall = Units.asVector3(wallPoint)
+		verdict.normal = Units.asVector3(wall.normal)
+		verdict.material = wall.material
+	end
+
+	local remotes = Remotes.get()
+	if attacker.player then
+		remotes.SwingResult:FireClient(attacker.player, verdict)
+	end
+	-- The others hear it, and see the blade's mark where it struck the level.
+	local fx = {
+		attacker = attacker.id,
+		weapon = swing.weapon,
+		kind = swing.kind,
+		combo = swing.combo,
+		from = Units.toStuds(swing.origin),
+		direction = Units.asVector3(swing.direction),
+		hit = verdict.target ~= nil,
+		wall = if verdict.wall and wallPoint then Units.toStuds(wallPoint) else nil,
+		normal = verdict.normal,
+	}
+	for _, entity in Entities.all() do
+		if entity.player and entity ~= attacker then
+			remotes.SwingFx:FireClient(entity.player, fx)
 		end
 	end
 end

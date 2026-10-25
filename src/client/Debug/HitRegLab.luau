@@ -19,6 +19,10 @@
 --     shots and on moving targets, and why they differed when they did
 --   * time from a shot to its server hit confirm, which should be about one
 --     round trip ("The State of Hit Registration")
+--   * the knife: swings, the server's verdicts and how many agreed with the
+--     client's guess, hits and how many came from behind, and the last
+--     swing: what it caught, how far off the aim and out, how many the
+--     level hid, and how far back the server went
 --   * peeker's advantage by Riot's formula, from this client's own numbers
 --
 -- Keys while the page is open: [ and ] latency -/+10 ms each way, J jitter,
@@ -42,6 +46,7 @@ local Ui = require(script.Parent.Ui)
 local NetSim = require(script.Parent.Parent.NetSim)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local ClientShots = require(script.Parent.Parent.Combat.ClientShots)
+local ClientMelee = require(script.Parent.Parent.Combat.ClientMelee)
 
 local LATENCY_STEP_MS = 10
 local MAX_LATENCY_MS = 150
@@ -108,6 +113,38 @@ local function aimedAt(): number?
 	return best
 end
 
+-- The last knife swing: what it was, what the server says it caught, and
+-- whether the client guessed the same.
+local function swingText(r: ClientMelee.Record): string
+	local swing = r.swing
+	local what = if swing.kind == "stab" then "stab" else string.format("slash %d", swing.combo)
+	local v = r.verdict
+	if not v then
+		return what .. dim("   waiting for the server")
+	end
+	local caught
+	local target = v.targetId
+	if target then
+		caught = string.format(
+			"%s %s%s, %.0f   %.2f m off the aim, %.2f m out",
+			RemoteEntities.nameOf(target),
+			v.region or "?",
+			if v.back then " from behind" else "",
+			v.damage,
+			v.offset or 0,
+			v.distance or 0
+		)
+	else
+		caught = if v.wall then "struck the level" else "caught no one"
+	end
+	local hidden = if #v.hidden > 0 then string.format("   %d hidden by the level", #v.hidden) else ""
+	local guess = r.predicted.hit
+	local agreement = if r.agree
+		then colored(Ui.GOOD, "client agrees")
+		else colored(Ui.BAD, "client: " .. (if guess then RemoteEntities.nameOf(guess.targetId) .. " " .. guess.region else "none"))
+	return string.format("%s -> %s%s   rewind %s   %s", what, caught, hidden, ms(v.rewind), agreement)
+end
+
 -- The value after `current` in a list, going round (the first if it isn't there).
 local function nextIn(list: { number }, current: number): number
 	for i, v in list do
@@ -121,7 +158,7 @@ end
 function HitRegLab.start(controller: any)
 	local gui = Ui.screen("VFHitRegLab", 22)
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(660, 680),
+		Size = UDim2.fromOffset(660, 730),
 		Position = UDim2.new(1, -672, 0, 120),
 		Visible = false,
 	})
@@ -328,6 +365,22 @@ function HitRegLab.start(controller: any)
 			shots.confirms
 		))
 		table.insert(lines, dim('  reference    a round trip plus processing ("The State of Hit Registration")'))
+		table.insert(lines, "")
+
+		-- Knife ----------------------------------------------------------------------------
+		local knife = ClientMelee.stats
+		local last = ClientMelee.records[#ClientMelee.records]
+		table.insert(lines, string.format(
+			"<b>knife</b>  swings %d   verdicts %d   agree %d (%s)   hits %d, %d from behind   %s",
+			knife.swings,
+			knife.verdicts,
+			knife.agreed,
+			percent(knife.agreed, knife.verdicts),
+			knife.hits,
+			knife.backs,
+			dim(string.format("server-only %d", knife.unmatchedVerdicts))
+		))
+		table.insert(lines, "  last  " .. (if last then swingText(last) else dim("-- (3 draws the knife: left click slashes, right click stabs)")))
 		table.insert(lines, "")
 
 		-- Peeker's advantage ------------------------------------------------------------

@@ -1,7 +1,8 @@
 --!strict
 -- Server entry point. Order inside each Heartbeat matters: dummies advance,
--- then player inputs run (their shots rewind targets through the snapshots
--- sent so far), then the frame's snapshot goes out and joins that history.
+-- then player inputs run (their shots and knife swings rewind targets through
+-- the snapshots sent so far), then the frame's snapshot goes out and joins
+-- that history.
 -- All three work to the same server time, the one the snapshot carries.
 -- Regen Shields refill after the shots. The arena's rounds move on last, so
 -- a round that ends in this frame's shots respawns its players after the
@@ -25,7 +26,7 @@ local ShopServer = require(script.ShopServer)
 TestRange.buildIfMissing()
 Arena.buildIfMissing()
 Tuning.start()
-PlayerSimServer.start(CombatServer.onVolley)
+PlayerSimServer.start(CombatServer.onVolley, CombatServer.onSwing)
 ShopServer.start()
 Dummies.start()
 Arena.start()

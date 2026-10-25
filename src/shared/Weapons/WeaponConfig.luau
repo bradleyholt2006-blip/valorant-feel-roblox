@@ -93,6 +93,27 @@ export type AltDef = {
 -- to maxRate over `time` seconds. Hip fire only.
 export type SpinDef = { maxRate: Param, time: Param }
 
+-- A knife attack (system 10): how often it comes, how far and how wide it
+-- catches a target (Melee), and what it does from in front and from behind,
+-- to any region.
+export type SwingDef = {
+	rate: Param, -- swings a second, held or clicked
+	reach: Param, -- metres straight ahead of the eye
+	radius: Param, -- metres either side of the aim
+	front: Param, -- damage
+	back: Param, -- damage to a target struck from behind
+}
+
+-- The knife's left click slashes, round a combo of three swings that loops,
+-- and its right click stabs.
+export type MeleeDef = {
+	slash: SwingDef,
+	stab: SwingDef,
+	-- Seconds after the next slash could have come past which a slash starts
+	-- the combo over.
+	comboReset: Param,
+}
+
 export type WeaponDef = {
 	id: string,
 	name: string,
@@ -117,6 +138,7 @@ export type WeaponDef = {
 	suppressed: boolean, -- quiet, and its tracers aren't shown to anyone else
 	ads: AdsDef?,
 	alt: AltDef?,
+	melee: MeleeDef?, -- swings instead of firing (the knife)
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
 }
@@ -158,6 +180,8 @@ local P910 = "Patch 9.10"
 local P1200 = "Patch 12.00"
 local P1301 = "Patch 13.01"
 local P1306 = "Patch 13.06"
+local P401 = "Patch 4.01"
+local NAMU = "NamuWiki, VALORANT equipment page (the tactical knife's table)"
 -- Changes the wiki lists in each gun's history, from patch notes we have not read ourselves.
 local HISTORY = WIKI .. ", the gun's patch history"
 
@@ -1180,17 +1204,36 @@ WeaponConfig.Defs = {
 		category = "melee",
 		slot = 3,
 		price = wiki(0, "everyone has one"),
-		fireMode = "none", -- melee attacks are a later system
-		fireRate = p(0, "estimate", "Not implemented"),
+		fireMode = "none", -- no bullets: it swings (melee)
+		fireRate = p(0, "estimate", "No bullets; its swings' rates are in melee"),
 		magazine = KNIFE_NA,
 		reserve = KNIFE_NA,
 		reloadTime = KNIFE_NA,
 		equipTime = wiki(0.6),
 		moveMultiplier = p(1.0, "community", "Fandom Melee: 'standard run speed of 6.75 m/s'"),
-		damage = { band(0, 0, 0, 0) },
+		damage = { band(0, 0, 0, 0) }, -- a swing's damage is in melee
 		damageSource = KNIFE_NA,
 		penetration = "none",
 		suppressed = false,
+		-- Reach and width aren't published: the estimates keep the reference's
+		-- order, the slash wider and a little longer than the stab (Patch 4.01).
+		melee = {
+			slash = {
+				rate = p(2, "community", NAMU .. ": the main attack '2 times a second'"),
+				reach = p(2.0, "estimate", P401 .. ": left click hitboxes have 'a slightly longer range' than the right click's; how far isn't published"),
+				radius = p(0.4, "estimate", P401 .. ": 'Left click hitboxes are now larger than a right click'"),
+				front = p(50, "community", WIKI .. ": 'Front - 50/75 (Primary/Alt)'"),
+				back = p(100, "community", WIKI .. ": 'Back - 100/150 (Primary/Alt)'"),
+			},
+			stab = {
+				rate = p(0.8, "community", NAMU .. ": the secondary attack '0.8 times a second', with 'a longer recovery' (" .. WIKI .. ")"),
+				reach = p(1.8, "estimate", WIKI .. ": the stab has 'slightly smaller range and hitbox'"),
+				radius = p(0.3, "estimate", P401 .. ": 'Right click hitboxes are now 1.5x larger'; the size isn't published"),
+				front = p(75, "community", WIKI .. ": 'Front - 50/75 (Primary/Alt)'"),
+				back = p(150, "community", WIKI .. ": 'Back - 100/150 (Primary/Alt)', which 'allows a one-shot from behind'"),
+			},
+			comboReset = p(0.5, "estimate", WIKI .. ": 'a three swing combo that loops'; when it starts over isn't published"),
+		},
 		accuracy = accuracy(c({ { 1, 0 } }, "estimate", "n/a"), p(1, "estimate", "n/a"), p(0.1, "estimate", "n/a"), p(1, "estimate", "n/a"), {
 			crouch = KNIFE_NA,
 			walk = KNIFE_NA,

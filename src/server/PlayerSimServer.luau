@@ -6,8 +6,8 @@
 -- "Peeking into VALORANT's Netcode"), inputs are numbered, queued and run in
 -- order. InputQueue's budget stops a client simulating faster than real time,
 -- its cap bounds how far behind the server will ever run, and it drains a
--- backlog that would otherwise last. Shots come out of the simulation itself,
--- so fire rate and ammo are enforced here.
+-- backlog that would otherwise last. Shots and knife swings come out of the
+-- simulation itself, so fire rates and ammo are enforced here.
 --
 -- Each server frame runs everyone's queued inputs a tick at a time in turn
 -- (one input per player per round), so when two players' shots land in the
@@ -73,6 +73,8 @@ type Record = {
 -- Called with the bullets of each round a player fires (several for a
 -- shotgun), and the input's viewTime.
 export type ShotHandler = (shooter: Entities.Entity, shots: { WeaponSim.Shot }, viewTime: number) -> ()
+-- Called with each knife swing a player starts, and the input's viewTime.
+export type SwingHandler = (attacker: Entities.Entity, swing: WeaponSim.Swing, viewTime: number) -> ()
 export type SpawnPoint = { feet: vector, yaw: number }
 
 local PlayerSimServer = {}
@@ -91,6 +93,7 @@ PlayerSimServer.spawnListeners = {} :: { (Player) -> () }
 local records: { [Player]: Record } = {}
 local world = RobloxWorld.new()
 local onShot: ShotHandler = function() end
+local onSwing: SwingHandler = function() end
 -- Seeds each life's spray randomness. The owner learns it from the first ack,
 -- so its prediction draws the same bullets the server does.
 local seeds = Random.new()
@@ -358,11 +361,14 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.buttons = input.buttons
 		r.yaw = input.yaw
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
-		local shots = PlayerSim.step(r.sim, input, cfg, world, DT)
+		local shots, swing = PlayerSim.step(r.sim, input, cfg, world, DT)
 		MovePacer.push(r.pacer, input.seq * DT, currentPose(r))
 		r.ackDirty = true
 		if shots then
 			onShot(r.entity, shots, input.viewTime)
+		end
+		if swing then
+			onSwing(r.entity, swing, input.viewTime)
 		end
 		return true
 	end
@@ -417,8 +423,9 @@ function PlayerSimServer.markDirty(player: Player)
 	end
 end
 
-function PlayerSimServer.start(handler: ShotHandler)
+function PlayerSimServer.start(handler: ShotHandler, swingHandler: SwingHandler)
 	onShot = handler
+	onSwing = swingHandler
 	setupCollisionGroup()
 	Players.RespawnTime = 3
 	Players.PlayerAdded:Connect(onPlayerAdded)

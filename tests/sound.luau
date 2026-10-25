@@ -371,7 +371,7 @@ do
 
 	local missing = {}
 	for id, sounds in SoundConfig.Weapons do
-		local names = { sounds.shot, sounds.draw }
+		local names = { sounds.shot, sounds.draw, sounds.slash, sounds.stab, sounds.hit, sounds.wall }
 		local last = 0
 		for _, c in sounds.reload or {} do
 			table.insert(names, c.sound)
@@ -390,6 +390,10 @@ do
 		end
 		if (id == "knife") ~= (sounds.reload == nil) then
 			table.insert(missing, id .. ": " .. (if sounds.reload then "a knife doesn't reload" else "no reload"))
+		end
+		local swings = sounds.slash ~= nil and sounds.stab ~= nil and sounds.hit ~= nil and sounds.wall ~= nil
+		if (WeaponConfig.get(id).melee ~= nil) ~= swings then
+			table.insert(missing, id .. ": " .. (if swings then "swing sounds on a gun" else "a knife with no swing sounds"))
 		end
 	end
 	for _, id in WeaponConfig.Ids do

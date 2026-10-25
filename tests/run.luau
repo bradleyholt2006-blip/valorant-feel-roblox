@@ -19,5 +19,6 @@ require("./penetration")
 require("./visuals")
 require("./arena")
 require("./sound")
+require("./melee")
 
 H.finish()

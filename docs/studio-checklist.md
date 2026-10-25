@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the nine research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the ten research
 docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about an hour and a half. Doing it in parts is fine; keep the order.
@@ -26,7 +26,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 2. Install Rojo 7.x and its Studio plugin, run `rojo serve` in this repository and connect from
    the plugin.
 3. Open the Output window (View tab, Output).
-4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 13
+4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones.
 
 | Key | What it does |
@@ -45,7 +45,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | N | The next enemy outline colour |
 | P | The arena on and off |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
-| 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
+| 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting) |
 | 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
@@ -57,7 +57,10 @@ attribute `VFTestGive` and set it to the gun's id (`classic`, `shorty`, `frenzy`
 `vandal`, `warden`, `marshal`, `outlaw`, `operator`, `ares` or `odin`). You get it as 4 to 8 would
 give it, and the attribute clears itself, ready for the next one. `VFTestBuy` does the same as a
 click in the buy menu, for a gun or a shield (`light`, `regen`, `heavy`), and sells it back with
-a `-` in front (`-odin`); `VFTestMenu` set to true or false opens or closes the menu.
+a `-` in front (`-odin`); `VFTestMenu` set to true or false opens or closes the menu; and a number
+attribute `VFTestSlot` set to 1, 2 or 3 draws that slot as its key would. A number attribute
+`VFTestButtons` holds buttons down while it's set, without the mouse: 128 is the left button
+(fire, or the knife's slash) and 256 the right (zoom, or the stab).
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -558,8 +561,9 @@ two.
 - **B4 Buying.** Click the Phantom: you're holding it, 30 / 60, and its tile has a teal edge and
   `IN HAND`, with `Bought this buy phase: right-click to sell it back` in the panel when you point
   at it. Click the Sheriff: it goes in your sidearm slot and is drawn.
-- **B5 Selling back.** Right-click the Phantom: you're holding a Vandal again with a full magazine,
-  and the Phantom's edge goes. Right-clicking the Vandal does nothing, since you didn't buy it.
+- **B5 Selling back.** Press 1 to draw the Phantom, then right-click it: you're holding a Vandal
+  again with a full magazine, and the Phantom's edge goes. Right-clicking the Vandal does nothing,
+  since you didn't buy it.
 - **B6 Shields.** Buy Light Armor: the HUD's shield reads `+25` with `LIGHT ARMOR` under it. The
   Regen Shield: `+25` and `REGEN  50 LEFT`. Heavy Armor: `+50` and `HEAVY ARMOR`.
 
@@ -579,6 +583,65 @@ Then two players, as in section 9, on the course.
 - **B9 The arena.** Press P in window 1. Each player is on the starting kit, whatever they bought
   on the course. The menu reads `SKIRMISH: EVERYTHING'S FREE` with the buy phase's countdown, and
   closes itself when the countdown ends (A6 has the rest).
+
+## 14. The knife
+
+From [10-knife.md](research/10-knife.md). One player on the course, with the Weapon Lab open
+(F2 once). Dummy_1 is the static dummy at 10 m, facing the spawn; its label over its head reads
+its health and shield, `100 + 50` (Heavy Armor). A check that needs no mouse can draw the knife
+with `VFTestSlot` 3, swing with `VFTestButtons` 128 or 256, and aim with `VFTestAimEntity` (the
+dummy's id is 4294901761) and `VFTestAimRegion`.
+
+- **K1 Swings.** Press 3. The Weapon Lab names the knife and reads `slash 2.00 a second, 2.0 m
+  out, 0.8 m wide, 50 / 100 from behind   stab 0.80 a second, 1.8 m out, 0.6 m wide, 75 / 150
+  from behind   combo starts over`. Hold the left button at open air: the `swings` line counts
+  `slash 1`, `slash 2`, `slash 3`, `slash 1`, ..., each `500.0ms after the one before`, and the
+  knife sweeps across the view right to left, then left to right, then down from the top right.
+  Each slash has a sharp swish. Let go for a second and slash: it's `slash 1` again. Hold the
+  right button: a `stab` every `1250.0ms`, a thrust forward with a heavier whoosh, and the combo
+  starts over. Holding both slashes.
+- **K2 From in front.** Walk up to Dummy_1 and slash its body from about a metre: a hit marker,
+  the number `50`, a red hit confirm on its body and the blade going in (a wet stab), and its label
+  reads `83 + 17`. The second makes it `50 + 0` and the third kills it, held: 1.0 s. When it's back,
+  stab: `75`, its label `75 + 1` (74.5 and 0.5, rounded up), and the second stab kills it. Slash
+  its head: `50` still, with the headshot sound, and a kill on the head reads `(head)` in the kill
+  feed. The kill feed reads `<your name>  [Knife]  Dummy_1`.
+- **K3 From behind.** Walk past Dummy_1 and turn round to face its back. One stab kills it: `150`,
+  and the Hit Reg Lab (F2 three times) reads `Dummy_1 body from behind, 150` on its `last` line.
+  Two slashes do too (`100`, then `50 + 0`, then the kill). From its side, a step behind the line
+  through its shoulders a stab still does 150; a step in front of it, 75.
+- **K4 Reach.** Face Dummy_1 straight on, looking level, and back away a step at a time,
+  slashing. On the Hit Reg Lab's `last` line, the last slash that lands reads under `0.40 m off
+  the aim, 1.60 m out`: the swing's line runs 1.6 m and catches 0.4 m round it, 2.0 m in all. Do
+  the same with the stab: under `0.30 m off the aim, 1.50 m out`, 1.8 m in all. **Send:** the
+  last slash's and the last stab's line.
+- **K5 Walls.** Slash a wall from close: a thin dark cut appears on its face at once where the aim
+  meets it, with an orange spark and the blade striking metal (a click and a short ring). The
+  first two slashes' cuts lie level, the third's slants up to the right, and a stab's is a short
+  nick. From more than 2 m away nothing is struck. Backspace clears the cuts. (The cuts are parts
+  named `Cut` in `Workspace.VFImpactMarks`.)
+- **K6 Cover.** Stand against the low wall at 22 m on the right, with the dummy behind it facing
+  you. Standing, slash level: you hit its head over the wall for `50`. Crouch (Ctrl) and slash:
+  the blade strikes the wall instead, with a cut and the strike sound, and no damage. The Hit Reg
+  Lab's `last` line reads `struck the level   1 hidden by the level`.
+- **K7 The overlay.** Press F10 and slash Dummy_1's body from about a metre: a line from your eye
+  along the aim, two lines 0.4 m either side and a disc at its end, a yellow dot where your client
+  had it strike and the dummy's boxes as your client tested them; a moment later a blue dot where
+  the server had it, its boxes white where they match yours, and a label such as `slash 1  rewind
+  40 ms  Dummy_1 body 0.00 m off  50`, in white (red when your client guessed otherwise).
+  **Send:** a screenshot with a slash's label showing.
+- **K8 The swap.** Stab, then press 1 and 3 again straight away, and hold the right button: the
+  next stab comes as soon as the knife is drawn, about 0.6 s after you pressed 3, and the Weapon
+  Lab reads well under `1250.0ms after the one before`.
+
+Then two players, as in section 9, on the course.
+
+- **K9 Each other.** Both draw the knife. Player 2 slashes player 1 from in front: player 1's HUD
+  reads `83` and `+17`. Player 2 walks round behind player 1 and stabs once: player 1 dies, and
+  both kill feeds read `Player2  [Knife]  Player1`. Player 1 hears player 2's swings and the blade
+  going in from where player 2 is. Player 2 slashes the wall beside player 1: player 1 sees the
+  cut and the spark there and hears the strike. Teammates take no swing, as they take no bullet
+  (A12), but that needs three players.
 
 ## Results
 
@@ -612,6 +675,9 @@ G2 Bucky at 10 m, the number: ___
 G4 Odin held, fire rate: ___ rps
 B7 Light Armor after a Classic body shot: health ___, shield ___
 B8 Regen Shield: refill started ___ s after the hit, took ___ s
+K1 swings: a slash every ___ ms, a stab every ___ ms; the combo goes 1, 2, 3, 1: yes / no
+K4 the last hits: slash ___ m off the aim, ___ m out; stab ___ m off the aim, ___ m out
+K8 stab, 1, 3, stab: ___ ms between the stabs
 Didn't look right (IDs and what you saw):
 ```
 
@@ -667,7 +733,9 @@ Didn't look right (IDs and what you saw):
 | 09 | Hover shows the numbers, a click buys and draws, a right click sells back only this buy phase's purchases | B3, B4, B5 |
 | 09 | The HUD shows Light Armor's split and the Regen Shield refilling as the tests have them | B6, B7, B8 |
 | 09 | A new match in the arena puts everyone back on the starting kit | A9, B9 |
-| 09 | A shotgun draws each pellet but shows one hit marker and number | G2 |
-| 09 | A round-at-a-time reload, with a sound for each round, stopped by a shot | G6 |
-| 09 | Others see a Bucky's tracers, and no suppressed tracers from the other side | G8 |
-| 09 | Each gun's shot sounds like its own | G1 |
+| 10 | The slash and the stab come at their rates, round the combo, and the swap cuts a stab short | K1, K8 |
+| 10 | Each does its damage from in front and from behind, through the shields, and kills as the tests have it | K2, K3, K9 |
+| 10 | A swing never reaches through a wall, a barrier or a teammate, but reaches a head over cover | K6, K9 |
+| 10 | The cut appears at once on a wall, on the right face, and others see their opponent's cuts | K5, K9 |
+| 10 | The sweep reads as a swing in each direction, and the sounds are heard where they should be, none of them louder than a gunshot | K1, K5, K9 |
+| 10 | The overlay's reach matches where hits stop landing | K4, K7 |

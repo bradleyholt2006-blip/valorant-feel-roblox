@@ -79,6 +79,10 @@ local function toWorld(v: vector, yaw: number): vector
 	return vector.create(v.x * c + v.z * s, v.y, v.z * c - v.x * s)
 end
 
+-- Both, for other tests against a box (Melee).
+Hitboxes.toLocal = toLocal
+Hitboxes.toWorld = toWorld
+
 -- Where a point sits in a box, as fractions of its half size along the box's
 -- own axes (-1 to 1 inside). A hit confirm keeps these to stay on the same
 -- spot of a character that moves, turns or crouches.

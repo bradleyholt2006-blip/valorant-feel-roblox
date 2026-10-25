@@ -3,7 +3,8 @@
 -- them; clients wait for them.
 --
 -- High-rate traffic (inputs, acks, snapshots) is packed into buffers by
--- PlayerCodec. Low-rate events (shot results, damage, loadout) use tables.
+-- PlayerCodec. Low-rate events (shot and swing results, damage, loadout) use
+-- tables.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -17,6 +18,8 @@ local definitions: { [string]: string } = {
 	Tuning = "RemoteEvent", -- both ways, live parameter overrides (Studio / owner only)
 	ShotResult = "RemoteEvent", -- server -> shooter, the verdict for each of their shots
 	ShotFx = "UnreliableRemoteEvent", -- server -> others, tracers for someone else's shot
+	SwingResult = "RemoteEvent", -- server -> attacker, the verdict for each of their knife swings
+	SwingFx = "UnreliableRemoteEvent", -- server -> others, someone else's knife swing
 	Combat = "RemoteEvent", -- server -> all, damage / death / respawn events
 	Loadout = "RemoteEvent", -- client -> server, debug weapon give (Studio / owner only; anyone in the arena's buy phase)
 	Buy = "RemoteEvent", -- client -> server, buy or sell an item from the buy menu
@@ -30,6 +33,8 @@ export type Remotes = {
 	Tuning: RemoteEvent,
 	ShotResult: RemoteEvent,
 	ShotFx: UnreliableRemoteEvent,
+	SwingResult: RemoteEvent,
+	SwingFx: UnreliableRemoteEvent,
 	Combat: RemoteEvent,
 	Loadout: RemoteEvent,
 	Buy: RemoteEvent,

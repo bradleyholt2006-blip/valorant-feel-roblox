@@ -29,6 +29,8 @@
 --                  then clears itself
 --   VFTestMenu     true opens the buy menu (if buying is open), false
 --                  closes it; then clears itself
+--   VFTestSlot     1, 2 or 3: draws that slot as its number key does (3 is
+--                  the knife), then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -106,6 +108,13 @@ function TestAim.start(controller: any)
 		if typeof(menu) == "boolean" then
 			player:SetAttribute("VFTestMenu", nil)
 			BuyMenu.setOpen(menu)
+		end
+		local slot = player:GetAttribute("VFTestSlot")
+		if typeof(slot) == "number" then
+			player:SetAttribute("VFTestSlot", nil)
+			if slot == 1 or slot == 2 or slot == 3 then
+				controller.desiredSlot = slot
+			end
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

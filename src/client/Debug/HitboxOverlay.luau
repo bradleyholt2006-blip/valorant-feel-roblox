@@ -19,6 +19,14 @@
 --     left after it. When the verdict arrives the labels turn white if the
 --     server's walls match the client's, and red, with the server's list in
 --     blue, if not.
+--   * for each of your knife swings, for two seconds: where it could catch
+--     (its aim out to reach - radius, its sides `radius` either way and its
+--     end face on), the point where the client had it meet a target or the
+--     level (yellow) and the boxes in reach as the client tested them; with
+--     the verdict, the server's point (blue), its boxes as for shots, and a
+--     label with the swing, the rewind, what it caught, how far off the aim,
+--     the damage, whether from behind and how many the level hid. A red aim
+--     line and label mean the client guessed otherwise.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -28,11 +36,13 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Hitboxes = require(Shared.Combat.Hitboxes)
+local Melee = require(Shared.Combat.Melee)
 local Penetration = require(Shared.Combat.Penetration)
 local Units = require(Shared.Units)
 
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local ClientShots = require(script.Parent.Parent.Combat.ClientShots)
+local ClientMelee = require(script.Parent.Parent.Combat.ClientMelee)
 
 local S = Units.STUDS_PER_METRE
 local SHOT_LIFETIME = 2
@@ -64,7 +74,8 @@ type Drawn = {
 	wallLabels: { TextLabel }, -- the client's walls
 	expires: number,
 }
-local drawn: { [ClientShots.Record]: Drawn } = {}
+-- By record: a shot's (ClientShots) or a swing's (ClientMelee).
+local drawn: { [any]: Drawn } = {}
 
 local function newPart(): Part
 	local p = Instance.new("Part")
@@ -137,9 +148,9 @@ local function dot(at: vector, color: Color3): Part
 	return p
 end
 
-local function label(anchor: BasePart, text: string, color: Color3, rise: number?): TextLabel
+local function label(anchor: BasePart, text: string, color: Color3, rise: number?, width: number?): TextLabel
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(240, 18)
+	gui.Size = UDim2.fromOffset(width or 240, 18)
 	gui.StudsOffset = Vector3.new(0, (rise or 0.25) * S, 0)
 	gui.AlwaysOnTop = true
 	gui.Adornee = anchor
@@ -154,6 +165,19 @@ local function label(anchor: BasePart, text: string, color: Color3, rise: number
 	l.Parent = gui
 	gui.Parent = anchor
 	return l
+end
+
+-- A flat disc `radius` round at `center`, facing along `normal`.
+local function disc(center: vector, normal: vector, radius: number, color: Color3): Part
+	local p = newPart()
+	p.Shape = Enum.PartType.Cylinder
+	p.Transparency = 0.85
+	p.Color = color
+	p.Size = Vector3.new(0.005 * S, radius * 2 * S, radius * 2 * S)
+	local c = Units.toStuds(center)
+	-- A cylinder's axis is its X.
+	p.CFrame = CFrame.lookAt(c, c + Units.asVector3(normal)) * CFrame.Angles(0, math.rad(90), 0)
+	return p
 end
 
 local function wallText(name: string?, material: string, thickness: number, used: number, multiplier: number, exited: boolean): string
@@ -286,6 +310,97 @@ local function onVerdict(record: ClientShots.Record)
 	label(anchor :: BasePart, text, if record.agree then SAME_COLOR else DIFF_COLOR)
 end
 
+-- Square to the aim, across the view.
+local function across(dir: vector): vector
+	local right = vector.create(-dir.z, 0, dir.x)
+	return if vector.magnitude(right) > 1e-3 then vector.normalize(right) else vector.create(1, 0, 0)
+end
+
+local function onSwing(record: ClientMelee.Record)
+	if not enabled then
+		return
+	end
+	local swing, attack = record.swing, record.attack
+	local origin, dir = swing.origin, swing.direction
+	local length, radius = Melee.length(attack), attack.radius.value
+	local entry: Drawn = { parts = {}, ray = nil, clientEnd = nil, boxes = {}, wallLabels = {}, expires = os.clock() + SHOT_LIFETIME }
+	for id, tested in record.tested do
+		entry.boxes[id] = drawBoxes(entry, tested.pose, CLIENT_COLOR)
+	end
+	local axis = line(origin, origin + dir * length, CLIENT_COLOR)
+	entry.ray = axis
+	table.insert(entry.parts, axis)
+	local side = across(dir) * radius
+	for _, sign in { -1, 1 } do
+		table.insert(entry.parts, line(origin + side * sign, origin + side * sign + dir * length, CLIENT_COLOR, 0.004))
+	end
+	table.insert(entry.parts, disc(origin + dir * length, dir, radius, CLIENT_COLOR))
+	local hit, wall = record.predicted.hit, record.predicted.wall
+	local at = if hit then hit.point elseif wall then origin + dir * wall.distance else origin + dir * attack.reach.value
+	local clientEnd = dot(at, CLIENT_COLOR)
+	entry.clientEnd = clientEnd
+	table.insert(entry.parts, clientEnd)
+	drawn[record] = entry
+end
+
+local function onSwingVerdict(record: ClientMelee.Record)
+	local entry = drawn[record]
+	local verdict = record.verdict
+	if not entry or not verdict then
+		return
+	end
+	local serverAt = verdict.point or verdict.wall
+	local serverEnd: BasePart? = nil
+	if serverAt then
+		local p = dot(serverAt, SERVER_COLOR)
+		table.insert(entry.parts, p)
+		serverEnd = p
+	end
+	for id, tested in verdict.tested do
+		local mine = record.tested[id]
+		local boxes = entry.boxes[id]
+		if mine and boxes and ClientShots.samePose(mine.pose, tested.pose) then
+			for _, p in boxes do
+				setOutlineColor(p, SAME_COLOR)
+			end
+		else
+			drawBoxes(entry, tested.pose, SERVER_COLOR)
+		end
+	end
+	local swing = record.swing
+	local text = string.format(
+		"%s  rewind %.0f ms%s",
+		if swing.kind == "stab" then "stab" else string.format("slash %d", swing.combo),
+		verdict.rewind * 1000,
+		if verdict.clamped then " CAPPED" else ""
+	)
+	local target = verdict.targetId
+	if target then
+		text ..= string.format(
+			"  %s %s %.2f m off  %.0f%s",
+			RemoteEntities.nameOf(target),
+			verdict.region or "?",
+			verdict.offset or 0,
+			verdict.damage,
+			if verdict.back then " from behind" else ""
+		)
+	else
+		text ..= if verdict.wall then "  struck the level" else "  caught no one"
+	end
+	if #verdict.hidden > 0 then
+		text ..= string.format("  %d hidden", #verdict.hidden)
+	end
+	if not record.agree then
+		local guess = record.predicted.hit
+		text ..= "  client " .. (if guess then RemoteEntities.nameOf(guess.targetId) .. " " .. guess.region else "none")
+		local ray = entry.ray
+		if ray then
+			ray.Color = DIFF_COLOR
+		end
+	end
+	label((serverEnd or entry.clientEnd) :: BasePart, text, if record.agree then SAME_COLOR else DIFF_COLOR, nil, 420)
+end
+
 local function render()
 	local now = os.clock()
 	for record, entry in drawn do
@@ -330,6 +445,8 @@ function HitboxOverlay.start()
 	folder = f
 	table.insert(ClientShots.firedListeners, onFired)
 	table.insert(ClientShots.verdictListeners, onVerdict)
+	table.insert(ClientMelee.firedListeners, onSwing)
+	table.insert(ClientMelee.verdictListeners, onSwingVerdict)
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if not processed and input.KeyCode == Enum.KeyCode.F10 then
 			enabled = not enabled

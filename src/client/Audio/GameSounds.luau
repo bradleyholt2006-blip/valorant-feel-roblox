@@ -17,6 +17,10 @@
 --   hits     on the server's verdict, the shooter hears a body hit or a
 --            headshot, once a round however many pellets hit, and a kill
 --            sound that rises with each kill of a life
+--   knives   your swings at once, and the blade striking the level where
+--            your client has it strike; its hit with the server's verdict,
+--            the blade going in for a body or the headshot sound for a head.
+--            Others hear a swing, and what it struck, within a short way
 --
 -- Your steps come from your predicted ticks, others' from their poses as
 -- they are drawn (RemoteEntities), so they line up with where they're
@@ -46,6 +50,7 @@ local NetSim = require(script.Parent.Parent.NetSim)
 local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local ClientShots = require(script.Parent.Parent.Combat.ClientShots)
+local ClientMelee = require(script.Parent.Parent.Combat.ClientMelee)
 local SoundEngine = require(script.Parent.SoundEngine)
 
 local GameSounds = {}
@@ -291,6 +296,22 @@ local function onTick(info: any)
 	end
 end
 
+-- Your knife swings: the whoosh, and the blade striking the level where your
+-- client has it strike. A hit is heard with the server's confirm (onVolley).
+local function onOwnSwing(record: ClientMelee.Record)
+	local sounds = SoundConfig.Weapons[record.swing.weapon]
+	if not sounds then
+		return
+	end
+	local swing = if record.swing.kind == "stab" then sounds.stab else sounds.slash
+	if swing then
+		own(swing)
+	end
+	if record.predicted.wall and sounds.wall then
+		own(sounds.wall)
+	end
+end
+
 local function onSpawn()
 	StepTracker.reset(ownSteps)
 	lastWeapons = nil
@@ -308,7 +329,10 @@ local function onVolley(volley: ClientShots.Volley)
 	for _, hit in volley.hits do
 		head = head or hit.region == "head"
 	end
-	ui(if head then "headshot" else "hitBody")
+	-- A knife's hit on the body is its blade going in.
+	local sounds = SoundConfig.Weapons[volley.weapon]
+	local body = if sounds and sounds.hit then sounds.hit else "hitBody"
+	ui(if head then "headshot" else body)
 	for _, hit in volley.hits do
 		if hit.killed then
 			kills += 1
@@ -424,6 +448,31 @@ local function onShotFx(fx: any)
 	GameSounds.playWorld(sounds.shot, at, who, { air = true, pitch = sounds.pitch })
 end
 
+-- Someone else's knife swing: its whoosh where they are, then the blade going
+-- in or striking the level, all heard only close by.
+local function onSwingFx(fx: any)
+	if typeof(fx) ~= "table" or typeof(fx.from) ~= "Vector3" or typeof(fx.attacker) ~= "number" then
+		return
+	end
+	local sounds = SoundConfig.Weapons[if typeof(fx.weapon) == "string" then fx.weapon else ""]
+	local swing = if not sounds then nil elseif fx.kind == "stab" then sounds.stab else sounds.slash
+	if not sounds or not swing then
+		return
+	end
+	local at = Units.toMetres(fx.from)
+	local who = RemoteEntities.nameOf(fx.attacker)
+	if inBuyPhaseAcross(fx.attacker) then
+		muted(swing, who, at, "buy phase")
+		return
+	end
+	GameSounds.playWorld(swing, at, who)
+	if fx.hit == true and sounds.hit then
+		GameSounds.playWorld(sounds.hit, at, who)
+	elseif typeof(fx.wall) == "Vector3" and sounds.wall then
+		GameSounds.playWorld(sounds.wall, Units.toMetres(fx.wall), who)
+	end
+end
+
 -- Settings ------------------------------------------------------------------------
 
 -- This client's footstep radius: the footstep curve stretched to it.
@@ -451,6 +500,17 @@ function GameSounds.start()
 			end
 		end
 		SoundEngine.prepare(sounds.draw, "self")
+		-- A knife's: yours, and others' out in the world.
+		for _, sound in { sounds.slash, sounds.stab, sounds.wall } do
+			if sound then
+				SoundEngine.prepare(sound, "world", (C :: any)[sounds.curve].points)
+				SoundEngine.prepare(sound, "self")
+			end
+		end
+		if sounds.hit then
+			SoundEngine.prepare(sounds.hit, "world", (C :: any)[sounds.curve].points)
+			SoundEngine.prepare(sounds.hit, "ui")
+		end
 	end
 	for _, sound in { "step", "land", "softLand", "jump", "dry" } do
 		SoundEngine.prepare(sound, "self")
@@ -462,7 +522,9 @@ function GameSounds.start()
 	table.insert(PlayerController.tickListeners, onTick)
 	table.insert(PlayerController.spawnListeners, onSpawn)
 	table.insert(ClientShots.volleyListeners, onVolley)
+	table.insert(ClientMelee.firedListeners, onOwnSwing)
 	NetSim.on(Remotes.get().ShotFx, onShotFx)
+	NetSim.on(Remotes.get().SwingFx, onSwingFx)
 	RunService:BindToRenderStep("VFGameSounds", Enum.RenderPriority.Camera.Value + 3, onFrame)
 end
 
