@@ -133,6 +133,16 @@ function Health.reset(s: State)
 	Health.setShield(s, s.kind)
 end
 
+-- A life under way made whole (deathmatch's health packs, system 26): full
+-- health and a fresh shield of the kind worn. Nothing for the dead.
+function Health.heal(s: State)
+	if not s.alive then
+		return
+	end
+	s.health = s.maxHealth
+	Health.setShield(s, s.kind)
+end
+
 -- Whole points for display: a split hit leaves fractions, and anything left
 -- counts as a point. Nothing left reads 0, never -0.
 function Health.points(value: number): number

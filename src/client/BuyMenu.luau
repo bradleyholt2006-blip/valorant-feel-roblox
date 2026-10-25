@@ -17,6 +17,10 @@
 -- with a pip for every charge it holds, lit for each you have: click buys a
 -- charge, right-click sells back one bought this buy phase. One that can't
 -- be played yet is shown, dimmed, and can't be bought.
+--
+-- In deathmatch (system 26) it opens whenever you're alive, and sells the
+-- guns alone, free (DeathmatchConfig.FOR_SALE): every life wears Heavy
+-- Armor, and there are no abilities, so the rest is dimmed.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,6 +30,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
@@ -136,8 +141,19 @@ local function stakes(arena: Instance?): MatchRules.Payout?
 	return MatchRules.payout(format, round, if typeof(streak) == "number" then streak else 0)
 end
 
+-- Whether deathmatch is played (system 26).
+local function deathmatch(): boolean
+	return Workspace:GetAttribute(ArenaConfig.ON) == true and Workspace:GetAttribute(ArenaConfig.MODE) == "deathmatch"
+end
+
+-- Whether the mode played sells this: deathmatch, its guns alone.
+local function sold(item: Shop.Item): boolean
+	return not deathmatch() or DeathmatchConfig.FOR_SALE[item.kind] == true
+end
+
 -- Whether buying is open for us now, as the server will see it: never in
--- gun game, whose guns come with its levels (system 23).
+-- gun game, whose guns come with its levels (system 23), and all match long
+-- in deathmatch.
 function BuyMenu.canBuy(): boolean
 	if not PlayerController.alive then
 		return false
@@ -149,12 +165,17 @@ function BuyMenu.canBuy(): boolean
 	end
 	local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 	local phase = arena and arena:GetAttribute("Phase")
-	return typeof(me:GetAttribute(ArenaConfig.SIDE)) == "number" and (phase == "buy" or phase == "waiting")
+	local open = phase == "buy" or phase == "waiting" or (phase == "live" and deathmatch())
+	return typeof(me:GetAttribute(ArenaConfig.SIDE)) == "number" and open
 end
 
--- Asks the server to buy or sell an item. A gun bought is drawn, once the
--- server has put it in its slot.
+-- Asks the server to buy or sell an item, if the mode sells it. A gun
+-- bought is drawn, once the server has put it in its slot.
 function BuyMenu.request(action: "buy" | "sell", id: string)
+	local item = Shop.item(id)
+	if item and not sold(item) then
+		return
+	end
 	Remotes.get().Buy:FireServer(action, id)
 	local def = WeaponConfig.Defs[id]
 	if action == "buy" and def then
@@ -676,7 +697,10 @@ function BuyMenu.start()
 					elseif pay then string.format("     WIN +%d   LOSE +%d", pay.won, pay.lost)
 					else ""
 		else
-			status.Text = if arenaOn then "SKIRMISH: EVERYTHING'S FREE" else "THE COURSE: EVERYTHING'S FREE"
+			status.Text = if deathmatch()
+				then "DEATHMATCH: EVERY GUN'S FREE"
+				elseif arenaOn then "SKIRMISH: EVERYTHING'S FREE"
+				else "THE COURSE: EVERYTHING'S FREE"
 		end
 		local endsAt = arena and arena:GetAttribute("PhaseEndsAt")
 		local phase = arena and arena:GetAttribute("Phase")
@@ -696,15 +720,16 @@ function BuyMenu.start()
 			local owned = tile.id == shield or tile.id == loadout[1] or tile.id == loadout[2]
 			local canSell = sellable[tile.id] == true
 			local cant = wallet ~= nil and not owned and Shop.cost(state, tile.item) > wallet
+			local unsold = not owned and not sold(tile.item)
 			short[tile.id] = cant
 			tile.button.BackgroundColor3 = if hovered == tile.id then TILE_HOVER else TILE
-			tile.button.BackgroundTransparency = if cant then 0.55 else 0.1
-			tile.name.TextColor3 = if cant then Ui.DIM else Ui.TEXT
-			tile.price.TextColor3 = if cant then SHORT else GOLD
+			tile.button.BackgroundTransparency = if cant or unsold then 0.55 else 0.1
+			tile.name.TextColor3 = if cant or unsold then Ui.DIM else Ui.TEXT
+			tile.price.TextColor3 = if cant then SHORT elseif unsold then Ui.DIM else GOLD
 			tile.stroke.Transparency = if owned then 0.1 else 1
 			tile.stroke.Color = if canSell then SELLABLE else OWNED
-			tile.tag.Text = if tile.id == inHand then "IN HAND" elseif owned then "OWNED" else ""
-			tile.tag.TextColor3 = if canSell then SELLABLE else OWNED
+			tile.tag.Text = if tile.id == inHand then "IN HAND" elseif owned then "OWNED" elseif unsold then "NOT SOLD" else ""
+			tile.tag.TextColor3 = if canSell then SELLABLE elseif unsold then Ui.DIM else OWNED
 		end
 		-- The abilities: the charges in our kit, as predicted.
 		local kit = if sim then sim.abilities else nil
@@ -714,17 +739,18 @@ function BuyMenu.start()
 			local have = if kit and slot then kit.charges[slot] else 0
 			local max = if kit and slot then AbilitySim.maxCharges(kit, slot) else 0
 			local playable = AbilitySim.playable(tile.id)
+			local unsold = not sold(tile.item)
 			local canSell = (chargesBought[tile.id] or 0) > 0
 			local cant = not playable or have >= max or (wallet ~= nil and tile.item.price > wallet)
 			short[tile.id] = wallet ~= nil and playable and have < max and tile.item.price > wallet
 			tile.button.BackgroundColor3 = if hovered == tile.id then TILE_HOVER else TILE
-			tile.button.BackgroundTransparency = if cant and have < max then 0.55 else 0.1
-			tile.name.TextColor3 = if not playable then Ui.DIM else Ui.TEXT
-			tile.price.TextColor3 = if short[tile.id] then SHORT else GOLD
+			tile.button.BackgroundTransparency = if unsold or (cant and have < max) then 0.55 else 0.1
+			tile.name.TextColor3 = if unsold or not playable then Ui.DIM else Ui.TEXT
+			tile.price.TextColor3 = if short[tile.id] then SHORT elseif unsold then Ui.DIM else GOLD
 			tile.stroke.Transparency = if have > 0 then 0.1 else 1
 			tile.stroke.Color = if canSell then SELLABLE else OWNED
-			tile.tag.Text = if not playable then "NOT YET" elseif have >= max then "FULL" else ""
-			tile.tag.TextColor3 = if canSell then SELLABLE else OWNED
+			tile.tag.Text = if unsold then "NOT SOLD" elseif not playable then "NOT YET" elseif have >= max then "FULL" else ""
+			tile.tag.TextColor3 = if canSell then SELLABLE elseif unsold then Ui.DIM else OWNED
 			for i, pip in tile.pips do
 				pip.BackgroundColor3 = if i <= have then OWNED else Color3.fromRGB(70, 72, 80)
 			end
@@ -757,6 +783,9 @@ function BuyMenu.start()
 		local slot = if kit and abilityDef then AbilitySim.slotOf(kit, abilityDef.id) else nil
 		if not id or not item then
 			hint.Text = ""
+		elseif not sold(item) then
+			hint.Text = if abilityDef then "No abilities in deathmatch" else "Deathmatch sells guns alone: every life wears Heavy Armor"
+			hint.TextColor3 = Ui.DIM
 		elseif abilityDef then
 			local have = if kit and slot then kit.charges[slot] else 0
 			local max = if kit and slot then AbilitySim.maxCharges(kit, slot) else 0

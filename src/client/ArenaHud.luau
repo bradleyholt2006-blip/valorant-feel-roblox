@@ -14,9 +14,13 @@
 -- it, and under the bar the gun you're on and the next; moving up or being
 -- knifed down shows in the middle for a moment, as does your spawn
 -- protection, the gun you move up to is drawn as it's handed over, and G
--- does nothing, as the guns can't be dropped. P asks the server for the next
--- of: the arena, gun game, the spike rounds, the spike rounds in Swiftplay's
--- format, and off (Studio or the place owner).
+-- does nothing, as the guns can't be dropped. In deathmatch (system 26) the
+-- top bar has your kills and the most anyone else has either side of the
+-- match's clock, with the kills that win under it, and under the bar your
+-- place and who leads; there are no tiles, as there are no sides, and G does
+-- nothing there either. P asks the server for the next of: the arena, gun
+-- game, the spike rounds, the spike rounds in Swiftplay's format, and off
+-- (Studio or the place owner).
 --
 -- Either side of the top bar, who's alive (system 16): a tile for each
 -- player, yours on the left and theirs on the right, as the reference's
@@ -32,6 +36,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
+local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
@@ -154,6 +159,11 @@ local function split(text: any): { string }
 	return out
 end
 
+local function killsOf(player: Player): number
+	local value = player:GetAttribute(MatchConfig.KILLS)
+	return if typeof(value) == "number" then value else 0
+end
+
 -- A gun's name as the HUD has it.
 local function gunName(id: string?): string
 	local def = if id then WeaponConfig.Defs[id] else nil
@@ -252,6 +262,13 @@ function ArenaHud.start()
 			table.insert(row, newTile(gui))
 		end
 	end
+	local function hideTiles()
+		for _, row in tiles do
+			for _, tile in row do
+				tile.frame.Visible = false
+			end
+		end
+	end
 
 	local arena = Workspace:WaitForChild(ArenaConfig.MODEL)
 	local me = Players.LocalPlayer
@@ -263,8 +280,10 @@ function ArenaHud.start()
 
 	RunService.RenderStepped:Connect(function()
 		local on = Workspace:GetAttribute(ArenaConfig.ON) == true
-		-- Gun game's guns can't be dropped, as in Arms Race: G does nothing.
-		InputSampler.blockButtons = if on and Workspace:GetAttribute(ArenaConfig.MODE) == "gungame" then PlayerSim.Buttons.Drop else 0
+		-- Gun game's guns can't be dropped, as in Arms Race, nor deathmatch's
+		-- (ours): G does nothing.
+		local wanted = Workspace:GetAttribute(ArenaConfig.MODE)
+		InputSampler.blockButtons = if on and (wanted == "gungame" or wanted == "deathmatch") then PlayerSim.Buttons.Drop else 0
 		local phase = arena:GetAttribute("Phase")
 		local side = me:GetAttribute(ArenaConfig.SIDE)
 		if not on or typeof(phase) ~= "string" or typeof(side) ~= "number" then
@@ -273,11 +292,7 @@ function ArenaHud.start()
 			banner.Visible = false
 			subtitle.Visible = false
 			seenLevel, seenPhase = nil, nil
-			for _, row in tiles do
-				for _, tile in row do
-					tile.frame.Visible = false
-				end
-			end
+			hideTiles()
 			return
 		end
 		local other = 3 - side
@@ -293,6 +308,7 @@ function ArenaHud.start()
 		local attackers = arena:GetAttribute("Attackers")
 		local spike = arena:GetAttribute("Mode") == "spike" and format ~= nil and typeof(attackers) == "number"
 		local gunGame = arena:GetAttribute("Mode") == "gungame"
+		local deathmatch = arena:GetAttribute("Mode") == "deathmatch"
 		guns.Visible = false
 		if not gunGame then
 			seenLevel, seenPhase = nil, nil
@@ -302,11 +318,15 @@ function ArenaHud.start()
 		bar.Size = UDim2.fromOffset(width, 58)
 		bar.Position = UDim2.new(0.5, -width / 2, 0, 8)
 		bar.Visible = true
-		placeTiles(tiles[1], sideOf(side), ally, width, true)
-		placeTiles(tiles[2], sideOf(other), enemy, width, false)
-		ours.Text = tostring(score[side])
+		if deathmatch then
+			hideTiles()
+		else
+			placeTiles(tiles[1], sideOf(side), ally, width, true)
+			placeTiles(tiles[2], sideOf(other), enemy, width, false)
+			ours.Text = tostring(score[side])
+			theirs.Text = tostring(score[other])
+		end
 		ours.TextColor3 = ally
-		theirs.Text = tostring(score[other])
 		theirs.TextColor3 = enemy
 		round.TextColor3 = Ui.TEXT
 
@@ -404,6 +424,39 @@ function ArenaHud.start()
 				title, sub, colour = flash.title, flash.sub, flash.colour
 			elseif phase == "live" and me:GetAttribute(GunGameConfig.PROTECTED) == true then
 				sub = "SPAWN PROTECTION   until you fire"
+			end
+		elseif deathmatch then
+			-- Your kills against the most anyone else has, and under the bar
+			-- your place among everyone playing, and who leads if it isn't you.
+			local rivals, playing = 0, 0
+			for _, player in Players:GetPlayers() do
+				if typeof(player:GetAttribute(ArenaConfig.SIDE)) == "number" then
+					playing += 1
+					if player ~= me then
+						rivals = math.max(rivals, killsOf(player))
+					end
+				end
+			end
+			ours.Text = tostring(killsOf(me))
+			theirs.Text = tostring(rivals)
+			round.Text = if phase == "live" then clock(left) else "DEATHMATCH"
+			target.Text = string.format("FIRST TO %d", winScore)
+			local place = me:GetAttribute(DeathmatchConfig.PLACE)
+			if typeof(place) == "number" and phase == "live" then
+				local id = arena:GetAttribute("Leader")
+				local leader = if typeof(id) == "number" and id ~= me.UserId then Players:GetPlayerByUserId(id) else nil
+				guns.Visible = true
+				guns.Text = string.format('<font color="#%s">%s</font> OF %d', Ui.hex(GOLD), string.upper(Ui.ordinal(place)), playing)
+					.. (if leader and killsOf(leader) > 0 then "   LEADER  " .. string.upper(leader.DisplayName) else "")
+					.. "   B buy menu"
+			end
+			if phase == "waiting" then
+				title = "WAITING FOR AN OPPONENT"
+				sub = string.format(
+					"Deathmatch: everyone for themselves, first to %d kills or the most in %d minutes   B buy menu",
+					winScore,
+					DeathmatchConfig.Rules.timeLimit.value // 60
+				)
 			end
 		else
 			round.Text = if roundNumber > 0 then string.format("ROUND %d", roundNumber) else "ARENA"

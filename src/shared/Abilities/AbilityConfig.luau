@@ -138,8 +138,12 @@ AbilityConfig.Agents = {
 
 -- Everyone plays this agent until there's an agent select.
 AbilityConfig.DEFAULT_AGENT = "jett"
+-- A kit of no agent's: no abilities, and no passive (deathmatch, system 26:
+-- 'No abilities (yes, that means Jett can't glide...)', Riot Support).
+AbilityConfig.NO_AGENT = ""
 
--- The agents' ids by index, and each id's index, for the wire.
+-- The agents' ids by index, and each id's index, for the wire (0 for no
+-- agent's kit).
 AbilityConfig.AgentIds = { "jett" }
 AbilityConfig.AgentIndex = { jett = 1 } :: { [string]: number }
 

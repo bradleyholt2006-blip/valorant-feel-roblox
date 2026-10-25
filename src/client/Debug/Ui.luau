@@ -65,4 +65,13 @@ function Ui.hex(c: Color3): string
 	return c:ToHex()
 end
 
+-- A place as it's said: 1st, 2nd, 3rd, 4th, ..., 11th, 12th, 13th, ..., 21st.
+function Ui.ordinal(n: number): string
+	local suffix = "th"
+	if n % 100 < 11 or n % 100 > 13 then
+		suffix = if n % 10 == 1 then "st" elseif n % 10 == 2 then "nd" elseif n % 10 == 3 then "rd" else "th"
+	end
+	return tostring(n) .. suffix
+end
+
 return Ui

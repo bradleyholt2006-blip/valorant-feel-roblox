@@ -21,6 +21,12 @@
 -- the player's level where the ACS goes, and the gun of it, for both sides,
 -- where the guns go. So MATCH MVP is whoever won, on the last level.
 --
+-- Deathmatch (system 26) has no sides, so one table instead, of everyone
+-- playing in their places (DeathmatchConfig.PLACE, from the server), with
+-- each player's place where the ACS goes, and your own gun alone. Its
+-- victory screen says VICTORY to whoever won and to everyone else their
+-- place (our words), with MATCH MVP on the winner.
+--
 -- Everything comes from the player attributes the server keeps (Arena), and
 -- each player's shield from what combat events have said of it. While either
 -- is on, Roblox's own player list, which Tab would open, is off.
@@ -34,6 +40,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
@@ -52,6 +59,7 @@ local Scoreboard = {}
 Scoreboard.held = false
 
 local ROWS = 5 -- a side, at most
+local FFA_ROWS = DeathmatchConfig.Rules.players.value -- deathmatch's one table, at most
 local WIDTH = 640
 local ROW_H, ROW_GAP = 28, 2
 local HEADER_H = 34
@@ -80,8 +88,18 @@ type Row = { frame: Frame, strip: Frame, cells: { [string]: TextLabel } }
 local MATCH_MVP, TEAM_MVP = "MATCH MVP", "TEAM MVP"
 
 -- What a row shows of a player, and what orders the rows: the combat score,
--- or in gun game the level.
-type Line = { player: Player, kills: number, deaths: number, assists: number, acs: number, level: number, rank: number, alive: boolean }
+-- or in gun game the level, or in deathmatch the place (math.huge for none).
+type Line = {
+	player: Player,
+	kills: number,
+	deaths: number,
+	assists: number,
+	acs: number,
+	level: number,
+	place: number,
+	rank: number,
+	alive: boolean,
+}
 
 local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
@@ -92,24 +110,30 @@ local function number(player: Player, name: string): number
 	return if typeof(value) == "number" then value else 0
 end
 
+local function lineOf(player: Player, gunGame: boolean): Line
+	local acs = MatchRules.average(number(player, MatchConfig.SCORE), number(player, MatchConfig.ROUNDS))
+	local level = number(player, GunGameConfig.LEVEL)
+	local place = player:GetAttribute(DeathmatchConfig.PLACE)
+	return {
+		player = player,
+		kills = number(player, MatchConfig.KILLS),
+		deaths = number(player, MatchConfig.DEATHS),
+		assists = number(player, MatchConfig.ASSISTS),
+		acs = acs,
+		level = level,
+		place = if typeof(place) == "number" then place else math.huge,
+		rank = if gunGame then level else acs,
+		alive = player:GetAttribute(MatchConfig.ALIVE) ~= false,
+	}
+end
+
 -- The players on a side, best combat score (in gun game, level, and on the
 -- same level whoever leads or won, `leader`) first.
 local function linesOf(side: number, gunGame: boolean, leader: any): { Line }
 	local out: { Line } = {}
 	for _, player in Players:GetPlayers() do
 		if player:GetAttribute(ArenaConfig.SIDE) == side then
-			local acs = MatchRules.average(number(player, MatchConfig.SCORE), number(player, MatchConfig.ROUNDS))
-			local level = number(player, GunGameConfig.LEVEL)
-			table.insert(out, {
-				player = player,
-				kills = number(player, MatchConfig.KILLS),
-				deaths = number(player, MatchConfig.DEATHS),
-				assists = number(player, MatchConfig.ASSISTS),
-				acs = acs,
-				level = level,
-				rank = if gunGame then level else acs,
-				alive = player:GetAttribute(MatchConfig.ALIVE) ~= false,
-			})
+			table.insert(out, lineOf(player, gunGame))
 		end
 	end
 	table.sort(out, function(a: Line, b: Line): boolean
@@ -117,6 +141,25 @@ local function linesOf(side: number, gunGame: boolean, leader: any): { Line }
 			return a.rank > b.rank
 		elseif gunGame and (a.player.UserId == leader) ~= (b.player.UserId == leader) then
 			return a.player.UserId == leader
+		elseif a.kills ~= b.kills then
+			return a.kills > b.kills
+		end
+		return a.player.DisplayName < b.player.DisplayName
+	end)
+	return out
+end
+
+-- Everyone playing a deathmatch, in their places.
+local function placesOf(): { Line }
+	local out: { Line } = {}
+	for _, player in Players:GetPlayers() do
+		if typeof(player:GetAttribute(ArenaConfig.SIDE)) == "number" then
+			table.insert(out, lineOf(player, false))
+		end
+	end
+	table.sort(out, function(a: Line, b: Line): boolean
+		if a.place ~= b.place then
+			return a.place < b.place
 		elseif a.kills ~= b.kills then
 			return a.kills > b.kills
 		end
@@ -171,9 +214,11 @@ local function newRow(parent: Instance, y: number): Row
 	return { frame = frame, strip = strip, cells = cells }
 end
 
--- The panel's height with `rows` rows a side.
-local function heightFor(rows: number): number
-	return HEADER_H + 22 + 2 * rows * (ROW_H + ROW_GAP) + SIDE_GAP + 8
+-- The panel's height with `rows` rows in each of its `tables` (two, a side,
+-- unless said).
+local function heightFor(rows: number, tables: number?): number
+	local count = tables or 2
+	return HEADER_H + 22 + count * rows * (ROW_H + ROW_GAP) + (count - 1) * SIDE_GAP + 8
 end
 
 function Scoreboard.start()
@@ -219,6 +264,10 @@ function Scoreboard.start()
 			table.insert(rows, newRow(panel, 0))
 		end
 	end
+	local ffa: { Row } = {}
+	for _ = 1, FFA_ROWS do
+		table.insert(ffa, newRow(panel, 0))
+	end
 
 	local me = Players.LocalPlayer
 	local listOff = false -- whether we've turned Roblox's player list off
@@ -239,6 +288,7 @@ function Scoreboard.start()
 		end
 		local spike = arena:GetAttribute("Mode") == "spike"
 		local gunGame = arena:GetAttribute("Mode") == "gungame"
+		local deathmatch = arena:GetAttribute("Mode") == "deathmatch"
 		local ladder = {}
 		if gunGame then
 			local text = arena:GetAttribute("Ladder")
@@ -263,7 +313,12 @@ function Scoreboard.start()
 		local title: string
 		if over then
 			local won = winner == side
-			title = if not playing then "MATCH OVER" elseif won then "VICTORY" else "DEFEAT"
+			local place = me:GetAttribute(DeathmatchConfig.PLACE)
+			title = if not playing
+				then "MATCH OVER"
+				elseif won then "VICTORY"
+				elseif deathmatch and typeof(place) == "number" then string.upper(Ui.ordinal(place)) .. " PLACE"
+				else "DEFEAT"
 			title = string.format('<font color="#%s">%s</font>', Ui.hex(if not playing then Ui.TEXT elseif won then ally else enemy), title)
 			local endsAt = arena:GetAttribute("PhaseEndsAt")
 			local left = if typeof(endsAt) == "number" then math.max(endsAt - Workspace:GetServerTimeNow(), 0) else 0
@@ -274,27 +329,76 @@ function Scoreboard.start()
 		else
 			local name = if gunGame
 				then "GUN GAME"
+				elseif deathmatch then string.format("DEATHMATCH   FIRST TO %d", arena:GetAttribute("WinScore") or 0)
 				elseif not spike then "SKIRMISH"
 				elseif format then string.upper(format.name)
 				else "SPIKE ROUNDS"
 			title = name .. (if round > 0 then string.format("   ROUND %d", round) else "")
 		end
-		header.Text = string.format(
-			'<font color="#%s">%d</font>     %s     <font color="#%s">%d</font>',
-			Ui.hex(ally),
-			score[side],
-			title,
-			Ui.hex(enemy),
-			score[other]
-		)
+		-- Deathmatch's has no sides' scores either side.
+		header.Text = if deathmatch
+			then title
+			else string.format(
+				'<font color="#%s">%d</font>     %s     <font color="#%s">%d</font>',
+				Ui.hex(ally),
+				score[side],
+				title,
+				Ui.hex(enemy),
+				score[other]
+			)
 		-- Credits only in the spike rounds, and on the victory screen the
 		-- MVPs where the guns go.
 		titles.credits.Visible = spike and not over
 		titles.loadout.Visible = not over
-		titles.acs.Text = if gunGame then "LEVEL" else "ACS"
+		titles.acs.Text = if gunGame then "LEVEL" elseif deathmatch then "PLACE" else "ACS"
 		titles.loadout.Text = if gunGame then "GUN" else "LOADOUT"
 
 		local leader = arena:GetAttribute("Leader")
+		if deathmatch then
+			for _, rows in sides do
+				for _, row in rows do
+					row.frame.Visible = false
+				end
+			end
+			local lines = placesOf()
+			panel.Size = UDim2.fromOffset(WIDTH, heightFor(math.clamp(#lines, 1, FFA_ROWS), 1))
+			for r, row in ffa do
+				local line = lines[r]
+				row.frame.Visible = line ~= nil
+				if not line then
+					continue
+				end
+				row.frame.Position = UDim2.fromOffset(8, top + (r - 1) * (ROW_H + ROW_GAP))
+				local player = line.player
+				local cells = row.cells
+				local mine = player == me
+				local alive = line.alive or over
+				row.frame.BackgroundColor3 = if mine then MINE else Ui.PANEL
+				row.strip.BackgroundColor3 = if mine then ally else enemy
+				row.strip.BackgroundTransparency = if alive then 0 else 0.6
+				cells.name.Text = player.DisplayName
+				cells.name.TextColor3 = if mine then GOLD else Ui.TEXT
+				cells.name.TextTransparency = if alive then 0 else 0.5
+				cells.k.Text = tostring(line.kills)
+				cells.d.Text = tostring(line.deaths)
+				cells.a.Text = tostring(line.assists)
+				cells.acs.Text = if line.place < math.huge then Ui.ordinal(line.place) else ""
+				cells.credits.Text = ""
+				if over then
+					-- Whoever won, if anyone scored.
+					local mvp = player.UserId == leader and line.kills > 0
+					cells.loadout.Text = if mvp then "<b>" .. MATCH_MVP .. "</b>" else ""
+					cells.loadout.TextColor3 = GOLD
+				else
+					cells.loadout.Text = if mine then loadoutOf(player) else ""
+					cells.loadout.TextColor3 = Ui.TEXT
+				end
+			end
+			return
+		end
+		for _, row in ffa do
+			row.frame.Visible = false
+		end
 		local lines = { linesOf(side, gunGame, leader), linesOf(other, gunGame, leader) }
 		local shown = math.clamp(math.max(#lines[1], #lines[2]), 1, ROWS)
 		-- Which table has the match's MVP: the best of the two sides' best.

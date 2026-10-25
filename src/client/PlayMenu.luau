@@ -172,7 +172,7 @@ function PlayMenu.start()
 			Size = UDim2.fromOffset(CARD_W - 16, 14),
 		})
 		Ui.label(button, {
-			Text = string.format("%dv%d", side, side),
+			Text = if mode.freeForAll then "FFA" else string.format("%dv%d", side, side),
 			Font = Enum.Font.GothamBold,
 			TextSize = 30,
 			TextXAlignment = Enum.TextXAlignment.Center,

@@ -6,7 +6,8 @@
 -- left to dash, and an ability under way lights its slot: Blade Storm's
 -- while its knives last (system 19), its note the knives left. What can't
 -- be played yet is dimmed. It reads the local player's predicted kit
--- (PlayerController.sim), so a cast shows on the tick it's pressed.
+-- (PlayerController.sim), so a cast shows on the tick it's pressed. A kit
+-- of no agent's, as deathmatch's (system 26), has no bar.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -139,8 +140,8 @@ function AbilityHud.start()
 
 	RunService.RenderStepped:Connect(function()
 		local s = PlayerController.sim
-		bar.Visible = s ~= nil
-		if not s then
+		bar.Visible = s ~= nil and s.abilities.agent ~= AbilityConfig.NO_AGENT
+		if not s or not bar.Visible then
 			return
 		end
 		local kit = s.abilities

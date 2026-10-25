@@ -22,6 +22,8 @@
 -- Abilities (system 17) are bought a charge at a time into the kit
 -- (AbilityServer), and a charge bought this buy phase sells back for its
 -- price.
+--
+-- Deathmatch (system 26) sells its guns alone (ShopServer.sells), all free.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -41,6 +43,9 @@ local ShopServer = {}
 -- negative, when something charges (the spike rounds' economy), and returns
 -- whether they had them. Nil while everything's free.
 ShopServer.pay = nil :: ((player: Player, amount: number) -> boolean)?
+-- Whether items of a kind (Shop's: "weapon", "shield" or "ability") are for
+-- sale, when not everything is (deathmatch). Nil while everything is.
+ShopServer.sells = nil :: ((kind: string) -> boolean)?
 
 local states: { [Player]: Shop.State } = {}
 -- The shield each player wore when this buy phase first changed it.
@@ -128,12 +133,14 @@ local function handleCharge(player: Player, s: Shop.State, action: string, item:
 	end
 end
 
--- Makes one request, if buying is open and they can pay; publish after.
+-- Makes one request, if buying is open, the item's for sale and they can
+-- pay; publish after.
 local function handle(player: Player, action: string, id: string)
-	if not isOpen(player) then
+	local item = Shop.item(id)
+	local sells = ShopServer.sells
+	if not isOpen(player) or (item and sells and not sells(item.kind)) then
 		return
 	end
-	local item = Shop.item(id)
 	if item and item.kind == "ability" then
 		handleCharge(player, stateOf(player), action, item)
 		return

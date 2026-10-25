@@ -353,7 +353,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		lastSlot = lastSlot,
 	}
 
-	local agent = AbilityConfig.AgentIds[r8(c)] or AbilityConfig.DEFAULT_AGENT
+	local agentIndex = r8(c)
+	local agent = if agentIndex == 0 then AbilityConfig.NO_AGENT else AbilityConfig.AgentIds[agentIndex] or AbilityConfig.DEFAULT_AGENT
 	local charges = { r8(c), r8(c), r8(c), 0 }
 	local regained = r8(c)
 	local kills = r8(c)

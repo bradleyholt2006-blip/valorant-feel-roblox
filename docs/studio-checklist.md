@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-five
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-six
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, section 25 three and then one, and sections 26 to 29 two.
+   one and then two, section 25 three and then one, and sections 26 to 30 two.
 
 | Key | What it does |
 | --- | --- |
@@ -36,7 +36,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F3 | HUD panel (on at the start in Studio, off on a live server) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
-| G | Drops the gun or the spike in hand (not in gun game); with the knife in hand and the HUD on, the ghost box where the server has you |
+| G | Drops the gun or the spike in hand (not in gun game or deathmatch); with the knife in hand and the HUD on, the ghost box where the server has you |
 | F | Picks up the gun on the ground you're looking at, swapping it for yours |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
@@ -55,9 +55,9 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
-| B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game) |
+| B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game; in deathmatch any time, guns alone) |
 | O | The settings menu: your sensitivity and crosshair |
-| 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game) |
+| 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game; in deathmatch any time) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
 
 Every gun is in the buy menu. A gun can also come from an attribute, which is how scripted checks
@@ -1489,10 +1489,10 @@ teleports between servers need the place published (PM6).
 Start a Local Server with 2 players, as in section 9. Both start on the course, as before.
 
 - **PM1 The menu.** Press M in window 1: `PLAY` at the top, `This server is on the course.` under
-  it with Studio's note, and five cards: SKIRMISH `2v2`, GUN GAME `4v4`, UNRATED `5v5`,
-  COMPETITIVE `5v5` and SWIFTPLAY `5v5`, each with how it's won and `NOBODY YET`, and none with
-  `THIS SERVER`. The SKIRMISH card is outlined in gold, the button under the cards reads
-  `PLAY SKIRMISH`, `M  close` is at the top right, and the mouse moves a cursor. **Send:** a
+  it with Studio's note, and six cards: SKIRMISH `2v2`, GUN GAME `4v4`, DEATHMATCH `FFA`,
+  UNRATED `5v5`, COMPETITIVE `5v5` and SWIFTPLAY `5v5`, each with how it's won and `NOBODY YET`,
+  and none with `THIS SERVER`. The SKIRMISH card is outlined in gold, the button under the cards
+  reads `PLAY SKIRMISH`, `M  close` is at the top right, and the mouse moves a cursor. **Send:** a
   screenshot.
 - **PM2 Picking.** Click the GUN GAME card: the outline moves to it, and the button reads
   `PLAY GUN GAME`. Press M: the menu closes, and the mouse turns the view again.
@@ -1558,6 +1558,51 @@ gun game, the spike rounds, then the spike rounds in Swiftplay's format).
 - **SM6 The third map.** Run SM2's loop again. At the vote, both players vote for the map not
   played yet, and at 0 the next match is on it. As in SM5: its barriers, the spike in front of
   player 1, a plant, at site A this time, and a walk round it. **Send:** as in SM5.
+
+## 30. Deathmatch
+
+From [26-deathmatch.md](research/26-deathmatch.md). A quick play of what changed, with two players.
+`workspace:SetAttribute("VFMatchSkip", true)` in the server's command bar ends a deathmatch as if
+its time were up, so whoever leads wins.
+
+Start a Local Server with 2 players, as in section 9. Both start on the course.
+
+- **DM1 The start.** Press M in window 1 and click the DEATHMATCH card, `FFA`, then PLAY
+  DEATHMATCH. The Output says `[VF] Arena on: deathmatch, on Outpost`, `Quarry` or `Foundry`, and
+  both players spawn at once somewhere on that map, neither in sight of the other, each facing
+  open floor. The top bar has your kills in blue on the left, `9:00` counting down, and the other
+  player's in red on the right, with `FIRST TO 40` under it, and under the bar `1ST OF 2` or
+  `2ND OF 2` and `B buy menu`, with no tiles beside it. You hold the Vandal, with the Classic on
+  2 and the knife on 3, and the label over the other player reads `100 + 50`. There's no ability
+  bar, C, Q, E and X cast nothing, Space held in a fall doesn't slow it, and G does nothing.
+- **DM2 The buy menu.** B in window 1: `DEATHMATCH: EVERY GUN'S FREE` at the top, every gun as
+  usual, and the shields and the abilities dimmed with `NOT SOLD`, but for Heavy Shield, `OWNED`.
+  Hover a dimmed one: `Deathmatch sells guns alone: every life wears Heavy Armor`, or for an
+  ability `No abilities in deathmatch`. Click Light Shield: nothing changes. Click the Phantom: it's
+  in your hands at once. Click the Vandal to have it back, and close the menu with B.
+- **DM3 A kill.** Player 1 fires about 15 rounds into the floor, notes the magazine and the
+  reserve, and kills player 2. The moment player 2 falls, player 1's magazine reads 25 again, and
+  the reserve is down by as many rounds as that took. The top bar reads 1 on the left in window 1,
+  and 1 on the right in window 2. Hold Tab in window 1: `DEATHMATCH   FIRST TO 40` at the top, one
+  table, player 1 first with `1st` in the PLACE column and 1 kill, player 2 second with 1 death,
+  and your own gun in your row alone.
+- **DM4 A health pack.** Player 2 shoots player 1 once in the body, and player 1 kills player 2.
+  Where player 2 fell, a green cross glows on the floor, and `Workspace.VFHealthPacks` holds it.
+  Player 1 fires a few rounds into the floor, then walks over the cross within its 10 s: the
+  label over player 1 in window 2 reads `100 + 50` again, the cross goes, and player 1's magazine
+  is full. Meanwhile player 2 is back 1.5 s after falling, with `You come back in a moment` in
+  window 2 until then, away from where they fell and out of player 1's sight. Let player 1 kill
+  player 2 again and leave that cross: it goes by itself after 10 s.
+- **DM5 Respawns.** Player 1 kills player 2 five more times, each from a different place. Each
+  time player 2 is back after 1.5 s, out of player 1's sight, facing open floor rather than a
+  wall, and never where they just fell.
+- **DM6 The end.** Run `VFMatchSkip` once in the server's command bar. Player 1, with the most
+  kills, wins: `VICTORY` in window 1 and `2ND PLACE` in window 2, over one table of both players in
+  their places, `MATCH MVP` in gold on player 1, and `MAP VOTE IN 10` under it. **Send:** a
+  screenshot of window 2.
+- **DM7 The next match.** At 0 the vote shows OUTPOST, QUARRY and FOUNDRY's cards, as in SM3;
+  vote or let it run out. Both players spawn for a new match on the map with the votes, at `9:00`
+  with no kills, each back on the Vandal and the Classic.
 
 ## Results
 
@@ -1654,6 +1699,12 @@ SM1 the first map: ___; VFSpikeMap holds Outpost, Quarry and Foundry: yes / no
 SM3 anything on the cards that read differently: ___
 SM5 the second map: ___; the plant at B: yes / no; for 2v2 too big / about right / too small
 SM6 the third map: ___; the plant at A: yes / no; for 2v2 too big / about right / too small
+DM1 the map: ___; anything that did work of C, Q, E, X, the glide and G: ___
+DM2 anything sold that shouldn't be, or not sold that should: ___
+DM3 before the kill: magazine ___, reserve ___; after: magazine ___, reserve ___
+DM4 the pack healed to 100 + 50: yes / no; the magazine full: yes / no; the cross left alone went after ___ s
+DM5 respawns in player 1's sight: ___ of 5; facing a wall: ___ of 5
+DM6 window 2's title: ___; MATCH MVP on ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1812,3 +1863,10 @@ Didn't look right (IDs and what you saw):
 | 25 | All three maps build at their origins with nothing overlapping them, and play at the right scale for five a side | E2, SM1, SM5, SM6 |
 | 25 | A server's first match is on one of them at random, named in round 1's buy phase: everyone spawns in its spawns, behind its barriers, with the spike in front of the attackers | E1, E4, SM1 |
 | 25 | After a match, the vote shows the three spike maps' cards with their plans, and the next match is on the winner: the spawns, the barriers and the spike's sites all the new map's | E12, SM2, SM3, SM4, SM5, SM6 |
+| 26 | PLAY DEATHMATCH on the Play menu's sixth card, `FFA`, starts deathmatch on one of the three maps, with everyone spawning at once, nobody in sight of another | DM1 |
+| 26 | The top bar's kills, clock and `FIRST TO 40`, and under it your place | DM1, DM3 |
+| 26 | Heavy Armor every life, no ability bar, no glide, and G does nothing | DM1 |
+| 26 | B any time you're alive: every gun free, the rest `NOT SOLD` | DM2 |
+| 26 | A kill fills the killer's magazine at once, and a death leaves a green cross for 10 s that heals and reloads whoever walks over it | DM3, DM4 |
+| 26 | A life comes back 1.5 s after a death, away from where it fell, facing open floor | DM4, DM5 |
+| 26 | A match's end: the victory screen of everyone in their places, `VICTORY` and `2ND PLACE`, MATCH MVP on the winner, then the vote of the spike rounds' maps, and the next match on the winner | DM6, DM7 |

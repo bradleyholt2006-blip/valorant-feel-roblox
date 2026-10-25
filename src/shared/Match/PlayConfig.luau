@@ -8,6 +8,7 @@
 -- No Roblox APIs here, so it runs in Studio and in the offline tests.
 
 local ArenaConfig = require("../Arena/ArenaConfig")
+local DeathmatchConfig = require("../Arena/DeathmatchConfig")
 local GunGameConfig = require("../Arena/GunGameConfig")
 local MatchConfig = require("./MatchConfig")
 
@@ -20,8 +21,9 @@ end
 
 -- A mode on the menu: what the arena plays for it (Workspace's
 -- ArenaConfig.MODE, and for the spike rounds MatchConfig.FORMAT), and how
--- many play its match at once, two sides of its side size. More can be on
--- its server, waiting in line or in the menu.
+-- many play its match at once: two sides of its side size, or in a free for
+-- all everyone it has room for. More can be on its server, waiting in line
+-- or in the menu.
 export type Mode = {
 	key: string, -- the menu's and the server list's name for it
 	name: string,
@@ -29,6 +31,7 @@ export type Mode = {
 	arena: string,
 	format: string?,
 	players: number,
+	freeForAll: boolean?, -- everyone for themselves, with no sides
 }
 
 local PlayConfig = {}
@@ -55,6 +58,18 @@ PlayConfig.Modes = {
 		blurb = string.format("A new gun with each kill, %d in all: a kill with the knife wins", #GunGameConfig.Tiers),
 		arena = "gungame",
 		players = 2 * GUN_GAME,
+	},
+	{
+		key = "deathmatch",
+		name = "Deathmatch",
+		blurb = string.format(
+			"Everyone for themselves: first to %d kills, or the most in %d minutes",
+			DeathmatchConfig.Rules.killTarget.value,
+			DeathmatchConfig.Rules.timeLimit.value // 60
+		),
+		arena = "deathmatch",
+		players = DeathmatchConfig.Rules.players.value,
+		freeForAll = true,
 	},
 	{
 		key = "standard",
@@ -103,8 +118,8 @@ function PlayConfig.keyOf(on: any, arenaMode: any, format: any): string?
 		return nil
 	elseif arenaMode == "spike" then
 		return if typeof(format) == "string" and PlayConfig.ByKey[format] then format else MatchConfig.DEFAULT_FORMAT
-	elseif arenaMode == "gungame" then
-		return "gungame"
+	elseif arenaMode == "gungame" or arenaMode == "deathmatch" then
+		return arenaMode
 	end
 	return "skirmish"
 end

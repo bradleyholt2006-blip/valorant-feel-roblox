@@ -36,7 +36,7 @@ local MovementSim = require("../Movement/MovementSim")
 local Accuracy = require("../Weapons/Accuracy")
 
 export type State = {
-	agent: string, -- an AbilityConfig.Agents id
+	agent: string, -- an AbilityConfig.Agents id, or AbilityConfig.NO_AGENT for no abilities
 	charges: { number }, -- by slot: C, Q and E (X's is always 0)
 	-- Signature charges that came back by recharge this round, which the next
 	-- round takes back (the VALORANT Wiki: they "will not be kept").
