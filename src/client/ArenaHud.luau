@@ -24,7 +24,9 @@
 -- A new stage shows in the middle for a moment with the loadout it brings,
 -- and then how long until it's handed over; so do your spawn protection and
 -- a warning while a spawn room burns you, or soon will. A primary handed
--- over mid-life is drawn, and G does nothing. P asks the server for the
+-- over mid-life is drawn, and G does nothing, but with a gun a weapon
+-- spawner lent you in hand (system 28), which it destroys for your
+-- loadout's, as the line under the bar says. P asks the server for the
 -- next of: the arena, gun game, the spike rounds, the spike rounds in
 -- Swiftplay's format, and off (Studio or the place owner).
 --
@@ -290,6 +292,18 @@ function ArenaHud.start()
 
 	local arena = Workspace:WaitForChild(ArenaConfig.MODEL)
 	local me = Players.LocalPlayer
+	-- Whether the gun in your hand is one a Team Deathmatch spawner lent
+	-- you (system 28): its attribute has the lent guns by slot.
+	local function lentInHand(): boolean
+		local lent = me:GetAttribute(TeamDeathmatchConfig.LENT)
+		local sim = PlayerController.sim
+		if typeof(lent) ~= "string" or not sim or not PlayerController.alive then
+			return false
+		end
+		local slot = sim.weapons.equipped
+		local gun = string.split(lent, ",")[slot]
+		return (slot == 1 or slot == 2) and gun ~= nil and gun ~= "" and sim.weapons.loadout[slot] == gun
+	end
 	-- Gun game: your level as last seen, in which phase, and what its last
 	-- change shows until when.
 	local seenLevel: number? = nil
@@ -304,9 +318,10 @@ function ArenaHud.start()
 	RunService.RenderStepped:Connect(function()
 		local on = Workspace:GetAttribute(ArenaConfig.ON) == true
 		-- Gun game's guns can't be dropped, as in Arms Race, nor either
-		-- deathmatch's (ours): G does nothing.
+		-- deathmatch's (ours): G does nothing, but destroy a gun a Team
+		-- Deathmatch spawner lent.
 		local wanted = Workspace:GetAttribute(ArenaConfig.MODE)
-		local undroppable = wanted == "gungame" or wanted == "deathmatch" or wanted == "teamdeathmatch"
+		local undroppable = wanted == "gungame" or wanted == "deathmatch" or (wanted == "teamdeathmatch" and not lentInHand())
 		InputSampler.blockButtons = if on and undroppable then PlayerSim.Buttons.Drop else 0
 		local phase = arena:GetAttribute("Phase")
 		local side = me:GetAttribute(ArenaConfig.SIDE)
@@ -529,6 +544,7 @@ function ArenaHud.start()
 				guns.Text = string.format("FIRST TO %d", winScore)
 					.. (if nextAt then "   NEXT STAGE IN " .. clock(math.max(nextAt - time, 0)) else "   LAST STAGE")
 					.. (if room == "own" or not PlayerController.alive then "   B loadouts" else "")
+					.. (if lentInHand() then "   G back to your loadout" else "")
 			end
 			if phase == "waiting" then
 				title = "WAITING FOR AN OPPONENT"

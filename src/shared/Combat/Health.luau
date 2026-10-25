@@ -143,6 +143,21 @@ function Health.heal(s: State)
 	Health.setShield(s, s.kind)
 end
 
+-- Some health and some shield back for a living one (Team Deathmatch's
+-- Recovery Orbs, system 28), each up to its most: the shield of the kind
+-- worn, and a Regen Shield's pool left as it is. Returns whether either
+-- changed.
+function Health.mend(s: State, health: number, shield: number): boolean
+	if not s.alive then
+		return false
+	end
+	local h = math.min(s.health + math.max(health, 0), s.maxHealth)
+	local sh = math.min(s.shield + math.max(shield, 0), s.maxShield)
+	local changed = h ~= s.health or sh ~= s.shield
+	s.health, s.shield = h, sh
+	return changed
+end
+
 -- Whole points for display: a split hit leaves fractions, and anything left
 -- counts as a point. Nothing left reads 0, never -0.
 function Health.points(value: number): number

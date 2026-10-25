@@ -21,6 +21,17 @@
 --     hurt for 15 s unless they fire or leave it; from then on they burn
 --     while they stay in it, and anyone in the other side's room burns at
 --     once
+--   * the map has pickups, up from each match's start to its end (system
+--     28): weapon spawners, each with a gun of the stage's, one at random,
+--     taken by running over it into an empty slot or with F in place of the
+--     loadout's gun there, which comes back once it's spent or dropped (G
+--     destroys it), or with the next stage's loadout; a spawner taken has
+--     another gun after a wait, and each new stage gives them all new ones.
+--     Recovery Orbs, run over to mend health and shield over a few seconds,
+--     leave a zone a moment that mends the taker's allies as they walk into
+--     it, and come back after a wait. The Ultimate Orbs come up together, a
+--     while into the match and then every so often, each worth ultimate
+--     points to whoever runs over it
 --   * after the victory screen everyone votes for the next map, as in the
 --     spike rounds (system 25, MapVote)
 -- With no rounds to even the sides out between, they're evened out as
@@ -32,7 +43,9 @@
 -- No Roblox APIs here: the server's Arena module says who joins, leaves,
 -- hurts, dies, fires, picks and stands where, and what time it is; it spawns
 -- whoever these functions return, on the kit kitOf has for them, and hands
--- a new one over when rearms says to.
+-- a new one over when rearms says to. PickupsServer says who runs over
+-- what, mends them as mended says, and puts the spawners' guns on the
+-- ground, where GroundGunsServer has them taken.
 
 local ArenaConfig = require("./ArenaConfig")
 local TeamDeathmatchConfig = require("./TeamDeathmatchConfig")
@@ -45,11 +58,28 @@ local WeaponConfig = require("../Weapons/WeaponConfig")
 local A = ArenaConfig.Rules
 local T = TeamDeathmatchConfig.Rules
 local STAGES = TeamDeathmatchConfig.Stages
+local GUNS = TeamDeathmatchConfig.SpawnerGuns
 
 export type Phase = "waiting" | "pregame" | "live" | "matchOver" | "vote"
 
 -- Which spawn room someone stands in: their side's, or the other side's.
 export type Room = "own" | "enemy"
+
+-- A weapon spawner (system 28): the gun on it, if it has one, and once it's
+-- been taken, when it has another.
+export type Spawner = { gun: TeamDeathmatchConfig.SpawnerGun?, readyAt: number? }
+-- A Recovery Orb or an Ultimate Orb: whether it's up, and a Recovery Orb
+-- taken, when it's up again.
+export type Orb = { up: boolean, readyAt: number? }
+-- What a Recovery Orb taken leaves where it was, for the taker's side,
+-- until it ends: who it's mended already.
+export type Zone = { position: vector, side: number, endsAt: number, served: { [number]: boolean } }
+-- A Recovery Orb's buff on someone: mended up to `from`, until `ends`.
+export type Buff = { from: number, ends: number }
+-- The guns spawners have lent someone, by slot, in the stage they took them.
+export type Lent = { stage: number, guns: { [number]: string } }
+
+export type PickupKind = "recovery" | "ultimate"
 
 export type State = {
 	phase: Phase,
@@ -76,6 +106,23 @@ export type State = {
 	spawnedAt: { [number]: number },
 	safeUntil: { [number]: number },
 	burnAt: { [number]: number },
+	-- The map's pickups (system 28), by their numbers in its lists
+	-- (TeamDeathmatchConfig.Pickups): its weapon spawners, its Recovery Orbs
+	-- and its Ultimate Orbs, and when the Ultimate Orbs next come up; the
+	-- zones Recovery Orbs taken leave; and by member, the Recovery Orb's
+	-- buff on them, the guns spawners have lent them, and whether their
+	-- loadout's gun is owed back, a lent gun gone.
+	spawners: { Spawner },
+	recovery: { Orb },
+	ultimate: { Orb },
+	ultimateAt: number,
+	zones: { Zone },
+	mending: { [number]: Buff },
+	lent: { [number]: Lent },
+	owed: { [number]: boolean },
+	-- Whose abilities start over with their next life: everyone's as a match
+	-- starts, and each player's with their first life in it (AbilityServer).
+	fresh: { [number]: boolean },
 	-- The maps a match can be played on (keys of SpikeMaps.Maps), the one
 	-- being played, and after a match the vote for the next.
 	maps: { string },
@@ -97,7 +144,7 @@ TeamDeathmatchRules.ROOMS = { "AttackerSpawn", "DefenderSpawn" }
 function TeamDeathmatchRules.new(maps: { string }?, roll: MapVote.Roll?): State
 	local pool = maps or SpikeMaps.MAPS
 	local dice: MapVote.Roll = roll or math.random
-	return {
+	local s: State = {
 		phase = "waiting",
 		members = {},
 		queue = {},
@@ -115,12 +162,23 @@ function TeamDeathmatchRules.new(maps: { string }?, roll: MapVote.Roll?): State
 		spawnedAt = {},
 		safeUntil = {},
 		burnAt = {},
+		spawners = {},
+		recovery = {},
+		ultimate = {},
+		ultimateAt = math.huge,
+		zones = {},
+		mending = {},
+		lent = {},
+		owed = {},
+		fresh = {},
 		maps = pool,
 		map = pool[dice(#pool)],
 		vote = nil,
 		roll = dice,
 		version = 0,
 	}
+	TeamDeathmatchRules.clearPickups(s)
+	return s
 end
 
 local manned = Roster.manned
@@ -151,6 +209,7 @@ local function newMatch(s: State)
 		Roster.clearRecord(m)
 	end
 	table.clear(s.hurt)
+	TeamDeathmatchRules.clearPickups(s)
 end
 
 -- A match starts with its pre-game: the sides evened out, and everyone
@@ -167,12 +226,15 @@ local function startMatch(s: State, now: number): { number }
 	s.score = { 0, 0 }
 	table.clear(s.hurt)
 	table.clear(s.burnAt)
+	table.clear(s.lent)
+	table.clear(s.owed)
 	local out = {}
 	for id, m in s.members do
 		m.alive = true
 		m.respawnAt = nil
 		m.roundKills = 0
 		m.played = true
+		s.fresh[id] = true
 		table.insert(out, id)
 	end
 	table.sort(out)
@@ -180,8 +242,24 @@ local function startMatch(s: State, now: number): { number }
 	return out
 end
 
+-- A gun for a weapon spawner: one of the stage's, at random.
+local function rollGun(s: State): TeamDeathmatchConfig.SpawnerGun
+	local list = GUNS[s.stage] or GUNS[1]
+	return list[s.roll(#list)]
+end
+
+-- Every spawner with a new gun of the stage's: as the match starts, and as
+-- each stage does.
+local function restock(s: State)
+	for _, spawner in s.spawners do
+		spawner.gun, spawner.readyAt = rollGun(s), nil
+	end
+end
+
 -- The pre-game is over and the match under way, from its first stage, with
--- everyone alive protected in their room as if they'd just spawned.
+-- everyone alive protected in their room as if they'd just spawned. The
+-- pickups come up: a gun on every spawner and every Recovery Orb, and the
+-- Ultimate Orbs a while in.
 local function begin(s: State, now: number)
 	s.phase = "live"
 	s.liveAt = now
@@ -193,6 +271,11 @@ local function begin(s: State, now: number)
 			s.safeUntil[id] = now + T.protectTime.value
 		end
 	end
+	restock(s)
+	for _, orb in s.recovery do
+		orb.up, orb.readyAt = true, nil
+	end
+	s.ultimateAt = now + T.ultimateFirst.value
 	s.version += 1
 end
 
@@ -207,6 +290,7 @@ local function finish(s: State, side: number?, now: number)
 	end
 	table.clear(s.safeUntil)
 	table.clear(s.burnAt)
+	TeamDeathmatchRules.clearPickups(s)
 	s.version += 1
 end
 
@@ -221,6 +305,11 @@ local function wait(s: State, now: number)
 	s.phase = "waiting"
 	s.stage, s.stageAt = 1, now
 	table.clear(s.burnAt)
+	-- The pickups go, and with them the guns spawners lent: outside a match
+	-- everyone's on their loadout (rearms).
+	TeamDeathmatchRules.clearPickups(s)
+	table.clear(s.lent)
+	table.clear(s.owed)
 	for _, m in s.members do
 		if not m.alive then
 			m.respawnAt = now + T.respawnTime.value
@@ -239,6 +328,7 @@ local function admit(s: State, id: number, now: number): { number }
 	if not m then
 		return {}
 	end
+	s.fresh[id] = true
 	if s.phase == "waiting" and manned(s) then
 		return startMatch(s, now)
 	end
@@ -264,6 +354,7 @@ function TeamDeathmatchRules.leave(s: State, id: number, now: number): { number 
 		return {}
 	end
 	s.picks[id], s.kitStage[id], s.spawnedAt[id], s.safeUntil[id], s.burnAt[id] = nil, nil, nil, nil, nil
+	s.mending[id], s.lent[id], s.owed[id], s.fresh[id] = nil, nil, nil, nil
 	local vote = s.vote
 	if vote then
 		MapVote.drop(vote, id)
@@ -312,7 +403,7 @@ end
 -- Someone has died, killed by `killer` if anyone: in a match, a death in the
 -- record, and for an enemy killer a kill for their side, which wins the
 -- match at the kill target. They come back after the respawn time, unless
--- the match is over.
+-- the match is over, on their loadout.
 function TeamDeathmatchRules.died(s: State, id: number, now: number, killer: number?)
 	local m = s.members[id]
 	if not m or not m.alive then
@@ -320,6 +411,8 @@ function TeamDeathmatchRules.died(s: State, id: number, now: number, killer: num
 	end
 	m.alive = false
 	s.spawnedAt[id], s.safeUntil[id], s.burnAt[id] = nil, nil, nil
+	-- A lent gun goes with them, and the buff on them.
+	s.mending[id], s.lent[id], s.owed[id] = nil, nil, nil
 	s.version += 1
 	if s.phase == "waiting" or s.phase == "pregame" or s.phase == "live" then
 		m.respawnAt = now + T.respawnTime.value
@@ -409,9 +502,44 @@ function TeamDeathmatchRules.burns(s: State, id: number, now: number, room: Room
 	return true
 end
 
+-- The pickups' clock, in a match: spawners taken have another gun once their
+-- wait is over, Recovery Orbs taken come back after theirs, the Ultimate
+-- Orbs come up together, and zones end.
+local function pickupsStep(s: State, now: number)
+	for _, spawner in s.spawners do
+		local at = spawner.readyAt
+		if not spawner.gun and at and now >= at then
+			spawner.gun, spawner.readyAt = rollGun(s), nil
+			s.version += 1
+		end
+	end
+	for _, orb in s.recovery do
+		local at = orb.readyAt
+		if not orb.up and at and now >= at then
+			orb.up, orb.readyAt = true, nil
+			s.version += 1
+		end
+	end
+	if now >= s.ultimateAt then
+		for _, orb in s.ultimate do
+			orb.up = true
+		end
+		while s.ultimateAt <= now do
+			s.ultimateAt += T.ultimateEvery.value
+		end
+		s.version += 1
+	end
+	for i = #s.zones, 1, -1 do
+		if now >= s.zones[i].endsAt then
+			table.remove(s.zones, i)
+			s.version += 1
+		end
+	end
+end
+
 -- Moves the clock on: the dead come back, the pre-game ends, the stages
--- follow one another, and the match ends at its time limit. Returns who to
--- spawn now.
+-- follow one another, each with new guns on the spawners, the pickups come
+-- and go, and the match ends at its time limit. Returns who to spawn now.
 function TeamDeathmatchRules.step(s: State, now: number): { number }
 	if s.phase == "waiting" or s.phase == "pregame" or s.phase == "live" then
 		local out = {}
@@ -434,8 +562,10 @@ function TeamDeathmatchRules.step(s: State, now: number): { number }
 			if stage ~= s.stage then
 				s.stage = stage
 				s.stageAt = s.liveAt + TeamDeathmatchRules.stageStart(stage)
+				restock(s)
 				s.version += 1
 			end
+			pickupsStep(s, now)
 			if now >= s.phaseEndsAt then
 				-- Time's up: the side with more kills wins, and a tie's a draw.
 				local a, b = s.score[1], s.score[2]
@@ -544,7 +674,8 @@ end
 -- What someone carries in the stage under way, by slot, and the shield they
 -- wear ("" for none): the stage's loadout, its gun in its slot, the first
 -- stage's sidearm unless the stage's gun is a sidearm too, and the knife,
--- always. Nil if they're not playing.
+-- always; but a gun a spawner lent them in this stage in its slot, until
+-- it's gone. Nil if they're not playing.
 function TeamDeathmatchRules.kitOf(s: State, id: number): ({ string }?, string)
 	if not s.members[id] then
 		return nil, ""
@@ -555,13 +686,32 @@ function TeamDeathmatchRules.kitOf(s: State, id: number): ({ string }?, string)
 	if def and (def.slot == 1 or def.slot == 2) then
 		kit[def.slot] = pick.gun
 	end
+	local lent = s.lent[id]
+	if lent and lent.stage == s.stage then
+		for slot, gun in lent.guns do
+			kit[slot] = gun
+		end
+	end
 	return kit, pick.shield
 end
 
 -- Someone has been handed the kit kitOf has for them, for the stage under
--- way: as their life starts, or as rearms lets them have it.
+-- way: as their life starts, or as rearms lets them have it. Nothing's owed
+-- them now, and a gun lent in another stage is gone.
 function TeamDeathmatchRules.armed(s: State, id: number)
-	if s.members[id] and s.kitStage[id] ~= s.stage then
+	if not s.members[id] then
+		return
+	end
+	local lent = s.lent[id]
+	if lent and lent.stage ~= s.stage then
+		s.lent[id] = nil
+		s.version += 1
+	end
+	if s.owed[id] then
+		s.owed[id] = nil
+		s.version += 1
+	end
+	if s.kitStage[id] ~= s.stage then
 		s.kitStage[id] = s.stage
 		s.version += 1
 	end
@@ -570,16 +720,181 @@ end
 -- Whether someone alive is to be handed the kit kitOf has for them now, in
 -- place of what they hold, with `inRoom` whether they stand in their side's
 -- spawn room: anywhere while waiting or in the pre-game; in a match, in
--- their room, or anywhere once a stage their kit isn't for has been under
--- way the swap's delay.
+-- their room, anywhere once a lent gun's gone, or anywhere once a stage
+-- their kit isn't for has been under way the swap's delay.
 function TeamDeathmatchRules.rearms(s: State, id: number, now: number, inRoom: boolean): boolean
 	local m = s.members[id]
 	if not m or not m.alive or s.phase == "matchOver" or s.phase == "vote" then
 		return false
-	elseif s.phase ~= "live" or inRoom then
+	elseif s.phase ~= "live" or inRoom or s.owed[id] then
 		return true
 	end
 	return (s.kitStage[id] or 0) < s.stage and now >= s.stageAt + T.swapDelay.value
+end
+
+-- Pickups (system 28) ---------------------------------------------------------------
+
+-- Where the map played has its pickups, in its own metres (nil for a map
+-- with none).
+function TeamDeathmatchRules.pickupsOf(s: State): TeamDeathmatchConfig.Pickups?
+	return TeamDeathmatchConfig.Pickups[s.map]
+end
+
+-- Every pickup of the map played empty or down, and no zones or buffs: as
+-- the rules start, with each new map, and outside a match.
+function TeamDeathmatchRules.clearPickups(s: State)
+	local plan = TeamDeathmatchRules.pickupsOf(s)
+	s.spawners, s.recovery, s.ultimate = {}, {}, {}
+	if plan then
+		for i in plan.spawners do
+			s.spawners[i] = { gun = nil, readyAt = nil }
+		end
+		for i in plan.recovery do
+			s.recovery[i] = { up = false, readyAt = nil }
+		end
+		for i in plan.ultimate do
+			s.ultimate[i] = { up = false, readyAt = nil }
+		end
+	end
+	s.ultimateAt = math.huge
+	table.clear(s.zones)
+	table.clear(s.mending)
+	s.version += 1
+end
+
+-- Whether feet at `feet` run over a pickup standing at `at`, both in the
+-- map's own metres.
+local function runsOver(feet: vector, at: vector, range: number): boolean
+	local d = at - feet
+	return math.abs(d.y) <= T.orbHeight.value and d.x * d.x + d.z * d.z <= range * range
+end
+
+-- The Recovery Orb's buff starts on someone, at `now`, anew if it was on.
+local function mend(s: State, id: number, now: number)
+	s.mending[id] = { from = now, ends = now + T.recoveryTime.value }
+	s.version += 1
+end
+
+-- What someone alive at `feet` (in the map's own metres) runs over now, in a
+-- match. A Recovery Orb starts its buff on them, and leaves a zone where it
+-- was that starts it on each of their side who walks into it while it
+-- lasts, once; an Ultimate Orb's points are theirs. Returns the kind of orb
+-- they took, if any (none for a zone).
+function TeamDeathmatchRules.pickUp(s: State, id: number, feet: vector, now: number): PickupKind?
+	local m = s.members[id]
+	local plan = TeamDeathmatchRules.pickupsOf(s)
+	if not m or not m.alive or s.phase ~= "live" or not plan then
+		return nil
+	end
+	for _, zone in s.zones do
+		if zone.side == m.side and not zone.served[id] and now < zone.endsAt and runsOver(feet, zone.position, T.zoneRadius.value) then
+			zone.served[id] = true
+			mend(s, id, now)
+		end
+	end
+	for i, orb in s.recovery do
+		local at = plan.recovery[i]
+		if orb.up and runsOver(feet, at, T.orbRange.value) then
+			orb.up, orb.readyAt = false, now + T.recoveryWait.value
+			table.insert(s.zones, { position = at, side = m.side, endsAt = now + T.zoneTime.value, served = { [id] = true } })
+			mend(s, id, now)
+			return "recovery"
+		end
+	end
+	for i, orb in s.ultimate do
+		if orb.up and runsOver(feet, plan.ultimate[i], T.orbRange.value) then
+			orb.up = false
+			s.version += 1
+			return "ultimate"
+		end
+	end
+	return nil
+end
+
+-- How much of the Recovery Orb's buff someone has had since this last asked
+-- for them, as a share of their most health and shield to mend them by:
+-- over the buff's time, its share in all, evenly. The buff's over once it's
+-- all had. Nothing for anyone without it.
+function TeamDeathmatchRules.mended(s: State, id: number, now: number): number
+	local buff = s.mending[id]
+	if not buff then
+		return 0
+	end
+	local upTo = math.min(now, buff.ends)
+	local share = math.max(upTo - buff.from, 0) / T.recoveryTime.value * T.recoveryShare.value
+	buff.from = upTo
+	if upTo >= buff.ends then
+		s.mending[id] = nil
+		s.version += 1
+	end
+	return share
+end
+
+-- The gun on the spawner `index` (by its number in the map's list), if it
+-- has one now.
+function TeamDeathmatchRules.spawnerGun(s: State, index: number): TeamDeathmatchConfig.SpawnerGun?
+	local spawner = s.spawners[index]
+	return if spawner then spawner.gun else nil
+end
+
+-- Someone alive takes the gun on the spawner `index`: it stands empty for
+-- its wait, and the gun is lent them in its slot for the stage under way,
+-- in place of their loadout's, which comes back once it's gone (returned),
+-- or with the next stage's loadout. Returns whether there was one to take.
+function TeamDeathmatchRules.take(s: State, id: number, index: number, now: number): boolean
+	local spawner = s.spawners[index]
+	local m = s.members[id]
+	local gun = if spawner then spawner.gun else nil
+	local def = if gun then WeaponConfig.Defs[gun.gun] else nil
+	if not spawner or not gun or not def or not m or not m.alive or (def.slot ~= 1 and def.slot ~= 2) then
+		return false
+	end
+	spawner.gun, spawner.readyAt = nil, now + T.spawnerWait.value
+	local held = s.lent[id]
+	local lent: Lent = if held and held.stage == s.stage then held else { stage = s.stage, guns = {} }
+	lent.guns[def.slot] = gun.gun
+	s.lent[id] = lent
+	s.version += 1
+	return true
+end
+
+-- The gun a spawner has lent someone in `slot`, for the stage under way or
+-- one before its loadout's handed over, if any.
+function TeamDeathmatchRules.lentOf(s: State, id: number, slot: number): string?
+	local lent = s.lent[id]
+	return if lent then lent.guns[slot] else nil
+end
+
+-- Whether kitOf has a lent gun in `slot` for someone: one lent in the stage
+-- under way. One lent in a stage before is in their hands until the new
+-- stage's loadout is, but not in the kit.
+function TeamDeathmatchRules.lends(s: State, id: number, slot: number): boolean
+	local lent = s.lent[id]
+	return lent ~= nil and lent.stage == s.stage and lent.guns[slot] ~= nil
+end
+
+-- A gun lent someone in `slot` is gone: spent, or destroyed with G. Their
+-- loadout's gun is owed back, at once wherever they are (rearms).
+function TeamDeathmatchRules.returned(s: State, id: number, slot: number)
+	local lent = s.lent[id]
+	if not lent or not lent.guns[slot] then
+		return
+	end
+	lent.guns[slot] = nil
+	if next(lent.guns) == nil then
+		s.lent[id] = nil
+	end
+	s.owed[id] = true
+	s.version += 1
+end
+
+-- Whether someone's abilities start over with the life they're spawning
+-- into: as a match starts, and with their first life in it. Asking takes
+-- the answer: it's yes once.
+function TeamDeathmatchRules.startsOver(s: State, id: number): boolean
+	local fresh = s.fresh[id] == true
+	s.fresh[id] = nil
+	return fresh
 end
 
 -- The role on the map of a side's spawn room: the attackers' for side 1, the

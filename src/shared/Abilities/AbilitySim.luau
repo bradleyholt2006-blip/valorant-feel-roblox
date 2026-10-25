@@ -27,7 +27,9 @@
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
 -- for kills, deaths, plants and defuses, and a signature charge back for
--- kills. The ack carries the kit, so the owner's prediction agrees.
+-- kills; and in Team Deathmatch (system 28) charges back over time, and
+-- what the ultimate needs. The ack carries the kit, so the owner's
+-- prediction agrees.
 --
 -- No Roblox APIs here.
 
@@ -43,6 +45,9 @@ export type State = {
 	regained: number,
 	kills: number, -- kills towards the signature's next charge
 	points: number, -- ultimate points
+	-- What the ultimate needs in the mode played, 0 for its own (Team
+	-- Deathmatch's costs more, system 28).
+	need: number,
 	held: number, -- the kit's keys held last tick, as input buttons
 	-- A readied ability's window (Tailwind's): when it opens and closes, 0
 	-- for none.
@@ -104,6 +109,7 @@ function AbilitySim.new(agent: string?): State
 		regained = 0,
 		kills = 0,
 		points = 0,
+		need = 0,
 		held = 0,
 		readyFrom = 0,
 		readyUntil = 0,
@@ -150,10 +156,14 @@ function AbilitySim.maxCharges(s: State, slot: number): number
 	return if def and def.charges then def.charges.value else 0
 end
 
--- The points the ultimate needs (0 with none).
+-- The points the ultimate needs (0 with none): the mode's, if it has its
+-- own, or the ultimate's.
 function AbilitySim.pointsNeeded(s: State): number
 	local def = AbilitySim.def(s, X)
-	return if def and def.points then def.points.value else 0
+	if not def or not def.points then
+		return 0
+	end
+	return if s.need > 0 then s.need else def.points.value
 end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
@@ -253,10 +263,11 @@ function AbilitySim.addPoints(s: State, amount: number)
 	s.points = math.clamp(s.points + amount, 0, AbilitySim.pointsNeeded(s))
 end
 
--- A kill: its point, and the signature a step closer to a charge back when
--- it recharges with kills and isn't full.
-function AbilitySim.killed(s: State)
-	AbilitySim.addPoints(s, AbilityConfig.Points.kill.value)
+-- A kill: its point, or `points` where the mode has its own, and the
+-- signature a step closer to a charge back when it recharges with kills and
+-- isn't full.
+function AbilitySim.killed(s: State, points: number?)
+	AbilitySim.addPoints(s, points or AbilityConfig.Points.kill.value)
 	local def = AbilitySim.def(s, E)
 	local recharge = if def then def.recharge else nil
 	if not recharge or recharge.kind ~= "kills" or s.charges[E] >= AbilitySim.maxCharges(s, E) then
@@ -270,9 +281,10 @@ function AbilitySim.killed(s: State)
 	end
 end
 
--- A death: its point, and whatever was under way ends. Charges are kept.
-function AbilitySim.died(s: State)
-	AbilitySim.addPoints(s, AbilityConfig.Points.death.value)
+-- A death: its point, or `points` where the mode has its own, and whatever
+-- was under way ends. Charges are kept.
+function AbilitySim.died(s: State, points: number?)
+	AbilitySim.addPoints(s, points or AbilityConfig.Points.death.value)
 	AbilitySim.settle(s)
 end
 

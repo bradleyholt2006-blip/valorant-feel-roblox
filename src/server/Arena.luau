@@ -97,14 +97,20 @@
 -- each match's pre-game. Each life starts on the loadout its player picked
 -- for the stage under way (the LoadoutPick remote), in that loadout's
 -- shield; a new stage's is handed over a moment into it, or at once in the
--- spawn room, as is a pick changed there. Nothing's bought and nothing goes
--- on the ground; every life has every charge, as in Skirmish. A new life
--- can't be hurt for a moment (CombatServer.protected), until it fires or
--- leaves its room, and anyone staying in their own room after that, or in
--- the other side's at all, burns (CombatServer.hurt). Each player's picks,
--- the stage their guns are for and when their stay in their room began go
--- to clients as player attributes (TeamDeathmatchConfig), and the stage
--- under way and when it started as the arena model's Stage and StageAt.
+-- spawn room, as is a pick changed there. Nothing's bought, and nothing a
+-- player lets go of goes on the ground. A new life can't be hurt for a
+-- moment (CombatServer.protected), until it fires or leaves its room, and
+-- anyone staying in their own room after that, or in the other side's at
+-- all, burns (CombatServer.hurt). Its pickups (system 28, PickupsServer)
+-- are weapon spawners, Recovery Orbs and Ultimate Orbs: a spawner's gun is
+-- lent in place of the loadout's, which comes back as soon as the lent one
+-- is spent or let go of with G, which destroys it. Abilities recharge over
+-- time, the kit starting over as each match starts and with each player's
+-- first life in one (AbilityServer.rules and fresh). Each player's picks,
+-- the stage their guns are for, when their stay in their room began and the
+-- guns lent them go to clients as player attributes (TeamDeathmatchConfig),
+-- and the stage under way and when it started as the arena model's Stage
+-- and StageAt.
 --
 -- The Play menu (system 24, ModeServers): with Arena.menuFirst, as on a live
 -- server, nobody joins what's played until they press PLAY for it
@@ -156,6 +162,7 @@ local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
 local AbilityServer = require(script.Parent.AbilityServer)
+local PickupsServer = require(script.Parent.PickupsServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -418,6 +425,7 @@ local RECORD = {
 	TeamDeathmatchConfig.PICKS,
 	TeamDeathmatchConfig.KIT_STAGE,
 	TeamDeathmatchConfig.ROOM_SINCE,
+	TeamDeathmatchConfig.LENT,
 }
 
 local function playerFor(id: number): Player?
@@ -441,9 +449,10 @@ end
 -- times they're asked for meanwhile. Each player's first life in a match
 -- starts on the starting kit, whatever they bought in the last match or on
 -- the course; in gun game every life on the gun of its level, and in Team
--- Deathmatch on the loadout picked for the stage under way. Roblox takes a
--- moment to load the character, and what they buy meanwhile is held for the
--- new life (ShopServer).
+-- Deathmatch on the loadout picked for the stage under way, its abilities
+-- starting over as the rules say. Roblox takes a moment to load the
+-- character, and what they buy meanwhile is held for the new life
+-- (ShopServer).
 local function spawn(ids: { number })
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	local matchNumber = if s then s.match elseif m then m.match elseif d then d.match else nil
@@ -458,6 +467,9 @@ local function spawn(ids: { number })
 		elseif t then
 			kit, shield = TeamDeathmatchRules.kitOf(t, id)
 			TeamDeathmatchRules.armed(t, id)
+			if TeamDeathmatchRules.startsOver(t, id) then
+				AbilityServer.fresh(player, now())
+			end
 		end
 		if kit then
 			PlayerSimServer.resetKit(player, kit, shield)
@@ -668,6 +680,11 @@ local function publish()
 				player:SetAttribute(DeathmatchConfig.PLACE, DeathmatchRules.placeOf(d, id))
 			elseif t then
 				player:SetAttribute(TeamDeathmatchConfig.KIT_STAGE, t.kitStage[id])
+				local primary, sidearm = TeamDeathmatchRules.lentOf(t, id, 1), TeamDeathmatchRules.lentOf(t, id, 2)
+				player:SetAttribute(
+					TeamDeathmatchConfig.LENT,
+					if primary or sidearm then (primary or "") .. "," .. (sidearm or "") else nil
+				)
 			end
 		end
 	end
@@ -823,6 +840,7 @@ local function stop()
 		end
 	end
 	PlayerSimServer.keepShields = false
+	PickupsServer.stop()
 	GroundGunsServer.dropOnDeath = false
 	GroundGunsServer.drops = true
 	GroundGunsServer.clear()
@@ -830,6 +848,7 @@ local function stop()
 	AbilityServer.refill = true
 	AbilityServer.off = false
 	AbilityServer.agent = AbilityConfig.DEFAULT_AGENT
+	AbilityServer.rules = nil
 	table.clear(killedWith)
 	table.clear(diedAt)
 	syncPacks()
@@ -890,6 +909,7 @@ local function begin(wanted: Mode, format: string)
 	AbilityServer.refill = false
 	AbilityServer.off = wanted == "gungame" or wanted == "deathmatch"
 	AbilityServer.agent = if wanted == "deathmatch" then AbilityConfig.NO_AGENT else AbilityConfig.DEFAULT_AGENT
+	AbilityServer.rules = if wanted == "teamdeathmatch" then AbilityConfig.TeamDeathmatch else nil
 	GroundGunsServer.drops = wanted ~= "gungame" and wanted ~= "deathmatch" and wanted ~= "teamdeathmatch"
 	-- The rounds decide when everyone spawns.
 	Players.CharacterAutoLoads = false
@@ -982,13 +1002,15 @@ end
 
 -- Puts a kit's guns in a living player's hands now, in place of what they
 -- hold (gun game's next level, Team Deathmatch's stage): the new guns first,
--- so the hand goes to one as the old one's slot empties.
-local function arm(player: Player, kit: { string }?)
+-- so the hand goes to one as the old one's slot empties. A gun they hold
+-- already stays as it is, but in a slot of `renew`, which has it afresh.
+local function arm(player: Player, kit: { string }?, renew: { [number]: boolean }?)
 	if not kit or not PlayerSimServer.isAlive(player) then
 		return
 	end
 	for slot = 1, 2 do
-		if kit[slot] ~= "" and PlayerSimServer.holding(player, slot) ~= kit[slot] then
+		local afresh = renew ~= nil and renew[slot] == true
+		if kit[slot] ~= "" and (afresh or PlayerSimServer.holding(player, slot) ~= kit[slot]) then
 			PlayerSimServer.give(player, slot, kit[slot])
 		end
 	end
@@ -1001,8 +1023,10 @@ end
 
 -- Team Deathmatch's spawn rooms, once a server frame, for everyone alive
 -- and not about to spawn again: out of their own, their protection's over; a
--- new kit is handed over when the rules say (a new stage's, or a pick
--- changed in the room), its guns and, if it's another kind, its shield; and
+-- gun a spawner lent that's spent, or no longer in its slot, is gone; a new
+-- kit is handed over when the rules say (a new stage's, a pick changed in
+-- the room, or the loadout's gun in place of a lent one gone), its guns, a
+-- fresh one for a lent one, and, if it's another kind, its shield; and
 -- staying in their room after its time, or in the other side's at all,
 -- burns.
 local function spawnRooms(t: TeamDeathmatchRules.State, time: number)
@@ -1018,9 +1042,22 @@ local function spawnRooms(t: TeamDeathmatchRules.State, time: number)
 		if room ~= "own" then
 			TeamDeathmatchRules.unprotect(t, id)
 		end
+		-- A lent gun in hand that the kit no longer lends (spent, or the last
+		-- stage's) gives way to the loadout's afresh, even the same gun: a
+		-- Vandal lent in the third stage isn't the fourth's Vandal.
+		local w = sim.weapons
+		local renew: { [number]: boolean } = {}
+		for slot = 1, 2 do
+			local lent = TeamDeathmatchRules.lentOf(t, id, slot)
+			local inHand = lent ~= nil and w.loadout[slot] == lent
+			if lent and (not inHand or (w.ammo[slot] <= 0 and w.reserve[slot] <= 0)) then
+				TeamDeathmatchRules.returned(t, id, slot)
+			end
+			renew[slot] = inHand and not TeamDeathmatchRules.lends(t, id, slot)
+		end
 		if TeamDeathmatchRules.rearms(t, id, time, room == "own") then
 			local kit, shield = TeamDeathmatchRules.kitOf(t, id)
-			arm(player, kit)
+			arm(player, kit, renew)
 			if entity.health.kind ~= shield then
 				CombatServer.setShield(entity, shield)
 			end
@@ -1158,6 +1195,7 @@ function Arena.step(time: number)
 	elseif t then
 		ids = TeamDeathmatchRules.step(t, time)
 		spawnRooms(t, time)
+		PickupsServer.step(t, time)
 		publishLoadouts(t.members)
 		publishProtection(time)
 	else
@@ -1405,9 +1443,15 @@ function Arena.start()
 	end)
 	-- G does nothing in gun game and both deathmatches, as their clients don't
 	-- send it (ArenaHud); should a drop come anyway, the gun goes straight back
-	-- where it was, as it was (GroundGunsServer leaves it off the ground).
+	-- where it was, as it was (GroundGunsServer leaves it off the ground). But
+	-- in Team Deathmatch G destroys a gun a spawner lent, and the loadout's
+	-- comes back (spawnRooms).
 	table.insert(PlayerSimServer.dropListeners, function(player: Player, dropped: WeaponSim.Dropped)
-		if gun or dm or tdm then
+		local t = tdm
+		if t and TeamDeathmatchRules.lentOf(t, player.UserId, dropped.slot) == dropped.id then
+			TeamDeathmatchRules.returned(t, player.UserId, dropped.slot)
+			publish()
+		elseif gun or dm or tdm then
 			PlayerSimServer.give(player, dropped.slot, dropped.id, dropped.ammo, dropped.reserve)
 		end
 	end)

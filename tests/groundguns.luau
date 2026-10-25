@@ -140,6 +140,18 @@ do
 		count += 1
 	end
 	check("with too many on the ground, the oldest goes", count == max and s.guns[1] == nil and s.guns[max + 1] ~= nil)
+
+	-- A weapon spawner's gun (Team Deathmatch, system 28) stays, the oldest
+	-- or not.
+	local spawned = GroundGuns.new()
+	local first = GroundGuns.add(spawned, "stinger", 20, 60, vector.create(0, 0.1, 0), 0, 0, 1)
+	for i = 1, max do
+		GroundGuns.add(spawned, "classic", 12, 36, vector.create(i, 0, 0), 0, i)
+	end
+	check(
+		"a weapon spawner's gun is marked with its spawner, and never the one to go",
+		first.spawner == 1 and spawned.guns[first.id] ~= nil and spawned.guns[2] == nil
+	)
 end
 
 -- Walking over one ----------------------------------------------------------------------

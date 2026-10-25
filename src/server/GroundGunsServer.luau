@@ -21,6 +21,12 @@
 --
 -- The ground is cleared as each round of the arena or the spike rounds
 -- starts (Arena), and when what's played changes.
+--
+-- Team Deathmatch's weapon spawners (system 28, PickupsServer) put their
+-- guns here too, each where its spawner stands and marked with it (the
+-- part's Spawner attribute), and they're taken the same ways; but the gun
+-- one is swapped for isn't put down, as the rules give the loadout's back
+-- once the spawner's is gone, and PickupsServer hears of each taken.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -44,6 +50,9 @@ GroundGunsServer.dropOnDeath = false
 -- Whether a gun let go of with G goes down on the ground. In gun game
 -- (system 23) it doesn't: Arena hands it straight back.
 GroundGunsServer.drops = true
+-- What follows a weapon spawner's gun being taken, once it's in the
+-- player's hands (PickupsServer).
+GroundGunsServer.spawnerTaken = nil :: ((Player, GroundGuns.Gun) -> ())?
 
 local P = GroundGuns.Params
 -- A gun let go of with no ground this far below has fallen out of the world.
@@ -97,6 +106,7 @@ local function sync()
 		part:SetAttribute(GroundGuns.WEAPON, gun.weapon)
 		part:SetAttribute(GroundGuns.AMMO, gun.ammo)
 		part:SetAttribute(GroundGuns.RESERVE, gun.reserve)
+		part:SetAttribute(GroundGuns.SPAWNER, gun.spawner)
 		part.Parent = root
 		parts[id] = part
 	end
@@ -109,6 +119,15 @@ local function lay(weapon: string, ammo: number, reserve: number, point: vector,
 		return nil
 	end
 	return GroundGuns.add(state, weapon, ammo, reserve, at, yaw, now())
+end
+
+-- A gun taken, now in the player's hands: if it was a weapon spawner's,
+-- PickupsServer hears of it.
+local function taken(player: Player, gun: GroundGuns.Gun)
+	local hook = GroundGunsServer.spawnerTaken
+	if gun.spawner and hook then
+		hook(player, gun)
+	end
 end
 
 -- G: thrown a little ahead of the feet, stopped short of a wall, landing
@@ -172,11 +191,15 @@ local function onTake(player: Player, id: any)
 	local held = w.loadout[slot]
 	GroundGuns.remove(state, gun.id)
 	if held ~= "" then
-		-- Theirs goes down where the one they took lay.
-		GroundGuns.add(state, held, w.ammo[slot], w.reserve[slot], gun.position, gun.yaw, now())
+		-- Theirs goes down where the one they took lay, but in place of a
+		-- spawner's.
+		if not gun.spawner then
+			GroundGuns.add(state, held, w.ammo[slot], w.reserve[slot], gun.position, gun.yaw, now())
+		end
 		ShopServer.forget(player, slot)
 	end
 	PlayerSimServer.give(player, slot, gun.weapon, gun.ammo, gun.reserve)
+	taken(player, gun)
 	sync()
 end
 
@@ -204,7 +227,29 @@ local function walkOver()
 		if gun and slot then
 			GroundGuns.remove(state, gun.id)
 			PlayerSimServer.give(player, slot, gun.weapon, gun.ammo, gun.reserve)
+			taken(player, gun)
 		end
+	end
+end
+
+-- A weapon spawner's gun put down where it stands (`position`, metres), on
+-- the spawner `spawner` (PickupsServer). Returns its id.
+function GroundGunsServer.place(weapon: string, ammo: number, reserve: number, position: vector, yaw: number, spawner: number): number
+	local gun = GroundGuns.add(state, weapon, ammo, reserve, position, yaw, now(), spawner)
+	sync()
+	return gun.id
+end
+
+-- Whether the gun `id` is still on the ground.
+function GroundGunsServer.has(id: number): boolean
+	return state.guns[id] ~= nil
+end
+
+-- Takes the gun `id` off the ground, if it's there: a spawner's, its stage
+-- over or what's played changed.
+function GroundGunsServer.remove(id: number)
+	if GroundGuns.remove(state, id) then
+		sync()
 	end
 end
 

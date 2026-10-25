@@ -504,6 +504,7 @@ do
 			and a.regained == b.regained
 			and a.kills == b.kills
 			and a.points == b.points
+			and a.need == b.need
 			and a.held == b.held
 			and a.readyFrom == b.readyFrom
 			and a.readyUntil == b.readyUntil
@@ -576,6 +577,48 @@ do
 		check("a new buy phase forgets them", Shop.refund(shop, cloudburst) == 0 and #Shop.chargeList(shop) == 0)
 	end
 	check("an empty list reads as none", next(Shop.chargesFrom("")) == nil and next(Shop.chargesFrom(nil)) == nil)
+end
+
+-- Team Deathmatch's kit (system 28) ---------------------------------------------------
+
+do
+	local TDM = AbilityConfig.TeamDeathmatch
+	check(
+		"Team Deathmatch's ultimate points: 3 a kill, 10 an Ultimate Orb, none a death; Blade Storm 60",
+		TDM.kill.value == 3
+			and TDM.orb.value == 10
+			and TDM.death.value == 0
+			and TDM.ultimate.bladestorm.value == 60
+			and TDM.kill.status == "community"
+			and TDM.death.status == "estimate"
+	)
+	check(
+		"and Jett's cooldowns, the wiki's: Cloudburst 29 s, Updraft and Tailwind 44",
+		TDM.cooldowns.cloudburst.value == 29
+			and TDM.cooldowns.updraft.value == 44
+			and TDM.cooldowns.tailwind.value == 44
+			and TDM.headStart.value == 0.5
+			and TDM.signatureStart.value == 1
+	)
+	local k = AbilitySim.new()
+	k.need = TDM.ultimate.bladestorm.value
+	check("a mode's own cost is what the ultimate needs", AbilitySim.pointsNeeded(k) == 60)
+	AbilitySim.killed(k, TDM.kill.value)
+	AbilitySim.died(k, TDM.death.value)
+	check("its points for a kill and a death", k.points == 3)
+	for _ = 1, 30 do
+		AbilitySim.killed(k, TDM.kill.value)
+	end
+	check("up to the cost, and no further", k.points == 60 and AbilitySim.charged(k))
+	check("the kit in a few characters says so", AbilitySim.summary(k, 0) == "C0/2 Q0/1 E1/1 X60/60", AbilitySim.summary(k, 0))
+	local p = newPlayer()
+	p.abilities.need = 60
+	p.abilities.points = 59
+	local _, back = PlayerCodec.decodeAck(PlayerCodec.encodeAck(11, p))
+	check("the ack carries it", back.abilities.need == 60 and back.abilities.points == 59 and not AbilitySim.charged(back.abilities))
+	local none = AbilitySim.new(AbilityConfig.NO_AGENT)
+	none.need = 60
+	check("but a kit with no ultimate needs nothing", AbilitySim.pointsNeeded(none) == 0)
 end
 
 return nil

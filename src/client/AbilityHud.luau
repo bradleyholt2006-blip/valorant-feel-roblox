@@ -7,11 +7,17 @@
 -- while its knives last (system 19), its note the knives left. What can't
 -- be played yet is dimmed. It reads the local player's predicted kit
 -- (PlayerController.sim), so a cast shows on the tick it's pressed. A kit
--- of no agent's, as deathmatch's (system 26), has no bar.
+-- of no agent's, as deathmatch's (system 26), has no bar. Where abilities
+-- recharge over time (Team Deathmatch, system 28), a slot short of a charge
+-- counts down the seconds to its next, as the server has them
+-- (AbilityConfig.RECHARGE_ATTRIBUTE); and an ultimate that needs more than
+-- ten points has ten pips, each a tenth of them.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TextService = game:GetService("TextService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
@@ -34,6 +40,8 @@ local NAME_SIZES = { 9, 8, 7, 6 }
 -- health (to 130 px left of the middle) and ammo (from 110 px right).
 local CENTRE = -10
 local GOLD = Color3.fromRGB(230, 200, 120)
+-- The most pips a slot shows.
+local MAX_PIPS = 10
 local LIT = Color3.fromRGB(90, 220, 200)
 local EMPTY = Color3.fromRGB(70, 72, 80)
 
@@ -146,6 +154,11 @@ function AbilityHud.start()
 		end
 		local kit = s.abilities
 		local t = s.movement.tick * DT
+		-- When each of C, Q and E next has a charge back, if they recharge over
+		-- time.
+		local due = Players.LocalPlayer:GetAttribute(AbilityConfig.RECHARGE_ATTRIBUTE)
+		local coming = if typeof(due) == "string" then string.split(due, ",") else {}
+		local serverNow = Workspace:GetServerTimeNow()
 		for index, slot in slots do
 			local def = AbilitySim.def(kit, index)
 			local playable = def ~= nil and AbilitySim.playable(def.id)
@@ -161,7 +174,8 @@ function AbilityHud.start()
 			if index == AbilityConfig.X then
 				local needed = AbilitySim.pointsNeeded(kit)
 				local full = needed > 0 and kit.points >= needed
-				setPips(slot, needed, kit.points, if full then GOLD else Ui.TEXT)
+				local shown = if needed > MAX_PIPS then math.floor(kit.points * MAX_PIPS / needed) else kit.points
+				setPips(slot, math.min(needed, MAX_PIPS), shown, if full then GOLD else Ui.TEXT)
 				note = if needed > 0 then string.format("%d/%d", kit.points, needed) else ""
 				slot.note.TextColor3 = if full then GOLD else Ui.DIM
 				if kit.storm then
@@ -184,6 +198,11 @@ function AbilityHud.start()
 					end
 				elseif def and def.id == "updraft" then
 					lit = AbilitySim.lifting(kit, t)
+				end
+				local at = tonumber(coming[index] or "")
+				if note == "" and at and at > serverNow then
+					note = string.format("%d", math.ceil(at - serverNow))
+					slot.note.TextColor3 = Ui.DIM
 				end
 			end
 			slot.note.Text = note
