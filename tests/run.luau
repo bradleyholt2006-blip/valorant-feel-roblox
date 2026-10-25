@@ -15,5 +15,6 @@ require("./hitreg")
 require("./pacing")
 require("./penetration")
 require("./visuals")
+require("./arena")
 
 H.finish()

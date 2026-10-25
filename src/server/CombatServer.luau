@@ -97,6 +97,14 @@ local function describeWalls(trace: Penetration.Trace, distance: number): { { [s
 	return out
 end
 
+-- Players on the same team (the arena's sides) can't shoot each other: the
+-- reference has no friendly fire for guns, and here the bullet passes
+-- through them.
+local function teammates(a: Entities.Entity, b: Entities.Entity): boolean
+	local pa, pb = a.player, b.player
+	return pa ~= nil and pb ~= nil and not pa.Neutral and not pb.Neutral and (pa.Team :: Team?) ~= nil and pa.Team == pb.Team
+end
+
 -- Positions go as metres in a Vector3 (the wire keeps float32 exactly), so
 -- the client can compare them with its own bit for bit.
 local function describeTarget(t: LagCompensation.Target): { [string]: any }
@@ -119,7 +127,7 @@ function CombatServer.onShot(shooter: Entities.Entity, shot: WeaponSim.Shot, vie
 	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
 	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
 		local entity = Entities.get(id)
-		return id ~= shooter.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil
+		return id ~= shooter.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil and not teammates(shooter, entity)
 	end)
 	local trace = Penetration.trace(level, shot.origin, shot.direction, def.penetration, WeaponConfig.MaxRange)
 	local blockedAt = trace.stop

@@ -278,7 +278,7 @@ function DebugHud.start(controller: any)
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
 			string.format("look    %s (V)   enemy %s (N)", if Visuals.on then "on" else "off", Visuals.enemyColourName()),
-			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes</font>', Ui.hex(Ui.DIM)),
+			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes  P arena</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 
 		local serverSim = controller.serverSim

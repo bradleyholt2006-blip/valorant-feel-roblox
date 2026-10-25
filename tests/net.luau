@@ -337,4 +337,82 @@ do
 	)
 end
 
+do
+	-- A life that starts while the player is alive (the arena restarts a
+	-- round), as PlayerSimServer and PlayerController handle it. The server
+	-- starts the new life while the client is still sending for the old one,
+	-- and keeps doing so until its new character arrives.
+	local A, B2 = vector.create(0, 0.02, 0), vector.create(5, 0.02, 5)
+	local run = { buttons = B.Forward + B.Left, slot = 1, yaw = 0.3, pitch = 0, viewTime = 0 }
+	local function input(seq: number): PlayerCodec.WireInput
+		return { seq = seq, buttons = run.buttons, slot = run.slot, yaw = run.yaw, pitch = run.pitch, viewTime = run.viewTime }
+	end
+
+	-- The server's record.
+	local lastSeq = 0
+	local serverSim = PlayerSim.new(A, nil, 7)
+	local function startLife(feet: vector): number
+		lastSeq += InputQueue.LIFE_GAP
+		serverSim = PlayerSim.new(feet, nil, 7)
+		return lastSeq + 1 -- CharacterRig.FIRST_SEQ
+	end
+	local ran = 0
+	local function arrive(packet: { PlayerCodec.WireInput })
+		for _, i in packet do
+			if i.seq > lastSeq then
+				lastSeq = i.seq
+				PlayerSim.step(serverSim, i, cfg, floor, DT)
+				ran += 1
+			end
+		end
+	end
+
+	-- The client.
+	local seq, lastAckSeq = 0, 0
+	local clientSim = PlayerSim.new(A, nil, 7)
+	local function onCharacter(firstSeq: number, feet: vector)
+		seq, lastAckSeq = firstSeq - 1, firstSeq - 1
+		clientSim = PlayerSim.new(feet, nil, 7)
+	end
+	local function send(n: number): { PlayerCodec.WireInput }
+		local out = {}
+		for _ = 1, n do
+			seq += 1
+			local i = input(seq)
+			PlayerSim.step(clientSim, i, cfg, floor, DT)
+			table.insert(out, i)
+		end
+		return out
+	end
+	local function takesAck(ackSeq: number): boolean
+		if ackSeq < lastAckSeq or ackSeq > seq then
+			return false
+		end
+		lastAckSeq = ackSeq
+		return true
+	end
+
+	onCharacter(startLife(A), A)
+	arrive(send(150))
+	local inFlight = send(50)
+	local oldAck = lastSeq
+	-- The round restarts: a new life at B. The client hasn't heard, and keeps
+	-- running for the longest it can wait for its new character (10 s for the
+	-- root part, then 2 s for the spawn attributes).
+	local firstSeq = startLife(B2)
+	local ranBefore = ran
+	arrive(inFlight)
+	arrive(send(12 * MovementConfig.TickRate.value))
+	check("moves sent for the old life after the server started a new one never run on it", ran == ranBefore and serverSim.movement.position == B2)
+	check("and the new life's acks don't reach the old one", not takesAck(firstSeq - 1))
+	onCharacter(firstSeq, B2)
+	check("once the new character arrives, the old life's late acks are ignored", not takesAck(oldAck) and takesAck(firstSeq - 1))
+	arrive(send(200))
+	check(
+		"and the new life runs the same on both sides",
+		ran == ranBefore + 200 and serverSim.movement.position == clientSim.movement.position and takesAck(lastSeq),
+		string.format("ran %d", ran - ranBefore)
+	)
+end
+
 return nil

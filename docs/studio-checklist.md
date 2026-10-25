@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the six research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the seven research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about an hour. Doing it in parts is fine; keep the order.
+It takes a little over an hour. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -26,7 +26,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 2. Install Rojo 7.x and its Studio plugin, run `rojo serve` in this repository and connect from
    the plugin.
 3. Open the Output window (View tab, Output).
-4. Press Play (F5). Sections 1 to 8 need one player; section 9 needs two.
+4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and section 10 needs one
+   and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -39,9 +40,10 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F10 | Hitbox and wall overlay |
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
 | N | The next enemy outline colour |
+| P | The arena on and off |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops while it's open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
-| 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic |
+| 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -353,8 +355,62 @@ clicked last.
 - **T6 Corrections.** When players only move, `max` on both HUDs doesn't grow. Being shot slows you
   down, and that slow comes from the server, so it can add a few millimetres.
 - **T7 Their outline.** In each window, the other player has the same red outline and tint as the
-  dummies, and none shows through walls. A teammate would be outlined in blue, but there are no
-  Roblox teams yet.
+  dummies, and none shows through walls. Teammates, outlined in blue, come in section 10 (A12).
+
+## 10. The arena
+
+From [07-arena.md](research/07-arena.md). Stop the game and press Play (F5), for one player to
+start with. The arena is built off to the course's right, about 90 m from its spawn, so you only
+see it once you're in it. Keep the HUD on.
+
+- **A1 On.** Press P. The Output window shows `[VF] Arena on`, and you respawn in a small room with
+  a brown floor marked NORTH, looking out through its open side into a walled hall with a tall
+  grey block in the middle. The score bar at the top of the screen shows `0` in blue on the left
+  and `0` in red on the right, with `ARENA` and `FIRST TO 10` between them, and a banner reads
+  `WAITING FOR AN OPPONENT`.
+- **A2 The map.** Walk out into the hall and round it. It should match the plan in
+  [07-arena.md](research/07-arena.md) (section 5): a 3 m block in the middle with a chest-high
+  crate either side, two pairs of 2 m double crates angled across each half, two chest-high crates
+  against each long wall, and a second room at the far end with a teal floor marked SOUTH. The
+  floor's grid lines are 2 m apart, so the hall is 9.5 squares across and 12.5 long. Nothing else
+  in the place pokes into the arena, and you can't jump out of it. **Send:** a screenshot from your
+  room's opening, and whether the hall feels too big, about right or too small for a 1v1.
+- **A3 Waiting.** While you're alone there's no barrier: you can walk out of your room straight
+  away, and 4 to 8 give you any weapon.
+- **A4 Off and on.** Press P: the Output window shows `[VF] Arena off`, you're back at the course's
+  spawn, the score bar and banner are gone, and the dummies still have red outlines. Press P again
+  and you're back in the NORTH room, facing the hall. Then hold W and press P twice more, so each
+  new life starts while you're running. Each time you start at the spawn and run on from there
+  with no snap back, and the HUD's `max` correction stays at `0.0 mm`. The `corrections` count can
+  go up by one at each spawn, as at any spawn.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9.
+
+- **A5 Sides.** Press P in window 1. One player spawns in the NORTH room and the other in SOUTH,
+  and both screens show `ROUND 1` and a banner counting down from `BUY PHASE 15`. In the server
+  window's Explorer, Teams holds North and South, with one player on each.
+- **A6 The buy phase.** During the countdown, each room has a see-through orange or teal barrier
+  across its open side. You can't walk through it, and a shot at it stops on it. 4 to 8 change
+  weapons. At 0 the barrier disappears, you can walk out, and 4 to 8 no longer change your weapons
+  until the next buy phase.
+- **A7 Seeing each other.** Each player sees the other with the red enemy outline, never through
+  walls. Standing anywhere in your own room, you can't see into the other one.
+- **A8 A round.** Player 1 kills player 2. Player 1's screen shows `ROUND WON` in blue and player
+  2's shows `ROUND LOST` in red, and player 1's side scores 1. About 3 s later both respawn in their
+  rooms for `ROUND 2`, with `BUY PHASE 3`. Player 1, who was still alive, starts the new round
+  cleanly: no snap back, and if they weren't hit, `max` stays at `0.0 mm`. Each player still has
+  the weapon they had.
+- **A9 First to 10.** Play on until a side has 10 (one player can stand in the open while the other
+  shoots). The winner's screen shows `VICTORY` and the loser's `DEFEAT`, each with the final score
+  under it, and about 6 s later round 1 of a new match starts at 0-0 with the 15 s buy phase.
+- **A10 Leaving.** Close player 2's window. Player 1's banner goes back to
+  `WAITING FOR AN OPPONENT`, the barrier goes if it was up, and the score stays.
+- **A11 Off again.** Press P in window 1. Player 1 is back on the course, on no team, and Teams is
+  empty.
+- **A12 Teammates (optional).** Stop the game, start a Local Server with 3 players and press P in
+  window 1. Players 1 and 3 share the NORTH room, each on their own spot, and player 2 has SOUTH to
+  themselves. Players 1 and 3 see each other with a faint blue outline, and their shots pass
+  through each other without hurting. North loses a round only once both of its players are down.
 
 ## Results
 
@@ -375,6 +431,10 @@ T1 motion on the other player: speed ___ m/s, last second ___-___, biggest jump 
 T2 blocks: the other player shows as blocks only / something of the avatar still shows (what)
 V1 look off puts the place's lighting back: yes / no (what differed)
 V6 LightingStyle kept: Soft / Realistic
+A2 arena: builds clean / something overlaps it (what); the hall feels too big / about right / too small
+A4 P while running: max ___ mm
+A8 round restart, on the player who was alive: max ___ mm
+A9 first to 10: VICTORY / DEFEAT, then a new match at 0-0: yes / no (what happened)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -407,3 +467,10 @@ Didn't look right (IDs and what you saw):
 | 06 | Outlines only on the visible part of a target, the tint grows with distance, N changes it | V3, V4, T7 |
 | 06 | Hidden avatars cast no shadows | V5 |
 | 06 | The preset with LightingStyle on Soft and on Realistic | V6 |
+| 07 | The arena builds beside the course, with nothing in the place overlapping it, on every client | A1, A2 |
+| 07 | Spawns in your side's room facing the hall, and a clean new life when a round restarts while you're alive | A1, A4, A8 |
+| 07 | The barriers hold players and bullets in the buy phase and are gone when it ends | A6 |
+| 07 | Teammates in blue and opponents in red, and bullets pass through teammates | A7, A12 |
+| 07 | The top bar and the banner follow the rounds on both screens | A5, A8, A9, A10 |
+| 07 | P turns it on and off, and off puts everyone back on the course | A4, A11 |
+| 07 | Whether 19 m feels right | A2 |

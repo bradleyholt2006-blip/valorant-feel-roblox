@@ -16,6 +16,12 @@
 --
 -- Moves run in bunches as they arrive, so what the snapshots show of each
 -- player is paced onto a steady timeline first (MovePacer).
+--
+-- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
+-- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
+-- life starts while the player is still alive (the arena restarts a round),
+-- the moves the owner sent for the old one before it knew are dropped here,
+-- instead of running on the new life.
 
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
@@ -62,8 +68,18 @@ type Record = {
 }
 
 export type ShotHandler = (shooter: Entities.Entity, shot: WeaponSim.Shot, viewTime: number) -> ()
+export type SpawnPoint = { feet: vector, yaw: number }
 
 local PlayerSimServer = {}
+
+-- Where a player's next life starts, when something other than the place's
+-- SpawnLocations decides (the arena): feet in metres and the way to face.
+PlayerSimServer.spawnPicker = nil :: ((Player) -> SpawnPoint?)?
+-- Whether a player may change weapons now, when something other than the
+-- debug rule (Studio or the place owner) decides (the arena).
+PlayerSimServer.loadoutRule = nil :: ((Player) -> boolean?)?
+-- Called when a player dies.
+PlayerSimServer.deathListeners = {} :: { (Player) -> () }
 
 local records: { [Player]: Record } = {}
 local world = RobloxWorld.new()
@@ -131,8 +147,16 @@ local function onCharacter(r: Record, character: Model)
 	character.DescendantAdded:Connect(tagPart)
 
 	r.rootOffset = CharacterRig.rootOffset(character, root)
-	local feet = Units.toMetres(root.Position - Vector3.new(0, r.rootOffset, 0))
+	local picker = PlayerSimServer.spawnPicker
+	local point = if picker then picker(r.player) else nil
+	local feet = if point then point.feet else Units.toMetres(root.Position - Vector3.new(0, r.rootOffset, 0))
 	r.spawnFeet = feet + vector.create(0, 0.05, 0)
+	r.lastSeq += InputQueue.LIFE_GAP
+	character:SetAttribute(CharacterRig.FIRST_SEQ, r.lastSeq + 1)
+	if point then
+		r.yaw, r.pitch = point.yaw, 0
+		character:SetAttribute(CharacterRig.SPAWN_YAW, point.yaw)
+	end
 	character:SetAttribute(CharacterRig.SPAWN_FEET, Units.asVector3(r.spawnFeet))
 	r.sim = newSim(r)
 	r.inputs = InputQueue.new()
@@ -179,6 +203,9 @@ local function onPlayerAdded(player: Player)
 			local humanoid = r.character and r.character:FindFirstChildOfClass("Humanoid")
 			if humanoid then
 				humanoid.Health = 0
+			end
+			for _, listener in PlayerSimServer.deathListeners do
+				listener(player)
 			end
 		end,
 	}
@@ -231,10 +258,19 @@ local function onInput(player: Player, payload: any)
 	end
 end
 
--- Debug loadout changes (Studio / place owner), until there is a buy phase.
+-- Debug loadout changes (Studio / place owner), until there is a buy menu;
+-- in the arena, its buy phase decides.
 local function onLoadout(player: Player, slot: any, id: any)
 	local r = records[player]
-	if not r or not Tuning.canTune(player) or typeof(slot) ~= "number" or typeof(id) ~= "string" then
+	if not r or typeof(slot) ~= "number" or typeof(id) ~= "string" then
+		return
+	end
+	local rule = PlayerSimServer.loadoutRule
+	local allowed = if rule then rule(player) else nil
+	if allowed == nil then
+		allowed = Tuning.canTune(player)
+	end
+	if not allowed then
 		return
 	end
 	local def = WeaponConfig.Defs[id]
