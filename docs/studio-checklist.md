@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the ten research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the eleven research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about an hour and a half. Doing it in parts is fine; keep the order.
+It takes about an hour and three quarters. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -27,7 +27,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    the plugin.
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
-   need one and then two. Section 11 needs headphones.
+   need one and then two. Section 11 needs headphones. Section 15 needs one.
 
 | Key | What it does |
 | --- | --- |
@@ -47,6 +47,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting) |
+| O | The settings menu: your sensitivity and crosshair |
 | 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
 
@@ -60,7 +61,10 @@ click in the buy menu, for a gun or a shield (`light`, `regen`, `heavy`), and se
 a `-` in front (`-odin`); `VFTestMenu` set to true or false opens or closes the menu; and a number
 attribute `VFTestSlot` set to 1, 2 or 3 draws that slot as its key would. A number attribute
 `VFTestButtons` holds buttons down while it's set, without the mouse: 128 is the left button
-(fire, or the knife's slash) and 256 the right (zoom, or the stab).
+(fire, or the knife's slash) and 256 the right (zoom, or the stab). `VFTestSettingsMenu` set to
+true or false opens or closes the settings menu, and a string attribute `VFTestSetting` enters a
+setting as its box in the menu would: `sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or
+`crosshair=` and a code.
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -614,7 +618,7 @@ dummy's id is 4294901761) and `VFTestAimRegion`.
   reads `83 + 17`. The second makes it `50 + 0` and the third kills it, held: 1.0 s. When it's back,
   stab: `75`, its label `75 + 1` (74.5 and 0.5, rounded up), and the second stab kills it. Slash
   its head: `50` still, with the headshot sound, and a kill on the head reads `(head)` in the kill
-  feed. The kill feed reads `<your name>  [Knife]  Dummy_1`.
+  feed. The kill feed reads `<your name>  [Knife]  Dummy 1` (with a space, as for guns).
 - **K3 From behind.** Walk past Dummy_1 and turn round to face its back. One stab kills it: `150`,
   and the Hit Reg Lab (F2 three times) reads `Dummy_1 body from behind, 150` on its `last` line.
   Two slashes do too (`100`, then `50 + 0`, then the kill). From its side, a step behind the line
@@ -652,6 +656,68 @@ Then two players, as in section 9, on the course.
   cut and the spark there and hears the strike. Teammates take no swing, as they take no bullet
   (A12), but that needs three players.
 
+## 15. Settings
+
+From [11-settings.md](research/11-settings.md). One player on the course, with the HUD on (F3).
+Your settings may have been kept from an earlier session: if the menu's boxes don't read 0.4, 1
+and 800 at the start, set them to those first, and press DEFAULT for the crosshair. The pixel
+numbers below scale with the width of the view: they're given for 1920 pixels across, and the
+HUD's `xhair` line has the real ones.
+
+- **X1 The menu.** Press O. A panel titled SETTINGS opens over the game, the cursor shows, the view
+  holds still and the crosshair in the middle of the view goes; W still moves you, a click on the
+  panel doesn't fire, and B doesn't open the buy menu over it. The boxes read 0.4, 1 and 800,
+  and under them `0.0280 degrees a count   12857 counts a turn   40.8 cm/360   eDPI 320` and
+  `Zoomed: Vandal 51.0 cm, Guardian 61.2 cm, Operator 102.1 / 204.1 cm`. The code box reads `0;P`
+  with `white; outlines 1 at 0.5; no dot; inner lines 6 long, 2 thick, 3 out, spread firing;
+  outer lines 2 long, 2 thick, 10 out, spread moving and firing` under it, and the three previews
+  show that crosshair on dark, grey and light. The bottom line says whether your settings can be
+  kept (X9). O closes the menu. **Send:** the bottom line.
+- **X2 Sensitivity.** Type 0.8 in the sensitivity box and press Enter: `0.0560 degrees a count
+  6429 counts a turn   20.4 cm/360   eDPI 640`. Close the menu: the same mouse movement turns the
+  view twice as far as before. In the Counter-Strafe Lab (F4) the `cm/360 check` line expects
+  6429 counts a turn. Type `abc`: the box goes back to 0.8. Type 50: it reads 10, the most. Set
+  the multiplier to 0.5: zoomed with the Vandal, the view turns half as far as at 1 (the Zoomed
+  line reads `Vandal 102.1 cm` at 0.4). Put back 0.4 and 1, or your own settings.
+- **X3 A code.** Paste `0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0` into the code box and press Enter:
+  `Using it.` and `cyan; no outlines; no dot; inner lines 4 long, 2 thick, 2 out; no outer lines`.
+  The previews and, with the menu closed, the crosshair show a small cyan cross with no outline:
+  four lines 4 by 2, with a 4-pixel gap between opposite ones. Under
+  `PlayerGui.VFPlayerCrosshair.Centre`, `innerRight` is at (2, -1) and 4 by 2, coloured 0, 255,
+  255 with transparency 0, and the `Outline` frames are hidden. The box holds the code: Ctrl+A and
+  Ctrl+C copy it out. **Send:** a screenshot of the crosshair over a wall.
+- **X4 Codes that aren't quite.** Enter `hello`: `Not a crosshair code: a crosshair code starts
+  with a number (0;P;...).`, and the crosshair stays as it was. Enter `0;P;0o;50`: `Using it, but:
+  0o 50 is outside 0-20, so it's 20.`, and the box reads `0;P;0o;20`. DEFAULT puts back `0;P` and
+  the white crosshair, with a thin dark outline round each line.
+- **X5 Movement error.** With the default crosshair and the Vandal, standing still, the `xhair`
+  line reads `P  move +0 px  fire +0 px` and the outer lines sit 10 px from the middle. Run: the
+  outer lines jump out, by about 80 px (4.2% of the view's width), and the inner lines stay. Walk
+  (Shift): about 40 px. Crouch-walk: about 11. In the air: about 135. Landing, they jump out a
+  little more for a quarter of a second. Stop: they snap back as the HUD reads `ACCURATE`. With the
+  knife (3) nothing moves. **Send:** the view's width and the run, walk and air numbers.
+- **X6 Firing error.** Hold fire with the Vandal at a wall for the whole magazine: both sets of
+  lines move out as the spray builds, to about 10 px by the last bullet, and the top two lines
+  fade, half gone by the fifth bullet and gone by the ninth. Let go: the lines come back in as the
+  spray recovers, in under half a second, and the top lines come back. **Send:** the `fire` number
+  at the last bullet.
+- **X7 Aiming down sights.** Enter `0;s;1;P;c;1;A;c;5`: the crosshair is green, and the menu reads
+  `Aiming down sights: its own crosshair, cyan.` Zoom with the Vandal (mouse 2): it turns cyan
+  and the `xhair` line reads `A`. Enter `0;P;c;1;A;c;5` (no `s;1`): the menu reads `the same
+  crosshair`, and zoomed it stays green and reads `P`.
+- **X8 The scope.** With the Operator (6), scope in: the crosshair goes and a small red dot, 2 px
+  and a little see-through, sits on the scope's cross; the `xhair` line reads `S`. Enter JUNiOR's
+  code `0;s;1;P;c;5;o;1;f;0;m;1;0l;2;0v;2;0g;1;0o;0;0a;1;0f;0;1b;0;S;c;5;s;0.7;o;1`: scoped, the
+  dot is cyan, 1 px and solid. Unscoped, a small cyan plus, four 2 by 2 lines meeting in the
+  middle, with one solid black outline round the whole plus and none across its middle.
+- **X9 Kept.** The menu's bottom line says what became of your settings. Where the place can use
+  data stores, a change reads `Kept for next time.`; stop, press Play again and open the menu: `Your
+  settings from last time.`, with the same sensitivity and crosshair, and that crosshair was drawn
+  from the start. Where it can't (in Studio, unless the place's Game Settings, Security, allow
+  API access): `Not kept between sessions here: Studio can't use data stores in this place (the
+  switch is in Game Settings, Security)`, and everything else still works. Don't change the
+  switch for this check. **Send:** the bottom line after a change.
+
 ## Results
 
 ```
@@ -688,6 +754,10 @@ B10 buys as the phase opens: kept / lost (which)
 K1 swings: a slash every ___ ms, a stab every ___ ms; the combo goes 1, 2, 3, 1: yes / no
 K4 the last hits: slash ___ m off the aim, ___ m out; stab ___ m off the aim, ___ m out
 K8 stab, 1, 3, stab: ___ ms between the stabs
+X1 bottom line: ___
+X5 view ___ px wide: run +___ px, walk +___, crouch-walk +___, air +___
+X6 spray: fire +___ px at the last bullet; the top lines gone by bullet ___
+X9 after a change: ___; after playing again: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -750,3 +820,9 @@ Didn't look right (IDs and what you saw):
 | 10 | The cut appears at once on a wall, on the right face, and others see their opponent's cuts | K5, K9 |
 | 10 | The sweep reads as a swing in each direction, and the sounds are heard where they should be, none of them louder than a gunshot | K1, K5, K9 |
 | 10 | The overlay's reach matches where hits stop landing | K4, K7 |
+| 11 | The menu opens on O, its boxes take typing without moving the player, and the cursor and the view behave as with the buy menu | X1, X2 |
+| 11 | The crosshair is drawn crisply on the middle of the view, with its outline ring snug round each piece | X3, X4, X8 |
+| 11 | It moves out with the errors and back | X5, X6 |
+| 11 | The scope shows only the sniper dot, and aiming down sights uses the `A` crosshair when it should | X7, X8 |
+| 11 | The settings are kept when the place can use data stores, and the menu says why not when it can't | X9 |
+| 11 | The sensitivity turns the view by the expected amount | X2, C3 |

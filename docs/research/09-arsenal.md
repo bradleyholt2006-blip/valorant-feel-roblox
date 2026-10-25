@@ -563,4 +563,8 @@ through `VFTestBuy` and the menu read from the player's GUI (measured):
   lost: the new life starts 0.32 s after the phase does, and its reset wiped what was bought, so
   a buy 0.15 s in never landed (section 5: it's now held for the new life). And at death the
   HUD's health read `-0` (now `0`).
+- Both fixes checked again on ffd966c with two players (B10). Buys sent 0.05 s after the phase
+  showed as `buy` came through the new lives that started 0.28 s later: an Odin for the player
+  still alive and a Bucky for the one who had died. In the next buy phase an Operator bought the
+  same way sold back for the Odin again, and the HUD read `0` at death.
 

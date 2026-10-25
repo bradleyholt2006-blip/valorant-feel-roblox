@@ -31,6 +31,11 @@
 --                  closes it; then clears itself
 --   VFTestSlot     1, 2 or 3: draws that slot as its number key does (3 is
 --                  the knife), then clears itself
+--   VFTestSettingsMenu  true opens the settings menu, false closes it; then
+--                  clears itself
+--   VFTestSetting  "key=value": enters a setting as its box in the settings
+--                  menu does ("sensitivity=0.35", "scoped=0.8", "dpi=1600",
+--                  "crosshair=0;P;c;5;h;0"), then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -45,6 +50,7 @@ local Units = require(Shared.Units)
 
 local CameraController = require(script.Parent.Parent.CameraController)
 local BuyMenu = require(script.Parent.Parent.BuyMenu)
+local SettingsMenu = require(script.Parent.Parent.SettingsMenu)
 local InputSampler = require(script.Parent.Parent.InputSampler)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
@@ -108,6 +114,19 @@ function TestAim.start(controller: any)
 		if typeof(menu) == "boolean" then
 			player:SetAttribute("VFTestMenu", nil)
 			BuyMenu.setOpen(menu)
+		end
+		local settingsMenu = player:GetAttribute("VFTestSettingsMenu")
+		if typeof(settingsMenu) == "boolean" then
+			player:SetAttribute("VFTestSettingsMenu", nil)
+			SettingsMenu.setOpen(settingsMenu)
+		end
+		local setting = player:GetAttribute("VFTestSetting")
+		if typeof(setting) == "string" and setting ~= "" then
+			player:SetAttribute("VFTestSetting", nil)
+			local key, value = string.match(setting, "^(%w+)=(.*)$")
+			if key and value then
+				SettingsMenu.enter(key, value)
+			end
 		end
 		local slot = player:GetAttribute("VFTestSlot")
 		if typeof(slot) == "number" then

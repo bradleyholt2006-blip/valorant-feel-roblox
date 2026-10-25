@@ -446,7 +446,8 @@ function BuyMenu.start()
 	})
 
 	local function setOpen(open: boolean)
-		open = open and BuyMenu.canBuy()
+		-- Not over the settings menu, which has the cursor already.
+		open = open and BuyMenu.canBuy() and (BuyMenu.open or not CameraController.cursorFree)
 		if open == BuyMenu.open then
 			return
 		end
