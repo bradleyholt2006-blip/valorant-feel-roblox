@@ -35,6 +35,8 @@
 --                  clears itself
 --   VFTestTake     true: takes the gun on the ground in view as F does
 --                  (system 15), then clears itself
+--   VFTestBoard    true holds the scoreboard open as Tab does (system 16),
+--                  false lets it go; then clears itself
 --   VFTestSettingsMenu  true opens the settings menu, false closes it; then
 --                  clears itself
 --   VFTestSetting  "key=value": enters a setting as its box in the settings
@@ -55,6 +57,7 @@ local Units = require(Shared.Units)
 local CameraController = require(script.Parent.Parent.CameraController)
 local BuyMenu = require(script.Parent.Parent.BuyMenu)
 local GroundGunsView = require(script.Parent.Parent.GroundGunsView)
+local Scoreboard = require(script.Parent.Parent.Scoreboard)
 local SettingsMenu = require(script.Parent.Parent.SettingsMenu)
 local InputSampler = require(script.Parent.Parent.InputSampler)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
@@ -141,6 +144,11 @@ function TestAim.start(controller: any)
 		if player:GetAttribute("VFTestTake") == true then
 			player:SetAttribute("VFTestTake", nil)
 			GroundGunsView.take()
+		end
+		local board = player:GetAttribute("VFTestBoard")
+		if typeof(board) == "boolean" then
+			player:SetAttribute("VFTestBoard", nil)
+			Scoreboard.held = board
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

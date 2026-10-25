@@ -10,6 +10,11 @@
 -- and when the sides swap. P asks the server for the next of: the arena, the
 -- spike rounds, the spike rounds in Swiftplay's format, and off (Studio or
 -- the place owner).
+--
+-- Either side of the top bar, who's alive (system 16): a tile for each
+-- player, yours on the left and theirs on the right, as the reference's
+-- agent portraits, with the first letters of their name, dimmed once
+-- they're dead (MatchConfig.ALIVE).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -44,6 +49,65 @@ local REASONS: { [string]: { won: string, lost: string } } = {
 
 local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
+end
+
+-- The players' tiles beside the top bar.
+local TILE_W, TILE_H, TILE_GAP = 30, 38, 4
+local MAX_TILES = 5 -- a side
+
+type Tile = { frame: Frame, label: TextLabel }
+
+local function newTile(gui: ScreenGui): Tile
+	local frame = Ui.frame(gui, { Size = UDim2.fromOffset(TILE_W, TILE_H), Visible = false })
+	local label = Ui.label(frame, {
+		Size = UDim2.fromScale(1, 1),
+		Font = Enum.Font.GothamBold,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+	})
+	return { frame = frame, label = label }
+end
+
+-- A name's first two letters, for its tile.
+local function initials(player: Player): string
+	return string.upper(string.sub(player.DisplayName, 1, 2))
+end
+
+-- The players on a side, in the order their tiles go.
+local function sideOf(side: number): { Player }
+	local out = {}
+	for _, player in Players:GetPlayers() do
+		if player:GetAttribute(ArenaConfig.SIDE) == side then
+			table.insert(out, player)
+		end
+	end
+	table.sort(out, function(a: Player, b: Player): boolean
+		return a.DisplayName < b.DisplayName
+	end)
+	return out
+end
+
+-- Puts a side's tiles beside a bar `width` wide: to its left (`left`) or
+-- its right, nearest first, alive in the side's colour or dimmed.
+local function placeTiles(tiles: { Tile }, players: { Player }, colour: Color3, width: number, left: boolean)
+	for i, tile in tiles do
+		local player: Player? = players[i]
+		if not player then
+			tile.frame.Visible = false
+			continue
+		end
+		tile.frame.Visible = true
+		local step = (i - 1) * (TILE_W + TILE_GAP) + TILE_GAP
+		local x = if left then -width / 2 - step - TILE_W else width / 2 + step
+		tile.frame.Position = UDim2.new(0.5, x, 0, 8 + (58 - TILE_H) / 2)
+		local alive = player:GetAttribute(MatchConfig.ALIVE) ~= false
+		tile.frame.BackgroundColor3 = if alive then colour else Ui.PANEL
+		tile.frame.BackgroundTransparency = if alive then 0.15 else 0.35
+		tile.label.Text = initials(player)
+		tile.label.TextColor3 = if alive then Ui.PANEL else colour
+		tile.label.TextTransparency = if alive then 0 else 0.5
+	end
 end
 
 local function clock(seconds: number): string
@@ -121,6 +185,13 @@ function ArenaHud.start()
 		Visible = false,
 	})
 
+	local tiles: { { Tile } } = { {}, {} } -- yours, theirs
+	for _, row in tiles do
+		for _ = 1, MAX_TILES do
+			table.insert(row, newTile(gui))
+		end
+	end
+
 	local arena = Workspace:WaitForChild(ArenaConfig.MODEL)
 	local me = Players.LocalPlayer
 
@@ -132,6 +203,11 @@ function ArenaHud.start()
 			bar.Visible = false
 			banner.Visible = false
 			subtitle.Visible = false
+			for _, row in tiles do
+				for _, tile in row do
+					tile.frame.Visible = false
+				end
+			end
 			return
 		end
 		local other = 3 - side
@@ -151,6 +227,8 @@ function ArenaHud.start()
 		bar.Size = UDim2.fromOffset(width, 58)
 		bar.Position = UDim2.new(0.5, -width / 2, 0, 8)
 		bar.Visible = true
+		placeTiles(tiles[1], sideOf(side), ally, width, true)
+		placeTiles(tiles[2], sideOf(other), enemy, width, false)
 		ours.Text = tostring(score[side])
 		ours.TextColor3 = ally
 		theirs.Text = tostring(score[other])
