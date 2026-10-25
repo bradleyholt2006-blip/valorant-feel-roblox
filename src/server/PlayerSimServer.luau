@@ -37,6 +37,7 @@ local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
+local Accuracy = require(Shared.Weapons.Accuracy)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local Health = require(Shared.Combat.Health)
@@ -104,6 +105,9 @@ PlayerSimServer.objectiveFor = nil :: ((Player) -> Spike.Context)?
 -- Called with what happened with the spike in a player's simulation: a
 -- plant, a defuse, a drop, or a defuse let go of.
 PlayerSimServer.spikeListeners = {} :: { (Player, SpikeSim.Act) -> () }
+-- Called with the gun a player let go of with G (system 15), with their feet
+-- and the way they faced as they did.
+PlayerSimServer.dropListeners = {} :: { (Player, WeaponSim.Dropped, vector, number) -> () }
 -- The debug give of the spike: the one spike there is, handed over, not a
 -- new one (SpikeServer).
 PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
@@ -355,18 +359,29 @@ local function onLoadout(player: Player, slot: any, id: any)
 end
 
 -- Puts a weapon in one of a player's slots with full ammo, drawn if it's the
--- slot in hand (the debug give and the buy menu), or empties the primary or
--- sidearm slot ("": a gun sold back). Returns whether it did.
-function PlayerSimServer.give(player: Player, slot: number, id: string): boolean
+-- slot in hand (the debug give and the buy menu), or with the rounds given (a
+-- gun off the ground), or empties the primary or sidearm slot ("": a gun
+-- sold back or dropped). Returns whether it did.
+function PlayerSimServer.give(player: Player, slot: number, id: string, ammo: number?, reserve: number?): boolean
 	local r = records[player]
 	local def = WeaponConfig.Defs[id]
 	local fits = if id == "" then slot == 1 or slot == 2 else def ~= nil and def.slot == slot and not def.spike
 	if not r or not fits then
 		return false
 	end
-	WeaponSim.give(r.sim.weapons, slot, id, r.sim.movement.tick * DT)
+	WeaponSim.give(r.sim.weapons, slot, id, r.sim.movement.tick * DT, ammo, reserve)
 	r.ackDirty = true
 	return true
+end
+
+-- Where a player's eye is and the way it looks, as of their last move run
+-- (the server's check of what they say they're looking at).
+function PlayerSimServer.view(player: Player): (vector?, vector?)
+	local r = records[player]
+	if not r then
+		return nil, nil
+	end
+	return PlayerSim.eye(r.sim, Tuning.config()), Accuracy.aim(r.yaw, r.pitch)
 end
 
 -- Gives a player the spike, in its slot and not drawn, or takes it from them
@@ -450,12 +465,17 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
 		local objectiveFor = PlayerSimServer.objectiveFor
 		local objective = if objectiveFor then objectiveFor(r.player) else nil
-		local shots, swing, act = PlayerSim.step(r.sim, input, cfg, world, DT, objective)
+		local shots, swing, act, dropped = PlayerSim.step(r.sim, input, cfg, world, DT, objective)
 		MovePacer.push(r.pacer, input.seq * DT, currentPose(r))
 		r.ackDirty = true
 		if act then
 			for _, listener in PlayerSimServer.spikeListeners do
 				listener(r.player, act)
+			end
+		end
+		if dropped then
+			for _, listener in PlayerSimServer.dropListeners do
+				listener(r.player, dropped, r.sim.movement.position, input.yaw)
 			end
 		end
 		if shots then

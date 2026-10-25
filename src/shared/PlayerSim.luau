@@ -133,12 +133,23 @@ function PlayerSim.rooted(s: State): boolean
 end
 
 -- Advance one tick. Returns the bullets fired this tick, if any (one round's:
--- several for a shotgun), the knife swing that started, if one did, and what
--- happened with the spike, if anything. `objective` is what this player can
--- do with the spike now (Spike.NONE when nothing).
-function PlayerSim.step(s: State, input: any, cfg: any, world: any, dt: number, objective: Spike.Context?): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?)
+-- several for a shotgun), the knife swing that started, if one did, what
+-- happened with the spike, if anything, and the gun G let go of, if it did
+-- (system 15). `objective` is what this player can do with the spike now
+-- (Spike.NONE when nothing).
+function PlayerSim.step(
+	s: State,
+	input: any,
+	cfg: any,
+	world: any,
+	dt: number,
+	objective: Spike.Context?
+): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?, WeaponSim.Dropped?)
 	-- The plant and the defuse go first: the tick they start on, they root.
+	-- G lets go of the spike if it's in hand (SpikeSim), and otherwise of the
+	-- gun in hand, once nothing is under way.
 	local t = (s.movement.tick + 1) * dt
+	local dropPressed = MovementSim.has(input.buttons, PlayerSim.Buttons.Drop) and not s.spike.dropHeld
 	local act = SpikeSim.step(s.spike, s.movement, s.weapons, input, t, s.movement.tick + 1, PlayerSim.eye(s, cfg), objective or Spike.NONE)
 	local moveInput = input
 	if PlayerSim.rooted(s) then
@@ -149,11 +160,15 @@ function PlayerSim.step(s: State, input: any, cfg: any, world: any, dt: number, 
 	local tick = s.movement.tick
 	-- A defuse has the weapon put away.
 	if s.spike.channel == SpikeSim.DEFUSING then
-		return nil, nil, act
+		return nil, nil, act, nil
+	end
+	local dropped: WeaponSim.Dropped? = nil
+	if dropPressed and act == nil and s.spike.channel == SpikeSim.NONE then
+		dropped = WeaponSim.takeInHand(s.weapons, t)
 	end
 	local ctx = PlayerSim.accuracyContext(s, input.buttons, cfg, dt)
 	local shots, swing = WeaponSim.step(s.weapons, input, tick * dt, dt, PlayerSim.eye(s, cfg), tick, ctx)
-	return shots, swing, act
+	return shots, swing, act, dropped
 end
 
 -- Hit slow, applied by the server between ticks. Speed is clamped at once and

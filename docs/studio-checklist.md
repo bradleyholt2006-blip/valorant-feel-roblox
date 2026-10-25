@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fourteen research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifteen research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about two and three quarter hours. Doing it in parts is fine; keep the order.
+It takes about three hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
-   18 one and then two.
+   19 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -36,7 +36,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F3 | HUD panel (on at the start) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
-| G | Ghost box where the server has you (while the HUD is on); with the spike in hand, G drops it instead |
+| G | Drops the gun or the spike in hand; with the knife in hand and the HUD on, the ghost box where the server has you |
+| F | Picks up the gun on the ground you're looking at, swapping it for yours |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
 | Y | Practice dummies' footsteps on and off (while the Sound Lab is open; off at the start) |
@@ -65,7 +66,8 @@ attribute `VFTestSlot` set to 1, 2, 3 or 4 draws that slot as its key would. `VF
 `spike` hands you the course's spike. A number attribute `VFTestButtons` holds buttons down while
 it's set, without the mouse or keys: 128 is the left button (fire, or the knife's slash), 256 the
 right (zoom, or the stab), 1024 is 4 held (the spike's plant and defuse), 2048 is G, 32 crouches
-and 1 is W; add them to hold several. `VFTestSettingsMenu` set to
+and 1 is W; add them to hold several. A boolean attribute `VFTestTake` set to true presses F
+for you, and clears itself. `VFTestSettingsMenu` set to
 true or false opens or closes the settings menu, and a string attribute `VFTestSetting` enters a
 setting as its box in the menu would: `sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or
 `crosshair=` and a code.
@@ -965,6 +967,65 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **Q12 Off.** Press P in window 1: `[VF] Arena off`. Neither player has
   `VFCredits`, and B reads `THE COURSE: EVERYTHING'S FREE` again, with nothing dimmed.
 
+## 19. Guns on the ground
+
+From [15-ground-guns.md](research/15-ground-guns.md). One player on the course, then two, with the
+HUD on (F3). Every gun on the ground is a part in Workspace's `VFGroundGuns`, named by its number,
+with its `Weapon`, `Ammo` and `Reserve` as attributes (Properties, Attributes). Without keys, G is
+`VFTestButtons` 2048, and F is `VFTestTake` true with `VFTestAimPoint` set to the gun's position.
+
+- **L1 G drops it.** On the course, draw the Vandal (1) and look straight ahead down the target
+  lane. Press G. The Vandal leaves your hands and the Classic comes out. A Vandal, in its stand-in
+  look, lies on its side on the floor about 1.2 m in front of your feet, its muzzle pointing down
+  the lane. `VFGroundGuns` holds a part `1` with `Weapon` `vandal`, `Ammo` 25 and `Reserve` 50.
+- **L2 Walking over it.** Walk forward over the Vandal. It's gone from the floor and from
+  `VFGroundGuns`, and the Classic stays in your hands. Press 1: the Vandal comes out, with 25
+  rounds.
+- **L3 The rounds go with it.** Fire 5 rounds (20 left) and press G. The part shows `Ammo` 20.
+  Walk over it and press 1: 20 in the magazine, not 25.
+- **L4 The prompt.** Press G again, so the Vandal is on the floor, then press 6 for a Phantom.
+  Look down at the Vandal: it's outlined in white, and under the crosshair the prompt reads `F
+  SWAP FOR VANDAL`. Look away: the outline and the prompt go. **Send** a screenshot with the
+  prompt showing.
+- **L5 The swap.** Look back at the Vandal and press F. The Vandal comes out in your hands, and a
+  Phantom lies where the Vandal was. Turn a quarter to the right and press G: the Vandal lands
+  there. Look at the Phantom: `F  PICK UP PHANTOM`, as your primary slot is empty. Press F: the
+  Phantom is drawn.
+- **L6 Reach.** Walk backwards from the Vandal, looking at it. The prompt goes when you're about
+  2.5 m away along the floor (3 m from your eye). Walk back: it comes back. Note the distance.
+- **L7 Not through walls.** Stand at the tallest red jump box (1.00 m) and drop a gun so it lands
+  about a metre from the box. Walk round to the box's other side and crouch against it, so the
+  box is between your eye and the gun. Look where the gun is: no outline and no prompt. Stand up
+  and step back until you can see it: they come back.
+- **L8 Short of a wall.** Face a wall from about half a metre away and press G. The gun lands on
+  the floor just short of the wall, not in it or through it.
+- **L9 The knife and the spike.** Press 5 for a Vandal. Draw the knife (3) and press G: nothing
+  drops, and the ghost box shows (the HUD is on). Press G again to hide it. Hand yourself the spike
+  (`VFTestGive` `spike`) and draw it (4). Press G: the spike drops, not a gun, and the Vandal comes
+  back.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9.
+
+- **L10 The other player sees it.** On the course, player 1 drops the Vandal with G. In window 2
+  it lands where player 1 threw it. Player 2 walks up to it, looks at it and presses F: window 1
+  sees it go, and player 2's Vandal lands in its place.
+- **L11 The dead drop theirs.** Press P twice in window 1 for the spike rounds. In round 1's buy
+  phase, player 1 presses 5 for a Vandal. Skip the buy phase. Player 2 kills player 1 with the
+  Classic. A Vandal lies where player 1 fell, with `Ammo` 25, and no Classic beside it.
+- **L12 Kept into the next round.** Before round 2 starts (the round's end lasts a few seconds),
+  player 2 walks over the Vandal and picks it up, as their primary slot is empty. In round 2's buy phase player 2 still has it, and player 1 is back on the Classic
+  and the knife.
+- **L13 Nothing to sell back.** Still in round 2's buy phase, player 1 buys a Spectre: `1100
+  CREDITS`. Press G: the Spectre is on the floor. Open the menu: still `1100 CREDITS`, and
+  right-clicking the Spectre sells nothing. Walk over it to take it back: still nothing to sell
+  back, and still `1100 CREDITS`.
+- **L14 The sidearm, without a primary.** Skip the buy phase. Player 1 drops the Spectre with G and
+  steps back from it. Player 2 kills player 1. A Classic lies where player 1 fell, as they had no
+  primary.
+- **L15 The ground cleared.** At round 3's buy phase the floor is bare: `VFGroundGuns` is empty.
+- **L16 Off.** Drop a gun, then press P in window 1 until `[VF] Arena off`: `VFGroundGuns` is
+  empty again.
+
 ## Results
 
 ```
@@ -1020,6 +1081,8 @@ Q5 round 2's credits: player 1 ___, player 2 ___
 Q8 round 3's credits: player 1 ___, player 2 ___; player 1's shield ___
 Q10 round 4's credits: player 1 ___, player 2 ___
 Q11 Swiftplay's credits, rounds 2, 3, 4, 5, 6 and 9: player 1 ___, player 2 ___
+L1 the Vandal landed ___ m ahead
+L6 the prompt went at ___ m along the floor
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1106,3 +1169,10 @@ Didn't look right (IDs and what you saw):
 | 14 | A shield carried damaged into the next round, the Regen Shield's pool with it, and renewing it | Q7, Q8 |
 | 14 | Kill pay with two players, and the plant's pay | Q4, Q9 |
 | 14 | The payouts over a few rounds, and the half's and Swiftplay's reset | Q5, Q8, Q10, Q11 |
+| 15 | G drops the gun in hand ahead of you and the next weapon comes out, with the knife and the spike as the tests have them | L1, L9 |
+| 15 | The gun is drawn lying on the floor, short of walls, and another player sees it land and go | L1, L8, L10 |
+| 15 | Walking over a gun fills an empty slot without drawing it, and a full slot walks past it | L2, L5, L12 |
+| 15 | F's outline and prompt, at 3 m and not through walls, and the swap | L4, L5, L6, L7 |
+| 15 | Rounds kept through a drop and a pickup | L3, L11 |
+| 15 | Death drops in the spike rounds, picked-up guns kept into the next round, and the ground cleared | L11, L12, L14, L15, L16 |
+| 15 | Nothing to sell back after a drop | L13 |

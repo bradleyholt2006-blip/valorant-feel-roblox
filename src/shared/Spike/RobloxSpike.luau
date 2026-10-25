@@ -22,9 +22,11 @@ params.FilterType = Enum.RaycastFilterType.Exclude
 params.CollisionGroup = RobloxWorld.CHARACTER_GROUP
 params.RespectCanCollide = true
 
--- Whether nothing solid is between the eye and the spike lying at `spike`.
-function RobloxSpike.sees(eye: vector, spike: vector): boolean
-	local target = spike + vector.create(0, CENTRE, 0)
+-- Whether nothing solid is between the eye and the spike lying at `spike`,
+-- or anything else lying there whose middle is `height` metres up (a gun on
+-- the ground, system 15).
+function RobloxSpike.sees(eye: vector, spike: vector, height: number?): boolean
+	local target = spike + vector.create(0, height or CENTRE, 0)
 	local offset = target - eye
 	local distance = vector.magnitude(offset)
 	if distance <= SHORT then

@@ -68,7 +68,7 @@ local Buttons = {
 	AltFire = 256,
 	Reload = 512,
 	Use = 1024, -- 4 held: the spike's plant and defuse (system 12)
-	Drop = 2048, -- G: drops the spike from the hand
+	Drop = 2048, -- G: drops the spike from the hand, or the gun in hand (system 15)
 }
 
 -- Unreal's constants: a braking player under 10 cm/s stops dead, and a speed
