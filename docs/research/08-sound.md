@@ -139,7 +139,8 @@ The report row (`luau tests/run.luau` prints it):
   and came down no higher than 0.1 m above where it left the ground. Jumping up onto a crate
   falls only a little and lands higher, so it's silent. Dropping off a ledge is heard. Our
   movement keeps you on the ground down steps up to 0.35 m, so a drop smaller than that is never
-  a landing at all.
+  a landing at all. A new life starts 5 cm up, and settling onto the ground from there isn't a
+  landing either, so spawning makes no sound.
 - **Flat and cut off.** Every sound in the world has a distance curve, straight lines between a
   few points, which Roblox's `AudioEmitter` takes as is. The footstep curve barely falls and then
   stops at its radius, faded over the last metre so it doesn't click.

@@ -11,7 +11,9 @@
 --   * a jump is never loud: enemies hear the landing, not the jump
 --
 -- Samples may come at any rate. A jump in position too big to have been
--- walked (a respawn, a correction) starts the tracker over from there.
+-- walked (a respawn, a correction) starts the tracker over from there. A new
+-- life starts a few centimetres up, so touching down after starting over in
+-- the air is settling, not a landing, unless it fell far enough to be heard.
 --
 -- Pure (no Roblox APIs), so the offline tests drive it.
 
@@ -34,6 +36,7 @@ export type Tracker = {
 	movedAt: number, -- time it last moved along the ground
 	takeoff: number, -- height it left the ground at
 	apex: number, -- highest it has been since
+	settling: boolean, -- started over in the air and hasn't touched down yet
 }
 
 local Buttons = MovementSim.Buttons
@@ -43,7 +46,7 @@ local MOVING = 1e-4 -- metres in a sample that count as moving
 local StepTracker = {}
 
 function StepTracker.new(): Tracker
-	return { last = nil, travelled = 0, movedAt = -math.huge, takeoff = 0, apex = 0 }
+	return { last = nil, travelled = 0, movedAt = -math.huge, takeoff = 0, apex = 0, settling = false }
 end
 
 -- Forgets everything, so the next sample starts it over (a new life).
@@ -79,6 +82,7 @@ function StepTracker.push(t: Tracker, s: Sample): { Event }
 		t.travelled = F.firstStep.value
 		t.movedAt = -math.huge
 		t.takeoff, t.apex = y, y
+		t.settling = not s.grounded
 		return events
 	end
 
@@ -93,11 +97,15 @@ function StepTracker.push(t: Tracker, s: Sample): { Event }
 	end
 
 	if not last.grounded and s.grounded then
-		local loud = StepTracker.landingIsLoud(t.apex - y, y - t.takeoff)
-		table.insert(events, { kind = "land", time = s.time, position = s.position, loud = loud })
-		-- The landing is a step: the next one is a stride on.
-		t.travelled = 0
-		t.movedAt = s.time
+		local fall = t.apex - y
+		if not t.settling or fall >= L.minFall.value then
+			local loud = StepTracker.landingIsLoud(fall, y - t.takeoff)
+			table.insert(events, { kind = "land", time = s.time, position = s.position, loud = loud })
+			-- The landing is a step: the next one is a stride on.
+			t.travelled = 0
+			t.movedAt = s.time
+		end
+		t.settling = false
 	elseif last.grounded and s.grounded then
 		local moved = horizontal(s.position - last.position)
 		if moved > MOVING then

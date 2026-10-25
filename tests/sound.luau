@@ -209,9 +209,41 @@ do
 	push(0.3, 30.5, true)
 	check("a teleport is not walked: no step for it", #events == 0, tostring(#events))
 	StepTracker.reset(t)
-	push(1, 100, false)
-	push(1.1, 100, true)
-	check("after a reset the first sample only starts it over", #events == 1 and events[1].kind == "land")
+	push(1, 100, true)
+	push(1.1, 100.5, true)
+	check("after a reset the first sample only starts it over", #events == 0, tostring(#events))
+end
+
+do
+	-- Started over in the air: touching down is settling, unless it fell far.
+	local t = StepTracker.new()
+	local function lands(y: number): number
+		StepTracker.reset(t)
+		StepTracker.push(t, { time = 0, position = vector.create(0, y, 0), grounded = false, quiet = false })
+		StepTracker.push(t, { time = 0.1, position = vector.create(0, y / 2, 0), grounded = false, quiet = false })
+		return #StepTracker.push(t, { time = 0.2, position = vector.zero, grounded = true, quiet = false })
+	end
+	check("starting over 5 cm up and settling is not a landing", lands(0.05) == 0)
+	check("starting over high up and falling is one", lands(L.minFall.value + 0.1) == 1)
+	StepTracker.push(t, { time = 0.3, position = vector.zero, grounded = false, quiet = false })
+	StepTracker.push(t, { time = 0.4, position = vector.create(0, 0.5, 0), grounded = false, quiet = false })
+	local after = StepTracker.push(t, { time = 0.5, position = vector.zero, grounded = true, quiet = false })
+	check("and the next landing counts as usual", #after == 1 and after[1].loud)
+
+	-- A new life on the real movement code, at the spawn's 5 cm up
+	-- (PlayerSimServer), settles onto the floor without a sound.
+	local s = MovementSim.newState(vector.create(0, 0.05, 0))
+	local tracker = StepTracker.new()
+	local events = {}
+	local time = 0
+	for _ = 1, 40 do
+		for _, e in StepTracker.push(tracker, { time = time, position = s.position, grounded = s.grounded, quiet = false }) do
+			table.insert(events, e)
+		end
+		MovementSim.step(s, { seq = 0, buttons = 0, yaw = 0, pitch = 0, slot = 1, viewTime = 0 }, cfg, RIFLE, floor, DT)
+		time += DT
+	end
+	check("a new life settles onto the floor without a landing", s.grounded and #events == 0, tostring(#events))
 end
 
 -- Curves ---------------------------------------------------------------------------
