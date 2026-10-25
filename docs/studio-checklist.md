@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the seventeen
+Studio can show. It goes through every "Known gaps to check in Studio" item in the eighteen
 research docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about four hours. Doing it in parts is fine; keep the order.
+It takes about four and a half hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
-   21 one and then two.
+   22 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -47,7 +47,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | N | The next enemy outline colour |
 | P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the spike rounds |
-| Q / E | Updraft, and Tailwind: E readies the gust and E again dashes (C and X, Cloudburst and Blade Storm, aren't playable yet) |
+| C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes (X, Blade Storm, isn't playable yet) |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
@@ -69,7 +69,8 @@ attribute `VFTestSlot` set to 1, 2, 3 or 4 draws that slot as its key would. `VF
 it's set, without the mouse or keys: 128 is the left button (fire, or the knife's slash), 256 the
 right (zoom, or the stab), 1024 is 4 held (the spike's plant and defuse), 2048 is G, 32 crouches
 and 1 is W; add them to hold several. The ability keys are 4096 for C, 8192 Q, 16384 E and 32768
-X; an ability casts as its key goes down, so set the attribute and clear it again for each cast.
+X; an ability casts as its key goes down, so set the attribute and clear it again for each cast
+(C kept set after a throw curves it).
 A boolean attribute `VFTestTake` set to true presses F for you, and clears itself, and
 `VFTestBoard` set to true or false holds the scoreboard open as Tab does or lets it go.
 `VFTestSettingsMenu` set to true or false opens or closes the settings menu, and a string
@@ -841,8 +842,9 @@ need to wait out.
   its door into mid, with the spike on the floor 4 m in front of you: `VFSpikeLayout` is
   `outpost` and `VFSpikePosition` (-150, 0, 29). The top bar shows `0` and `0` with `SPIKE ROUNDS`
   and `STANDARD` between them, and the banner reads `WAITING FOR AN OPPONENT`, with `Standard,
-  first to 13` under it. Teams holds Orange and Teal, and you're on Orange. You have the Classic
-  (2) and the knife (3), and no shield.
+  first to 13. Anyone who joins plays for the other side   B buy menu` under it. Teams holds
+  Orange and Teal, and you're on Orange. You have the Classic (2) and the knife (3), and no
+  shield.
 - **E2 The map.** Walk round it. From the spawn, a door on the left leads through a lobby and A
   main, a long corridor, to site A; the door ahead leads into mid; the door on the right to B the
   same way. Each site has an amber plant area marked A or B with crates round it, the dark ones
@@ -897,7 +899,7 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   HALF`, and its end adds `SWITCHING SIDES`. Round 5 has player 2 in ATTACKERS with the spike in
   front of them and player 1 in DEFENDERS, both on the Classic and the knife again, with a buy
   phase from 45, and the bar reads `DEFEND` for player 1 and `ATTACK` for player 2. From round 5,
-  player 2's side is on 4, and its buy phases add `MATCH POINT`.
+  player 2's side is on 4, and both players' buy phases add `MATCH POINT`.
 - **E12 Sudden death.** Keep skipping, so player 1's side wins rounds 5 to 8 on time: 4-4. Round
   9's buy phase reads `SUDDEN DEATH`, from 45, on the second half's sides. Skip it too: player 1
   wins it 5-4 and their screen shows `VICTORY` and player 2's `DEFEAT`, each with the score. About
@@ -1093,10 +1095,10 @@ the ultimate's points and what it needs, as `C0/2 Q1/1 E1/1 X0/8`, with `lift` o
 (8192) or E (16384): set it, then clear it.
 
 - **U1 The bar.** At the bottom of the screen, between your health and your ammo, four squares:
-  `C` CLOUDBURST, `Q` UPDRAFT, `E` TAILWIND and `X` BLADE STORM. Cloudburst's and Blade Storm's
-  are dimmed. Q's square has one pip and E's one, both lit; C's has two and X's eight, all dark,
-  and X's reads `0/8` at its top right. Each name fits inside its square: BLADE STORM on two lines,
-  CLOUDBURST smaller. `VFKit` reads `C0/2 Q1/1 E1/1 X0/8`. **Send:** a screenshot of the bar.
+  `C` CLOUDBURST, `Q` UPDRAFT, `E` TAILWIND and `X` BLADE STORM. Blade Storm's is dimmed. C's
+  square has two pips, Q's one and E's one, all lit; X's has eight, all dark, and reads `0/8` at
+  its top right. Each name fits inside its square: BLADE STORM on two lines, CLOUDBURST smaller.
+  `VFKit` reads `C2/2 Q1/1 E1/1 X0/8`. **Send:** a screenshot of the bar.
 - **U2 Updraft.** Stand still on open floor and press Q. You're thrown straight up at once, with
   a low gust, a ring of air spreading at your feet and six streaks rising. Q's square is outlined
   for the lift's 0.6 s, and its pip goes dark; `VFKit` reads `Q0/1`, with `lift` for those 0.6 s.
@@ -1146,14 +1148,13 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   the dash, and no streak. In Skirmish a spent charge doesn't come back until the next round:
   player 2's Q pip stays dark.
 - **U12 The spike rounds' kit.** Press P again in window 1 (the spike rounds). In round 1's buy
-  phase both `VFKit`s read `C0/2 Q0/1 E1/1 X0/8`: Updraft has to be bought, and Tailwind's charge
-  is free. In window 1, B opens the menu: under the shields, an `Abilities` group has Cloudburst
-  (`C`, 200, dimmed, `NOT YET`) and Updraft (`Q`, 150). Pointing at Updraft shows `Ability, on Q`
+  phase both `VFKit`s read `C0/2 Q0/1 E1/1 X0/8`: Cloudburst and Updraft have to be bought, and
+  Tailwind's charge is free. In window 1, B opens the menu: under the shields, an `Abilities`
+  group has Cloudburst (`C`, 200) and Updraft (`Q`, 150). Pointing at Updraft shows `Ability, on Q`
   and rows for `Charges` (`up to 1`), `A charge` (`150 credits`) and `Lift` (`4 m, in 0.6 s`).
   Click it: the credits go from 800 to 650, its pip lights and it shows `FULL`, the bar's Q pip
   lights, and `VFKit` reads `Q1/1`. Right-click it: back to 800 and `Q0/1`. Click it again to
-  keep it. Clicking Cloudburst does nothing. **Send:** a screenshot of the menu with Updraft
-  bought.
+  keep it. (Y12 buys Cloudburst.) **Send:** a screenshot of the menu with Updraft bought.
 - **U13 Kept through a death.** Skip the buy phase. Player 2 kills player 1, who hasn't used
   Updraft. Player 2's `VFKit` reads `X1/8`, for the kill, and player 1's `X1/8` too, for the death.
   In round 2's buy phase, player 1's still reads `Q1/1`, and their bar shows the pip lit.
@@ -1161,7 +1162,80 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   `E0/1`. Skip the round. In round 3's buy phase it reads `E1/1` again. If a round has a plant or a
   defuse (as in E6), whoever made it gets a point too.
 - **U15 Off.** Press P in window 1 until `[VF] Arena off`. Within 2 s on the course both kits read
-  `C0/2 Q1/1 E1/1 X0/8` again: full, and the points gone.
+  `C2/2 Q1/1 E1/1 X0/8` again: full, and the points gone.
+
+## 22. Cloudburst
+
+From [18-cloudburst.md](research/18-cloudburst.md). One player on the course with the HUD on (F3),
+then two in Skirmish and the spike rounds. After each burst your `VFLastCloud` attribute (select
+your player under Players, then Properties, Attributes) is where the server says it burst, in
+metres. `Workspace.VFClouds` holds a small glowing `Throw` ball for each throw in the air, and a
+`Cloud` ball and its `CloudEdge` for each cloud; the `Cloud` ball's `Centre` attribute is where
+your screen has it, in metres, and `Moved` is set if the server's word moved it. Without keys,
+`VFTestButtons` 4096 presses C: set it and clear it again for a throw, or keep it set to curve
+one. `VFTestYaw` and `VFTestPitch` aim, in degrees, and positive pitch looks up. On the course a
+spent charge comes back 1.5 s after the throw.
+
+- **Y1 The bar.** C's square is lit, with both its pips, and only Blade Storm's is dimmed.
+  `VFKit` reads `C2/2 Q1/1 E1/1 X0/8`.
+- **Y2 Down the lane.** Stand at the spawn facing down the target lane (`VFTestYaw` 0,
+  `VFTestPitch` 0) with the Vandal, and press C. A quick, thin swish, and the Vandal dips and is
+  back up within a quarter of a second. A small pale blue ball flies straight down the lane at eye
+  height, through the dummies at 10, 30 and 50 m, and bursts against the backstop about 2 s later.
+  A ball of pale grey-blue smoke grows there for about half a second, stays, and thins away about
+  2.5 s after the burst. `VFLastCloud` reads about `(0, 1.62, -59.65)`, and the `Cloud` ball's
+  `Centre` the same, with no `Moved`: your screen's cloud formed where the server's did. C's first
+  pip goes dark, `VFKit` reads `C1/2`, and the pip lights again 1.5 s after the throw. **Send:** a
+  screenshot of the cloud at the backstop.
+- **Y3 The gun put away.** Hold the left button with the Vandal (`VFTestButtons` 128) and, while
+  it's firing, press C (`VFTestButtons` 4224, then back to 128): the Vandal stops for a quarter of
+  a second, two or three of its shots, and fires on. Fire a few rounds, start a reload (R, or
+  `VFTestButtons` 512) and press C in it: the reload stops, and the magazine stays as it was.
+  Zoom in with the right button and press C: the zoom comes off.
+- **Y4 Into the sky.** Look up (`VFTestPitch` 30) and throw: the ball climbs, and bursts in mid-air
+  2 s later, 60 m along its way. The cloud hangs there. `VFLastCloud` reads about
+  `(0, 31.62, -51.96)`.
+- **Y5 The floor, and what it hides.** Look a little down (`VFTestPitch` -10) and throw: it bursts
+  on the floor about 8.6 m ahead with a slow, thick whoosh, and the cloud covers Dummy 1 at 10 m.
+  `VFLastCloud` reads about `(0, 0.10, -8.62)`. While the cloud is thick, nothing of Dummy 1 shows
+  through it, not even its red outline, and nor do the dummies at 30 and 50 m behind it. Their
+  outlines come back as it thins, in its last moments. **Send:** a screenshot with the cloud over
+  Dummy 1.
+- **Y6 From inside.** Look down at your feet (`VFTestPitch` -60) and throw: it bursts on the floor
+  just under 1 m ahead, `VFLastCloud` about `(0, 0.10, -0.88)`, and within about a fifth of a
+  second the screen turns to pale grey-blue smoke, with the HUD on top of it. It clears as the
+  cloud goes, about 2.5 s later. Throw another the same way and walk backwards (S): the screen
+  clears about 2 m back, as your eye leaves the cloud.
+- **Y7 The curve.** Face down the lane (`VFTestPitch` 0), set `VFTestButtons` to 4096 and keep it
+  set, then a tenth of a second after the throw set `VFTestPitch` to 30, and clear `VFTestButtons`
+  1.5 s later. The ball turns up within an eighth of a second, climbs, and bursts in mid-air 2 s
+  after the throw: `VFLastCloud` about `(0, 29, -53)`, lower and further than Y4's, from about
+  `(0, 30, -52.5)` to `(0, 27, -53.3)` as the pitch came sooner or later. Then the same, but clear
+  `VFTestButtons` straight after the throw, before the pitch changes: it doesn't curve, and bursts
+  at the backstop as in Y2, `(0, 1.62, -59.65)`.
+- **Y8 In a dash, and planting.** Ready a gust (E) and, once the countdown shows, dash (E) and
+  press C during the dash: nothing is thrown, and `VFKit` still reads `C2/2`. Set `VFTestGive` to
+  `spike`, walk into site B and hold 4: while the plant goes, C throws nothing.
+- **Y9 The sounds.** Open the Sound Lab (F2 four times) and throw at the floor as in Y5: it logs
+  `smokeThrow` from `you`, then `smokeBurst` from `you` about 8.6 m away. Throw down the lane as
+  in Y2: its `smokeBurst` is out of range, 60 m away and past its 30 m edge.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9.
+
+- **Y10 Others' throws.** Press P once in window 1 (Skirmish). After the buy phase, bring the two
+  players about 15 m apart in view of each other. In window 2, throw at the floor halfway between
+  them. Window 1 sees the small ball leave player 2's eye, where player 2 is drawn at the moment,
+  and the cloud form where it burst: its `Cloud` ball's `Centre` in window 1 matches player 2's
+  `VFLastCloud`. While the cloud is between them, neither window sees the other player, outline
+  included. Window 1's Sound Lab logs `smokeThrow` and `smokeBurst` from player 2.
+- **Y11 After the thrower dies.** In window 2, look up (`VFTestPitch` 30) and throw, and in
+  window 1 kill player 2 at once, within the 2 s it flies. The ball flies on, straight, and
+  bursts in mid-air 2 s after the throw, 60 m along its way, in both windows.
+- **Y12 The spike rounds.** Press P again in window 1 (the spike rounds). In round 1's buy phase
+  B opens the menu. Pointing at Cloudburst shows `Ability, on C` and rows for `Charges`
+  (`up to 2`), `A charge` (`200 credits`), `Cloud` (`6.7 m across, for 2.5 s`) and `Flight`
+  (`30 m/s, at most 2 s`). Click it twice: the credits go from 800 to 600 to 400, both its pips
+  light and it shows `FULL`, and `VFKit` reads `C2/2`. Right-click it once: 600, and `C1/2`.
 
 ## Results
 
@@ -1227,6 +1301,12 @@ U2 Updraft: rise ___ m, ___ s in the air; about ___ jump boxes (1.00 m) high; th
 U3 Updraft at the jump's top: rise ___ m
 U5 the dash stopped ___ m along the sprint lane; holding D it went right: yes / no
 U11 the other player's casts lined up with where they were drawn: yes / no (what)
+Y2 down the lane: VFLastCloud ___; the Cloud's Centre ___; Moved: yes / no
+Y4 into the sky: VFLastCloud ___
+Y5 on the floor: VFLastCloud ___; Dummy 1's outline hidden while it was thick: yes / no
+Y6 the screen turned to smoke: yes / no; it cleared ___ m back
+Y7 held: VFLastCloud ___; let go: VFLastCloud ___
+Y10 the cloud in the same place in both windows: yes / no (what)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1332,3 +1412,13 @@ Didn't look right (IDs and what you saw):
 | 17 | Nothing casts while planting, and a plant doesn't start in a dash | U10 |
 | 17 | Another player sees and hears each cast where you are on their screen | U9, U11 |
 | 17 | The spike rounds' kit: charges bought and sold back, kept through a death, and the ultimate's points | U12, U13, U14, U15 |
+| 18 | C throws it at once from the eye, the way you look, and the gun comes back a quarter of a second later | Y2, Y3 |
+| 18 | It flies straight at 30 m/s, through the dummies, and bursts on a wall, on the floor, or in mid-air 60 m out | Y2, Y4, Y5 |
+| 18 | Holding C curves it towards the crosshair, and letting go straightens it | Y7 |
+| 18 | The cloud grows, stays and thins as the tests have it, and hides what's behind it, the outlines included, until it thins | Y2, Y5 |
+| 18 | From inside it the screen is smoke | Y6 |
+| 18 | Nothing is thrown in a dash or while planting | Y8 |
+| 18 | The throw and the burst are heard, the burst out to 30 m | Y9 |
+| 18 | Your cloud forms where the server says, on your screen at once | Y2, Y4, Y5, Y7 |
+| 18 | Another player sees the throw fly and the cloud form where it burst, and hears both, even once the thrower is dead | Y10, Y11 |
+| 18 | Cloudburst is on sale in the spike rounds, two charges at 200 | Y12 |

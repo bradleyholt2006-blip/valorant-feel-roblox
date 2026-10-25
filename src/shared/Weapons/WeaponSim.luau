@@ -241,6 +241,14 @@ function WeaponSim.holster(s: State)
 	s.spin = 0
 end
 
+-- Puts the weapon in hand away for `seconds` from `t`, as a throw does
+-- (system 18): what holster stops stops, and it can't fire, reload or zoom
+-- until it's back in hand.
+function WeaponSim.stow(s: State, t: number, seconds: number)
+	WeaponSim.holster(s)
+	s.equipEndTime = math.max(s.equipEndTime, t + seconds)
+end
+
 function WeaponSim.copy(s: State): State
 	local c = table.clone(s)
 	c.loadout = table.clone(s.loadout)

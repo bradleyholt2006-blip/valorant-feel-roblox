@@ -375,14 +375,25 @@ SoundConfig.Sounds = {
 	windup = sound(0.6, 0.03, 3, {
 		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
 	}, 0.6),
+	-- Cloudburst (system 18): the throw the same thin swish, quick, and the
+	-- burst Updraft's gust, slowed right down.
+	smokeThrow = sound(0.6, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 1.1),
+	smokeBurst = sound(0.8, 0.03, 3, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.55),
 }
 
--- What each kind of cast sounds like (AbilitySim.Cast's kind), heard as
--- the ability curve says (system 17).
+-- What each kind of cast sounds like (AbilitySim.Cast's kind, and a
+-- thrown cloud's burst), heard as the ability curve says (systems 17 and
+-- 18).
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
 	ready = "windup",
+	throw = "smokeThrow",
+	cloud = "smokeBurst",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its

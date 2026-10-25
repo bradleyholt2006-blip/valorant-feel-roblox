@@ -85,6 +85,8 @@ local P704 = "Patch 7.04"
 local P300 = "Patch 3.0"
 local P408 = "Patch 4.08"
 local WIKI = "VALORANT Wiki, Jett"
+local FANDOM = "Fandom wiki, Cloudburst"
+local MOBALYTICS = "Mobalytics, Jett"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -160,6 +162,27 @@ AbilityConfig.Jett = {
 	-- as from a jump, the speed set so the feet top out this high.
 	updraftTime = p(0.6, "community", "VALORANT Wiki, Updraft: duration 0.6 s"),
 	updraftApex = p(4, "estimate", "Feet's rise at the top; measure against crates of known height"),
+}
+
+-- Jett's Cloudburst (system 18): C throws it from the eye at once, and it
+-- flies straight while C is let go of; held, it turns towards the
+-- crosshair. It bursts into a cloud where it hits the level, or in the air
+-- once it has flown its longest. The cloud blocks sight, not bullets.
+AbilityConfig.Cloudburst = {
+	speed = p(30, "community", FANDOM .. ": 'Travel Rate 30 meters/s'"),
+	maxFlight = p(2, "community", MOBALYTICS .. ": 'Maximum travel time in air: 2 seconds'"),
+	-- Degrees a second the throw turns towards the crosshair while C is held.
+	turnRate = p(240, "estimate", "Ours; measure a curved throw's arc in a public video"),
+	-- Half the size of the box that flies, for what it hits.
+	size = p(0.1, "estimate", "Ours: a ball about a hand across"),
+	radius = p(3.35, "community", MOBALYTICS .. ": 'Radius: 3.35 meters' (the Fandom wiki's '5 meters wide' and GameRiv's 4.5 m disagree)"),
+	duration = p(2.5, "confirmed", P704 .. ": its duration reduced from 4.5 s to 2.5 s"),
+	-- From the burst to its full size, part of the duration.
+	grow = p(0.6, "community", MOBALYTICS .. ": 'includes 0.6-second deployment time' (the Fandom wiki: 0.5 s to full size)"),
+	-- Its last moments, thinning out before it goes.
+	fade = p(0.3, "estimate", "Ours; frame-count a cloud's end in a public video"),
+	-- The gun is put away to throw, and back in hand this long after.
+	stow = p(0.25, "community", MOBALYTICS .. ": 'Unequip time: 0.25 seconds' (" .. P704 .. ": the re-equip slightly longer)"),
 }
 
 return AbilityConfig

@@ -27,5 +27,6 @@ require("./economy")
 require("./groundguns")
 require("./scoreboard")
 require("./abilities")
+require("./cloudburst")
 
 H.finish()

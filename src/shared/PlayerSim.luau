@@ -17,6 +17,7 @@ local Accuracy = require("./Weapons/Accuracy")
 local Spike = require("./Spike/Spike")
 local SpikeSim = require("./Spike/SpikeSim")
 local AbilitySim = require("./Abilities/AbilitySim")
+local AbilityConfig = require("./Abilities/AbilityConfig")
 
 export type State = {
 	movement: MovementSim.State,
@@ -169,8 +170,17 @@ function PlayerSim.step(
 		moveInput = table.clone(input)
 		moveInput.buttons = SpikeSim.movementButtons(s.spike, input.buttons)
 	end
-	local motion, casts = AbilitySim.step(s.abilities, input, t, dt, s.movement.tick + 1, s.movement.position, PlayerSim.rooted(s), cfg)
+	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
+	local motion, casts = AbilitySim.step(s.abilities, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
 	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
+	-- A throw puts the gun away for a moment (system 18).
+	if casts then
+		for _, cast in casts do
+			if cast.kind == "throw" then
+				WeaponSim.stow(s.weapons, t, AbilityConfig.Cloudburst.stow.value)
+			end
+		end
+	end
 	local tick = s.movement.tick
 	-- A defuse has the weapon put away.
 	if s.spike.channel == SpikeSim.DEFUSING then

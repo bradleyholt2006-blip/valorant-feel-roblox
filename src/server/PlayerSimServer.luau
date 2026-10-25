@@ -115,6 +115,9 @@ PlayerSimServer.spikeListeners = {} :: { (Player, SpikeSim.Act) -> () }
 PlayerSimServer.dropListeners = {} :: { (Player, WeaponSim.Dropped, vector, number) -> () }
 -- Called with each ability a player casts (system 17).
 PlayerSimServer.castListeners = {} :: { (Player, AbilitySim.Cast) -> () }
+-- Called after each of a player's ticks, with its input and its casts, if
+-- any (system 18 flies thrown clouds on them).
+PlayerSimServer.tickListeners = {} :: { (Player, PlayerCodec.WireInput, { AbilitySim.Cast }?) -> () }
 -- The debug give of the spike: the one spike there is, handed over, not a
 -- new one (SpikeServer).
 PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
@@ -496,6 +499,9 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 					listener(r.player, cast)
 				end
 			end
+		end
+		for _, listener in PlayerSimServer.tickListeners do
+			listener(r.player, input, casts)
 		end
 		if shots then
 			onShot(r.entity, shots, input.viewTime)
