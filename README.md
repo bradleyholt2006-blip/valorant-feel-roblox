@@ -152,6 +152,12 @@ Built one system at a time:
     to send players and the menu's counts. M opens the menu again during a match. In Studio, which
     can't teleport, PLAY for another mode switches the server to it -
     [research and design](docs/research/24-play-menu.md)
+25. **The spike rounds' maps**: Quarry and Foundry, two maps of our own for five a side beside
+    Outpost, laid out as the reference's traditional maps are, with two sites and three lanes. A
+    server's first spike match is on one of the three at random, and after each victory screen
+    everyone votes for the next, as in Skirmish. The tests check every map the same way: every
+    room reached, no sightline from one spawn into the other, barriers that hold each side in, and
+    the defenders at each site first - [research and design](docs/research/25-spike-maps.md)
 
 ## Running it
 
@@ -162,15 +168,16 @@ Built one system at a time:
    to the left, and the spike's two sites are 26 m behind you, with the spike waiting 4 m
    behind. In a place made from the Baseplate template, delete its `Baseplate` and
    `SpawnLocation` first.
-4. The arena is built beside the course, off to its right, and the spike rounds' map off to its
-   left. A live server starts the arena by itself; in Studio you start on the course, and P puts
-   everyone in the server in the arena: you spawn in your side's room and wait there for an
+4. The arena is built beside the course, off to its right, and the spike rounds' three maps off
+   to its left. A live server starts the arena by itself; in Studio you start on the course, and
+   P puts everyone in the server in the arena: you spawn in your side's room and wait there for an
    opponent, and whoever joins goes on the side with fewer players. After each match everyone
    votes for the next of Skirmish's three maps. P again starts gun game in the same hall, P again
-   the spike rounds, P again their shorter Swiftplay format, and P again puts everyone back on the
-   course. A live server opens on the Play menu, and only once you press PLAY are you in a match;
-   in Studio M opens the menu, where PLAY for another mode switches the server to it, as P does.
-   PLAY's teleports between servers only work once the place is published.
+   the spike rounds, on three maps of their own with the same vote, P again their shorter
+   Swiftplay format, and P again puts everyone back on the course. A live server opens on the
+   Play menu, and only once you press PLAY are you in a match; in Studio M opens the menu, where
+   PLAY for another mode switches the server to it, as P does. PLAY's teleports between servers
+   only work once the place is published.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
@@ -180,7 +187,7 @@ while you carry it (hold 4 to plant it in a site or to defuse it), G drops the g
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent), Tab held the scoreboard (the arena and
 the spike rounds), mouse 1 and 2, while you're down in either, the next or the last teammate to watch,
-a click on a map card, during the vote after a match in the arena, your vote for the next map,
+a click on a map card, during the vote after a match, your vote for the next map,
 M the Play menu (a click picks a mode's card, and PLAY plays it),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
@@ -234,12 +241,13 @@ From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame` or `spike`), `
 (`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
 set true ends the phase under way (a buy phase, a round, the wait for the next, a gun game match,
 the victory screen or the vote; a Skirmish round goes to side 1, and a gun game match to whoever is
-furthest up). The arena's model says which of the arena's maps is played (`Map`), and during the
-vote the maps to pick from and their votes (`VoteMaps`, `Votes`), with each player's own vote as
-`VFMapVote`. In gun game it also has the match's guns, a level each (`Ladder`, as
-`vandal,phantom,...`), and the UserId of whoever is furthest up, or won (`Leader`), and each
-player's level is their `VFGunLevel` attribute, with `VFProtected` true while their spawn
-protection lasts. In the spike
+furthest up). The arena's model says which map is played (`Map`: `A`, `B` or `C` in the arena,
+and `outpost`, `quarry` or `foundry` in the spike rounds, whose maps are models in Workspace's
+`VFSpikeMap`), and during the vote the maps to pick from and their votes (`VoteMaps`, `Votes`),
+with each player's own vote as `VFMapVote`. In gun game it also has the match's guns, a level
+each (`Ladder`, as `vandal,phantom,...`), and the UserId of whoever is furthest up, or won
+(`Leader`), and each player's level is their `VFGunLevel` attribute, with `VFProtected` true while
+their spawn protection lasts. In the spike
 rounds each player's credits are their `VFCredits` attribute, and each side's losses in a row
 `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in Workspace's
 `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's record is in
@@ -267,7 +275,7 @@ match), the Play menu's modes and its list of servers (what each server plays, w
 sends someone to, and the counts), the sound's rules (footsteps, landings,
 distance curves, walls in the way, reload parts), the settings (crosshair codes and the pixels they
 draw, sensitivity and cm/360), the spike's rules (sites, the defuse's reach, its beeps and its
-blast), the spike rounds' rules and map, the economy (what each round pays, kills, the plant, the
+blast), the spike rounds' rules and maps, the economy (what each round pays, kills, the plant, the
 cap, what a purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the
 dead drop, walking over one and the one in view), the match's record (the combat score, kills,
 deaths, assists and the average), who plays on which side (dropping in, the line and evening the
@@ -289,8 +297,9 @@ target through a simulated network; how evenly other players and dummies are dra
 not; damage left through walls by class, material and thickness; the vignette across the screen
 and the outline's tint by distance; the arena's size and how much of it each spawn can see; the
 footstep curve, steps per second by weapon, and the filters for walls and distance; cm/360 at
-the default sensitivity, unzoomed and scoped; how long each side takes to reach Outpost's sites)
-and runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox definitions.
+the default sensitivity, unzoomed and scoped; how long each side takes to reach each spike map's
+sites) and runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox
+definitions.
 
 ## Rules for this project
 

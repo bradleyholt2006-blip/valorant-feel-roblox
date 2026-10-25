@@ -3,13 +3,17 @@
 -- everyone in the server votes between maps chosen at random, the most
 -- votes wins, and a tie or no votes at all is settled at random. Then the
 -- next match starts on the winner. With one map there's no vote, and a side
--- emptying during it ends it there, on the same map.
+-- emptying during it ends it there, on the same map. The spike rounds vote
+-- the same way between their own maps (system 25).
 
 local ArenaConfig = require("../src/shared/Arena/ArenaConfig")
 local ArenaLayout = require("../src/shared/Arena/ArenaLayout")
 local ArenaRules = require("../src/shared/Arena/ArenaRules")
 local MapVote = require("../src/shared/Match/MapVote")
+local MatchConfig = require("../src/shared/Match/MatchConfig")
+local MatchRules = require("../src/shared/Match/MatchRules")
 local Roster = require("../src/shared/Match/Roster")
+local SpikeMaps = require("../src/shared/Match/SpikeMaps")
 local H = require("./Harness")
 
 local check = H.check
@@ -204,6 +208,112 @@ do
 	check("skipping the round gives it to side 1, as Skirmish's rounds have no clock", s.phase == "roundOver" and s.score[1] == 1)
 	ArenaRules.skip(s, 3)
 	check("and skipping the wait starts the next", #ArenaRules.step(s, 3) == 2 and s.round == 2)
+end
+
+-- The spike rounds (system 25) ------------------------------------------------------
+
+-- Plays a match of the spike rounds to its end: side 1 wins every round,
+-- with side 2 killed.
+local function toSpikeMatchOver(s: MatchRules.State): number
+	local t = 0
+	while s.phase ~= "matchOver" do
+		t = math.max(t, s.phaseEndsAt)
+		if s.phase == "live" then
+			for id, m in s.members do
+				if m.side == 2 and m.alive then
+					MatchRules.died(s, id, t, nil)
+				end
+			end
+		else
+			MatchRules.step(s, t)
+		end
+	end
+	return t
+end
+
+do
+	-- Dice: Quarry for the first match, then all three for the vote.
+	local s = MatchRules.new("swiftplay", nil, dice(2, 1, 1, 1))
+	check("the spike rounds' first match is on one of their three maps, at random", s.map == "quarry" and same(s.maps, SpikeMaps.MAPS))
+	for id = 1, 3 do
+		MatchRules.join(s, id, 0)
+	end
+	local t = toSpikeMatchOver(s)
+	check(
+		"a match won, the victory screen first",
+		s.phase == "matchOver" and s.score[1] == MatchConfig.Formats.swiftplay.winScore.value and s.vote == nil
+	)
+	check("nobody votes during it", not MatchRules.vote(s, 1, 1))
+	t = s.phaseEndsAt
+	local spawned = MatchRules.step(s, t)
+	local vote = s.vote
+	check(
+		"then the vote: Outpost, Quarry and Foundry, for Skirmish's time, nobody spawning",
+		#spawned == 0
+			and s.phase == "vote"
+			and vote ~= nil
+			and same(vote.options, { "outpost", "quarry", "foundry" })
+			and s.phaseEndsAt == t + R.voteTime.value,
+		string.format("%s, %.1f s", s.phase, s.phaseEndsAt - t)
+	)
+	local before = s.version
+	check("a player votes", MatchRules.vote(s, 1, 3) and s.version > before)
+	check("not someone the rules don't know", not MatchRules.vote(s, 99, 3))
+	MatchRules.vote(s, 2, 3)
+	MatchRules.vote(s, 3, 1)
+	MatchRules.leave(s, 3, t + 1)
+	check("someone leaving takes their vote with them", vote ~= nil and same(MapVote.tally(vote) :: any, { 0, 0, 2 } :: any))
+	MatchRules.damaged(s, 2, 1, 50)
+	MatchRules.died(s, 1, t + 2, 2)
+	check("nothing during the vote goes in the record", s.members[2].kills == 0 and s.members[2].score == 0)
+	check("the vote lasts its time", #MatchRules.step(s, s.phaseEndsAt - 0.01) == 0 and s.phase == "vote")
+	spawned = MatchRules.step(s, s.phaseEndsAt)
+	check(
+		"then the next match starts on the most voted for, at 0-0, everyone spawning with the credits to start on",
+		s.map == "foundry"
+			and s.phase == "buy"
+			and s.round == 1
+			and s.score[1] == 0
+			and s.vote == nil
+			and #spawned == 2
+			and s.match == 2
+			and s.members[1].credits == MatchConfig.Credits.start.value
+	)
+end
+
+do
+	local s = MatchRules.new("swiftplay", { "outpost" })
+	for id = 1, 2 do
+		MatchRules.join(s, id, 0)
+	end
+	toSpikeMatchOver(s)
+	local spawned = MatchRules.step(s, s.phaseEndsAt)
+	check(
+		"with one map, no vote: the next match starts after the victory screen",
+		s.phase == "buy" and s.round == 1 and #spawned == 2 and s.map == "outpost"
+	)
+
+	local e = MatchRules.new("swiftplay", nil, dice(3))
+	for id = 1, 2 do
+		MatchRules.join(e, id, 0)
+	end
+	toSpikeMatchOver(e)
+	MatchRules.step(e, e.phaseEndsAt)
+	MatchRules.vote(e, 1, 1)
+	MatchRules.leave(e, 2, e.phaseEndsAt - 5)
+	check(
+		"a side emptying during the vote ends it there: waiting, at 0-0, on the same map",
+		e.phase == "waiting" and e.vote == nil and e.map == "foundry" and e.score[1] == 0 and e.match == 2
+	)
+
+	local k = MatchRules.new("swiftplay")
+	for id = 1, 2 do
+		MatchRules.join(k, id, 0)
+	end
+	toSpikeMatchOver(k)
+	MatchRules.step(k, k.phaseEndsAt)
+	MatchRules.skip(k, k.phaseEndsAt - 10)
+	check("skipping ends the vote (for testing)", #MatchRules.step(k, k.phaseEndsAt) == 2 and k.phase == "buy")
 end
 
 return nil

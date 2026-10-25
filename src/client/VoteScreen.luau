@@ -1,7 +1,8 @@
 --!strict
 -- The vote for the next map (system 22): after a match's victory screen, a
 -- card for each map to pick from, with its plan seen from above (side 1 at
--- the top, lighter for taller cover) and the votes it has so far. Click a
+-- the top, lighter for taller cover; a spike map's as its attackers face it,
+-- system 25) and the votes it has so far. Click a
 -- card to vote for it, or another to change your vote; yours is outlined,
 -- and the most voted for has its count in gold. Everyone in the match
 -- votes, waiting in line or not, but not anyone in the Play menu yet to
@@ -10,8 +11,9 @@
 -- can still move.
 --
 -- Everything comes from the arena model's attributes (Arena): Phase "vote",
--- VoteMaps ("A,B,C", keys of ArenaLayout.Maps), Votes ("2,0,1"), Map (the
--- one just played) and PhaseEndsAt, and your own vote, ArenaConfig.VOTE.
+-- VoteMaps ("A,B,C", keys of ArenaLayout.Maps, or in the spike rounds of
+-- SpikeMaps.Maps), Votes ("2,0,1"), Map (the one just played), Mode and
+-- PhaseEndsAt, and your own vote, ArenaConfig.VOTE.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +23,8 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
+local MapPlan = require(Shared.Match.MapPlan)
+local SpikeMaps = require(Shared.Match.SpikeMaps)
 local Remotes = require(Shared.Net.Remotes)
 
 local CameraController = require(script.Parent.CameraController)
@@ -42,6 +46,8 @@ local GAP = 16
 local MARGIN = 24
 local TOP = 64
 local PLAN_W = 120 -- the hall's width on a card, in pixels
+-- The most room a spike map's plan takes on a card, in pixels.
+local SPIKE_PLAN_W, SPIKE_PLAN_H = 156, 212
 
 local TILE = Color3.fromRGB(28, 30, 38)
 local TILE_HOVER = Color3.fromRGB(48, 52, 64)
@@ -52,6 +58,12 @@ local COVER = {
 	low = Color3.fromRGB(140, 143, 152),
 	high = Color3.fromRGB(190, 192, 200),
 	centre = Color3.fromRGB(230, 230, 236),
+}
+-- A spike map's sites and each spawn's floor, as the map has them.
+local SITE = Color3.fromRGB(150, 128, 72)
+local SPAWN = {
+	AttackerSpawn = Color3.fromRGB(140, 88, 80),
+	DefenderSpawn = Color3.fromRGB(72, 112, 135),
 }
 
 type Card = { key: string, button: TextButton, stroke: UIStroke, votes: TextLabel, played: TextLabel }
@@ -89,6 +101,42 @@ local function drawPlan(parent: Instance, key: string, y: number)
 		local tall = part.size.y
 		local colour = if tall < H.high.value then COVER.low elseif tall < H.centre.value then COVER.high else COVER.centre
 		rect(plan, scale, part.center.x, part.center.z, part.size.x, part.size.z, -math.deg(part.yaw), colour)
+	end
+end
+
+-- A spike map's plan (system 25), seen from above as its attackers face it:
+-- their spawn at the bottom, the defenders' at the top and A on the left.
+-- The floor, each spawn's in its colour, each site's plant area, and the
+-- cover.
+local function drawSpikePlan(parent: Instance, map: MapPlan.Map, y: number)
+	local x0, z0, x1, z1 = map.bounds()
+	local w, d = x1 - x0, z1 - z0
+	local scale = math.min(SPIKE_PLAN_W / w, SPIKE_PLAN_H / d)
+	local plan = Ui.frame(parent, {
+		Name = "Plan",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset((CARD_W - w * scale) / 2, y),
+		Size = UDim2.fromOffset(w * scale, d * scale),
+	})
+	local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+	local function box(x: number, z: number, sx: number, sz: number, colour: Color3)
+		rect(plan, scale, x - cx, z - cz, sx, sz, 0, colour)
+	end
+	local rooms = map.rooms()
+	for _, room in rooms do
+		box((room.x0 + room.x1) / 2, (room.z0 + room.z1) / 2, room.x1 - room.x0, room.z1 - room.z0, FLOOR)
+	end
+	for _, room in rooms do
+		local colour = SPAWN[room.name]
+		if colour then
+			box((room.x0 + room.x1) / 2, (room.z0 + room.z1) / 2, room.x1 - room.x0, room.z1 - room.z0, colour)
+		end
+	end
+	for _, site in map.Sites do
+		box(site.x, site.z, site.sx, site.sz, SITE)
+	end
+	for _, c in map.cover() do
+		box(c.x, c.z, c.sx, c.sz, if c.height == "low" then COVER.low else COVER.high)
 	end
 end
 
@@ -142,10 +190,12 @@ function VoteScreen.start()
 	})
 
 	local cards: { Card } = {}
-	local built = "" -- the VoteMaps the cards are for
+	local built = "" -- the VoteMaps the cards are for, and whether they're the spike rounds'
 	local hovered: number? = nil
 
-	local function build(keys: { string })
+	-- The cards for `keys`: the spike rounds' maps if `spike`, else the
+	-- arena's.
+	local function build(keys: { string }, spike: boolean)
 		for _, card in cards do
 			card.button:Destroy()
 		end
@@ -153,7 +203,8 @@ function VoteScreen.start()
 		hovered = nil
 		local x0 = (width - #keys * CARD_W - (#keys - 1) * GAP) / 2
 		for i, key in keys do
-			local map = ArenaLayout.Maps[key]
+			local map = if spike then nil else ArenaLayout.Maps[key]
+			local spikeMap = if spike then SpikeMaps.Maps[key] else nil
 			local button = Instance.new("TextButton")
 			button.Name = key
 			button.AutoButtonColor = false
@@ -171,7 +222,7 @@ function VoteScreen.start()
 			stroke.Transparency = 1
 			stroke.Parent = button
 			Ui.label(button, {
-				Text = string.upper(if map then map.name else key),
+				Text = string.upper(if map then map.name elseif spikeMap then spikeMap.NAME else key),
 				Font = Enum.Font.GothamBold,
 				TextSize = 18,
 				TextXAlignment = Enum.TextXAlignment.Center,
@@ -189,6 +240,8 @@ function VoteScreen.start()
 			})
 			if map then
 				drawPlan(button, key, 56)
+			elseif spikeMap then
+				drawSpikePlan(button, spikeMap, 60)
 			end
 			local votes = Ui.label(button, {
 				Font = Enum.Font.GothamBold,
@@ -248,10 +301,11 @@ function VoteScreen.start()
 		end
 		local viewport = Workspace.CurrentCamera.ViewportSize
 		scale.Scale = math.min(1, (viewport.X - 40) / width, (viewport.Y - 40) / height)
-		local text = table.concat(keys, ",")
+		local spike = arena:GetAttribute("Mode") == "spike"
+		local text = (if spike then "spike:" else "") .. table.concat(keys, ",")
 		if text ~= built then
 			built = text
-			build(keys)
+			build(keys, spike)
 		end
 		local endsAt = arena:GetAttribute("PhaseEndsAt")
 		local left = if typeof(endsAt) == "number" then math.max(endsAt - Workspace:GetServerTimeNow(), 0) else 0

@@ -2,8 +2,8 @@
 -- The arena (system 7) and the spike rounds (system 13), whichever is on.
 --
 -- The arena: a whitebox of the reference's Skirmish A, built beside the
--- course, played by Skirmish's rules (ArenaRules). The spike rounds: a
--- two-site map of our own (MatchMap), built off the other side of the
+-- course, played by Skirmish's rules (ArenaRules). The spike rounds: on
+-- two-site maps of our own (SpikeMaps), built off the other side of the
 -- course, played by the reference's standard match (MatchRules): one side
 -- attacks with the spike, the other defends the sites, and they swap at the
 -- half. SpikeServer runs the spike itself, by the rounds' say.
@@ -59,6 +59,12 @@
 -- map is played, and during the vote the maps to pick from and their votes;
 -- each player's own vote is their ArenaConfig.VOTE attribute.
 --
+-- The spike rounds' maps (system 25): Outpost, Quarry and Foundry, each
+-- built at its own origin from the start. A match is played on one of them,
+-- the first at random, and after each match's victory screen everyone votes
+-- for the next, as in Skirmish; a new map is where everyone spawns, which
+-- barriers go up, and the spike's sites and start (SpikeServer.setMap).
+--
 -- Gun game (system 23, GunGameRules) is played in the arena too, on the
 -- same maps and with the same vote between matches: each player's level
 -- picks the gun they carry, given them as each life starts and, as they
@@ -96,10 +102,10 @@ local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local GunGameRules = require(Shared.Arena.GunGameRules)
 local MapVote = require(Shared.Match.MapVote)
 local MatchConfig = require(Shared.Match.MatchConfig)
-local MatchMap = require(Shared.Match.MatchMap)
 local MatchRules = require(Shared.Match.MatchRules)
 local PlayConfig = require(Shared.Match.PlayConfig)
 local Roster = require(Shared.Match.Roster)
+local SpikeMaps = require(Shared.Match.SpikeMaps)
 local PlayerSim = require(Shared.PlayerSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
@@ -154,9 +160,9 @@ local COVER: { [string]: Color3 } = {
 	high = Color3.fromRGB(150, 152, 160),
 	low = Color3.fromRGB(125, 128, 136),
 }
--- The spike rounds' map: cover a player can see over darker than cover they
--- can't, the sites' plant areas marked on the floor, and each spawn's floor
--- and barriers in its role's colour.
+-- The spike rounds' maps: cover a player can see over darker than cover
+-- they can't, the sites' plant areas marked on the floor, and each spawn's
+-- floor and barriers in its role's colour.
 local MAP_COLOURS: { [string]: Color3 } = {
 	low = Color3.fromRGB(135, 138, 146),
 	high = Color3.fromRGB(170, 172, 180),
@@ -171,7 +177,8 @@ local model: Model? = nil -- the arena's, which carries the state of play
 local barriers: { BasePart } = {} -- the arena's
 local cover: { BasePart } = {} -- the arena's, for the map built (system 22)
 local builtMap: string? = nil
-local mapBarriers: { BasePart } = {} -- the spike rounds' map's
+local mapBarriers: { [string]: { BasePart } } = {} -- each spike map's, by its key
+local spikeMap: string? = nil -- the spike map SpikeServer has the sites of
 local mode: Mode? = nil
 local skirmish: ArenaRules.State? = nil
 local match: MatchRules.State? = nil
@@ -269,8 +276,8 @@ local function showMap(key: string)
 end
 
 -- Builds the arena from ArenaLayout, with Skirmish A's cover until a match
--- is played on another, and the spike rounds' map from MatchMap, unless the
--- place already has them.
+-- is played on another, and each of the spike rounds' maps (SpikeMaps) in a
+-- model of its own, unless the place already has them.
 function Arena.buildIfMissing()
 	if not Workspace:FindFirstChild(ArenaConfig.MODEL) then
 		local root = newModel(ArenaConfig.MODEL)
@@ -298,14 +305,26 @@ function Arena.buildIfMissing()
 		showMap(ArenaLayout.MAPS[1])
 	end
 
-	if not Workspace:FindFirstChild(MatchConfig.MODEL) then
-		local root = newModel(MatchConfig.MODEL)
-		for _, spec in MatchMap.parts() do
-			local p = newPart(spec.name, spec.size, MatchMap.origin + spec.center, spec.yaw)
+	local maps = Workspace:FindFirstChild(MatchConfig.MODEL)
+	if not maps then
+		local folder = Instance.new("Folder")
+		folder.Name = MatchConfig.MODEL
+		folder.Parent = Workspace
+		maps = folder
+	end
+	for _, key in SpikeMaps.MAPS do
+		local plan = SpikeMaps.Maps[key]
+		if maps:FindFirstChild(plan.NAME) then
+			continue
+		end
+		local root = newModel(plan.NAME)
+		local raised: { BasePart } = {}
+		for _, spec in plan.parts() do
+			local p = newPart(spec.name, spec.size, plan.origin + spec.center, spec.yaw)
 			p.Color = COLOURS[spec.kind] or COLOURS.wall
 			local role = spec.role
 			if spec.kind == "cover" then
-				p.Color = if spec.size.y < MatchMap.Heights.high.value then MAP_COLOURS.low else MAP_COLOURS.high
+				p.Color = if spec.size.y < plan.Heights.high.value then MAP_COLOURS.low else MAP_COLOURS.high
 			elseif spec.kind == "marking" then
 				marking(p)
 				if role then
@@ -319,12 +338,13 @@ function Arena.buildIfMissing()
 				p.Material = Enum.Material.ForceField
 				p.Color = ROLE_COLOURS[role].barrier
 				p.CastShadow = false
-				table.insert(mapBarriers, p)
+				table.insert(raised, p)
 			end
 			p.Parent = root
 		end
-		root.Parent = Workspace
-		raise(mapBarriers, false)
+		root.Parent = maps
+		mapBarriers[key] = raised
+		raise(raised, false)
 	end
 end
 
@@ -423,10 +443,11 @@ local function publish()
 	end
 	published = version
 	local state = s or m
-	-- The arena's maps (system 22), Skirmish's and gun game's.
-	local map = if s then s.map elseif g then g.map else nil
-	local maps = if s then s.maps elseif g then g.maps else nil
-	local vote = if s then s.vote elseif g then g.vote else nil
+	-- The maps (systems 22 and 25): the arena's in Skirmish and gun game, and
+	-- the spike rounds' own.
+	local map = if s then s.map elseif g then g.map elseif m then m.map else nil
+	local maps = if s then s.maps elseif g then g.maps elseif m then m.maps else nil
+	local vote = if s then s.vote elseif g then g.vote elseif m then m.vote else nil
 	local root = model
 	if root then
 		root:SetAttribute("Mode", mode)
@@ -449,10 +470,10 @@ local function publish()
 		root:SetAttribute("Reason", if m then m.reason else nil)
 		root:SetAttribute("Streak1", if m then m.streak[1] else nil)
 		root:SetAttribute("Streak2", if m then m.streak[2] else nil)
-		-- The arena's own (system 22): the map played (a key of
-		-- ArenaLayout.Maps), whether a vote for the next follows each match,
-		-- and during it the maps to pick from ("A,B,C") and the votes for
-		-- each ("2,0,1").
+		-- The map played (systems 22 and 25: a key of ArenaLayout.Maps, or in
+		-- the spike rounds of SpikeMaps.Maps), whether a vote for the next
+		-- follows each match, and during it the maps to pick from ("A,B,C")
+		-- and the votes for each ("2,0,1").
 		root:SetAttribute("Map", map)
 		root:SetAttribute("MapVote", if maps then #maps > 1 else nil)
 		root:SetAttribute("VoteMaps", if vote then table.concat(vote.options, ",") else nil)
@@ -462,7 +483,7 @@ local function publish()
 		root:SetAttribute("Ladder", if g then table.concat(g.ladder, ",") else nil)
 		root:SetAttribute("Leader", if g then g.winner or GunGameRules.leader(g) else nil)
 	end
-	if map then
+	if map and not m then
 		showMap(map)
 	end
 	-- Everyone's team and vote, and the record of everyone playing.
@@ -490,8 +511,16 @@ local function publish()
 		end
 	end
 	raise(barriers, s ~= nil and ArenaRules.barriersUp(s))
-	raise(mapBarriers, m ~= nil and MatchRules.barriersUp(m))
+	for key, raised in mapBarriers do
+		raise(raised, m ~= nil and m.map == key and MatchRules.barriersUp(m))
+	end
 	if m then
+		-- A match on another map: the spike's sites and start are its.
+		if m.map ~= spikeMap then
+			spikeMap = m.map
+			local plan = SpikeMaps.Maps[m.map]
+			SpikeServer.setMap(plan.LAYOUT, plan.origin + plan.spikeStart)
+		end
 		SpikeServer.setRound(m.attackers, MatchRules.canPlant(m))
 	end
 end
@@ -598,6 +627,7 @@ local function stop()
 	end
 	mode, skirmish, match, gun = nil, nil, nil, nil
 	if was == "spike" then
+		spikeMap = nil
 		SpikeServer.stopRounds()
 	elseif was == "gungame" then
 		-- Off a level's gun, back on the default kit from the next life.
@@ -652,7 +682,10 @@ local function begin(wanted: Mode, format: string)
 		teams[side] = team
 	end
 	if wanted == "spike" then
-		SpikeServer.startRounds(spikeEvents)
+		local first = (match :: MatchRules.State).map
+		local plan = SpikeMaps.Maps[first]
+		spikeMap = first
+		SpikeServer.startRounds(spikeEvents, plan.LAYOUT, plan.origin + plan.spikeStart)
 		PlayerSimServer.keepShields = true
 		GroundGunsServer.dropOnDeath = true
 	end
@@ -689,7 +722,7 @@ local function apply()
 		begin(wanted, format)
 		local m2, s2, g2 = match, skirmish, gun
 		local what = if m2
-			then "the spike rounds, " .. m2.format.name
+			then string.format("the spike rounds, %s, on %s", m2.format.name, SpikeMaps.Maps[m2.map].NAME)
 			elseif s2 then ArenaLayout.Maps[s2.map].name
 			elseif g2 then "gun game, " .. ArenaLayout.Maps[g2.map].name
 			else "Skirmish"
@@ -837,13 +870,14 @@ function Arena.start()
 	end)
 	-- A vote for the next map, by its number in the list.
 	Remotes.get().Vote.OnServerEvent:Connect(function(player, option)
-		local s, g = skirmish, gun
+		local s, m, g = skirmish, match, gun
 		if typeof(option) ~= "number" then
 			return
 		end
 		local counted = if s
 			then ArenaRules.vote(s, player.UserId, option)
 			elseif g then GunGameRules.vote(g, player.UserId, option)
+			elseif m then MatchRules.vote(m, player.UserId, option)
 			else false
 		if counted then
 			publish()
@@ -884,14 +918,15 @@ function Arena.start()
 			local chosen = spots[(spot - 1) % #spots + 1]
 			return { feet = ArenaLayout.origin + chosen.feet, yaw = chosen.yaw }
 		elseif m then
-			-- The spawn of the side's role this round.
+			-- The spawn of the side's role this round, on the match's map.
 			local spot = MatchRules.spotOf(m, id)
 			if not spot then
 				return nil
 			end
-			local spots = MatchMap.spots(if MatchRules.attacking(m, id) then "attack" else "defend")
+			local plan = SpikeMaps.Maps[m.map]
+			local spots = plan.spots(if MatchRules.attacking(m, id) then "attack" else "defend")
 			local chosen = spots[(spot - 1) % #spots + 1]
-			return { feet = MatchMap.origin + chosen.feet, yaw = chosen.yaw }
+			return { feet = plan.origin + chosen.feet, yaw = chosen.yaw }
 		end
 		return nil
 	end

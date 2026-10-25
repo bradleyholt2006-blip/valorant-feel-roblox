@@ -37,9 +37,10 @@ local function goLive(s: MatchRules.State)
 	end
 end
 
--- Moves on from the round's end to the next round's buy phase.
+-- Moves on from the round's end to the next round's buy phase, past the
+-- vote for the next map after a match.
 local function nextRound(s: MatchRules.State)
-	if s.phase == "roundOver" or s.phase == "matchOver" then
+	while s.phase == "roundOver" or s.phase == "matchOver" or s.phase == "vote" do
 		MatchRules.step(s, s.phaseEndsAt)
 	end
 end

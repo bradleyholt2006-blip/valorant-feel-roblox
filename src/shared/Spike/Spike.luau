@@ -15,8 +15,8 @@
 -- close enough to defuse it, who the blast reaches and how fast it beeps.
 -- PlayerSim steps the plant and the defuse themselves (SpikeSim).
 --
--- Its only require is the spike rounds' map, for its sites (plain data), so
--- it runs in Studio and in the offline tests.
+-- Its only require is the spike rounds' maps, for their sites (plain
+-- data), so it runs in Studio and in the offline tests.
 
 export type Status = "confirmed" | "community" | "estimate"
 export type Param = { value: number, status: Status, source: string }
@@ -44,7 +44,7 @@ export type Context = {
 	sees: ((eye: vector, spike: vector) -> boolean)?,
 }
 
-local MatchMap = require("../Match/MatchMap")
+local SpikeMaps = require("../Match/SpikeMaps")
 
 local Spike = {}
 
@@ -125,11 +125,15 @@ Spike.CourseSites = {
 -- Where the course's spike waits to be picked up.
 Spike.CourseStart = vector.create(0, 0, 4)
 
--- The sites of each place there's a spike, by the name Spike.LAYOUT gives.
+-- The sites of each place there's a spike, by the name Spike.LAYOUT gives:
+-- the course's, and each of the spike rounds' maps' (system 25).
 Spike.Layouts = {
 	course = Spike.CourseSites,
-	[MatchMap.LAYOUT] = MatchMap.zones(),
 } :: { [string]: { Zone } }
+for _, key in SpikeMaps.MAPS do
+	local map = SpikeMaps.Maps[key]
+	Spike.Layouts[map.LAYOUT] = map.zones()
+end
 
 -- Rotates v about +Y by -yaw (world -> box local space), as Hitboxes does.
 local function toLocal(v: vector, yaw: number): vector

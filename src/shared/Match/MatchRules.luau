@@ -17,6 +17,10 @@
 -- With nobody on one of the sides it waits, and anyone who dies comes back
 -- after respawnTime.
 --
+-- And the maps (system 25): the first match on one of SpikeMaps' at random,
+-- and after each match's victory screen everyone votes for the next, as in
+-- Skirmish (MapVote, with Skirmish's voteChoices and voteTime).
+--
 -- Who plays on which side is Roster's (system 21): someone who joins in a
 -- buy phase, or while waiting for an opponent, spawns at once, and anyone
 -- joining later waits for the next round to start; once both sides are full
@@ -43,13 +47,16 @@
 -- spike is planted, defused or goes off, and what time it is, and spawns
 -- whoever these functions return, dead or alive.
 
+local ArenaConfig = require("../Arena/ArenaConfig")
+local MapVote = require("./MapVote")
 local MatchConfig = require("./MatchConfig")
 local Roster = require("./Roster")
+local SpikeMaps = require("./SpikeMaps")
 
 local R = MatchConfig.Rules
 local C = MatchConfig.Credits
 
-export type Phase = "waiting" | "buy" | "live" | "planted" | "roundOver" | "matchOver"
+export type Phase = "waiting" | "buy" | "live" | "planted" | "roundOver" | "matchOver" | "vote"
 -- How a round was won.
 export type Reason = "eliminated" | "detonated" | "defused" | "time"
 
@@ -67,8 +74,8 @@ export type State = {
 	round: number, -- the round being played, or just played (0 before the first)
 	attackers: number, -- the side attacking this round
 	-- buy: when the round starts; live: when the clock runs out; planted:
-	-- when the spike goes off; roundOver and matchOver: when the next round
-	-- starts.
+	-- when the spike goes off; roundOver, matchOver and vote: when the next
+	-- phase starts.
 	phaseEndsAt: number,
 	roundWinner: number?, -- the side that won the round just played
 	reason: Reason?, -- and how
@@ -78,6 +85,12 @@ export type State = {
 	-- By member: who on the other side has damaged their life under way,
 	-- for the assists when they die (system 16).
 	hurt: Roster.Hurt,
+	-- The maps a match can be played on (keys of SpikeMaps.Maps), the one
+	-- being played, and after a match the vote for the next (system 25).
+	maps: { string },
+	map: string,
+	vote: MapVote.Vote?,
+	roll: MapVote.Roll,
 	version: number, -- goes up on every change, so the server knows to tell clients
 }
 
@@ -90,9 +103,13 @@ local MatchRules = {}
 MatchRules.SIDES = 2
 
 -- A match in one of MatchConfig.Formats, by its key; the default format for
--- any other.
-function MatchRules.new(format: string?): State
+-- any other. On `maps`, all of SpikeMaps' if none are given, the first match
+-- on one of them at random; `roll` is the dice, math.random's unless a test
+-- has its own.
+function MatchRules.new(format: string?, maps: { string }?, roll: MapVote.Roll?): State
 	local key = if format and MatchConfig.Formats[format] then format else MatchConfig.DEFAULT_FORMAT
+	local pool = maps or SpikeMaps.MAPS
+	local dice: MapVote.Roll = roll or math.random
 	return {
 		format = MatchConfig.Formats[key],
 		formatKey = key,
@@ -111,6 +128,10 @@ function MatchRules.new(format: string?): State
 		streak = { 0, 0 },
 		spikePlanted = false,
 		hurt = {},
+		maps = pool,
+		map = pool[dice(#pool)],
+		vote = nil,
+		roll = dice,
 		version = 0,
 	}
 end
@@ -198,7 +219,13 @@ local function champion(s: State): number?
 	return MatchRules.winner(s.format, s.score[1], s.score[2])
 end
 
+-- On the map the vote picked, if there was one.
 local function newMatch(s: State)
+	local vote = s.vote
+	if vote then
+		s.map = MapVote.winner(vote, s.roll)
+		s.vote = nil
+	end
 	s.score = { 0, 0 }
 	s.match += 1
 	s.round = 0
@@ -270,7 +297,7 @@ end
 -- phase, paid for the last round on the side they played it for, and then
 -- with the sides evened out.
 local function startRound(s: State, now: number): { number }
-	if s.phase == "matchOver" then
+	if s.phase == "matchOver" or s.phase == "vote" then
 		newMatch(s)
 	end
 	payFor(s)
@@ -335,9 +362,12 @@ local function checkElimination(s: State, now: number)
 end
 
 -- A side is empty: back to waiting. The score stays, unless the match was
--- already won, and anyone dead comes back after the respawn time.
+-- already won, and anyone dead comes back after the respawn time. A vote
+-- under way ends there, and the next match is on the same map, as whoever's
+-- left plays on in it.
 local function wait(s: State, now: number)
-	if s.phase == "matchOver" then
+	if s.phase == "matchOver" or s.phase == "vote" then
+		s.vote = nil
 		newMatch(s)
 	end
 	s.phase = "waiting"
@@ -378,12 +408,17 @@ function MatchRules.join(s: State, id: number, now: number): { number }
 	return admit(s, id, now)
 end
 
--- Someone leaves, playing or in line. A place they leave goes to whoever's
--- first in line, as if they'd just joined. Returns who to spawn now.
+-- Someone leaves, playing or in line, with their vote if they had one. A
+-- place they leave goes to whoever's first in line, as if they'd just
+-- joined. Returns who to spawn now.
 function MatchRules.leave(s: State, id: number, now: number): { number }
 	local playing = s.members[id] ~= nil
 	if not Roster.remove(s, id) then
 		return {}
+	end
+	local vote = s.vote
+	if vote then
+		MapVote.drop(vote, id)
 	end
 	s.version += 1
 	if not playing then
@@ -408,7 +443,7 @@ end
 -- Whether what happens now goes in the match's record: in a round or after
 -- one, not while waiting for an opponent or once the match is won.
 local function recorded(s: State): boolean
-	return s.phase ~= "waiting" and s.phase ~= "matchOver"
+	return s.phase ~= "waiting" and s.phase ~= "matchOver" and s.phase ~= "vote"
 end
 
 -- What a kill scores, and a combat score averaged over the rounds played:
@@ -482,10 +517,10 @@ function MatchRules.detonated(s: State, now: number)
 end
 
 -- Ends the phase now, for testing: the buy phase, the round (as its clock
--- running out), or the wait for the next round. Not a planted spike's
--- countdown, which the spike keeps.
+-- running out), the wait for the next round, the victory screen or the
+-- vote. Not a planted spike's countdown, which the spike keeps.
 function MatchRules.skip(s: State, now: number)
-	if s.phase == "buy" or s.phase == "live" or s.phase == "roundOver" or s.phase == "matchOver" then
+	if s.phase == "buy" or s.phase == "live" or s.phase == "roundOver" or s.phase == "matchOver" or s.phase == "vote" then
 		s.phaseEndsAt = now
 		s.version += 1
 	end
@@ -520,10 +555,30 @@ function MatchRules.step(s: State, now: number): { number }
 		endRound(s, 3 - s.attackers, "time", now)
 	elseif s.phase == "planted" then
 		endRound(s, s.attackers, "detonated", now)
-	elseif s.phase == "roundOver" or s.phase == "matchOver" then
+	elseif s.phase == "matchOver" and #s.maps > 1 then
+		s.vote = MapVote.new(s.maps, ArenaConfig.Rules.voteChoices.value, s.roll)
+		s.phase = "vote"
+		s.phaseEndsAt = now + ArenaConfig.Rules.voteTime.value
+		s.version += 1
+	elseif s.phase == "roundOver" or s.phase == "matchOver" or s.phase == "vote" then
 		return startRound(s, now)
 	end
 	return {}
+end
+
+-- Someone votes for the next map, by its number in the vote's list, or
+-- changes their vote: anyone the rules know, playing or in line, while the
+-- vote is on. Returns whether it counted.
+function MatchRules.vote(s: State, id: number, option: number): boolean
+	local vote = s.vote
+	if s.phase ~= "vote" or not vote or not (s.members[id] or Roster.placeInLine(s, id)) then
+		return false
+	end
+	if not MapVote.cast(vote, id, option) then
+		return false
+	end
+	s.version += 1
+	return true
 end
 
 MatchRules.sideOf = Roster.sideOf
