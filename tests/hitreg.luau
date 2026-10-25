@@ -103,8 +103,15 @@ end
 
 -- Feeds a clock one 60 Hz stream of snapshots, sent at k/60 and arriving
 -- `latency(sent)` later, and draws 144 Hz frames for `seconds`. Each frame
--- handles what has arrived, then advances the clock.
-local function driveClock(c: InterpClock.Clock, seconds: number, latency: (number) -> number, onFrame: (now: number, render: number) -> ())
+-- handles what has arrived, then advances the clock. While `stalled(now)`
+-- the client draws no frames, so what arrives waits for the next one.
+local function driveClock(
+	c: InterpClock.Clock,
+	seconds: number,
+	latency: (number) -> number,
+	onFrame: (now: number, render: number) -> (),
+	stalled: ((number) -> boolean)?
+)
 	local sends = {}
 	local k = 0
 	while k / 60 < seconds do
@@ -123,6 +130,9 @@ local function driveClock(c: InterpClock.Clock, seconds: number, latency: (numbe
 		if now > seconds then
 			break
 		end
+		if stalled and stalled(now) then
+			continue
+		end
 		while i <= #sends and sends[i].at <= now do
 			InterpClock.onSnapshot(c, sends[i].time, now, sends[i].seq)
 			i += 1
@@ -134,10 +144,10 @@ local function driveClock(c: InterpClock.Clock, seconds: number, latency: (numbe
 	end
 end
 
-type ClockStats = { frames: number, starved: number, delay: number, minBuffer: number, backwards: boolean }
+type ClockStats = { frames: number, starved: number, delay: number, maxDelay: number, minBuffer: number, backwards: boolean }
 
-local function clockStats(c: InterpClock.Clock, seconds: number, latency: (number) -> number, from: number, to: number): ClockStats
-	local stats: ClockStats = { frames = 0, starved = 0, delay = 0, minBuffer = math.huge, backwards = false }
+local function clockStats(c: InterpClock.Clock, seconds: number, latency: (number) -> number, from: number, to: number, stalled: ((number) -> boolean)?): ClockStats
+	local stats: ClockStats = { frames = 0, starved = 0, delay = 0, maxDelay = 0, minBuffer = math.huge, backwards = false }
 	local last = -math.huge
 	driveClock(c, seconds, latency, function(now, render)
 		if render <= last then
@@ -150,9 +160,10 @@ local function clockStats(c: InterpClock.Clock, seconds: number, latency: (numbe
 				stats.starved += 1
 			end
 			stats.delay += c.delay
+			stats.maxDelay = math.max(stats.maxDelay, c.delay)
 			stats.minBuffer = math.min(stats.minBuffer, c.newest - render)
 		end
-	end)
+	end, stalled)
 	stats.delay /= math.max(stats.frames, 1)
 	return stats
 end
@@ -184,6 +195,28 @@ do
 		return if sent < 5 then 0.1 else 0.04
 	end, 8, 12)
 	check("after latency drops the clock catches up without running out", not down.backwards and down.starved == 0 and down.delay < 2 / 60)
+
+	-- Roblox holds a remote's events until a listener connects: a client
+	-- that starts listening 2 s into the stream gets those 2 s at once.
+	local joined = clockStats(InterpClock.new(), 6, function(sent)
+		return if sent < 1.96 then 2 - sent else 0.04
+	end, 2, 6)
+	check(
+		"a client that has just joined gets seconds of old snapshots at once, and its delay stays low",
+		joined.maxDelay < 0.035 and joined.delay < 2 / 60 and joined.starved / joined.frames < 0.02,
+		string.format("most %.1f ms, starved %s", joined.maxDelay * 1000, pct(joined.starved, joined.frames))
+	)
+
+	local stall = clockStats(InterpClock.new(), 8, function()
+		return 0.04
+	end, 5, 8, function(now)
+		return now > 5 and now < 5.3
+	end)
+	check(
+		"a client that stalls for 0.3 s handles the snapshots that came in meanwhile at once, and that doesn't raise its delay",
+		stall.maxDelay < 2 / 60 and stall.starved == 0,
+		string.format("most %.1f ms, starved %s", stall.maxDelay * 1000, pct(stall.starved, stall.frames))
+	)
 
 	local buffered = InterpClock.new()
 	clockStats(buffered, 3, function()

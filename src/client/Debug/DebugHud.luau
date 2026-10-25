@@ -129,6 +129,21 @@ function DebugHud.start(controller: any)
 	ghost.Material = Enum.Material.ForceField
 	ghost.Parent = nil
 
+	-- Puts the ghost where the server has us; false before the first ack.
+	local function placeGhost(): boolean
+		local serverSim = controller.serverSim
+		local server = serverSim and serverSim.movement
+		if not server then
+			return false
+		end
+		local cfg = controller.cfg
+		local h = MovementSim.boxHeight(server, cfg)
+		local size = Vector3.new(cfg.halfWidth * 2, h, cfg.halfWidth * 2) * Units.STUDS_PER_METRE
+		ghost.Size = size
+		ghost.CFrame = CFrame.new(Units.toStuds(server.position) + Vector3.new(0, size.Y / 2, 0))
+		return true
+	end
+
 	local visible = true
 	local ghostVisible = false
 	local lastInput = 0
@@ -160,7 +175,8 @@ function DebugHud.start(controller: any)
 			keys.Visible = visible
 		elseif input.KeyCode == Enum.KeyCode.G and visible then
 			ghostVisible = not ghostVisible
-			ghost.Parent = if ghostVisible then Workspace else nil
+			-- Placed before it's shown, so it never shows a frame at the origin.
+			ghost.Parent = if ghostVisible and placeGhost() then Workspace else nil
 		end
 	end)
 
@@ -284,13 +300,8 @@ function DebugHud.start(controller: any)
 			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes  P arena</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 
-		local serverSim = controller.serverSim
-		local server = serverSim and serverSim.movement
-		if ghostVisible and server then
-			local h = MovementSim.boxHeight(server, cfg)
-			local size = Vector3.new(cfg.halfWidth * 2, h, cfg.halfWidth * 2) * Units.STUDS_PER_METRE
-			ghost.Size = size
-			ghost.CFrame = CFrame.new(Units.toStuds(server.position) + Vector3.new(0, size.Y / 2, 0))
+		if ghostVisible then
+			ghost.Parent = if placeGhost() then Workspace else nil
 		end
 	end)
 end

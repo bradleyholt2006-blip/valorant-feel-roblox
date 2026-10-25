@@ -20,6 +20,13 @@
 --     setting. A lost snapshot doesn't raise the delay: like the reference at
 --     its minimum buffering, the entity holds its pose for an interval
 --     instead ("player pops" with packet loss, as Riot puts it).
+--   * Snapshots handled at one moment count as one: the worst of them. A
+--     client that stalls for a moment handles everything that came in
+--     meanwhile at once, and draws nothing until it has, so one stall
+--     mustn't raise the delay as if each of those snapshots had been late.
+--     Nor do the first half second's arrivals count: Roblox holds a remote's
+--     events until its first listener connects, so a client that has just
+--     joined gets seconds of old snapshots all at once.
 --   * The render time eases toward (local time + offset - delay), closing
 --     most of a gap in a tenth of a second and running at most 10% fast or
 --     slow, so changes in latency never make remote players jump or move
@@ -36,6 +43,7 @@ export type Arrival = { time: number, at: number, seq: number? } -- snapshot tim
 export type Clock = {
 	extra: number, -- Network Buffering setting, seconds
 	arrivals: { Arrival }, -- in-order arrivals within the window, oldest first
+	firstAt: number?, -- local time the first snapshot came in
 	newest: number, -- newest snapshot time received
 	offset: number, -- local time + offset = the stream's time when nothing is late
 	delay: number, -- how far behind the stream entities are drawn
@@ -47,13 +55,16 @@ export type Clock = {
 
 local InterpClock = {}
 
-local DEFAULT_DELAY = 2 / NetConfig.SNAPSHOT_RATE -- until three snapshots have arrived
+local DEFAULT_DELAY = 2 / NetConfig.SNAPSHOT_RATE -- until there are arrivals to measure
 local SNAP_ERROR = 0.25 -- seconds off target before the clock jumps instead of easing
+local BATCH_GAP = 0.001 -- seconds between arrivals handled at the same moment
+local WARMUP = 0.5 -- seconds after the first snapshot before arrivals are measured
 
 function InterpClock.new(extra: number?): Clock
 	return {
 		extra = extra or 0,
 		arrivals = {},
+		firstAt = nil,
 		newest = -math.huge,
 		offset = 0,
 		delay = DEFAULT_DELAY + (extra or 0),
@@ -71,16 +82,32 @@ local function measure(c: Clock)
 		offset = math.max(offset, a.time - a.at)
 	end
 	c.offset = offset
-	if #arrivals < 3 then
-		c.delay = DEFAULT_DELAY + c.extra
-		return
-	end
-	local needs = table.create(#arrivals - 1)
+	local needs = table.create(#arrivals)
+	local moment: number? = nil -- the need of the moment being added up
+	local warm = (c.firstAt or -math.huge) + WARMUP
 	for i = 2, #arrivals do
 		local a, b = arrivals[i - 1], arrivals[i]
+		if b.at < warm then
+			continue
+		end
 		-- Snapshots lost in between don't count as a longer interval.
 		local sent = if a.seq and b.seq then math.max((b.seq - a.seq) % 65536, 1) else 1
-		table.insert(needs, (offset - (b.time - b.at)) + (b.time - a.time) / sent)
+		local need = (offset - (b.time - b.at)) + (b.time - a.time) / sent
+		if moment and b.at - a.at <= BATCH_GAP then
+			moment = math.max(moment, need)
+		else
+			if moment then
+				table.insert(needs, moment)
+			end
+			moment = need
+		end
+	end
+	if moment then
+		table.insert(needs, moment)
+	end
+	if #needs < 2 then
+		c.delay = DEFAULT_DELAY + c.extra
+		return
 	end
 	table.sort(needs)
 	local k = math.clamp(math.ceil(#needs * NetConfig.Interp.percentile.value), 1, #needs)
@@ -95,6 +122,9 @@ function InterpClock.onSnapshot(c: Clock, time: number, at: number, seq: number?
 		return
 	end
 	c.newest = time
+	if c.firstAt == nil then
+		c.firstAt = at
+	end
 	local arrivals = c.arrivals
 	table.insert(arrivals, { time = time, at = at, seq = seq })
 	local oldest = at - NetConfig.Interp.window.value

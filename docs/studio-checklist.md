@@ -183,7 +183,8 @@ From [02-weapon-firing.md](research/02-weapon-firing.md). Press F2 once for the 
 - **W5 First shots after spawning.** Stop the game, press Play again, and shoot the 10 m dummy
   straight away: those first shots say `ok` too. The server's first message after you spawn sets
   your spray seed ([03-spread-recoil.md](research/03-spread-recoil.md)), and it has to arrive
-  before your first shot.
+  before your first shot. Their rewind column reads about 40-55 ms like later shots, never
+  `140ms!`, which used to happen for the first 3 s after joining.
 - **W6 Your own body.** Look down at your feet and fire. The marks land on the floor, not in the
   air above it, which would mean your own body is getting in the way of your shots. No part of
   your Roblox avatar shows when you look down, straight after pressing Play as well as after a
@@ -219,8 +220,9 @@ From [03-spread-recoil.md](research/03-spread-recoil.md). Press F2 twice for the
 From [04-hit-registration.md](research/04-hit-registration.md). Press F2 three times for the Hit
 Reg Lab and F10 for the overlay. Backspace clears the lab's counters between steps.
 
-- **H1 Snapshots.** With nothing simulated, `snapshots` reads about 60/s with `lost 0`, `held a pose
-  on` is close to 0% of frames, and `render delay` is about 20 to 35 ms. **Send:** a screenshot.
+- **H1 Snapshots.** With nothing simulated, `snapshots` reads about 60/s with `lost 0` (it read
+  69-72 in Studio before the server kept to 60), `held a pose on` is close to 0% of frames, and
+  `render delay` is about 20 to 35 ms. **Send:** a screenshot.
 - **H2 Strafers.** Shoot the strafing dummy at 15 m 20 times, body and head. `agreement` is 100% on
   all shots and on moving targets, `rewind` has a mean of about 40 ms (30 to 60 is fine), and
   `capped` is 0.
@@ -629,6 +631,7 @@ Didn't look right (IDs and what you saw):
 | 04 | Hit confirms stay on the body part and go when the target dies | H4 |
 | 04 | About 100% agreement against strafers, with white boxes in the overlay | H2, H3, H5 |
 | 04 | Pacing keeps other players and dummies smooth with Roblox's real timing | H9, T1 |
+| 04 | Shots right after joining are rewound as little as later ones, and Studio sends 60 snapshots a second | W5, H1 |
 | 05 | Rays that start inside a part don't hit it, and the back cast's normal faces out | S1 |
 | 05 | The self-test's parts are found by raycasts one frame after they're added | S1 |
 | 05 | Holes, dust and sparks on the right faces, other players' holes, white wall labels | P2, P4, T5 |

@@ -1,6 +1,7 @@
 --!strict
 -- Broadcasts a timestamped, numbered pose snapshot of every entity (players
--- and dummies) once per server frame, so clients can interpolate them.
+-- and dummies) once per server frame at 60 Hz (SendSchedule keeps a faster
+-- server, like Studio's, to 60 a second), so clients can interpolate them.
 --
 -- Poses are quantised exactly as the wire does before anything sees them,
 -- and listeners (lag compensation) get each snapshot as sent, so the
@@ -14,16 +15,14 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local NetConfig = require(Shared.Net.NetConfig)
 local Remotes = require(Shared.Net.Remotes)
+local SendSchedule = require(Shared.Net.SendSchedule)
 
 local Entities = require(script.Parent.Entities)
 
--- Roblox servers step at 60 Hz, so this sends every frame; it only skips
--- frames if a server ever runs much faster than that.
-local MIN_SPACING = 0.75 / NetConfig.SNAPSHOT_RATE
-
 local Replication = {}
 
-local lastSent = -math.huge
+local schedule = SendSchedule.new()
+local lastFrame: number? = nil
 local seq = 0
 
 -- Listeners get every snapshot as sent (server time + quantised poses).
@@ -31,10 +30,11 @@ Replication.listeners = {} :: { (number, { PlayerCodec.Pose }) -> () }
 
 -- Sends the frame's snapshot, stamped with server time `now`.
 function Replication.step(now: number)
-	if now - lastSent < MIN_SPACING then
+	local dt = if lastFrame then now - lastFrame else 1 / NetConfig.SNAPSHOT_RATE
+	lastFrame = now
+	if not SendSchedule.step(schedule, dt, NetConfig.SNAPSHOT_RATE) then
 		return
 	end
-	lastSent = now
 	seq = (seq + 1) % 65536
 	local poses = Entities.poses()
 	local quantized = table.create(#poses)

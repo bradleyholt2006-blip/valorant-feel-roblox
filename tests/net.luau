@@ -8,6 +8,7 @@ local WeaponSim = require("../src/shared/Weapons/WeaponSim")
 local WeaponConfig = require("../src/shared/Weapons/WeaponConfig")
 local PlayerCodec = require("../src/shared/Net/PlayerCodec")
 local InputQueue = require("../src/shared/Net/InputQueue")
+local SendSchedule = require("../src/shared/Net/SendSchedule")
 local FakeWorld = require("./FakeWorld")
 local H = require("./Harness")
 
@@ -440,6 +441,58 @@ do
 		ran == ranBefore + 200 and serverSim.movement.position == clientSim.movement.position and takesAck(lastSeq),
 		string.format("ran %d", ran - ranBefore)
 	)
+end
+
+-- Which server frames send a snapshot: every one at 60 Hz, however uneven,
+-- and 60 a second from a server that steps faster, like Studio's.
+do
+	local function sends(frames: number, frame: (number) -> number): (number, number, number, number)
+		local schedule = SendSchedule.new()
+		local t, sent, last = 0, 0, nil
+		local shortest, longest = math.huge, 0
+		for i = 1, frames do
+			local dt = frame(i)
+			t += dt
+			if SendSchedule.step(schedule, dt, 60) then
+				sent += 1
+				if last then
+					shortest = math.min(shortest, t - last)
+					longest = math.max(longest, t - last)
+				end
+				last = t
+			end
+		end
+		return sent, sent / t, shortest, longest
+	end
+	local seed = 99
+	local function jitter(): number
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed / 2147483648 - 0.5
+	end
+
+	local sent = sends(6000, function()
+		return (1 + jitter() * 0.4) / 60
+	end)
+	check("a 60 Hz server whose frames come up to 20% early or late sends on every one", sent == 6000, tostring(sent))
+	local _, slowRate = sends(3000, function()
+		return 1 / 30
+	end)
+	check("and a slower one on every frame too", near(slowRate, 30, 1e-6))
+	local _, studio, shortest, longest = sends(21700, function()
+		return (1 + jitter() * 0.1) / 217
+	end)
+	check(
+		"Studio's 217 Hz server sends 60 a second, never two closer than 13 ms or further apart than 20",
+		near(studio, 60, 0.05) and shortest > 0.013 and longest < 0.020,
+		string.format("%.2f a second, %.1f-%.1f ms", studio, shortest * 1000, longest * 1000)
+	)
+	local _, at144 = sends(14400, function()
+		return 1 / 144
+	end)
+	local _, at240 = sends(24000, function()
+		return 1 / 240
+	end)
+	check("so do servers at 144 and 240 Hz", near(at144, 60, 0.05) and near(at240, 60, 0.05), string.format("%.2f, %.2f", at144, at240))
 end
 
 return nil
