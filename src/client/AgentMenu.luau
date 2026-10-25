@@ -392,11 +392,13 @@ function AgentMenu.start()
 				row.body.Text = if def then def.description else ""
 			else
 				local passive = if agent and agent.passive then AbilityConfig.Passives[agent.passive] else nil
+				local works = agent ~= nil and agent.passive ~= nil and AbilitySim.playable(agent.passive)
+				local tag = if works then "PASSIVE" else "PASSIVE   NOT YET"
 				row.key.Text = ""
 				row.name.Text = if passive
-					then string.format('%s   <font color="#%s">PASSIVE</font>', string.upper(passive.name), Ui.hex(Ui.DIM))
+					then string.format('%s   <font color="#%s">%s</font>', string.upper(passive.name), Ui.hex(Ui.DIM), tag)
 					else ""
-				row.name.TextColor3 = Ui.TEXT
+				row.name.TextColor3 = if works then Ui.TEXT else Ui.DIM
 				row.body.Text = if passive then passive.description else ""
 			end
 		end

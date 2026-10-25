@@ -4,8 +4,9 @@
 -- each charge it can hold, lit for each it has; the ultimate's pips are its
 -- points. A readied gust (Tailwind) shows its windup and then the seconds
 -- left to dash, and an ability under way lights its slot: Blade Storm's
--- while its knives last (system 19), its note the knives left. What can't
--- be played yet is dimmed. It reads the local player's predicted kit
+-- while its knives last (system 19), its note the knives left, and
+-- Curveball's while its flare is in hand (system 30), its note EQUIP until
+-- it can be thrown. What can't be played yet is dimmed. It reads the local player's predicted kit
 -- (PlayerController.sim), so a cast shows on the tick it's pressed. A kit
 -- of no agent's, as deathmatch's (system 26), has no bar. Where abilities
 -- recharge over time (Team Deathmatch, system 28), a slot short of a charge
@@ -198,6 +199,12 @@ function AbilityHud.start()
 					end
 				elseif def and def.id == "updraft" then
 					lit = AbilitySim.lifting(kit, t)
+				elseif kit.holding == index then
+					lit = true
+					if t < s.weapons.equipEndTime then
+						note = "EQUIP"
+						slot.note.TextColor3 = Ui.DIM
+					end
 				end
 				local at = tonumber(coming[index] or "")
 				if note == "" and at and at > serverNow then

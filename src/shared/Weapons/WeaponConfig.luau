@@ -31,7 +31,9 @@ export type CurveParam = { points: Curve, status: Status, source: string }
 -- "spike" is the spike (system 12), carried in the fourth slot and never sold.
 -- "ultimate" is an ultimate's weapon (system 19: Jett's Blade Storm knives),
 -- in the fifth slot while the ultimate lasts, and never sold either.
-export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike" | "ultimate"
+-- "ability" is an ability's (system 30: Phoenix's Curveball flare), in the
+-- fifth slot while it's in hand, and never sold.
+export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike" | "ultimate" | "ability"
 
 export type AccuracyDef = {
 	-- Firing error: radius of the cone of fire by bullet number.
@@ -124,7 +126,7 @@ export type WeaponDef = {
 	id: string,
 	name: string,
 	category: Category,
-	slot: number, -- 1 primary, 2 secondary, 3 melee, 4 the spike, 5 an ultimate's weapon
+	slot: number, -- 1 primary, 2 secondary, 3 melee, 4 the spike, 5 an ultimate's or an ability's weapon
 	price: Param, -- credits
 	fireMode: "auto" | "semi" | "none",
 	fireRate: Param, -- rounds per second
@@ -149,6 +151,10 @@ export type WeaponDef = {
 	-- An ultimate's weapon (system 19): put in hand by its cast, and never
 	-- bought, dropped or reloaded (WeaponSim.arm).
 	ultimate: boolean?,
+	-- An ability's weapon (system 30: Curveball's flare): the AbilityConfig
+	-- id whose cast puts it in hand in the fifth slot. Like an ultimate's,
+	-- never bought, dropped or reloaded, and gone once it's out of hand.
+	ability: string?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
 }
@@ -576,6 +582,37 @@ local kunaiBurst: AltDef = {
 	ammo = p(5, "community", SPREAD .. ": a knife each"),
 	accuracy = kunaiSpread,
 	recoil = NO_KICK,
+}
+
+-- Phoenix's Curveball flare (system 30): thrown along the crosshair and
+-- flown by FlareSim, so no spread or kick moves it. Alt fire throws it the
+-- other way round.
+local CURVE = "VALORANT Wiki, Curveball"
+local FLOWN = "n/a: FlareSim flies it from the crosshair"
+local FLARE_NA = p(0, "estimate", FLOWN)
+local flareExact = accuracy(
+	c({ { 1, 0 } }, "estimate", FLOWN),
+	p(1, "estimate", FLOWN),
+	p(0.1, "estimate", FLOWN),
+	p(1, "estimate", FLOWN),
+	{ crouch = FLARE_NA, walk = FLARE_NA, run = FLARE_NA, air = FLARE_NA }
+)
+flareExact.landError = FLARE_NA
+local FLARE_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a thrown flare doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = FLARE_NA,
+	adsCamera = FLARE_NA,
+})
+local ONE_THROW = p(1, "estimate", "n/a: one throw, and it's gone")
+local flareRight: AltDef = {
+	fireMode = "auto",
+	fireRate = ONE_THROW,
+	pellets = p(1, "community", CURVE .. ": 'ALT FIRE to curve the flare orb to the right'"),
+	ammo = p(1, "community", CURVE .. ": 2 uses, a flare each"),
+	accuracy = flareExact,
+	recoil = FLARE_KICK,
 }
 
 WeaponConfig.Defs = {
@@ -1366,11 +1403,40 @@ WeaponConfig.Defs = {
 		accuracy = kunaiExact,
 		recoil = NO_KICK,
 	},
+	-- Phoenix's Curveball flare (system 30): put in hand in the fifth slot by
+	-- E (AbilityConfig.Curveball), with a charge to throw. Fire throws it
+	-- curving left and alt fire curving right; PlayerSim turns the throw into
+	-- the ability's cast, which FlareSim flies, so it fires no bullet. Its
+	-- pop blinds, and it does no damage.
+	flare = {
+		id = "flare",
+		name = "Curveball",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought: E puts it in hand, a charge of Curveball (" .. CURVE .. ")"),
+		-- Held, it goes as soon as it's in hand (ours: no source says).
+		fireMode = "auto",
+		fireRate = ONE_THROW,
+		magazine = p(1, "community", CURVE .. ": 2 uses, a flare each"),
+		reserve = p(0, "community", "None: another throw is another charge (" .. CURVE .. ": 2 uses)"),
+		reloadTime = FLARE_NA,
+		equipTime = p(0.8, "community", CURVE .. ": 'Equip' 0.8 seconds"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: its pop blinds (" .. CURVE .. "), and nothing has it hurt"),
+		penetration = "none",
+		suppressed = false,
+		ability = "curveball",
+		alt = flareRight,
+		accuracy = flareExact,
+		recoil = FLARE_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
 -- they always were, the rest in alphabetical order after them, the spike
--- after those, and Blade Storm's knives (system 19) last.
+-- after those, then Blade Storm's knives (system 19), and Curveball's flare
+-- (system 30) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1395,6 +1461,7 @@ WeaponConfig.Ids = {
 	"warden",
 	"spike",
 	"kunai",
+	"flare",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

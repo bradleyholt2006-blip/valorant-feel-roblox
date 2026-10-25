@@ -65,11 +65,12 @@ Shop.BEFORE_ATTRIBUTE = "VFBoughtOver"
 Shop.CHARGES_ATTRIBUTE = "VFBoughtCharges"
 
 -- The item with this id, if it's on sale: any gun but not the knife, which
--- everyone has, or the spike or an ultimate's weapon, which are never sold,
--- the shields, and the abilities sold by the charge.
+-- everyone has, or the spike or an ultimate's or an ability's weapon, which
+-- are never sold, the shields, and the abilities sold by the charge.
 function Shop.item(id: string): Item?
 	local def = WeaponConfig.Defs[id]
-	if def and def.category ~= "melee" and def.category ~= "spike" and def.category ~= "ultimate" then
+	local sold = def and def.category ~= "melee" and def.category ~= "spike" and def.category ~= "ultimate" and def.category ~= "ability"
+	if def and sold then
 		return { id = id, kind = "weapon", name = def.name, price = def.price.value, slot = tostring(def.slot) }
 	end
 	local shield = WeaponConfig.Shields[id]

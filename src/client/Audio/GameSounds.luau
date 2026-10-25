@@ -628,8 +628,9 @@ end
 -- Abilities -----------------------------------------------------------------------
 
 -- A cast's sound (system 17): yours, or with `id` someone else's at `at`
--- (metres, their feet), unheard from the other side in the buy phase.
-function GameSounds.playCast(kind: string, at: vector, id: number?)
+-- (metres, their feet, or with `exact` where it is: a flare's pop, system
+-- 30), unheard from the other side in the buy phase.
+function GameSounds.playCast(kind: string, at: vector, id: number?, exact: boolean?)
 	local sound = SoundConfig.Abilities[kind]
 	if not sound then
 		return
@@ -639,7 +640,7 @@ function GameSounds.playCast(kind: string, at: vector, id: number?)
 		return
 	end
 	local who = RemoteEntities.nameOf(id)
-	local where = at + CHEST
+	local where = if exact then at else at + CHEST
 	if inBuyPhaseAcross(id) then
 		muted(sound, who, where, "buy phase")
 		return

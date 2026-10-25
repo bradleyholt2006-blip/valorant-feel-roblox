@@ -21,7 +21,9 @@
 -- An ultimate can put a weapon of its own in a fifth slot (system 19:
 -- Jett's Blade Storm knives). Its cast takes it in hand (arm), and so does
 -- its key again once a gun's been drawn (takeUp); with nothing left to
--- throw it's gone, and the hand goes back to what it came from.
+-- throw it's gone, and the hand goes back to what it came from. So can an
+-- ability, while it's in hand (system 30: Phoenix's Curveball flare, which
+-- PlayerSim throws).
 --
 -- Times are seconds of simulation time (tick * dt). 1/128 is exact in binary,
 -- so client and server compute bit-identical times.
@@ -34,7 +36,8 @@ local Accuracy = require("./Accuracy")
 export type State = {
 	-- [slot] = weapon id, "" for empty: 1 primary, 2 secondary, 3 melee, 4
 	-- the spike while it's carried (system 12), and 5 an ultimate's weapon
-	-- while it lasts (system 19)
+	-- while it lasts (system 19), or an ability's while it's in hand (system
+	-- 30)
 	loadout: { string },
 	ammo: { number }, -- [slot]
 	reserve: { number }, -- [slot]
@@ -302,10 +305,11 @@ function WeaponSim.reloadNow(s: State, slot: number, most: number?)
 	end
 end
 
--- The ultimate's weapon gone: all thrown, or the ultimate over. If it was
--- in hand, the slot it came from is drawn, or the first that holds
--- something.
-function WeaponSim.putAway(s: State, t: number)
+-- The ultimate's weapon gone: all thrown, or the ultimate over (or an
+-- ability's, system 30). If it was in hand, the slot it came from is drawn,
+-- or the first that holds something: ready `ready` seconds after `t` if
+-- that's given (a flare thrown), or after its own draw.
+function WeaponSim.putAway(s: State, t: number, ready: number?)
 	s.loadout[ULT], s.ammo[ULT], s.reserve[ULT] = "", 0, 0
 	if s.equipped ~= ULT then
 		return
@@ -323,6 +327,9 @@ function WeaponSim.putAway(s: State, t: number)
 	s.equipped = back
 	s.hold = 0
 	draw(s, t)
+	if ready then
+		s.equipEndTime = t + ready
+	end
 end
 
 -- Draws the weapon in hand again, as after a switch (once the spike has

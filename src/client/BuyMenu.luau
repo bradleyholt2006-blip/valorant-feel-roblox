@@ -267,6 +267,14 @@ local function abilityLines(def: AbilityConfig.AbilityDef): { string }
 		local CB = AbilityConfig.Cloudburst
 		table.insert(lines, row("Cloud", string.format("%s m across, for %s s", num(2 * CB.radius.value), num(CB.duration.value))))
 		table.insert(lines, row("Flight", string.format("%s m/s, at most %s s", num(CB.speed.value), num(CB.maxFlight.value))))
+	elseif def.id == "curveball" then
+		local CV = AbilityConfig.Curveball
+		table.insert(lines, row("Pop", string.format("%s s after the throw", num(CV.windup.value))))
+		table.insert(lines, row("Blind", string.format("up to %s s, then %s s clearing", num(CV.maxBlind.value), num(CV.fade.value))))
+	end
+	local recharge = def.recharge
+	if recharge and recharge.kind == "kills" then
+		table.insert(lines, row("A charge back", string.format("every %d kills", recharge.kills.value)))
 	end
 	table.insert(lines, "")
 	table.insert(lines, "Unused charges carry into the next round, and through a death; a new half takes them away.")
@@ -543,7 +551,22 @@ function BuyMenu.start()
 	gui.Enabled = false
 	local columns = #COLUMNS + 1
 	local width = MARGIN * 2 + columns * COLUMN_W + PANEL_W
-	local height = TOP + 6 * (TILE_H + GAP) + HEADER_H + 54
+	-- Tall enough for the longest column: the sidearms, or the shields over
+	-- the most abilities an agent has for sale (Phoenix's three, system 30).
+	local most = 0
+	for _, agent in AbilityConfig.AgentIds do
+		local sold = 0
+		for slot = AbilityConfig.C, AbilityConfig.E do
+			local def = AbilityConfig.abilityOf(agent, slot)
+			if def and def.cost and Shop.item(def.id) then
+				sold += 1
+			end
+		end
+		most = math.max(most, sold)
+	end
+	local guns = HEADER_H + 6 * (TILE_H + GAP)
+	local shields = 2 * HEADER_H + (#WeaponConfig.ShieldIds + most) * (TILE_H + GAP) + GROUP_GAP
+	local height = TOP + math.max(guns, shields) + 54
 	local root = Ui.frame(gui, {
 		Name = "Menu",
 		AnchorPoint = Vector2.new(0.5, 0.5),

@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-nine
+Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -29,7 +29,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
-   three, and section 33 one and then three.
+   three, section 33 one and then three, and section 34 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -50,7 +50,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
 | Click a map | During the vote for the next map, after a match in the arena or the spike rounds: votes for it, or moves your vote to it |
-| C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes |
+| C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes. As Phoenix, E readies Curveball's flare: the left button throws it curving left, the right curving right, and E again puts it away |
 | X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
 | Space | Jump; held in the air, Jett's glide (Drift) slows the fall until you land or let go |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
@@ -1738,19 +1738,20 @@ as in TD1.
 ## 33. Agent select
 
 From [29-agent-select.md](research/29-agent-select.md). A quick play of what changed, with one
-player and then three. Jett is the only agent for now, so the screen has her card alone and
-doesn't come up by itself as a window opens: T opens it. Your player's `VFAgentPick` attribute
-says where you stand: `free`, `open` or `locked`, or unset where nobody picks. A window lasts
-10 s, so have T ready as each match starts. `workspace:SetAttribute("VFMatchSkip", true)` in the
-server's command bar ends a gun game match, as in section 27. A player who joins a match under
-way has a window of their own too, which the offline tests cover.
+player and then three. Jett and Phoenix (system 30) are the agents, so the screen comes up by
+itself as a window opens, and T opens it too. Your player's `VFAgentPick` attribute says where you
+stand: `free`, `open` or `locked`, or unset where nobody picks. A window lasts 10 s.
+`workspace:SetAttribute("VFMatchSkip", true)` in the server's command bar ends a gun game match,
+as in section 27. A player who joins a match under way has a window of their own too, which the
+offline tests cover.
 
 Press Play (F5), with one player.
 
 - **AS1 The course.** Press T: `AGENT SELECT` at the top left, `PICK ANY TIME` in gold at the top
   right, and under them `Nothing's at stake here: an agent picked is yours at once, as often as
-  you like.` There's one card, JETT over DUELIST, outlined in gold with `YOURS` over the name.
-  Under it is Jett's kit, headed `JETT   DUELIST`: C CLOUDBURST, Q UPDRAFT, E TAILWIND and
+  you like.` There are two cards, JETT and PHOENIX, each over DUELIST; Jett's is outlined in
+  gold with `YOURS` over the name. Under them is Jett's kit, headed `JETT   DUELIST`:
+  C CLOUDBURST, Q UPDRAFT, E TAILWIND and
   X BLADE STORM, each with its line, and last `DRIFT   PASSIVE` with
   `Hold jump while you fall to glide.` On the right, `YOUR TEAM` reads
   `Nobody else on your side`. The button reads `PLAYING JETT`, dimmed, and `T to close` is at the
@@ -1766,11 +1767,12 @@ Press Play (F5), with one player.
   as on the course. Stop the game.
 - **AS3 A window.** Start a Local Server with 3 players, as in section 9, and press P once in
   window 1 (Skirmish): players 1 and 3 share a side, as in F1. As round 1's buy phase starts,
-  press T in window 1: `LOCK IN WITHIN 10` in gold at the top right, counting down, and under the
-  title `Click an agent and LOCK IN; when time's up, the one selected is locked in for the
-  match.` The button reads `LOCK IN`, lit. Under `YOUR TEAM`, `PLAYER3` with `JETT` dimmed and
-  `SELECTING`. `VFAgentPick` reads `open`, and `VFAgentCloses` has a number, the server time it
-  closes. Click LOCK IN: the screen goes, and `VFAgentPick` reads `locked`.
+  the screen comes up by itself in window 1: `LOCK IN WITHIN 10` in gold at the top right,
+  counting down, and under the title `Click an agent and LOCK IN; when time's up, the one
+  selected is locked in for the match.` The button reads `LOCK IN`, lit. Under `YOUR TEAM`,
+  `PLAYER3` with `JETT` dimmed and `SELECTING`. `VFAgentPick` reads `open`, and `VFAgentCloses`
+  has a number, the server time it closes. Click LOCK IN: the screen goes, and `VFAgentPick` reads
+  `locked`.
 - **AS4 Locked in, and the time running out.** Press T in window 1 again: `LOCKED IN` at the top
   right, `Locked in until the match is over; you pick again as the next one starts.` under the
   title, the card tagged `LOCKED IN`, and the button `LOCKED IN`, dimmed. Player 3 never clicks:
@@ -1780,12 +1782,96 @@ Press Play (F5), with one player.
   `VFAgentPick` is unset. Space held in the air still glides, as Jett's Drift does. Run
   `VFMatchSkip` once: on the victory screen and in the vote after it, T does nothing either.
 - **AS6 The spike rounds.** Press P in window 1 again (the spike rounds). As round 1's buy phase
-  starts, press T in window 2: `LOCK IN WITHIN 10` again, a new window for the new match. Don't
-  click: at 0 the screen goes by itself, and `VFAgentPick` reads `locked`. In window 1, B opens
-  the buy menu, with Cloudburst (`C`, 200) and Updraft (`Q`, 150) under the shields, as in U12.
-  Click Updraft: the credits go from 800 to 650; right-click it: back to 800.
+  starts, the screen comes up by itself in window 2: `LOCK IN WITHIN 10` again, a new window for
+  the new match. Don't click: at 0 the screen goes by itself, and `VFAgentPick` reads `locked`.
+  In window 1, B opens the buy menu, with Cloudburst (`C`, 200) and Updraft (`Q`, 150) under the
+  shields, as in U12. Click Updraft: the credits go from 800 to 650; right-click it: back to 800.
 - **AS7 Deathmatch.** Press M in window 1, click the DEATHMATCH card and PLAY DEATHMATCH. In
   deathmatch, T does nothing, and `VFAgentPick` is unset.
+
+## 34. Curveball
+
+From [30-curveball.md](research/30-curveball.md). One player on the course, then two in Skirmish
+and the spike rounds. Play as Phoenix first: press T, click PHOENIX's card and PICK PHOENIX (or set
+`VFTestAgents` to true, `VFTestAgent` to `phoenix`, then `VFTestAgent` to `lock`). Without keys or
+a mouse button, `VFTestButtons` 16384 presses E, 128 the left button and 256 the right: set it and
+clear it again each time. `VFTestYaw` and `VFTestPitch` aim, in degrees: positive yaw turns left,
+and positive pitch looks up. After each pop your `VFLastFlare` attribute is where the server says
+it popped, in metres. While any of a blind is left, your `VFBlind` says when it began, when its
+white ends and when it's gone, in server time, and it's unset once your screen is clear.
+`Workspace.VFFlares` holds a small glowing `Flare` ball for each flare in the air. On the course a
+spent charge comes back 1.5 s after it's done. The numbers below are for throws from the spawn,
+facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **CB1 Phoenix.** In agent select, PHOENIX's card reads DUELIST. Its kit: C BLAZE, Q HOT HANDS
+  and X RUN IT BACK, each `NOT YET` and dimmed; E CURVEBALL, lit, with its line; and last
+  `INNER FIRE   PASSIVE   NOT YET`, dimmed, with `His own fire heals him, where it would burn
+  anyone else.` Click PICK PHOENIX: the button reads `PLAYING PHOENIX`, and `VFAgent` reads
+  `phoenix`. Close it with T. The ability bar has BLAZE, HOT HANDS and RUN IT BACK dimmed, and
+  CURVEBALL with both its pips lit, and `VFKit` reads `C0/1 Q0/1 E2/2 X0/7`. **Send:** a
+  screenshot of Phoenix's card.
+- **CB2 In hand.** Press E: a quick, quiet whoosh, the Vandal goes, and a small orange orb comes up
+  in your hand. E's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
+  `Curveball   [E]`, with no ammo; both of E's pips stay lit; and `VFKit` ends in `equip`. You
+  still run at the knife's speed, 6.75 m/s on the HUD panel (F3).
+- **CB3 Round to the left.** With the flare drawn, press the left button: a thin swish, and a ball
+  of orange light leaves your eye, goes straight for a moment, curves round to the left across
+  your view and, 0.6 s after the throw, pops in a bright flash with a sharp crack, about 6 m away
+  on your left. Your screen goes warm white, a whiter disc in the middle shrinking, for about
+  1.4 s, then clears evenly over about 0.9 s: the pop was about 54 degrees off your view, a
+  little past the 50 that blind the longest. The Vandal is back in hand half a second after the
+  throw. `VFLastFlare` reads about `(-4.74, 1.62, -3.46)`; `VFBlind`'s first two numbers are about
+  1.38 apart and its last two about 0.92. E's first pip goes dark (`E1/2`) and lights again 1.5 s
+  later. **Send:** a screenshot of the white, with its disc.
+- **CB4 Round to the right.** E, then the right button: there's no zoom, and the flare curves round
+  to the right instead. `VFLastFlare` reads about `(4.74, 1.62, -3.46)`, and the blind is as in
+  CB3.
+- **CB5 Turned towards it, and away.** E, the left button, and within half a second of the throw
+  set `VFTestYaw` to 54, looking straight at where it pops: all of the blind, white for 1.5 s and
+  clearing over 1 s (`VFBlind`'s numbers 1.5 and 1 apart). Then the same, but set `VFTestYaw` to
+  -126, your back to it: only a flash of white, about a fifth of a second, gone at once (0.225 and
+  0.15 apart).
+- **CB6 At your feet.** Look down at your feet (`VFTestPitch` -60) and throw with the left button:
+  the ball hits the floor just ahead and waits there, glowing, until it pops 0.6 s after the
+  throw. `VFLastFlare` reads about `(-0.04, 0.10, -0.87)`, and the blind is all of it.
+- **CB7 Put away.** E, then E again before throwing: the orb goes, the Vandal comes back with its
+  own draw, about a second, nothing is thrown, and `VFKit` reads `E2/2` with no `equip`. E, then
+  1: the same. Hold the left button (`VFTestButtons` 128) and press E (16512, then back to 128):
+  the Vandal stops, and the flare comes up and is thrown the moment it's ready, once, with the
+  Vandal firing again 0.48 s later. Throw both charges, and press E again within a second: nothing
+  comes up.
+- **CB8 The sounds.** Open the Sound Lab (F2 four times) and throw as in CB3: it logs `flareEquip`
+  as `yours` as the flare comes up, `flareThrow` as `yours` at the throw, and `flarePop` from
+  `you` about 5.9 m away.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9. Press P
+once in window 1 (Skirmish), and as round 1's buy phase starts, pick PHOENIX and LOCK IN in
+window 1.
+
+- **CB9 Others' flares, and their blind.** After the buy phase, bring the two players about 10 m
+  apart, facing each other. In window 1, throw with the left button. Window 2 hears the swish from
+  player 1, sees the ball of light leave player 1's eye where they're drawn and curve round to
+  their left, and hears the crack from where it pops 0.6 s later; window 2's screen goes white for
+  1.5 s and clears over 1 s, and its `VFBlind` is set. Window 1's screen goes white too, as in
+  CB3: Phoenix's flash blinds him as well.
+- **CB10 Round a corner.** In window 1, stand by a wall's corner with player 2 out of sight round
+  it, about 5 m along the other side of the wall and facing the corner. Throw it round the corner,
+  curving the way the corner goes: window 2 sees it come round and pop, and is blinded; window 1,
+  with the wall between it and the pop, isn't, and its `VFBlind` stays unset.
+- **CB11 The glow.** Out in the open, as in CB9, throw at player 2 from window 1 and at once turn
+  your back on the pop (with the mouse, or `VFTestYaw` 180 degrees from where you face): a flicker
+  of white. A second after the throw, turn back: a pale orange glow is in front of player 2's
+  face while their screen is white, moves behind their head about 1.5 s after the pop, and fades
+  out a second later. **Send:** a screenshot of the glow in front of player 2's face.
+- **CB12 The spike rounds.** Press P twice more in window 1 (gun game, then the spike rounds), and
+  as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: under the shields,
+  Blaze (`C`, 150) and Hot Hands (`Q`, 200), dimmed, and Curveball (`E`, 250) with one of its two
+  pips lit, the round's free charge, and every tile inside the menu. Pointing at Curveball shows
+  `Ability, on E`, its line, and rows for `Charges` (`up to 2`), `A charge` (`250 credits`), `Pop`
+  (`0.6 s after the throw`), `Blind` (`up to 1.5 s, then 1 s clearing`) and `A charge back`
+  (`every 2 kills`). Click it: the credits go from 800 to 550, both its pips light and it shows
+  `FULL`, and `VFKit` reads `E2/2`; right-click it: back to 800. A click on Blaze or Hot Hands
+  does nothing. **Send:** a screenshot of the menu.
 
 ## Results
 
@@ -1911,6 +1997,17 @@ AS4 player 3's row read LOCKED IN ___ s after the buy phase started; their VFAge
 AS5 T did anything in gun game, on its victory screen or in the vote: yes / no (what); the glide: yes / no
 AS6 window 2's screen went by itself at 0: yes / no; Updraft bought and sold back: 800 > ___ > ___
 AS7 T did anything in deathmatch: yes / no (what)
+CB1 anything on Phoenix's card or the bar that read differently: ___
+CB3 VFLastFlare: ___; white about ___ s, clearing over ___ s; the Vandal back ___ s after the throw
+CB4 VFLastFlare: ___
+CB5 facing it: white ___ s, clearing ___ s; your back to it: white ___ s
+CB6 VFLastFlare: ___
+CB7 E again put it away with nothing spent: yes / no; held fire threw it once: yes / no
+CB8 the Sound Lab's three lines: ___
+CB9 window 2 saw it and was blinded: yes / no; window 1 too: yes / no
+CB10 round the corner, window 2 blinded: yes / no; window 1 blinded: yes / no
+CB11 the glow in front of the face, then behind the head: yes / no
+CB12 every tile inside the menu: yes / no; Curveball bought and sold back: 800 > ___ > ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2096,3 +2193,8 @@ Didn't look right (IDs and what you saw):
 | 29 | The buy menu's abilities, Jett's as before | AS6 |
 | 29 | Nobody picks in gun game or deathmatch, on the victory screen or in the vote: T does nothing | AS5, AS7 |
 | 29 | Teammates' picks: `SELECTING` while their window's open, and `LOCKED IN` after | AS3, AS4 |
+| 30 | Phoenix's card in agent select, his kit on the bar with only E lit, and his kit in the buy menu, Curveball the only one for sale | CB1, CB12 |
+| 30 | E draws the flare in 0.8 s, `EQUIP` on the bar; the left button throws it curving left, the right button right, and the gun is back 0.48 s later; E again or a number key puts it away | CB2, CB3, CB4, CB7 |
+| 30 | The flare's flight: straight, then round a quarter turn, popping 0.6 s after the throw, about 3.5 m ahead and 4.7 m to the side on the course; stopped where it meets the floor or a wall | CB3, CB4, CB6 |
+| 30 | The blind: white and clearing, longer looking at it and shorter turned away, none behind a wall; the shrinking core | CB3, CB5, CB10 |
+| 30 | A second player: the throw and the pop heard, the flare seen in the air, the blind on whoever sees it, and the glow on a blinded player's face, then behind their head | CB9, CB10, CB11 |
