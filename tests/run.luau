@@ -20,5 +20,6 @@ require("./visuals")
 require("./arena")
 require("./sound")
 require("./melee")
+require("./settings")
 
 H.finish()

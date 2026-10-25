@@ -14,6 +14,9 @@ local WeaponEffects = require(script.Combat.WeaponEffects)
 local CombatHud = require(script.Combat.CombatHud)
 local ArenaHud = require(script.ArenaHud)
 local BuyMenu = require(script.BuyMenu)
+local ClientSettings = require(script.ClientSettings)
+local CrosshairView = require(script.CrosshairView)
+local SettingsMenu = require(script.SettingsMenu)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
 local DebugHud = require(script.Debug.DebugHud)
@@ -46,6 +49,10 @@ CombatHud.start()
 ArenaHud.start()
 -- B: every gun and shield, in the arena's buy phase and any time on the course.
 BuyMenu.start()
+-- Your sensitivity and crosshair, kept between sessions; O for the menu.
+ClientSettings.start()
+CrosshairView.start(PlayerController)
+SettingsMenu.start()
 -- Footsteps, landings, gunshots, reloads, draws and hit sounds, with
 -- Roblox's own character sounds switched off.
 DefaultSounds.start()

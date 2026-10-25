@@ -4,14 +4,22 @@
 -- Sensitivity uses the reference game's convention: degrees of yaw per mouse
 -- count = YAW_DEGREES_PER_COUNT * sensitivity. 0.07 is the widely published
 -- community figure (estimate until verified with the cm/360 test in the lab).
+-- The player sets the sensitivity and the scoped multiplier in the settings
+-- menu (ClientSettings); PlayerSettings.degreesPerCount has the sums.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
+local PlayerSettings = require(ReplicatedStorage:WaitForChild("Shared").Settings.PlayerSettings)
+
 local CameraController = {}
 
-CameraController.YAW_DEGREES_PER_COUNT = 0.07
-CameraController.sensitivity = 0.4
+CameraController.YAW_DEGREES_PER_COUNT = PlayerSettings.YAW_DEGREES_PER_COUNT
+CameraController.sensitivity = PlayerSettings.DEFAULTS.sensitivity
+-- The reference's "scoped sensitivity multiplier": how fast the view turns
+-- zoomed, on top of dividing by the zoom.
+CameraController.scopedMultiplier = PlayerSettings.DEFAULTS.scoped
 CameraController.fieldOfView = 103 -- horizontal, reference game's fixed FOV (community)
 
 CameraController.yaw = 0
@@ -20,11 +28,12 @@ CameraController.pitch = 0
 CameraController.kickPitch = 0
 CameraController.kickYaw = 0
 -- Current zoom (1 = hip). Mouse sensitivity scales with 1 / zoom while
--- zoomed, so the crosshair moves across the scene at the same speed (estimate
--- of the reference's default scoped sensitivity).
+-- zoomed, so at a scoped multiplier of 1 the crosshair moves across the
+-- scene at the same speed (estimate of the reference's default scoped
+-- sensitivity).
 CameraController.zoom = 1
--- While set (the buy menu is open), the mouse moves a cursor instead of the
--- view.
+-- While set (the buy menu or the settings menu is open), the mouse moves a
+-- cursor instead of the view.
 CameraController.cursorFree = false
 
 local MAX_PITCH = math.rad(89)
@@ -67,7 +76,7 @@ function CameraController.updateLook()
 	-- our sensitivity is the only scale applied.
 	local delta = UserInputService:GetMouseDelta() / userSensitivity()
 	CameraController.countsX += delta.X
-	local radPerCount = math.rad(CameraController.YAW_DEGREES_PER_COUNT * CameraController.sensitivity) / CameraController.zoom
+	local radPerCount = math.rad(PlayerSettings.degreesPerCount(CameraController.sensitivity, CameraController.scopedMultiplier, CameraController.zoom))
 	CameraController.yaw -= delta.X * radPerCount
 	CameraController.pitch = math.clamp(CameraController.pitch - delta.Y * radPerCount, -MAX_PITCH, MAX_PITCH)
 end

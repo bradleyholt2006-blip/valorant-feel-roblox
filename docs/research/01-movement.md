@@ -346,7 +346,7 @@ the course's ramps, angled wall and jump boxes.
 | Key | Tool |
 | --- | --- |
 | F3 | HUD: speed (m/s and studs/s), % of max, ACCURATE / MOVING ERROR, flags, the last jump, tick, ping, pending inputs, corrections. The jump lines give its airtime, the distance it covered and how far to the side of where you faced as you left the ground, how far the path bent on the way (air strafing), and the speed along the ground leaving and landing, with the top speed between |
-| always | Movement-error crosshair (same idea as the reference's option) and a W A S D / Shift / Ctrl / Space key overlay |
+| always | The crosshair, whose outer lines spread with movement error as the reference's default crosshair does (system 11, [11-settings.md](11-settings.md), draws it from your crosshair code), and a W A S D / Shift / Ctrl / Space key overlay |
 | always | Speed graph: 2.5 s of speed, coloured by accuracy, with the deadzone line |
 | F4 | Counter-Strafe Lab: per-stop timing, slide, "overhold" coaching, averages vs ReferenceData (Riot's stop times for the rifles) over the stops that began at full speed (others are dimmed and marked `part speed`), live tuning box, cm/360 check; Backspace clears its stops |
 | F6 | Recorder: per-tick CSV printed to Output for spreadsheet comparison |

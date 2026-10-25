@@ -1,11 +1,10 @@
 --!strict
 -- Always-on movement HUD (toggle F3):
---   * crosshair whose arms spread with movement error, like the reference
---     game's "Movement error" crosshair option, so footage can be compared
---     side by side
 --   * a circle showing the true cone of fire of the next shot, drawn where
---     that bullet would go (recoil included), like the reference's "Show
---     firing error" crosshair option
+--     that bullet would go (recoil included), round the crosshair
+--     (CrosshairView, which can show movement and firing error itself, as
+--     the reference's crosshair options do)
+--   * how far the crosshair's lines are spread, and by what
 --   * stats panel: speed, % of max, accuracy state, flags, the last jump
 --     (airtime, distance, how far it bent, speed leaving and landing),
 --     netcode health
@@ -30,6 +29,7 @@ local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Ui)
 local CameraController = require(script.Parent.Parent.CameraController)
+local CrosshairView = require(script.Parent.Parent.CrosshairView)
 local NetSim = require(script.Parent.Parent.NetSim)
 local Visuals = require(script.Parent.Parent.Visuals)
 
@@ -37,35 +37,16 @@ local B = MovementSim.Buttons
 
 local DebugHud = {}
 
-local CROSSHAIR_MIN_GAP = 4
-local CROSSHAIR_MAX_GAP = 40
-local ARM_LENGTH = 8
-
 function DebugHud.start(controller: any)
 	local gui = Ui.screen("VFDebugHud", 20)
 	local centre = Ui.screen("VFCrosshair", 20, Enum.ScreenInsets.None)
 
-	-- Crosshair ------------------------------------------------------------
+	-- Cone ring, on the middle of the view ---------------------------------
 	local crosshair = Ui.frame(centre, {
 		Size = UDim2.fromOffset(1, 1),
 		Position = UDim2.fromScale(0.5, 0.5),
 		BackgroundTransparency = 1,
 	})
-	local dot = Ui.frame(crosshair, {
-		Size = UDim2.fromOffset(2, 2),
-		Position = UDim2.fromOffset(-1, -1),
-		BackgroundColor3 = Ui.TEXT,
-		BackgroundTransparency = 0,
-	})
-	local arms = {}
-	for _, dir in { Vector2.new(1, 0), Vector2.new(-1, 0), Vector2.new(0, 1), Vector2.new(0, -1) } do
-		local arm = Ui.frame(crosshair, {
-			Size = if dir.X ~= 0 then UDim2.fromOffset(ARM_LENGTH, 2) else UDim2.fromOffset(2, ARM_LENGTH),
-			BackgroundColor3 = Ui.GOOD,
-			BackgroundTransparency = 0,
-		})
-		table.insert(arms, { frame = arm, dir = dir })
-	end
 	local cone = Ui.frame(crosshair, {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromOffset(8, 8),
@@ -81,7 +62,7 @@ function DebugHud.start(controller: any)
 
 	-- Stats panel ------------------------------------------------------------
 	local panel = Ui.frame(gui, {
-		Size = UDim2.fromOffset(330, 337),
+		Size = UDim2.fromOffset(330, 356),
 		Position = UDim2.fromOffset(12, 12),
 	})
 	local stats = Ui.label(panel, {
@@ -194,24 +175,6 @@ function DebugHud.start(controller: any)
 		local accurate = MovementSim.isAccurate(s, info.maxSpeed, info.accurateFraction)
 		local landPenalty = (s.tick - s.lastLandTick) / MovementConfig.TickRate.value < cfg.jumpLandPenaltyTime
 
-		-- Crosshair spread: 0 inside the deadzone, then linear up to max speed.
-		local errorFraction = 0
-		if not s.grounded then
-			errorFraction = 1
-		elseif speed > threshold then
-			errorFraction = math.clamp((speed - threshold) / math.max(info.maxSpeed - threshold, 1e-3), 0, 1)
-		end
-		local gap = CROSSHAIR_MIN_GAP + (CROSSHAIR_MAX_GAP - CROSSHAIR_MIN_GAP) * errorFraction
-		for _, arm in arms do
-			local d = arm.dir
-			arm.frame.Position = UDim2.fromOffset(
-				if d.X > 0 then gap elseif d.X < 0 then -gap - ARM_LENGTH else -1,
-				if d.Y > 0 then gap elseif d.Y < 0 then -gap - ARM_LENGTH else -1
-			)
-			arm.frame.BackgroundColor3 = if accurate and not landPenalty then Ui.GOOD else Ui.BAD
-		end
-		dot.BackgroundColor3 = if accurate then Ui.GOOD else Ui.BAD
-
 		-- Cone of the next shot, centred where its bullet would go: the recoil
 		-- minus the part the camera already shows.
 		local sim: PlayerSim.State? = controller.sim
@@ -288,6 +251,12 @@ function DebugHud.start(controller: any)
 			string.format("state   %s", flags),
 			string.format("pos     %.2f %.2f %.2f m", s.position.x, s.position.y, s.position.z),
 			coneText,
+			string.format(
+				"xhair   %s  move +%.0f px  fire +%.0f px",
+				if CrosshairView.shown == "" then "hidden" else CrosshairView.shown,
+				CrosshairView.movementPixels,
+				CrosshairView.firingPixels
+			),
 			jumpLines[1],
 			jumpLines[2],
 			jumpLines[3],
@@ -297,7 +266,7 @@ function DebugHud.start(controller: any)
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
 			string.format("look    %s (V)   enemy %s (N)", if Visuals.on then "on" else "off", Visuals.enemyColourName()),
-			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes  P arena</font>', Ui.hex(Ui.DIM)),
+			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes  P arena  O settings</font>', Ui.hex(Ui.DIM)),
 		}, "\n")
 
 		if ghostVisible then

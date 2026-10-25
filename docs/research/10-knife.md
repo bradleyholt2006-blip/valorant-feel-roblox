@@ -269,3 +269,34 @@ were picked by title, description and waveform, not by ear. Only a Studio sessio
 
 The [Studio test session](../studio-checklist.md), section 14, walks through these, with what to
 expect.
+
+### Checked in BRINK
+
+Playtests in BRINK on main at 54f655b solo and at ffd966c with two players, swings made through
+`VFTestButtons` and read from the labs, the HUD and the overlay (measured):
+
+- Rates and the combo (K1): slashes 500.0 ms apart, going 1, 2, 3, 1; stabs 1250.0 ms apart;
+  with both buttons held, slashes. After 1.5 s without a swing the next slash was slash 1 again.
+- Damage (K2, K3): from 1.16 m a slash struck Dummy_1's body 0.00 m off the aim and 1.09 m out,
+  rewound 57 ms, with the client agreeing: `83 + 17`, then `50 + 0`, and the third killed. A stab
+  read `75 + 1` and the second killed. To the head a slash did 50, and the kill feed read
+  `Bradley  [Knife]  Dummy 1  (head)`. From behind one stab killed, and two slashes did. From
+  the side, just behind the line of the shoulders, a stab did 150; just in front of it, 75.
+- Reach (K4): the last slash to land was 0.39 m off the aim and 1.60 m out, the last stab 0.30 m
+  off and 1.50 m out, the ends of their capsules; 2 to 3 cm further back, both missed.
+- The cut (K5): from 1 m, each slash left a cut on the wall's face with a spark and the strike's
+  sound, the first two level and the third tilted about 30°; a stab's cut was shorter. From
+  2.2 m, nothing. Backspace cleared them.
+- Cover (K6): standing, a slash struck a dummy's head over waist-high cover (`83 + 17`, the
+  headshot sound); crouched, the same slash struck the cover, with a cut there and no damage.
+- The overlay (K7): three lines 1.60 m long, 0.4 m apart, and a 0.80 m disc; the client's and the
+  server's points together; the label `slash 1  rewind 47 ms  Dummy_1 body 0.00 m off  50`, white.
+- The swap (K8): stab, then 1 and 3 and the right button held: the next stab came 0.61 s after 3
+  was pressed, as the knife finished drawing.
+- Two players (K9): a slash from in front read `83 | +17` on the other's HUD; a stab from behind
+  did 150 and killed, the HUD reading `0`, and both kill feeds read `Player2  [Knife]  Player1`.
+  The one struck heard each swing and hit from where the other stood, and saw the other's cut on
+  a wall at the same place to the centimetre, with its spark and sound.
+- The guns after the knife: Vandal 9.73 rounds a second, Phantom 10.97, Sheriff 3.72, Classic
+  5.46, Operator 0.59; 17 of 17 shots at the 15 m strafer agreed, rewound 50 ms on average; the
+  Bucky at 10 m read 126; 159 of 159 sounds loaded, the knife's 8 among them.
