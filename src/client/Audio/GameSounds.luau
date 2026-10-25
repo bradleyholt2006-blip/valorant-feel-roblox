@@ -209,6 +209,7 @@ local ownSteps = StepTracker.new()
 type WeaponState = { equipped: number, equipEndTime: number, reloadEndTime: number, ammo: number, fire: boolean }
 local lastWeapons: WeaponState? = nil
 local ownReload: Reload? = nil
+local lastDrawAt = -math.huge -- simulation time of the last draw sound
 local kills = 0
 
 local function onTick(info: any)
@@ -237,12 +238,14 @@ local function onTick(info: any)
 	local fire = MovementSim.has(buttons, MovementSim.Buttons.Fire)
 	local was = lastWeapons
 	if was then
-		if w.equipped ~= was.equipped or w.equipEndTime > was.equipEndTime then
+		local switched = w.equipped ~= was.equipped
+		if switched or w.equipEndTime > was.equipEndTime then
 			-- Switching cancels a reload, and its sound with it.
 			cancelReload(ownReload)
 			ownReload = nil
-			if sounds then
+			if sounds and SoundMath.drawHeard(switched, now - lastDrawAt) then
 				own(sounds.draw)
+				lastDrawAt = now
 			end
 		elseif was.reloadEndTime == 0 and w.reloadEndTime > 0 then
 			ownReload = newReload(id, w.reloadEndTime - WeaponConfig.get(id).reloadTime.value)
@@ -277,6 +280,7 @@ local function onSpawn()
 	lastWeapons = nil
 	cancelReload(ownReload)
 	ownReload = nil
+	lastDrawAt = -math.huge
 	kills = 0
 end
 

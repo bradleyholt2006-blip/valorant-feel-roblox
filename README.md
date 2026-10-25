@@ -35,7 +35,8 @@ Built one system at a time:
    crouching ones; landings heard unless they come up onto something higher; gunshots from where
    they were fired, dulled by distance and muffled through walls; reloads played in parts as
    they go, draws and dry fire; hit, headshot and kill sounds; nothing from the other side in the
-   buy phase. The sounds are Pro Sound Effects' recordings from the Creator Store's free library -
+   buy phase. The sounds are Pro Sound Effects' recordings from the Creator Store's free library,
+   and Roblox's own character sounds are off -
    [research and design](docs/research/08-sound.md)
 
 ## Running it

@@ -432,7 +432,8 @@ it wasn't.
 - **N3 Jumps and landings.** Jump on the spot: a soft rustle as you leave the ground and a thud as
   you land. Jump up onto the 0.50 m red jump box: that landing is the softer one, which nobody else
   hears. Step off it onto the floor: the heard thud again. Spawning is silent: press P twice (the
-  arena on, then off) and you appear without a sound.
+  arena on, then off) and you appear without a sound. Nothing else plays with any of these:
+  Roblox's own character sounds are off.
 - **N4 Shots.** Fire each weapon (4 to 8 give the Vandal, Phantom, Operator, Sheriff and Classic).
   Each has its own sound. The Phantom's is the quietest and dullest, and the Operator's the
   biggest. Hold fire with the Vandal: each shot is distinct and none is cut into a click.
@@ -443,8 +444,11 @@ it wasn't.
   magazine out, a magazine in and a bolt or slide, the last one about as the ammo refills; the
   Sheriff's opens and closes its cylinder, and the Operator works its bolt. Press R again and
   switch weapons halfway through: the reload stops at once. Every switch plays a draw sound, and
-  the knife's is a blade.
-- **N6 Dry fire.** Empty a magazine and keep clicking without reloading: one dry click per click.
+  the knife's is a blade. Giving yourself a gun for the other slot (7 while holding a rifle)
+  plays its draw once.
+- **N6 Dry fire.** An empty magazine reloads itself while there's ammo in reserve, so take a fresh
+  Vandal (4) and hold fire until it stops reloading (100 rounds, about 18 s). Then click: one dry
+  click per click. Press 4 again for a full one.
 - **N7 Hits.** Shoot a dummy in the body: a thud. In the head: a sharper, higher hit. Kill one: the
   kill sound as well. Kill several in one life: each kill sound is a little higher than the last,
   up to the fifth, and after you die it starts low again.
