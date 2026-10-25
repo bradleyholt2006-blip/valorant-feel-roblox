@@ -143,6 +143,15 @@ Built one system at a time:
     down a level. The dead are back in 1.5 s and can't be hurt for 5 s or until they fire. Up to
     four a side, with no buying, no abilities and no guns on the ground -
     [research and design](docs/research/23-gun-game.md)
+24. **The Play menu**: as Counter Blox's main screen, a live server opens on a menu of the modes,
+    Skirmish (2v2), gun game (4v4) and the spike rounds as Unrated, Competitive and Swiftplay
+    (5v5), each with how many play it. Each server plays one mode: a public server Skirmish, and
+    PLAY for its mode drops you into its match under way. PLAY for another mode, or for this one
+    once its match is full, teleports you to the fullest server playing it with a place free, or
+    to a new one. Every server keeps a line in a memory store that every server reads, for where
+    to send players and the menu's counts. M opens the menu again during a match. In Studio, which
+    can't teleport, PLAY for another mode switches the server to it -
+    [research and design](docs/research/24-play-menu.md)
 
 ## Running it
 
@@ -159,7 +168,9 @@ Built one system at a time:
    opponent, and whoever joins goes on the side with fewer players. After each match everyone
    votes for the next of Skirmish's three maps. P again starts gun game in the same hall, P again
    the spike rounds, P again their shorter Swiftplay format, and P again puts everyone back on the
-   course.
+   course. A live server opens on the Play menu, and only once you press PLAY are you in a match;
+   in Studio M opens the menu, where PLAY for another mode switches the server to it, as P does.
+   PLAY's teleports between servers only work once the place is published.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
@@ -170,6 +181,7 @@ in hand, F picks up the gun on the ground you're looking at, B buy menu (on the 
 during the buy phase and while waiting for an opponent), Tab held the scoreboard (the arena and
 the spike rounds), mouse 1 and 2, while you're down in either, the next or the last teammate to watch,
 a click on a map card, during the vote after a match in the arena, your vote for the next map,
+M the Play menu (a click picks a mode's card, and PLAY plays it),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
@@ -213,8 +225,10 @@ draws that slot (5 is Blade Storm's knives), `VFTestSettingsMenu` set to true or
 closes the settings menu, `VFTestSetting` set to `key=value` (`sensitivity=0.8`, `scoped=0.5`,
 `dpi=1600` or `crosshair=0;P;c;5`) enters that setting as its box in the menu would, `VFTestTake`
 set to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as Tab does
-or lets it go, and `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would. Each of
-the last nine clears itself.
+or lets it go, `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would,
+`VFTestPlayMenu` set to true or false opens or closes the Play menu, and `VFTestPlay` set to a
+mode's key (`skirmish`, `gungame`, `standard`, `competitive` or `swiftplay`) presses PLAY for it.
+Each of the last eleven clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
 From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame` or `spike`), `VFMatchFormat`
 (`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
@@ -236,7 +250,11 @@ line while both sides are full. Each player's ability kit is their
 what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide), and
 `VFTestBuy` set to `updraft` buys a charge. Where a player's last Cloudburst burst is their
 `VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the air and each
-cloud as parts.
+cloud as parts. Workspace's `VFPlayMenu` is whether players start in the Play menu (always on a
+live server; in Studio, tick it in the place before you press Play), and `VFModeCounts` how many
+are in servers playing each mode (`skirmish=6,gungame=0,...`). A player's `VFPlaying` is true once
+they've pressed PLAY on this server. The `Play` remote carries PLAY to the server, and what came of
+it back.
 
 ## Tests
 
@@ -245,7 +263,8 @@ they catch, the spike's plant, defuse and drop, spread and recoil, hitboxes, wir
 history, render clock, move pacing, lag compensation and wall penetration), the look's maths, the
 arena's rules and its three maps, the vote for the next map, gun game (its ladders of guns, levels,
 knife kills, spawn protection, the time limit, and joining, leaving and evening the sides out in a
-match), the sound's rules (footsteps, landings,
+match), the Play menu's modes and its list of servers (what each server plays, which server PLAY
+sends someone to, and the counts), the sound's rules (footsteps, landings,
 distance curves, walls in the way, reload parts), the settings (crosshair codes and the pixels they
 draw, sensitivity and cm/360), the spike's rules (sites, the defuse's reach, its beeps and its
 blast), the spike rounds' rules and map, the economy (what each round pays, kills, the plant, the

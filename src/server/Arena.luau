@@ -69,6 +69,11 @@
 -- attributes (GunGameConfig), and the match's ladder of guns and who leads
 -- as the arena model's Ladder and Leader.
 --
+-- The Play menu (system 24, ModeServers): with Arena.menuFirst, as on a live
+-- server, nobody joins what's played until they press PLAY for it
+-- (Arena.play, and PlayConfig.PLAYING on the player); until then they're in
+-- the menu, with no side and no life.
+--
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
 -- off. So do Workspace's attributes, set from the server, which is how
@@ -93,6 +98,7 @@ local MapVote = require(Shared.Match.MapVote)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchMap = require(Shared.Match.MatchMap)
 local MatchRules = require(Shared.Match.MatchRules)
+local PlayConfig = require(Shared.Match.PlayConfig)
 local Roster = require(Shared.Match.Roster)
 local PlayerSim = require(Shared.PlayerSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
@@ -109,6 +115,10 @@ local AbilityServer = require(script.Parent.AbilityServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
+
+-- Whether players join what's played only once they press PLAY for it
+-- (system 24), rather than as they join the server. ModeServers sets it.
+Arena.menuFirst = false
 
 export type Mode = "skirmish" | "spike" | "gungame"
 
@@ -174,6 +184,9 @@ local kitMatch: { [Player]: number } = {} -- the match each player last got the 
 -- Gun game's: the weapon of the kill each player has just died to, until
 -- their death is handled.
 local killedWith: { [Player]: string } = {}
+-- Who's pressed PLAY for what's played here, with Arena.menuFirst (system
+-- 24).
+local chosen: { [Player]: boolean } = {}
 -- The round the ground was last cleared for, and in the spike rounds the
 -- spike and the kits were last set for.
 local seenMatch, seenRound = 0, 0
@@ -651,7 +664,9 @@ local function begin(wanted: Mode, format: string)
 	Players.CharacterAutoLoads = false
 	published = -2
 	for _, player in Players:GetPlayers() do
-		join(player)
+		if not Arena.menuFirst or chosen[player] then
+			join(player)
+		end
 	end
 	publish()
 end
@@ -739,6 +754,34 @@ local function arm(player: Player)
 			PlayerSimServer.give(player, slot, "")
 		end
 	end
+end
+
+-- Someone has pressed PLAY for what's played here (system 24): they join
+-- it, now if it's on, or as it starts.
+function Arena.play(player: Player)
+	chosen[player] = true
+	player:SetAttribute(PlayConfig.PLAYING, true)
+	join(player)
+end
+
+-- Whether someone is in what's played: on a side, or waiting in line.
+function Arena.has(player: Player): boolean
+	local s, m, g = skirmish, match, gun
+	local sides: Roster.Sides? = if s then s elseif m then m elseif g then g else nil
+	return sides ~= nil and (sides.members[player.UserId] ~= nil or Roster.placeInLine(sides, player.UserId) ~= nil)
+end
+
+-- How many are in what's played, on a side (not waiting in line).
+function Arena.playing(): number
+	local s, m, g = skirmish, match, gun
+	local members: { [number]: Roster.Member }? = if s then s.members elseif m then m.members elseif g then g.members else nil
+	local n = 0
+	if members then
+		for _ in members do
+			n += 1
+		end
+	end
+	return n
 end
 
 -- The rounds' clock, once a server frame.
@@ -949,12 +992,17 @@ function Arena.start()
 		return g ~= nil and player ~= nil and GunGameRules.safe(g, player.UserId, now())
 	end
 
-	Players.PlayerAdded:Connect(join)
+	Players.PlayerAdded:Connect(function(player)
+		if not Arena.menuFirst then
+			join(player)
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		queued[player] = nil
 		kitMatch[player] = nil
 		loadouts[player] = nil
 		killedWith[player] = nil
+		chosen[player] = nil
 		leave(player)
 	end)
 

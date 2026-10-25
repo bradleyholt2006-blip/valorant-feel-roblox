@@ -33,5 +33,6 @@ require("./drift")
 require("./dropin")
 require("./mapvote")
 require("./gungame")
+require("./play")
 
 H.finish()

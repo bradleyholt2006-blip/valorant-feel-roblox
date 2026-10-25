@@ -46,6 +46,11 @@
 --   VFTestVote     1 to 3: votes for that map in the vote for the next map,
 --                  as a click on its card does (system 22), then clears
 --                  itself
+--   VFTestPlayMenu true opens the Play menu as M does (system 24), false
+--                  closes it if it may close; then clears itself
+--   VFTestPlay     a mode's key ("skirmish", "gungame", "standard",
+--                  "competitive" or "swiftplay"): presses PLAY for it as
+--                  the Play menu's button does, then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -65,6 +70,7 @@ local Scoreboard = require(script.Parent.Parent.Scoreboard)
 local SettingsMenu = require(script.Parent.Parent.SettingsMenu)
 local VoteScreen = require(script.Parent.Parent.VoteScreen)
 local InputSampler = require(script.Parent.Parent.InputSampler)
+local PlayMenu = require(script.Parent.Parent.PlayMenu)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
 local TestAim = {}
@@ -159,6 +165,16 @@ function TestAim.start(controller: any)
 		if typeof(vote) == "number" then
 			player:SetAttribute("VFTestVote", nil)
 			VoteScreen.vote(vote)
+		end
+		local playMenu = player:GetAttribute("VFTestPlayMenu")
+		if typeof(playMenu) == "boolean" then
+			player:SetAttribute("VFTestPlayMenu", nil)
+			PlayMenu.setOpen(playMenu)
+		end
+		local play = player:GetAttribute("VFTestPlay")
+		if typeof(play) == "string" and play ~= "" then
+			player:SetAttribute("VFTestPlay", nil)
+			PlayMenu.play(play)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

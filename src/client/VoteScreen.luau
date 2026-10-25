@@ -3,9 +3,11 @@
 -- card for each map to pick from, with its plan seen from above (side 1 at
 -- the top, lighter for taller cover) and the votes it has so far. Click a
 -- card to vote for it, or another to change your vote; yours is outlined,
--- and the most voted for has its count in gold. Everyone in the server
--- votes, waiting in line or not. While it's up the mouse moves a cursor and
--- its buttons are the cards', and you can still move.
+-- and the most voted for has its count in gold. Everyone in the match
+-- votes, waiting in line or not, but not anyone in the Play menu yet to
+-- press PLAY (system 24), and the Play menu, open, hides the vote. While
+-- it's up the mouse moves a cursor and its buttons are the cards', and you
+-- can still move.
 --
 -- Everything comes from the arena model's attributes (Arena): Phase "vote",
 -- VoteMaps ("A,B,C", keys of ArenaLayout.Maps), Votes ("2,0,1"), Map (the
@@ -23,6 +25,7 @@ local Remotes = require(Shared.Net.Remotes)
 
 local CameraController = require(script.Parent.CameraController)
 local InputSampler = require(script.Parent.InputSampler)
+local PlayMenu = require(script.Parent.PlayMenu)
 local SettingsMenu = require(script.Parent.SettingsMenu)
 local Ui = require(script.Parent.Debug.Ui)
 
@@ -230,10 +233,14 @@ function VoteScreen.start()
 	RunService.RenderStepped:Connect(function()
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 		local keys = split(arena and arena:GetAttribute("VoteMaps"))
+		local inMatch = typeof(me:GetAttribute(ArenaConfig.SIDE)) == "number"
+			or typeof(me:GetAttribute(ArenaConfig.LINE)) == "number"
 		local shown = Workspace:GetAttribute(ArenaConfig.ON) == true
 			and arena ~= nil
 			and arena:GetAttribute("Phase") == "vote"
 			and #keys > 0
+			and inMatch
+			and not PlayMenu.open
 		gui.Enabled = shown
 		hold(shown)
 		if not shown or not arena then

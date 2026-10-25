@@ -28,6 +28,7 @@ local definitions: { [string]: string } = {
 	GroundGun = "RemoteEvent", -- client -> server, F: pick up the gun on the ground in view (system 15)
 	Ability = "RemoteEvent", -- server -> all, an ability cast, for its sound and look (system 17)
 	Vote = "RemoteEvent", -- client -> server, the player's vote for the next map (system 22)
+	Play = "RemoteEvent", -- both ways: PLAY for a mode, and how it went (system 24)
 }
 
 export type Remotes = {
@@ -47,6 +48,7 @@ export type Remotes = {
 	GroundGun: RemoteEvent,
 	Ability: RemoteEvent,
 	Vote: RemoteEvent,
+	Play: RemoteEvent,
 }
 
 local cached: Remotes? = nil

@@ -14,7 +14,8 @@
 -- had them: MATCH MVP, the best combat score of the match (a tie goes to the
 -- side that won), and TEAM MVP, the best on the other side. Anyone not on a
 -- side, waiting in line, sees the side that leads (or won) first. Tab shows
--- it again during the vote for the next map that follows (system 22).
+-- it again during the vote for the next map that follows (system 22). The
+-- Play menu, open, hides it (system 24).
 --
 -- In gun game (system 23) the rows go by level, not combat score: each has
 -- the player's level where the ACS goes, and the gun of it, for both sides,
@@ -41,6 +42,7 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 
 local Ui = require(script.Parent.Debug.Ui)
+local PlayMenu = require(script.Parent.PlayMenu)
 local RemoteEntities = require(script.Parent.RemoteEntities)
 local Visuals = require(script.Parent.Visuals)
 
@@ -230,7 +232,7 @@ function Scoreboard.start()
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 		local phase = if arena then arena:GetAttribute("Phase") else nil
 		local over = phase == "matchOver" or phase == "vote"
-		panel.Visible = on and arena ~= nil and (Scoreboard.held or phase == "matchOver")
+		panel.Visible = on and arena ~= nil and not PlayMenu.open and (Scoreboard.held or phase == "matchOver")
 		footer.Visible = panel.Visible and over
 		if not panel.Visible or not arena then
 			return

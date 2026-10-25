@@ -32,6 +32,7 @@ local SpikeServer = require(script.SpikeServer)
 local GroundGunsServer = require(script.GroundGunsServer)
 local AbilityServer = require(script.AbilityServer)
 local CloudServer = require(script.CloudServer)
+local ModeServers = require(script.ModeServers)
 
 TestRange.buildIfMissing()
 Arena.buildIfMissing()
@@ -43,6 +44,9 @@ CloudServer.start()
 GroundGunsServer.start()
 SettingsServer.start()
 Dummies.start()
+-- Before the arena starts, so whoever joins starts in the Play menu where
+-- they should (system 24).
+ModeServers.start()
 Arena.start()
 SpikeServer.start()
 table.insert(Replication.listeners, CombatServer.record)

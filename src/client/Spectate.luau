@@ -11,7 +11,8 @@
 -- viewed position of the last player'.
 --
 -- Near the bottom, who you're watching and when you play: the next round,
--- or once a place opens. Who's alive, on which side and in line comes from
+-- or once a place opens; not while the Play menu is open (system 24), with
+-- the match behind it. Who's alive, on which side and in line comes from
 -- the player attributes the server keeps (Arena), and where they look from
 -- from RemoteEntities, which leaves the watched player's blocks out of the
 -- view.
@@ -31,6 +32,7 @@ local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Debug.Ui)
 local CameraController = require(script.Parent.CameraController)
+local PlayMenu = require(script.Parent.PlayMenu)
 local PlayerController = require(script.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.RemoteEntities)
 
@@ -167,9 +169,10 @@ function Spectate.start()
 
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 		local phase = if arena then arena:GetAttribute("Phase") else nil
-		-- The victory screen (Scoreboard) has the end of a match, and the vote
-		-- for the next map (VoteScreen) what follows it.
-		local over = phase == "matchOver" or phase == "vote"
+		-- The victory screen (Scoreboard) has the end of a match, the vote for
+		-- the next map (VoteScreen) what follows it, and the Play menu the
+		-- screen while it's open.
+		local over = phase == "matchOver" or phase == "vote" or PlayMenu.open
 		local text = whenYouPlay(phase, if arena then arena:GetAttribute("Mode") else nil)
 		if target and #list > 1 then
 			text ..= (if text ~= "" then "     " else "") .. "LEFT / RIGHT CLICK  switch"
