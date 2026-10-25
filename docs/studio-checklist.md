@@ -1109,7 +1109,7 @@ the ultimate's points and what it needs, as `C0/2 Q1/1 E1/1 X0/8`, with `lift` o
   a low gust, a ring of air spreading at your feet and six streaks rising. Q's square is outlined
   for the lift's 0.6 s, and its pip goes dark; `VFKit` reads `Q0/1`, with `lift` for those 0.6 s.
   You top out about 0.95 s after the press and land about 1.7 s after it: the HUD's jump line
-  reads about `1.67 s` and `rise 4.00 m`. The pip lights again about 2 s after the press, 1.5 s
+  reads about `1.67 s` and `rise 4.00 m`. The pip lights again about 2.1 s after the press, 1.5 s
   after the lift ended. **Send:** how high it looked next to the red 1.00 m jump box (we expect
   about four of them stacked), and the jump line.
 - **U3 In the air.** Jump, and press Q at the top of the jump: you're lifted again from there.
@@ -1135,9 +1135,11 @@ the ultimate's points and what it needs, as `C0/2 Q1/1 E1/1 X0/8`, with `lift` o
   during the dash: the Classic comes out as the dash ends, not during it.
 - **U8 A dash ends a lift.** Ready a gust, press Q, and while you're still rising press E: the rise
   stops at once, you dash level through the air, and then you fall.
-- **U9 The sounds.** Open the Sound Lab (F2 four times). Updraft logs `gust` from `you`, and no
+- **U9 The sounds.** Open the Sound Lab (F2 four times). Updraft logs `gust` as `yours`, and no
   `jump`; a gust readied logs `windup`, and the dash `dash`. Dash from standing still: the log
-  shows the `dash` and no more than one `step` after it, where running the same 7 m logs four.
+  shows the `dash` and no more than one `step` after it. Running the same 7 m logs four or five:
+  the first about 0.6 m after setting off, then one every 1.8 m, so a fifth if you come to rest
+  past 7.8 m, as you do letting go at 7.5 m.
 - **U10 Planting.** Set `VFTestGive` to `spike`, walk into site B and hold 4: the plant starts.
   Press Q while it's going: nothing happens, and `VFKit` still reads `Q1/1`. Let go of 4. Ready a
   gust, and once the countdown shows set `VFTestButtons` to 17408 (4 and E together): the plant
@@ -1222,8 +1224,8 @@ spent charge comes back 1.5 s after the throw.
   press C during the dash: nothing is thrown, and `VFKit` still reads `C2/2`. Set `VFTestGive` to
   `spike`, walk into site B and hold 4: while the plant goes, C throws nothing.
 - **Y9 The sounds.** Open the Sound Lab (F2 four times) and throw at the floor as in Y5: it logs
-  `smokeThrow` from `you`, then `smokeBurst` from `you` about 8.6 m away. Throw down the lane as
-  in Y2: its `smokeBurst` is out of range, 60 m away and past its 30 m edge.
+  `smokeThrow` as `yours`, then `smokeBurst` from `you` about 8.8 m away, from your head. Throw
+  down the lane as in Y2: its `smokeBurst` is out of range, 60 m away and past its 30 m edge.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9.
 
@@ -1301,9 +1303,10 @@ clear it, for each. `VFTestAimEntity` aims at a dummy (Dummy 1, 10 m down the ta
   you're lifted, and a throw at the top at Dummy 1's body lands where the crosshair is. Ready a gust
   (E), and once the countdown shows, dash (E) and click quickly during the dash: nothing is thrown,
   and the ammo stays. A click after the dash throws.
-- **Z11 The sounds.** Open the Sound Lab (F2 four times). The cast logs `storm` from `you`, each
-  throw `kunai`, and a body hit on a dummy `kunaiHit`, the blade going in. A head hit logs
-  `headshot` and a kill `kill`, as with guns. Nothing is heard when the knives run out: no reload.
+- **Z11 The sounds.** Open the Sound Lab (F2 four times). The cast logs `storm` and `knife`, the
+  knives drawn, both as `yours`; each throw logs `kunai`, and a body hit on a dummy `kunaiHit`, the
+  blade going in. A head hit logs `headshot` and a kill `kill`, as with guns. When the knives run
+  out, the only sound is your gun's draw as it comes back: no reload.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9, and stay
 on the course.
@@ -1350,7 +1353,7 @@ course Updraft's charge comes back 1.5 s after its lift ends.
   it ends in `air`, as in any fall, and its ring is as wide as in a jump. Then cast Blade Storm (X),
   wait for the knives, press Q, glide, and throw one at Dummy 1's body: it lands where the
   crosshair is.
-- **I7 The sound.** Open the Sound Lab (F2 four times). A glide logs `glide` from `you` about three
+- **I7 The sound.** Open the Sound Lab (F2 four times). A glide logs `glide` as `yours` about three
   times a second, and nothing more once you land or let go.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9, and stay
