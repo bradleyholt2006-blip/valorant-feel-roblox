@@ -117,6 +117,11 @@ Built one system at a time:
     keeps the knives for later, X draws them again, and the other abilities work with them out.
     The knives are a weapon of their own in a fifth slot, so the server decides each throw as it
     does a shot, with lag compensation - [research and design](docs/research/19-blade-storm.md)
+20. **Drift**, Jett's passive: with Space held while you fall, you glide, falling no faster than
+    2 m/s, so a held jump comes down slowly and the top of Updraft keeps you in the air about 3 s.
+    The rise, a dash and your speed along the ground are left alone, and you can shoot and cast as
+    in any fall. Others hear a soft run of gusts and see rings of air left behind you as you sink -
+    [research and design](docs/research/20-drift.md)
 
 ## Running it
 
@@ -141,10 +146,10 @@ in hand, F picks up the gun on the ground you're looking at, B buy menu (on the 
 during the buy phase and while waiting for an opponent), Tab held the scoreboard (the spike
 rounds), C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
-that are left; with a gun drawn, X draws the knives again). The spike rounds charge credits; the
-course and the arena are free. On the course a spent charge comes back 1.5 s after it's done,
-and the ultimate's points are full at every life and fill again 1.5 s after Blade Storm ends; in
-the arena every life starts with every charge.
+that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
+Drift). The spike rounds charge credits; the course and the arena are free. On the course a spent
+charge comes back 1.5 s after it's done, and the ultimate's points are full at every life and fill
+again 1.5 s after Blade Storm ends; in the arena every life starts with every charge.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -189,9 +194,10 @@ rounds each player's credits are their `VFCredits` attribute, and each side's lo
 their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds` and `VFStartCredits`
 in the spike rounds, and `VFAlive` and `VFLoadout` in either. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
-what's under way after it (`storm` while Blade Storm lasts), and `VFTestBuy` set to `updraft` buys a
-charge. Where a player's last Cloudburst burst is their `VFLastCloud` attribute (metres), and
-`Workspace.VFClouds` holds each throw in the air and each cloud as parts.
+what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide), and
+`VFTestBuy` set to `updraft` buys a charge. Where a player's last Cloudburst burst is their
+`VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the air and each
+cloud as parts.
 
 ## Tests
 
@@ -206,9 +212,10 @@ purchase costs and the shield a survivor keeps), guns on the ground (G's drop, w
 drop, walking over one and the one in view), the match's record (the combat score, kills,
 deaths, assists and the average), the ability kit (charges through rounds, halves, kills and
 deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire), Cloudburst
-(the throw, its flight, its curve and what stops it, and the cloud's life) and Blade Storm (the
+(the throw, its flight, its curve and what stops it, and the cloud's life), Blade Storm (the
 cast, single throws and the burst, the kills that bring the knives back, swapping, and what ends
-it) are pure Luau and run outside Roblox:
+it) and Drift (the glide from a jump, a ledge and Updraft, a press in a fall, landing with jump
+held, and what it leaves alone) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

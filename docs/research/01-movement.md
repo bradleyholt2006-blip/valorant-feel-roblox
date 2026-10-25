@@ -238,6 +238,11 @@ Source use the full wish speed there, as ours now does.
   does. Full air control would also carry a standing jump 2.9 m sideways. That makes
   Counter-Strike's formula our best estimate; the measurements in section 3, the W test above all,
   tell the two apart.
+- **A jump a press, on the ground.** Holding jump doesn't jump again on landing, and since system
+  20 neither does a press made in the air: held into the landing, it has to be let go of and
+  pressed again. That's Unreal's default, where a press is spent on the tick it's made whether it
+  jumps or not, and Source's, where a held jump doesn't pogo. Held in a fall, it's Jett's glide
+  ([20-drift.md](20-drift.md)).
 - **Custom kinematic controller.** Roblox Humanoid physics is replaced. The root part is anchored and
   positioned by the sim; collision is a collide-and-slide on an axis-aligned box using
   `Workspace:Blockcast`, with stair stepping and ground snapping (see Collision below).

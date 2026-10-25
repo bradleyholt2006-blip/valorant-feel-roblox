@@ -79,6 +79,7 @@ local function blend(a: PlayerCodec.Pose, b: PlayerCodec.Pose, t: number): Playe
 		reloading = b.reloading,
 		weapon = b.weapon,
 		channel = b.channel,
+		gliding = b.gliding,
 	}
 end
 

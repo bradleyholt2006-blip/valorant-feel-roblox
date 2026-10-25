@@ -334,6 +334,7 @@ do
 				reloading = false,
 				weapon = 0,
 				channel = 0,
+				gliding = false,
 			},
 		})
 	end

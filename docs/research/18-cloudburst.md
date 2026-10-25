@@ -163,7 +163,7 @@ the charge and the stow are corrected by the ack like any other part of the kit.
 - **Sound through a cloud.** It doesn't dull what's behind it.
 - **What clients are told.** Every client is told of every throw and cloud, wherever it is, and
   `VFLastCloud` is an attribute anyone can read.
-- **Drift** is still to come. Blade Storm came next, in system 19
+- **Drift** came in system 20 ([20-drift.md](20-drift.md)), after Blade Storm in system 19
   ([19-blade-storm.md](19-blade-storm.md)).
 
 ## 6. Implementation map

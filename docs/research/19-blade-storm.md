@@ -191,7 +191,7 @@ on, which clears it.
   waiting for it to finish (v4.07's queueing).
 - **The knives in others' hands.** Others are drawn as their hitboxes, holding nothing.
 - **Run It Back.** There's no Phoenix yet.
-- **Drift**, Jett's glide, is still to come.
+- **Drift**, Jett's glide, came next, in system 20 ([20-drift.md](20-drift.md)).
 
 ## 6. Implementation map
 

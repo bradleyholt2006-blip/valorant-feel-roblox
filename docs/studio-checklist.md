@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the nineteen
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty
 research docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about five hours. Doing it in parts is fine; keep the order.
+It takes a little over five hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
-   23 one and then two.
+   24 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -49,6 +49,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Tab | Held: the scoreboard, in the spike rounds |
 | C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes |
 | X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
+| Space | Jump; held in the air, Jett's glide (Drift) slows the fall until you land or let go |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
@@ -168,7 +169,8 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
 - **M11 Air control.** With the Vandal, watch the HUD's three `jump` lines, which describe your
   last jump: its airtime, distance and how far to the side of where you faced as you left the
   ground; how far the path bent on the way; and the speed along the ground leaving and landing,
-  with the top speed between.
+  with the top speed between. Tap Space for each jump: held on the way down, it glides (Drift,
+  section 24), and the lines read longer.
   1. Stand still, jump and hold D until you land: `jump 0.66 s  0.37 m  0.37 m right`,
      `path bent 0°`, `speed 0.00 > 0.57 m/s, top 0.57`.
   2. Run down the sprint lane, jump and let go of everything: `3.59 m  0.00 m`, `path bent 0°`,
@@ -183,7 +185,8 @@ From [01-movement.md](research/01-movement.md). Keep the HUD on.
   5. The same quarter turn with W held instead of D: the path barely bends (about 6 degrees).
   6. Strafe-hop down the sprint lane: jump holding D with the mouse turning right, jump again the
      moment you land holding A with the mouse turning left, and so on. You can keep it going, and
-     `top` never goes past 5.40.
+     `top` never goes past 5.40. Each press has to come once you're down: one just before you land
+     doesn't jump.
 
 ## 4. Weapons
 
@@ -1316,6 +1319,51 @@ on the course.
   the ammo box has no `[X]`, X's square isn't outlined, and `VFKit` reads `C2/2 Q1/1 E1/1 X8/8`,
   with no `storm`.
 
+## 24. Drift
+
+From [20-drift.md](research/20-drift.md). One player on the course with the HUD on (F3), then two
+players on the course. Space held in the air glides: while it does, the HUD's `vert` line reads
+the fall's speed and its `state` line reads `glide`, and your `VFKit` ends in `glide`, from the
+server. Without keys, `VFTestButtons` 64 holds Space, and 8256 holds Q and Space together, so
+Updraft casts as it's set and the glide follows: set it, and clear it once you've landed. On the
+course Updraft's charge comes back 1.5 s after its lift ends.
+
+- **I1 A held jump.** Stand still on open floor, press Space and keep it held. You rise as from
+  any jump, then come down slowly: on the way down `vert` reads `-2.00 m/s` and `state` reads
+  `air glide`, and you hear a soft run of gusts. The jump line reads about `0.81 s`, against
+  `0.66 s` for a tap (M11). `VFKit` ends in `glide` on the way down, and not once you've landed.
+  **Send:** the jump line, held and tapped.
+- **I2 Landing with it held.** Keep Space held once you're down, for a couple of seconds: you don't
+  jump again. Let go and press it: you jump.
+- **I3 From the top of Updraft.** Press Q, then press and hold Space on the way up. The lift is as
+  in U2, `rise 4.00 m`, and from the top you glide down at `-2.00`: the jump line reads about
+  `3.00 s`, against U2's `1.67 s`. Do it again and let go of Space halfway down: `vert` falls away
+  faster at once and `glide` goes. **Send:** the jump line.
+- **I4 Pressed in a fall.** Press Q and let go of everything. On the way down from the top, once
+  `vert` is below `-5`, press and hold Space: `vert` comes up to `-2.00` within about a tenth of a
+  second, and stays there until you land.
+- **I5 A dash in a glide.** Ready a gust (E) and wait for the countdown, press Q, and hold Space.
+  Once `vert` reads `-2.00`, press E: you dash level through the air, with `vert` at `0.00` and no
+  `glide`, then glide on down at `-2.00` after it.
+- **I6 Aim.** With the Vandal (1), glide from the top of Updraft and watch the HUD's `cone` line:
+  it ends in `air`, as in any fall, and its ring is as wide as in a jump. Then cast Blade Storm (X),
+  wait for the knives, press Q, glide, and throw one at Dummy 1's body: it lands where the
+  crosshair is.
+- **I7 The sound.** Open the Sound Lab (F2 four times). A glide logs `glide` from `you` about three
+  times a second, and nothing more once you land or let go.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and stay
+on the course.
+
+- **I8 Others' glide.** Bring the two players about 10 m apart, in view of each other. In window 2,
+  press Q and hold Space. Window 1 sees faint rings of air left at player 2's waist as they sink,
+  each fading where it was left, at player 2 as they're drawn at the moment. Its Sound Lab logs
+  `glide` from player 2 about three times a second, at about how far away they are. Both stop when
+  player 2 lands or lets go of Space. Player 2's `VFKit` ends in `glide` while it lasts.
+- **I9 Not across the buy phase.** Press P once in window 1 (Skirmish). In the buy phase, player 2
+  jumps on their side holding Space: window 1's Sound Lab shows player 2's `glide` as
+  `not heard: buy phase`, as in N9.
+
 ## Results
 
 ```
@@ -1392,6 +1440,9 @@ Z4 leg knives to kill: ___
 Z5 a throw on the move missed the crosshair: yes / no (which)
 Z8 the burst at 10 m: ___ of 5 landed, the number ___
 Z12 the other player's blades and streaks lined up with where they were drawn: yes / no (what)
+I1 the jump line held ___ s, tapped ___ s
+I3 from the top of Updraft: the jump line ___ s
+I8 the other player's rings lined up with where they were drawn: yes / no (what)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1519,3 +1570,11 @@ Didn't look right (IDs and what you saw):
 | 19 | The cast, the throws and a body hit are heard | Z2, Z3, Z11 |
 | 19 | Another player sees your cast and your knives' streaks, and hears both | Z12 |
 | 19 | A death ends it | Z13 |
+| 20 | Holding Space through a jump, the way down is slow: `vert` reads `-2.00` and `state` reads `glide`, and the jump line about 0.81 s | I1 |
+| 20 | Held from the top of Updraft, about 3 s in the air | I3 |
+| 20 | Pressed in a fall, the fall slows at once; let go, it speeds up again | I3, I4 |
+| 20 | Held into a landing, it doesn't jump again until it's pressed again | I2 |
+| 20 | A dash in a glide flies level, and the glide takes up again after it | I5 |
+| 20 | A gun's cone is the air's in a glide, and Blade Storm's knives land on the crosshair | I6 |
+| 20 | Your glide is heard as a soft run of gusts | I1, I7 |
+| 20 | Another player sees and hears a glide where you are on their screen | I8, I9 |
