@@ -693,9 +693,9 @@ HUD's `xhair` line has the real ones.
 - **X5 Movement error.** With the default crosshair and the Vandal, standing still, the `xhair`
   line reads `P  move +0 px  fire +0 px` and the outer lines sit 10 px from the middle. Run: the
   outer lines jump out, by about 80 px (4.2% of the view's width), and the inner lines stay. Walk
-  (Shift): about 40 px. Crouch-walk: about 11. In the air: about 135. Landing, they jump out a
-  little more for a quarter of a second. Stop: they snap back as the HUD reads `ACCURATE`. With the
-  knife (3) nothing moves. **Send:** the view's width and the run, walk and air numbers.
+  (Shift): about 40 px. Crouch-walk: about 11. Jump on the spot: about 135 in the air, then about
+  94 for a quarter of a second after landing (the landing penalty), then back. Stop: they snap
+  back as the HUD reads `ACCURATE`. With the knife (3) nothing moves. **Send:** the view's width and the run, walk and air numbers.
 - **X6 Firing error.** Hold fire with the Vandal at a wall for the whole magazine: both sets of
   lines move out as the spray builds, to about 10 px by the last bullet, and the top two lines
   fade, half gone by the fifth bullet and gone by the ninth. Let go: the lines come back in as the
