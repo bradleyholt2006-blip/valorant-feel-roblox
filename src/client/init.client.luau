@@ -13,6 +13,7 @@ local WeaponEffects = require(script.Combat.WeaponEffects)
 local CombatHud = require(script.Combat.CombatHud)
 local ArenaHud = require(script.ArenaHud)
 local GameSounds = require(script.Audio.GameSounds)
+local DefaultSounds = require(script.Audio.DefaultSounds)
 local DebugHud = require(script.Debug.DebugHud)
 local SpeedGraph = require(script.Debug.SpeedGraph)
 local CounterStrafeLab = require(script.Debug.CounterStrafeLab)
@@ -39,7 +40,9 @@ WeaponEffects.start()
 CombatHud.start()
 -- The arena's score and round banners, and P to turn it on or off.
 ArenaHud.start()
--- Footsteps, landings, gunshots, reloads, draws and hit sounds.
+-- Footsteps, landings, gunshots, reloads, draws and hit sounds, with
+-- Roblox's own character sounds switched off.
+DefaultSounds.start()
 GameSounds.start()
 
 DebugHud.start(PlayerController)
