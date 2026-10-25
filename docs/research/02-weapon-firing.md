@@ -220,7 +220,7 @@ Roblox differences from the reference that matter here:
 | `src/client/RemoteEntities.luau` | Snapshot interpolation for players and dummies; dummy drawing |
 | `src/client/Combat/ClientShots.luau` | Client trace of each shot, matched with the server's verdict |
 | `src/client/Combat/WeaponEffects.luau` | Stand-in weapon model, muzzle flash, tracers, impact marks |
-| `src/client/Combat/CombatHud.luau` | Health, ammo, reload / draw bar, hit marker, damage numbers, kill feed, scope |
+| `src/client/Combat/CombatHud.luau` | Health, ammo, reload / draw bar, hit marker, damage numbers, scope (the kill feed is `KillFeed.luau`'s since system 16) |
 | `tests/weapons.luau`, `tests/combat.luau`, `tests/net.luau` | Offline tests and the weapon metrics report |
 
 ## 7. Debug tools

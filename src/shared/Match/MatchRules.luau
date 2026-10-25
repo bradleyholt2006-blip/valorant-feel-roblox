@@ -25,6 +25,14 @@
 -- cap; and every overtime round starts everyone on Credits.overtime.
 -- Swiftplay pays its own schedule in place of the win and the loss.
 --
+-- And the match's record (system 16), for the scoreboard: each member's
+-- kills, deaths and assists, and their combat score (MatchConfig.Score):
+-- damage to enemies, kills by how many enemies were alive, and more for
+-- each kill after the first in a round. An assist is damage to an enemy a
+-- teammate then kills in the same life. Everything counts in a round and
+-- after it, not while waiting for an opponent or once the match is won. And
+-- what each member had as the round started, which the other side sees.
+--
 -- No Roblox APIs here: the server says who joins, leaves and dies, when the
 -- spike is planted, defused or goes off, and what time it is, and spawns
 -- whoever these functions return, dead or alive.
@@ -33,6 +41,7 @@ local MatchConfig = require("./MatchConfig")
 
 local R = MatchConfig.Rules
 local C = MatchConfig.Credits
+local S = MatchConfig.Score
 
 export type Phase = "waiting" | "buy" | "live" | "planted" | "roundOver" | "matchOver"
 -- How a round was won.
@@ -44,6 +53,16 @@ export type Member = {
 	alive: boolean,
 	respawnAt: number?, -- while waiting: when they come back
 	credits: number,
+	-- What they had as the round started, after its pay: what the other
+	-- side's scoreboard shows of them (system 16).
+	startCredits: number,
+	-- The match's record (system 16).
+	kills: number,
+	deaths: number,
+	assists: number,
+	score: number, -- combat score, every round so far
+	rounds: number, -- rounds played to their end, for its average
+	roundKills: number, -- kills this round, for the multikill bonus
 }
 
 export type State = {
@@ -65,6 +84,9 @@ export type State = {
 	matchWinner: number?,
 	streak: { number }, -- by side: the rounds it has lost in a row
 	spikePlanted: boolean, -- in the round being played, or just played
+	-- By member: who on the other side has damaged their life under way,
+	-- for the assists when they die (system 16).
+	hurt: { [number]: { [number]: boolean } },
 	version: number, -- goes up on every change, so the server knows to tell clients
 }
 
@@ -96,6 +118,7 @@ function MatchRules.new(format: string?): State
 		matchWinner = nil,
 		streak = { 0, 0 },
 		spikePlanted = false,
+		hurt = {},
 		version = 0,
 	}
 end
@@ -196,11 +219,20 @@ local function champion(s: State): number?
 	return MatchRules.winner(s.format, s.score[1], s.score[2])
 end
 
+local function clearRecord(m: Member)
+	m.kills, m.deaths, m.assists = 0, 0, 0
+	m.score, m.rounds, m.roundKills = 0, 0, 0
+end
+
 local function newMatch(s: State)
 	s.score = { 0, 0 }
 	s.match += 1
 	s.round = 0
 	s.matchWinner = nil
+	for _, m in s.members do
+		clearRecord(m)
+	end
+	table.clear(s.hurt)
 end
 
 local function buyTime(s: State): number
@@ -274,10 +306,13 @@ local function startRound(s: State, now: number): { number }
 	s.roundWinner = nil
 	s.reason = nil
 	s.spikePlanted = false
+	table.clear(s.hurt)
 	local out = {}
 	for id, m in s.members do
 		m.alive = true
 		m.respawnAt = nil
+		m.startCredits = m.credits
+		m.roundKills = 0
 		table.insert(out, id)
 	end
 	table.sort(out)
@@ -289,6 +324,9 @@ local function endRound(s: State, winner: number, reason: Reason, now: number)
 	s.roundWinner = winner
 	s.reason = reason
 	s.score[winner] += 1
+	for _, m in s.members do
+		m.rounds += 1
+	end
 	local won = champion(s)
 	if won then
 		s.phase = "matchOver"
@@ -348,7 +386,20 @@ function MatchRules.join(s: State, id: number, now: number): { number }
 	s.joins += 1
 	local side = if count(s, 2, false) < count(s, 1, false) then 2 else 1
 	local credits = if MatchRules.overtime(s.format, s.round) then C.overtime.value else C.start.value
-	s.members[id] = { side = side, order = s.joins, alive = true, respawnAt = nil, credits = credits }
+	s.members[id] = {
+		side = side,
+		order = s.joins,
+		alive = true,
+		respawnAt = nil,
+		credits = credits,
+		startCredits = credits,
+		kills = 0,
+		deaths = 0,
+		assists = 0,
+		score = 0,
+		rounds = 0,
+		roundKills = 0,
+	}
 	s.version += 1
 	if s.phase == "waiting" and manned(s) then
 		return startRound(s, now)
@@ -361,6 +412,7 @@ function MatchRules.leave(s: State, id: number, now: number)
 		return
 	end
 	s.members[id] = nil
+	s.hurt[id] = nil
 	s.version += 1
 	if not manned(s) then
 		if s.phase ~= "waiting" then
@@ -372,8 +424,46 @@ function MatchRules.leave(s: State, id: number, now: number)
 	end
 end
 
+-- Whether what happens now goes in the match's record: in a round or after
+-- one, not while waiting for an opponent or once the match is won.
+local function recorded(s: State): boolean
+	return s.phase ~= "waiting" and s.phase ~= "matchOver"
+end
+
+-- What a kill scores, with `alive` enemies alive for it, the one killed
+-- among them.
+function MatchRules.killScore(alive: number): number
+	return S.kill[math.clamp(alive, 1, #S.kill)].value
+end
+
+-- A combat score averaged over the rounds played (at least one), to the
+-- nearest point: the scoreboard's ACS.
+function MatchRules.average(score: number, rounds: number): number
+	return math.floor(score / math.max(rounds, 1) + 0.5)
+end
+
+-- Someone has been damaged by someone else, `amount` taken from their health
+-- and shield. Damage to an enemy scores, and is an assist if a teammate of
+-- the attacker then kills them in the same life.
+function MatchRules.damaged(s: State, attacker: number, victim: number, amount: number)
+	local by, m = s.members[attacker], s.members[victim]
+	if not by or not m or by.side == m.side or amount <= 0 or not recorded(s) then
+		return
+	end
+	by.score += amount * S.damage.value
+	local hurt = s.hurt[victim]
+	if not hurt then
+		hurt = {}
+		s.hurt[victim] = hurt
+	end
+	hurt[attacker] = true
+	s.version += 1
+end
+
 -- Someone has died, killed by `killer` if anyone: a kill of someone on the
--- other side, while a round is played, pays the killer.
+-- other side, while a round is played, pays the killer. It goes in the
+-- record: a death, and a kill and its score for an enemy killer, with an
+-- assist for each of their teammates who damaged this life.
 function MatchRules.died(s: State, id: number, now: number, killer: number?)
 	local m = s.members[id]
 	if not m or not m.alive then
@@ -384,6 +474,25 @@ function MatchRules.died(s: State, id: number, now: number, killer: number?)
 	if by and by.side ~= m.side and (s.phase == "live" or s.phase == "planted") then
 		give(by, C.kill.value)
 	end
+	if recorded(s) then
+		m.deaths += 1
+		if by and by.side ~= m.side then
+			by.kills += 1
+			by.roundKills += 1
+			local multi = if by.roundKills > 1 then S.multiKill.value else 0
+			by.score += MatchRules.killScore(count(s, m.side, true) + 1) + multi
+			local hurt = s.hurt[id]
+			if hurt then
+				for other in hurt do
+					local helper = s.members[other]
+					if other ~= killer and helper and helper.side == by.side then
+						helper.assists += 1
+					end
+				end
+			end
+		end
+	end
+	s.hurt[id] = nil
 	s.version += 1
 	if s.phase == "waiting" then
 		m.respawnAt = now + R.respawnTime.value

@@ -28,6 +28,10 @@
 -- to the one swinging with what the server tested, and the others hear it.
 --
 -- The spike's blast kills outright, with nobody to credit (kill).
+--
+-- Each damage event says whether the bullets went through a wall first, for
+-- the kill feed (system 16), and every hit that took something is told to
+-- damageListeners, for the match's record.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -56,6 +60,10 @@ local DT = 1 / MovementConfig.TickRate.value
 
 local CombatServer = {}
 
+-- Called with every hit that took health or shield: who did it (nil for the
+-- spike's blast), to whom, and how much, before a kill's death listeners.
+CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, number) -> () }
+
 local level = RobloxLevel.new()
 local history = LagCompensation.new()
 
@@ -64,9 +72,15 @@ function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 	LagCompensation.record(history, time, poses)
 end
 
--- `attacker` is nil for a death nobody caused (the spike's blast).
-local function damage(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, region: string, weapon: string)
+-- `attacker` is nil for a death nobody caused (the spike's blast);
+-- `wallbang`, that the bullets went through a wall on the way.
+local function damage(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, region: string, weapon: string, wallbang: boolean?)
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
+	if result.damage > 0 then
+		for _, listener in CombatServer.damageListeners do
+			listener(attacker, victim, result.damage)
+		end
+	end
 	local hp = WeaponConfig.Health
 	if result.damage > 0 and victim.sim and not result.killed then
 		PlayerSim.applyTag(victim.sim, Tuning.config(), hp.tagSpeedMultiplier.value, hp.tagDuration.value, DT)
@@ -81,6 +95,7 @@ local function damage(attacker: Entities.Entity?, victim: Entities.Entity, amoun
 	event.weapon = weapon
 	event.damage = result.damage
 	event.killed = result.killed
+	event.wallbang = wallbang == true
 	Remotes.get().Combat:FireAllClients(event)
 	if result.killed then
 		victim.onKilled(attacker)
@@ -202,6 +217,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 	local pellets = table.create(#shots)
 	local ends = table.create(#shots)
 	local hits: { Volley.Hit } = {}
+	local throughWall: { [number]: boolean } = {} -- targets a bullet reached through a wall
 	for _, shot in shots do
 		local trace = Penetration.trace(level, shot.origin, shot.direction, def.penetration, WeaponConfig.MaxRange)
 		local blockedAt = trace.stop
@@ -236,6 +252,9 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 				pellet.hitPoint = Units.asVector3(hit.point)
 				pellet.damage = amount
 				table.insert(hits, { target = hit.targetId, region = hit.region :: string, damage = amount })
+				if #pellet.walls > 0 then
+					throughWall[hit.targetId] = true
+				end
 			end
 		end
 		table.insert(pellets, pellet)
@@ -247,7 +266,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 	for _, total in Volley.totals(hits) do
 		local victim = Entities.get(total.target)
 		if victim and victim.health.alive then
-			local result = damage(shooter, victim, total.damage, total.region, first.weapon)
+			local result = damage(shooter, victim, total.damage, total.region, first.weapon, throughWall[total.target])
 			table.insert(results, { target = total.target, region = total.region, damage = total.damage, pellets = total.pellets, killed = result.killed })
 		end
 	end

@@ -28,6 +28,12 @@
 -- starts with the ground cleared, and in the spike rounds the dead drop
 -- their gun where they fall.
 --
+-- The round at a glance (system 16): in either, whether each player is
+-- alive (MatchConfig.ALIVE) and the guns they hold (MatchConfig.LOADOUT), as
+-- player attributes; in the spike rounds, their record this match too
+-- (kills, deaths, assists, combat score and rounds played), which
+-- MatchRules keeps from every hit between players and every death.
+--
 -- P (Studio or the place owner) moves on through the arena, the spike rounds
 -- in the standard format, the spike rounds in Swiftplay's, and off. So do
 -- Workspace's attributes, set from the server, which is how scripted checks
@@ -52,6 +58,7 @@ local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
+local CombatServer = require(script.Parent.CombatServer)
 local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
@@ -114,6 +121,7 @@ local match: MatchRules.State? = nil
 local teams: { Team } = {}
 local published = -1
 local queued: { [Player]: boolean } = {} -- spawns asked for and not started yet
+local loadouts: { [Player]: string } = {} -- what MatchConfig.LOADOUT says of each player
 local kitMatch: { [Player]: number } = {} -- the match each player last got the starting kit for
 -- The round the ground was last cleared for, and in the spike rounds the
 -- spike and the kits were last set for.
@@ -232,6 +240,19 @@ function Arena.buildIfMissing()
 	end
 end
 
+-- The player attributes what's played keeps up to date, cleared as it ends.
+local RECORD = {
+	MatchConfig.CREDITS,
+	MatchConfig.START_CREDITS,
+	MatchConfig.KILLS,
+	MatchConfig.DEATHS,
+	MatchConfig.ASSISTS,
+	MatchConfig.SCORE,
+	MatchConfig.ROUNDS,
+	MatchConfig.ALIVE,
+	MatchConfig.LOADOUT,
+}
+
 local function playerFor(id: number): Player?
 	return Players:GetPlayerByUserId(id)
 end
@@ -306,11 +327,26 @@ local function publish()
 		root:SetAttribute("Streak1", if m then m.streak[1] else nil)
 		root:SetAttribute("Streak2", if m then m.streak[2] else nil)
 	end
+	if s then
+		for id, member in s.members do
+			local player = playerFor(id)
+			if player then
+				player:SetAttribute(MatchConfig.ALIVE, member.alive)
+			end
+		end
+	end
 	if m then
 		for id, member in m.members do
 			local player = playerFor(id)
 			if player then
+				player:SetAttribute(MatchConfig.ALIVE, member.alive)
 				player:SetAttribute(MatchConfig.CREDITS, member.credits)
+				player:SetAttribute(MatchConfig.START_CREDITS, member.startCredits)
+				player:SetAttribute(MatchConfig.KILLS, member.kills)
+				player:SetAttribute(MatchConfig.DEATHS, member.deaths)
+				player:SetAttribute(MatchConfig.ASSISTS, member.assists)
+				player:SetAttribute(MatchConfig.SCORE, member.score)
+				player:SetAttribute(MatchConfig.ROUNDS, member.rounds)
 			end
 		end
 	end
@@ -415,8 +451,11 @@ local function stop()
 		player.Team = nil
 		player.Neutral = true
 		player:SetAttribute(ArenaConfig.SIDE, nil)
-		player:SetAttribute(MatchConfig.CREDITS, nil)
+		for _, name in RECORD do
+			player:SetAttribute(name, nil)
+		end
 	end
+	table.clear(loadouts)
 	for _, team in teams do
 		team:Destroy()
 	end
@@ -486,14 +525,33 @@ local function apply()
 	end
 end
 
+-- Tells clients the guns each player holds, when they've changed.
+local function publishLoadouts(members: { [number]: any })
+	for id in members do
+		local player = playerFor(id)
+		if not player then
+			continue
+		end
+		local primary = PlayerSimServer.holding(player, 1)
+		local sidearm = PlayerSimServer.holding(player, 2)
+		local text = (primary or "") .. "," .. (sidearm or "")
+		if loadouts[player] ~= text then
+			loadouts[player] = text
+			player:SetAttribute(MatchConfig.LOADOUT, text)
+		end
+	end
+end
+
 -- The rounds' clock, once a server frame.
 function Arena.step(time: number)
 	local ids: { number }
 	local s, m = skirmish, match
 	if s then
 		ids = ArenaRules.step(s, time)
+		publishLoadouts(s.members)
 	elseif m then
 		ids = MatchRules.step(m, time)
+		publishLoadouts(m.members)
 	else
 		return
 	end
@@ -584,6 +642,15 @@ function Arena.start()
 		publish()
 		return paid
 	end
+	-- Every hit between players goes in the spike rounds' record.
+	table.insert(CombatServer.damageListeners, function(attacker, victim, amount: number)
+		local m = match
+		local by = if attacker then attacker.player else nil
+		local hurt = victim.player
+		if m and by and hurt then
+			MatchRules.damaged(m, by.UserId, hurt.UserId, amount)
+		end
+	end)
 	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
 		local s, m = skirmish, match
 		if s then
@@ -601,6 +668,7 @@ function Arena.start()
 	Players.PlayerRemoving:Connect(function(player)
 		queued[player] = nil
 		kitMatch[player] = nil
+		loadouts[player] = nil
 		local s, m = skirmish, match
 		if s then
 			ArenaRules.leave(s, player.UserId, now())

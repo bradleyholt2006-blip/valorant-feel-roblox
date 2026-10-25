@@ -181,8 +181,8 @@ The plant is stamped with the server's time, and it goes off 45 seconds after th
 counts its beeps from the same stamp on its server clock (`GetServerTimeNow`), so everyone hears
 them together; a beep heard of late by more than a quarter of a second is skipped, not played
 late. At 0 the server grows the blast for half a second, killing each player and dummy it reaches
-outright, shield and all, through walls, with nobody credited: the kill feed reads
-`[Spike]  name`. A defuse that finishes after the blast has gone off counts for nothing.
+outright, shield and all, through walls, with nobody credited: the kill feed has the spike for
+the killer (`SPIKE   name` since system 16). A defuse that finishes after the blast has gone off counts for nothing.
 
 ### Picking it up and dropping it
 

@@ -94,7 +94,7 @@ Every value lives in `src/shared/Weapons/WeaponConfig.luau` (`melee`) with its s
 | Parameter | Value | Status |
 | --- | --- | --- |
 | Damage | Slash 50, stab 75; from behind 100 and 150 | Community |
-| Any region | The same damage to the head, body or legs; a head hit still counts as a headshot (the headshot sound, `(head)` in the kill feed) | Community |
+| Any region | The same damage to the head, body or legs; a head hit still counts as a headshot (the headshot sound, and the kill feed's headshot mark) | Community |
 | Behind | A 180° arc: the attacker's eye past the line through the target's shoulders, square to the way it faces | Community (the arc); estimate (judged from the eye, at the swing's tick) |
 | Rates | Slash twice a second (every 0.5 s), stab 0.8 a second (every 1.25 s), held or clicked | Community |
 | Held | Swings again and again while held, as an automatic gun fires | Community |
@@ -226,7 +226,7 @@ Swing 5" (9113305619), and the "Sword Whip" takes, which are all layered with gr
 | The client's guess and the verdict | `src/client/Combat/ClientMelee.luau` |
 | The sweep, cuts, sparks and confirms | `src/client/Combat/WeaponEffects.luau` |
 | Sounds | `src/shared/Audio/SoundConfig.luau` (`slash`, `stab`, `knifeHit`, `knifeWall`, the `melee` curve), `src/client/Audio/GameSounds.luau` |
-| The kill feed's weapon | `src/client/Combat/CombatHud.luau` |
+| The kill feed's weapon | `src/client/KillFeed.luau` (system 16; `CombatHud` before) |
 | Tests | `tests/melee.luau` |
 
 ## 7. Debug tools

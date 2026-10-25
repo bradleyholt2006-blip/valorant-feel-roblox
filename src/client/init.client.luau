@@ -12,7 +12,9 @@ local ClientShots = require(script.Combat.ClientShots)
 local ClientMelee = require(script.Combat.ClientMelee)
 local WeaponEffects = require(script.Combat.WeaponEffects)
 local CombatHud = require(script.Combat.CombatHud)
+local KillFeed = require(script.KillFeed)
 local ArenaHud = require(script.ArenaHud)
+local Scoreboard = require(script.Scoreboard)
 local BuyMenu = require(script.BuyMenu)
 local ClientSettings = require(script.ClientSettings)
 local CrosshairView = require(script.CrosshairView)
@@ -53,8 +55,13 @@ ClientShots.start()
 ClientMelee.start()
 WeaponEffects.start()
 CombatHud.start()
+-- Who killed whom, with what, at the top right.
+KillFeed.start()
 -- The arena's score and round banners, and P to turn it on or off.
 ArenaHud.start()
+-- Tab: everyone's kills, deaths, assists, combat score and credits, in the
+-- spike rounds.
+Scoreboard.start()
 -- B: every gun and shield, in the arena's buy phase and any time on the course.
 BuyMenu.start()
 -- Your sensitivity and crosshair, kept between sessions; O for the menu.

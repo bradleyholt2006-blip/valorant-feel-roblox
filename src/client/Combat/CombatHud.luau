@@ -1,13 +1,11 @@
 --!strict
 -- Player-facing combat HUD (original layout): health and shields, ammo and
 -- weapon, a reload / equip bar, server-confirmed hit markers and damage
--- numbers, a kill feed (who, with what, whom), the death notice and a scope
--- overlay.
+-- numbers, the death notice and a scope overlay. The kill feed is KillFeed's.
 --
 -- Hit markers and damage numbers only ever come from the server's verdict,
 -- never from the client's guess, so they show what actually counted.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -17,39 +15,22 @@ local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
-local PlayerCodec = require(Shared.Net.PlayerCodec)
-local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
 local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local ClientShots = require(script.Parent.ClientShots)
-local NetSim = require(script.Parent.Parent.NetSim)
 local Ui = require(script.Parent.Parent.Debug.Ui)
 
 local DT = 1 / MovementConfig.TickRate.value
 local HEAD_COLOR = Color3.fromRGB(255, 210, 90)
 local KILL_COLOR = Color3.fromRGB(255, 80, 80)
-local FEED_ROWS = 5
-local FEED_TIME = 6
 
 local CombatHud = {}
 
 -- Show floating damage numbers at hit points (the reference only shows them
 -- in its practice range; they are on here because this is a test bench).
 CombatHud.damageNumbers = true
-
-local function nameOf(id: number): string
-	if PlayerCodec.isDummy(id) then
-		return string.format("Dummy %d", id - PlayerCodec.DUMMY_BASE)
-	end
-	for _, player in Players:GetPlayers() do
-		if PlayerCodec.entityIdForUser(player.UserId) == id then
-			return player.DisplayName
-		end
-	end
-	return "?"
-end
 
 local function damageNumber(point: vector, amount: number, color: Color3)
 	local anchor = Instance.new("Part")
@@ -91,10 +72,8 @@ local function damageNumber(point: vector, amount: number, color: Color3)
 end
 
 function CombatHud.start()
-	-- The hit marker, reload bar and scope sit on the camera's centre; the kill
-	-- feed keeps clear of the top bar.
+	-- The hit marker, reload bar and scope sit on the camera's centre.
 	local gui = Ui.screen("VFCombatHud", 15, Enum.ScreenInsets.None)
-	local feedGui = Ui.screen("VFKillFeed", 15)
 
 	-- Health / shield (left of centre) and ammo (right of centre) ------------
 	local vitals = Ui.frame(gui, {
@@ -184,15 +163,6 @@ function CombatHud.start()
 	local markerStart = -math.huge
 	local markerColor = Ui.TEXT
 
-	-- Kill feed ---------------------------------------------------------------
-	local feed = Ui.label(feedGui, {
-		Size = UDim2.fromOffset(400, FEED_ROWS * 18),
-		Position = UDim2.new(1, -412, 0, 12),
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextStrokeTransparency = 0.5,
-	})
-	local feedRows: { { text: string, at: number } } = {}
-
 	-- Death notice --------------------------------------------------------------
 	local dead = Ui.label(gui, {
 		Size = UDim2.fromOffset(400, 40),
@@ -230,26 +200,6 @@ function CombatHud.start()
 			if CombatHud.damageNumbers then
 				damageNumber(hit.point, hit.damage, markerColor)
 			end
-		end
-	end)
-
-	NetSim.on(Remotes.get().Combat, function(event: any)
-		if typeof(event) ~= "table" or event.kind ~= "damage" or not event.killed then
-			return
-		end
-		local def = if typeof(event.weapon) == "string" then WeaponConfig.Defs[event.weapon] else nil
-		-- A death nobody caused (the spike's blast) has no name in front.
-		local by = if typeof(event.attacker) == "number" then nameOf(event.attacker) .. "  " else ""
-		local text = string.format(
-			"%s[%s]  %s%s",
-			by,
-			if def then def.name else "?",
-			nameOf(event.target),
-			if event.region == "head" then "  (head)" else ""
-		)
-		table.insert(feedRows, { text = text, at = os.clock() })
-		if #feedRows > FEED_ROWS then
-			table.remove(feedRows, 1)
 		end
 	end)
 
@@ -315,14 +265,6 @@ function CombatHud.start()
 			tick.BackgroundTransparency = if mt < 1 then mt else 1
 			tick.BackgroundColor3 = markerColor
 		end
-
-		local lines = {}
-		for _, row in feedRows do
-			if now - row.at < FEED_TIME then
-				table.insert(lines, row.text)
-			end
-		end
-		feed.Text = table.concat(lines, "\n")
 	end)
 end
 

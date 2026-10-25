@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifteen research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the sixteen research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about three hours. Doing it in parts is fine; keep the order.
+It takes about three and a half hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, and sections 16 to
-   19 one and then two.
+   20 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -46,6 +46,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
 | N | The next enemy outline colour |
 | P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
+| Tab | Held: the scoreboard, in the spike rounds |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
@@ -67,7 +68,8 @@ attribute `VFTestSlot` set to 1, 2, 3 or 4 draws that slot as its key would. `VF
 it's set, without the mouse or keys: 128 is the left button (fire, or the knife's slash), 256 the
 right (zoom, or the stab), 1024 is 4 held (the spike's plant and defuse), 2048 is G, 32 crouches
 and 1 is W; add them to hold several. A boolean attribute `VFTestTake` set to true presses F
-for you, and clears itself. `VFTestSettingsMenu` set to
+for you, and clears itself, and `VFTestBoard` set to true or false holds the scoreboard open as Tab
+does or lets it go. `VFTestSettingsMenu` set to
 true or false opens or closes the settings menu, and a string attribute `VFTestSetting` enters a
 setting as its box in the menu would: `sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or
 `crosshair=` and a code.
@@ -638,8 +640,8 @@ dummy's id is 4294901761) and `VFTestAimRegion`.
   the number `50`, a red hit confirm on its body and the blade going in (a wet stab), and its label
   reads `83 + 17`. The second makes it `50 + 0` and the third kills it, held: 1.0 s. When it's back,
   stab: `75`, its label `75 + 1` (74.5 and 0.5, rounded up), and the second stab kills it. Slash
-  its head: `50` still, with the headshot sound, and a kill on the head reads `(head)` in the kill
-  feed. The kill feed reads `<your name>  [Knife]  Dummy 1` (with a space, as for guns).
+  its head: `50` still, with the headshot sound, and a kill on the head has `HS` in the kill
+  feed. The kill feed reads `<your name>   Knife   Dummy 1`, as for guns.
 - **K3 From behind.** Walk past Dummy_1 and turn round to face its back. One stab kills it: `150`,
   and the Hit Reg Lab (F2 three times) reads `Dummy_1 body from behind, 150` on its `last` line.
   Two slashes do too (`100`, then `50 + 0`, then the kill). From its side, a step behind the line
@@ -672,7 +674,7 @@ Then two players, as in section 9, on the course.
 
 - **K9 Each other.** Both draw the knife. Player 2 slashes player 1 from in front: player 1's HUD
   reads `83` and `+17`. Player 2 walks round behind player 1 and stabs once: player 1 dies, and
-  both kill feeds read `Player2  [Knife]  Player1`. Player 1 hears player 2's swings and the blade
+  both kill feeds read `Player2   Knife   Player1`. Player 1 hears player 2's swings and the blade
   going in from where player 2 is. Player 2 slashes the wall beside player 1: player 1 sees the
   cut and the spark there and hears the strike. Teammates take no swing, as they take no bullet
   (A12), but that needs three players.
@@ -783,8 +785,8 @@ it and `VFTestButtons` holds 4 (1024), G (2048) or crouch (32).
 - **D6 The blast.** At the spawn, 27 m from A, when the HUD reaches `0.0 s left`: `SPIKE
   DETONATED` in red, a deep explosion, and a black sphere grows from the spike to 35 m in half a
   second, then fades over a second and a half. It reaches you: you die, the view goes dark as it
-  passes, and the kill feed reads `[Spike]  <your name>`, with no name in front. Dummy 18, between
-  the sites, dies too (`[Spike]  Dummy 18`). Dummy 1, 10 m down the target lane at (0, 0, -10),
+  passes, and the kill feed reads `SPIKE   <your name>`, the spike in red for the killer. Dummy 18,
+  between the sites, dies too (`SPIKE   Dummy 18`). Dummy 1, 10 m down the target lane at (0, 0, -10),
   dies only if it's within 35 m of `VFSpikePosition`: about 34 to 36 m, depending on where in A it
   went down. Dummy 4, at 30 m (56 m away), lives. `VFSpike` is `detonated`, and 5 s later the
   spike is back on its tile (`dropped`). **Send:** Dummy 1's distance and whether it died.
@@ -1026,6 +1028,59 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **L16 Off.** Drop a gun, then press P in window 1 until `[VF] Arena off`: `VFGroundGuns` is
   empty again.
 
+## 20. The round at a glance
+
+From [16-scoreboard.md](research/16-scoreboard.md). One player on the course, then two in the spike
+rounds. Without keys, Tab is `VFTestBoard` true on your player (false lets it go). Each player's
+record is in their attributes (select them under Players, then Properties, Attributes): `VFKills`,
+`VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`, `VFCredits` and `VFStartCredits` in the spike
+rounds, and `VFAlive` and `VFLoadout` in either the arena or the spike rounds.
+
+- **J1 The kill feed.** On the course, kill Dummy 1, the static dummy 10 m down the target lane,
+  with Vandal body shots. At the top right a line reads `<your name>   Vandal   Dummy 1`, your
+  name in blue and the dummy's in red, outlined in gold as you're in it. It goes after about 6 s.
+  **Send:** a screenshot with the line showing, and how long it stayed.
+- **J2 Headshots.** When it's back, kill it with one headshot: the line reads `<your name>
+  Vandal   HS   Dummy 1`, with `HS` in yellow.
+- **J3 Through a wall.** At the wallbang lane, kill the dummy behind the 0.10 m wood wall with
+  Vandal shots through the wall: its line has `WALL` in grey before the dummy's name. The kills in
+  the open, in J1 and J2, had none.
+- **J4 Six at most.** Kill dummies as fast as you can, the static ones and the strafers. The
+  newest line is always at the top, and no more than six show at once.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9.
+
+- **J5 Skirmish.** Press P once in window 1. Beside the top bar, window 1 shows a tile with the
+  first two letters of player 1's name on its left, in blue, and one for player 2 on its right, in
+  red; window 2 the other way round. Tab opens Roblox's own player list, not ours.
+- **J6 The tiles in the spike rounds.** Press P again: the tiles stay. Skip round 1's buy phase
+  (`VFMatchSkip`). Player 1 kills player 2 with the Classic, and player 2 doesn't shoot back.
+  Player 2's tile dims on both screens. Both kill feeds read `Player1   Classic   Player2`,
+  outlined in gold on both, as both are in it: in window 1 player 1's name is blue, and in window
+  2 it's red.
+- **J7 The scoreboard.** In window 1, hold Tab. Roblox's player list doesn't open. Ours has `1`
+  and `0` either side of `STANDARD   ROUND 1` across its top, then player 1's row, their name in
+  gold on a gold-tinted row: `1 0 0`, ACS `170` (100 damage and 70 for the kill, over one round),
+  `1000` credits and `CLASSIC`. Below it player 2's row, their name dimmed: `0 1 0`, ACS `0`,
+  `800`, and no loadout. In window 2, player 2's row is first, with no loadout as their Classic
+  dropped where they fell, and player 1's shows `800` credits, what they had as the round started,
+  and no loadout. Let go of Tab: it's gone. **Send:** a screenshot of each.
+- **J8 The other side's credits.** In round 2's buy phase, window 1's board shows `4000` for player
+  1 and `2700` for player 2. Player 2 buys a Spectre: window 2's board shows `1100` and `SPECTRE`
+  on player 2's row, and window 1's still shows `2700` for player 2, with no loadout. Player 1
+  buys Light Armor: window 1's board shows `3600` and `CLASSIC  LIGHT` on player 1's row.
+- **J9 The average.** Skip the buy phase. Player 2 kills player 1, who doesn't shoot back. Both
+  players' `VFRounds` is 2: player 1's ACS reads `85` (170 over 2), and player 2's is their
+  `VFScore` over 2, to the nearest point.
+- **J10 Off.** Press P in window 1 until `[VF] Arena off`. The tiles go, Tab opens Roblox's player
+  list again, and neither player has `VFKills` or the other record attributes any more.
+
+With three players (optional): start a Local Server with 3 players, and press P twice in window 1.
+Two of them share a side (Teams shows who).
+
+- **J11 Assists.** Skip the buy phase. One of the pair shoots the player on their own once, then
+  the other kills them: the first one's row shows `0 0 1`, and the killer's `1 0 0`.
+
 ## Results
 
 ```
@@ -1083,6 +1138,8 @@ Q10 round 4's credits: player 1 ___, player 2 ___
 Q11 Swiftplay's credits, rounds 2, 3, 4, 5, 6 and 9: player 1 ___, player 2 ___
 L1 the Vandal landed ___ m ahead
 L6 the prompt went at ___ m along the floor
+J1 a kill feed line stayed ___ s
+J9 player 2's ACS ___, from VFScore ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1176,3 +1233,8 @@ Didn't look right (IDs and what you saw):
 | 15 | Rounds kept through a drop and a pickup | L3, L11 |
 | 15 | Death drops in the spike rounds, picked-up guns kept into the next round, and the ground cleared | L11, L12, L14, L15, L16 |
 | 15 | Nothing to sell back after a drop | L13 |
+| 16 | The kill feed's lines, their colours, the headshot and wall marks, and the gold outline | J1, J2, J3, J4, J6 |
+| 16 | The players' tiles beside the top bar, dimmed when they die | J5, J6 |
+| 16 | Tab holds the scoreboard in the spike rounds, in place of Roblox's player list | J5, J7, J10 |
+| 16 | The record and the ACS as the tests have them, on every client | J7, J9, J11 |
+| 16 | Your side's credits and loadouts, and the other side's credits only as the round started | J7, J8 |

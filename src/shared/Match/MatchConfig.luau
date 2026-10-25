@@ -9,7 +9,9 @@
 -- only it says is "community".
 --
 -- And the economy (system 14): the credits each side has to buy with, from
--- the reference's own rules (docs/research/14-economy.md).
+-- the reference's own rules (docs/research/14-economy.md). And the match's
+-- record (system 16): kills, deaths, assists and the combat score
+-- (docs/research/16-scoreboard.md).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -33,6 +35,21 @@ MatchConfig.SKIP = "VFMatchSkip"
 -- The player attribute the server keeps each player's credits in, while the
 -- spike rounds are on.
 MatchConfig.CREDITS = "VFCredits"
+-- And what they had as the round started, after its pay, which is what the
+-- other side's scoreboard shows of them (system 16).
+MatchConfig.START_CREDITS = "VFStartCredits"
+-- And each player's record this match (system 16): kills, deaths, assists,
+-- the combat score, and the rounds played for its average; and whether
+-- they're alive, while either the arena or the spike rounds are on.
+MatchConfig.KILLS = "VFKills"
+MatchConfig.DEATHS = "VFDeaths"
+MatchConfig.ASSISTS = "VFAssists"
+MatchConfig.SCORE = "VFScore"
+MatchConfig.ROUNDS = "VFRounds"
+MatchConfig.ALIVE = "VFAlive"
+-- And the guns each player holds, primary and sidearm ("vandal,classic"; ""
+-- for an empty slot), for the scoreboard.
+MatchConfig.LOADOUT = "VFLoadout"
 
 -- How a match goes past a tie at the end of regulation: one more round
 -- whose winner takes it, or rounds on alternate sides until a side leads by
@@ -155,5 +172,28 @@ MatchConfig.Swiftplay = {
 	[3] = { all = p(4250, "community", SWIFTPLAY .. ": Round 3, '+4250'") },
 	[4] = { all = p(4250, "community", SWIFTPLAY .. ": Round 4, '+4250'") },
 } :: { [number]: { all: Param, won: Param? } }
+
+-- The combat score (system 16), each round's, which the scoreboard shows
+-- averaged over the rounds played (ACS): a point for each point of damage
+-- dealt to an enemy, a kill's worth by how many enemies were alive for it,
+-- and more for each kill after the first in a round.
+local ESPORTS_NET = "esports.net's ACS guide"
+MatchConfig.Score = {
+	damage = p(1, "community", ESPORTS_NET .. ": 'Each point of damage dealt adds 1 point'"),
+	-- A kill, by the enemies alive as it's made, the one killed among them:
+	-- five, four, three, two, or the last.
+	kill = {
+		p(70, "community", ESPORTS_NET .. ": 70 for the final enemy"),
+		p(90, "community", ESPORTS_NET .. ": 90 with 2 alive"),
+		p(110, "community", ESPORTS_NET .. ": 110 with 3 alive"),
+		p(130, "community", ESPORTS_NET .. ": 130 with 4 alive"),
+		p(150, "community", ESPORTS_NET .. ": 150 with 5 alive"),
+	},
+	multiKill = p(
+		50,
+		"community",
+		ESPORTS_NET .. ": '2 kills add 50, 3 kills add 100, and 4 kills add 150'; tracker.gg: 'For every addition kill, you can receive 50 points'"
+	),
+}
 
 return MatchConfig

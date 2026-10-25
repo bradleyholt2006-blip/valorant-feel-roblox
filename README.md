@@ -87,6 +87,13 @@ Built one system at a time:
     gun you're looking at for yours, which goes down in its place. Guns keep their rounds on the
     ground, the drop is predicted on your screen, and the ground is cleared as each round starts -
     [research and design](docs/research/15-ground-guns.md)
+16. **The round at a glance**: a kill feed at the top right, a line a kill with the killer, the
+    weapon, the headshot and wallbang marks and whoever died, each name in its side's colour and
+    your own lines outlined in gold; a tile for each player beside the top bar, dimmed once they're
+    dead; and in the spike rounds a scoreboard held on Tab, with everyone's kills, deaths, assists
+    and average combat score (damage, kills worth more with more enemies alive, multikills), your
+    side's credits and guns, and the other side's credits as the round started -
+    [research and design](docs/research/16-scoreboard.md)
 
 ## Running it
 
@@ -108,8 +115,8 @@ Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoo
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
-during the buy phase and while waiting for an opponent). The spike rounds charge credits; the
-course and the arena are free.
+during the buy phase and while waiting for an opponent), Tab held the scoreboard (the spike
+rounds). The spike rounds charge credits; the course and the arena are free.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -141,15 +148,18 @@ to an id buys it as the menu would (`-` and the id sells it back), `VFTestMenu` 
 false opens or closes the menu, `VFTestSlot` set to 1, 2, 3 or 4 draws that slot,
 `VFTestSettingsMenu` set to true or false opens or closes the settings menu, `VFTestSetting`
 set to `key=value` (`sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or `crosshair=0;P;c;5`) enters
-that setting as its box in the menu would, and `VFTestTake` set to true presses F. Each of the
-last seven clears itself.
+that setting as its box in the menu would, `VFTestTake` set to true presses F, and `VFTestBoard`
+set to true or false holds the scoreboard open as Tab does or lets it go. Each of the last eight
+clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still
 read. From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat`
 (`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
 set true ends the spike rounds' phase under way (a buy phase, a round or the wait for the next).
 In the spike rounds each player's credits are their `VFCredits` attribute, and each side's losses
 in a row `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in
-Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes.
+Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's
+record is in their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds` and
+`VFStartCredits` in the spike rounds, and `VFAlive` and `VFLoadout` in either.
 
 ## Tests
 
@@ -160,8 +170,9 @@ the arena's rules and map, the sound's rules (footsteps, landings, distance curv
 way, reload parts), the settings (crosshair codes and the pixels they draw, sensitivity and
 cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast), the spike
 rounds' rules and map, the economy (what each round pays, kills, the plant, the cap, what a
-purchase costs and the shield a survivor keeps) and guns on the ground (G's drop, what the dead
-drop, walking over one and the one in view) are pure Luau and run outside Roblox:
+purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the dead
+drop, walking over one and the one in view) and the match's record (the combat score, kills,
+deaths, assists and the average) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
