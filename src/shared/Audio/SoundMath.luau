@@ -116,6 +116,13 @@ function SoundMath.blockage(level: Penetration.Level, from: vector, to: vector, 
 	return thickness, pieces
 end
 
+-- Whether a draw makes its sound: always for a switch to another slot, and
+-- for the slot in hand drawn again (a weapon given into it) only once the
+-- last draw sound is at least SoundConfig.RedrawGap old.
+function SoundMath.drawHeard(switched: boolean, sinceLastDraw: number): boolean
+	return switched or sinceLastDraw >= SoundConfig.RedrawGap.value
+end
+
 -- The kill sound's playback speed for the nth kill of a life.
 function SoundMath.killPitch(kills: number): number
 	return 1 + SoundConfig.KillPitchStep.value * (math.clamp(kills, 1, 5) - 1)

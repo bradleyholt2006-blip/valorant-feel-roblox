@@ -1,0 +1,7 @@
+--!strict
+-- Takes the place of Roblox's default character sounds: with a LocalScript of
+-- this name in StarterPlayerScripts, Roblox doesn't add its own. Its sounds
+-- would play under ours (system 8): in BRINK its falling sound played on
+-- every jump, since the simulation lifts the anchored root, and it plays a
+-- death sound whenever a Humanoid dies, which ours do on each death. Every
+-- sound the game makes is in src/client/Audio.

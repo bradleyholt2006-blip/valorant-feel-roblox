@@ -314,6 +314,13 @@ do
 end
 
 do
+	local gap = SoundConfig.RedrawGap.value
+	check("a switch always makes its draw sound, however soon", SoundMath.drawHeard(true, 0))
+	check("the slot in hand drawn again just after a draw is the same draw", not SoundMath.drawHeard(false, 0.02))
+	check("a weapon given into the hand later is drawn with a sound", SoundMath.drawHeard(false, gap) and SoundMath.drawHeard(false, math.huge))
+end
+
+do
 	local level, most = SoundConfig.Level.value, SoundConfig.MaxGain.value
 	check(
 		"a loud take is turned down to the level and a quiet one up, by no more than the most gain",
@@ -354,6 +361,7 @@ do
 		param("Curves." .. name, curve)
 	end
 	param("KillPitchStep", SoundConfig.KillPitchStep)
+	param("RedrawGap", SoundConfig.RedrawGap)
 	param("Level", SoundConfig.Level)
 	param("MaxGain", SoundConfig.MaxGain)
 	check("every sound number carries a status and a source", ok)

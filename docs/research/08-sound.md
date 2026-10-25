@@ -88,7 +88,8 @@ The rules are confirmed or community, and the numbers that carry them out are ou
 | The footstep radius | 20 m: about 1.75 s of warning at rifle running speed (5.40 m/s) is 9.5 m, plus a 10 m fight | Estimate |
 | The curve's shape | Full volume to 2 m, 0.8 at 10 m, 0.5 at 19 m, silent at 20 m | Estimate |
 | Steps | One every 1.8 m: every 0.33 s running with a rifle, 0.27 s with the knife | Estimate |
-| The first step | 0.6 m after setting off | Estimate |
+| The first step | Within 0.6 m of setting off, sooner if a stride was nearly done when they stopped | Estimate |
+| A draw | One sound for each, so the slot in hand drawn again within 0.5 s of a draw makes none | Estimate |
 | Your own steps | 0.35 of an enemy's beside you, and not placed in the world | Estimate |
 | A landing that's heard | Falling at least 0.3 m, coming down no more than 0.1 m above where you left the ground | Community (the rule); estimate (the numbers) |
 | Walking or crouching as you land | Doesn't make it quiet | Estimate |
@@ -129,7 +130,7 @@ The report row (`luau tests/run.luau` prints it):
   jumping up onto a crate and dropping off it.
 - **Steps by distance.** A step comes each 1.8 m covered on the ground, so faster weapons step
   faster, and someone slowing down steps more slowly. After standing still, the first step
-  comes 0.6 m on.
+  comes within 0.6 m: sooner if a stride was nearly done when they stopped.
 - **Walking travels in the snapshots.** Whether someone is walking or crouching is in their
   input, which only their client and the server know. So each snapshot pose now carries it
   (`quiet`), with whether they're reloading and the weapon in their hands, in one more byte and
@@ -157,6 +158,10 @@ The report row (`luau tests/run.luau` prints it):
   weapon's reload time so they keep up if a reload time changes. Others' reloads start from when
   their snapshot pose starts reloading, and play where they're drawn. Switching weapons cuts the
   reload off; a finished reload lets its last part ring out.
+- **One draw, one sound.** A weapon given into another slot (the debug keys now, a buy menu
+  later) switches to it on your client at once, and the give lands a moment later as a
+  correction that draws it again. In BRINK that played the Sheriff's draw twice, 20 ms apart
+  (measured). Now the slot in hand drawn again within 0.5 s of a draw is that same draw.
 - **Hit sounds wait for the server.** Like the hit confirm (system 4), they play on the server's
   verdict, not the client's guess.
 - **Every recording at the same level.** Library recordings come at all levels: the quietest we
@@ -171,7 +176,9 @@ The report row (`luau tests/run.luau` prints it):
 - **Only our listener hears our sounds.** The emitters and the listener have their own
   `AudioInteractionGroup`. BRINK has `VoiceChatService.EnableDefaultVoice` on, which puts
   Roblox's own listener on the camera for voice chat, and without the group it would hear every
-  sound a second time.
+  sound a second time. That listener is wired straight into our `Output`, with no device output
+  of its own (measured in BRINK), so voice skips our master and limiter, and `VFTestMute` doesn't
+  silence it. That suits voice, which has its own volume in Roblox's menu.
 - **The buy phase.** While the arena's phase is `buy`, nothing a player on the other side does
   plays. A dummy has no side, so this never applies to dummies.
 - **Dummies are quiet.** Practice dummies are real simulated players, and the strafing ones run,
@@ -183,6 +190,12 @@ The report row (`luau tests/run.luau` prints it):
 - **Roblox's audio objects.** The reference mixes its own way. Ours is `AudioPlayer` to
   `AudioFilter` to `AudioEmitter`, heard by an `AudioListener` on the camera, then faders to an
   `AudioDeviceOutput`. Roblox now discourages the older `Sound` object.
+- **Roblox's own character sounds are off.** Roblox adds a script that plays its own sounds for
+  every character: running, jumping, falling, landing and dying. Most never fire on our
+  characters, which the simulation moves, but in BRINK its falling sound played on every jump
+  (measured), and its death sound plays whenever a Humanoid dies, as ours do on each death. An
+  empty LocalScript named `RbxCharacterSounds` in StarterPlayerScripts stops Roblox adding it
+  (community: the long-standing way to replace Roblox's default player scripts).
 - **Stereo, not HRTF.** Roblox places sounds left and right as it does; there's no HRTF option
   like the reference's. Riot mixed in stereo too until Patch 2.06.
 - **No sounds of our own.** The reference's sounds are its own recordings. Ours are Pro Sound
@@ -261,10 +274,11 @@ are candidates for them.
 | --- | --- |
 | `src/shared/Audio/SoundConfig.luau` | The rules' numbers and curves, with status and source, and every sound's assets, volume and voices |
 | `src/shared/Audio/StepTracker.luau` | Steps, jumps and landings from a player's poses, and whether they're walking or crouching |
-| `src/shared/Audio/SoundMath.luau` | Volume on a curve, curves in studs, the filters for walls and the air, how much level lies between two points, each recording's gain, which reload parts are due |
+| `src/shared/Audio/SoundMath.luau` | Volume on a curve, curves in studs, the filters for walls and the air, how much level lies between two points, each recording's gain, which reload parts are due, whether a draw makes its sound |
 | `src/client/Audio/SoundEngine.luau` | The buses, the listener, every sound's voices, playing and stopping them, the meters |
 | `src/client/Audio/GameSounds.luau` | What makes a sound, who hears it, and where |
 | `src/client/Debug/SoundLab.luau` | The Sound Lab (F2, fourth page) |
+| `src/overrides/RbxCharacterSounds.client.luau` | Takes the place of Roblox's default character sounds |
 | `src/shared/Net/PlayerCodec.luau`, `src/shared/Net/PoseHistory.luau` | `quiet`, `reloading` and `weapon` in each snapshot pose |
 | `src/server/PlayerSimServer.luau`, `src/server/Dummies.luau` | Fill them in from each tick's input and weapons |
 | `tests/sound.luau` | The rules on the real movement code, the curves and filters, the levels and reload parts, and the report above |
@@ -306,3 +320,19 @@ were picked by title, description and waveform, not by ear. Only a Studio sessio
 - The buy phase is silent from the other side.
 
 The [Studio test session](../studio-checklist.md) walks through these, with what to expect.
+
+### Checked in BRINK
+
+A solo playtest, muted with `VFTestMute`, on main at 1e6308f (measured):
+
+- All 131 voices loaded, and the audio graph was as built: 55 voices in the world and 76 of
+  your own and for hits, the limiter after the master, the listener on the camera.
+- Running stepped every 0.33 s and drew a 20 m ring each step. Walking, crouching and standing
+  were silent. A jump on the spot gave a jump and a landing; jumping onto the 0.50 m box gave
+  the soft landing, and stepping off it the heard one. Spawning was silent.
+- Every gun's shot and every draw played. The reload parts came within 0.01 s of their times,
+  and a switch cut a reload off after its first part.
+- The strafing dummy's steps were heard at 16 m at 0.60 of full volume, which is the curve's
+  value there, and the one at 30 m wasn't.
+- Not played: hit sounds, the kill sound's rise and dry fire, which need mouse input the check
+  left out. Nothing was listened to, so how it all sounds is still to check by ear.

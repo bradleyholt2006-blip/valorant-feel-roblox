@@ -73,7 +73,7 @@ SoundConfig.Footsteps = {
 		"Riot (Ask VALORANT #6): 'The footstep radius is set up to give players who hear enemy footsteps time to use an ability and re-equip a weapon before they are in danger'. About 1.75 s of that (a rifle's 1.0 s equip and an ability) at rifle running speed (5.40 m/s) is 9.5 m, plus a 10 m fight"
 	),
 	stride = p(1.8, "estimate", "Metres between steps: three a second at rifle running speed, about a runner's cadence"),
-	firstStep = p(1.2, "estimate", "Metres of a stride counted as already covered when a player sets off from standing, so their first step comes 0.6 m on"),
+	firstStep = p(1.2, "estimate", "The least of a stride, in metres, counted as covered when a player sets off from standing, so their first step comes within 0.6 m"),
 	idleTime = p(0.15, "estimate", "Seconds without moving that count as standing"),
 	teleport = p(2, "estimate", "Metres between two samples that count as a respawn or a correction, not as walking"),
 	-- Your own steps are quieter than others', so they don't cover anyone
@@ -155,6 +155,11 @@ SoundConfig.MuteEnemiesInBuyPhase = true
 -- Kills in a life step each kill sound up in pitch, like the reference's
 -- kill sounds, which change with each kill in a round.
 SoundConfig.KillPitchStep = p(0.06, "estimate", "Playback speed added per kill after the first, up to the fifth")
+
+-- A weapon given into another slot switches to it on your client at once, and
+-- the give lands a moment later as a correction that draws it again: the slot
+-- in hand drawn again this soon after a draw is that same draw.
+SoundConfig.RedrawGap = p(0.5, "estimate", "Seconds after a draw in which the slot in hand drawn again makes no second draw sound; longer than a round trip")
 
 -- The sounds ---------------------------------------------------------------------
 
