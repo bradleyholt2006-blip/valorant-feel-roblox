@@ -26,13 +26,17 @@ ArenaConfig.MODEL = "VFArena"
 ArenaConfig.ON = "VFArenaOn"
 ArenaConfig.SIDE = "VFArenaSide"
 -- Workspace's attribute for what's played while it's on: "skirmish", here on
--- Skirmish A, or "spike", the rounds played for the spike (system 13) on
--- their own map, in the format Workspace's MatchConfig.FORMAT names. Either
--- way the arena's model carries the state of play.
+-- Skirmish A, B or C (system 22), or "spike", the rounds played for the
+-- spike (system 13) on their own map, in the format Workspace's
+-- MatchConfig.FORMAT names. Either way the arena's model carries the state
+-- of play.
 ArenaConfig.MODE = "VFArenaMode"
 -- Each player's attribute for where they stand in line, while both sides
 -- are full: 1 for the next to play (system 21).
 ArenaConfig.LINE = "VFInLine"
+-- Each player's attribute for the map they've voted for, by its number in
+-- the vote's list, while everyone votes for the next map (system 22).
+ArenaConfig.VOTE = "VFMapVote"
 
 ArenaConfig.Rules = {
 	winScore = p(10, "confirmed", "Patch 11.07b (Oct 2025), Skirmish in custom games: 'First to 10 wins'; Patch 12.03, the 2v2 queue: 'First to 10 rounds wins'"),
@@ -53,6 +57,19 @@ ArenaConfig.Rules = {
 		3,
 		"estimate",
 		"Seconds before someone who dies with nobody to play against comes back (the same as the course's Players.RespawnTime)"
+	),
+	-- After the victory screen, everyone votes for the next match's map
+	-- (system 22): this many of the maps, chosen at random.
+	voteChoices = p(
+		3,
+		"estimate",
+		"Ours: three to pick from. Counter-Strike's end of match lists up to 10, at random from its map group"
+			.. " when it has more (Counter-Strike Wiki, the patch of 8 March 2013)"
+	),
+	voteTime = p(
+		15,
+		"estimate",
+		"Seconds to vote, after the victory screen's 10. Counter-Strike gives 20 by default (mp_endmatch_votenextleveltime, Total CS)"
 	),
 }
 

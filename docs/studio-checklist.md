@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-one
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-two
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, and section 25 three and then one.
+   one and then two, section 25 three and then one, and section 26 two.
 
 | Key | What it does |
 | --- | --- |
@@ -48,6 +48,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
+| Click a map | During the vote for the next map, after a match in the arena: votes for it, or moves your vote to it |
 | C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes |
 | X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
 | Space | Jump; held in the air, Jett's glide (Drift) slows the fall until you land or let go |
@@ -78,7 +79,8 @@ A boolean attribute `VFTestTake` set to true presses F for you, and clears itsel
 `VFTestBoard` set to true or false holds the scoreboard open as Tab does or lets it go.
 `VFTestSettingsMenu` set to true or false opens or closes the settings menu, and a string
 attribute `VFTestSetting` enters a setting as its box in the menu would: `sensitivity=0.8`,
-`scoped=0.5`, `dpi=1600` or `crosshair=` and a code.
+`scoped=0.5`, `dpi=1600` or `crosshair=` and a code. A number attribute `VFTestVote` set to 1, 2
+or 3 votes for that card in the vote for the next map, as a click on it would.
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -1391,12 +1393,47 @@ Start a Local Server with 3 players, as in section 9, and press P once in window
 - **F4 The victory screen.** Play the match out: players 1 and 3 kill player 2 in each round until
   their side has 10. As the last kill lands, the scoreboard shows by itself in every window:
   `VICTORY` in windows 1 and 3, `DEFEAT` in window 2, everyone's record, `MATCH MVP` in gold on the
-  best ACS of the match, `TEAM MVP` on player 2, and `NEXT MATCH IN 10` counting down under it.
-  Nobody's name is dimmed. **Send:** a screenshot.
-- **F5 The next match.** At 0 the screen goes, everyone spawns for a new match at 0-0 with round
-  1's 15 s buy phase, and Tab shows every record back at 0.
+  best ACS of the match, `TEAM MVP` on player 2, and `MAP VOTE IN 10` counting down under it (the
+  vote is section 26's). Nobody's name is dimmed. **Send:** a screenshot.
+- **F5 The next match.** At 0 the vote for the next map comes up; let it run out. Then everyone
+  spawns for a new match at 0-0 with round 1's 15 s buy phase, and Tab shows every record back
+  at 0.
 - **F6 A live server.** Only once the place is published: join it, and you're in Skirmish's
   waiting phase at once (`WAITING FOR AN OPPONENT`), with the HUD panel off until F3.
+
+## 26. The map vote
+
+From [22-map-vote.md](research/22-map-vote.md). A quick play of what changed, with two players.
+To reach a match's end quickly, `workspace:SetAttribute("VFMatchSkip", true)` in the server's
+command bar ends the phase under way, and in a Skirmish round gives the round to side 1.
+
+Start a Local Server with 2 players, as in section 9, and press P once in window 1 (Skirmish).
+
+- **O1 The first map.** The Output says `[VF] Arena on: Skirmish A`, `B` or `C`, and round 1's buy
+  phase names it under the countdown (`SKIRMISH B   B buy menu`). The cover is that map's plan:
+  A's is in [07-arena.md](research/07-arena.md), and B's and C's in
+  [22-map-vote.md](research/22-map-vote.md).
+- **O2 To the victory screen.** In the server's command bar run this, which skips until the match
+  is won. Side 1 wins 10-0, and the victory screen shows with `MAP VOTE IN 10` under it.
+
+  ```lua
+  for _ = 1, 60 do
+  	workspace:SetAttribute("VFMatchSkip", true)
+  	task.wait(0.3)
+  	if workspace.VFArena:GetAttribute("Phase") == "matchOver" then break end
+  end
+  ```
+
+- **O3 The vote.** At 0 the victory screen gives way to `VOTE FOR THE NEXT MAP` in both windows:
+  three cards, SKIRMISH A, B and C, each with its plan from above and `NO VOTES`, `JUST PLAYED` on
+  the one just played, and 15 counting down at the top right. The mouse moves a cursor, and a
+  click on a card doesn't fire your gun. **Send:** a screenshot.
+- **O4 Voting.** In window 1, click a card other than the one just played: it's outlined in gold,
+  and reads `1 VOTE` in gold in both windows. Click another card: the outline and the vote move to
+  it. In window 2, click that same card: `2 VOTES`.
+- **O5 The next match.** At 0 everyone spawns for a new match at 0-0 on the card with the votes:
+  the buy phase names it, the cover is that map's with nothing of the last map's left, and the
+  mouse turns the view again.
 
 ## Results
 
@@ -1479,6 +1516,9 @@ I3 from the top of Updraft: the jump line ___ s
 I8 the other player's rings lined up with where they were drawn: yes / no (what)
 F2 the view moved to player 3 after ___ s; their blocks hidden: yes / no
 F4 MATCH MVP on ___, TEAM MVP on ___; the countdown started at ___
+O1 the first map: ___
+O4 the outline and the count moved with each click: yes / no (what)
+O5 the next match on: ___; anything of the last map's cover left: yes / no (what)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1620,3 +1660,6 @@ Didn't look right (IDs and what you saw):
 | 21 | Tab shows the scoreboard in Skirmish, with no credits | F3 |
 | 21 | At the end of a match, the victory screen shows by itself: the result, everyone's record, MATCH MVP and TEAM MVP, and the countdown to the next match | F4, F5 |
 | 21 | The HUD panel (F3) shows from the start in Studio | F1 |
+| 22 | Each map's cover builds where it should, with nothing left over from the last | O1, O5 |
+| 22 | The vote shows by itself after the victory screen: three cards, a click votes and outlines the card, and the counts and the time change for everyone | O2, O3, O4 |
+| 22 | The next match starts on the winner, with the map's name in the buy phase | O1, O5 |

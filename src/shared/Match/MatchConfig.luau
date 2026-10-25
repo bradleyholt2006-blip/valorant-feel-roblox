@@ -29,8 +29,9 @@ local MatchConfig = {}
 MatchConfig.MODEL = "VFSpikeMap"
 MatchConfig.FORMAT = "VFMatchFormat"
 -- Workspace's attribute that, set true from the server, ends the phase being
--- played now and clears itself (MatchRules.skip): for scripted checks, which
--- would otherwise wait out every buy phase and round.
+-- played now and clears itself (MatchRules.skip, or in Skirmish
+-- ArenaRules.skip): for scripted checks, which would otherwise wait out
+-- every buy phase and round.
 MatchConfig.SKIP = "VFMatchSkip"
 -- The player attribute the server keeps each player's credits in, while the
 -- spike rounds are on.

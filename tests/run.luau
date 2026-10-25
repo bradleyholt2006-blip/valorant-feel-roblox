@@ -31,5 +31,6 @@ require("./cloudburst")
 require("./bladestorm")
 require("./drift")
 require("./dropin")
+require("./mapvote")
 
 H.finish()

@@ -6,6 +6,9 @@
 --   * then the round, with no timer, until one side has nobody left alive;
 --     the other side scores
 --   * the first side to winScore takes the match, and the next starts at 0-0
+--     on whichever of A, B and C everyone votes for (system 22, MapVote):
+--     after the victory screen, voteChoices of them, chosen at random, for
+--     voteTime
 -- With nobody on one of the sides it waits, and anyone who dies comes back
 -- after respawnTime.
 --
@@ -22,11 +25,13 @@
 -- or alive.
 
 local ArenaConfig = require("./ArenaConfig")
+local ArenaLayout = require("./ArenaLayout")
+local MapVote = require("../Match/MapVote")
 local Roster = require("../Match/Roster")
 
 local R = ArenaConfig.Rules
 
-export type Phase = "waiting" | "buy" | "live" | "roundOver" | "matchOver"
+export type Phase = "waiting" | "buy" | "live" | "roundOver" | "matchOver" | "vote"
 
 export type Member = Roster.Member
 
@@ -38,9 +43,15 @@ export type State = {
 	score: { number }, -- by side
 	match: number, -- counts the matches, from 1, so the server knows a new one has started
 	round: number, -- the round being played, or just played (0 before the first)
-	phaseEndsAt: number, -- buy, roundOver and matchOver: when the next phase starts
+	phaseEndsAt: number, -- buy, roundOver, matchOver and vote: when the next phase starts
 	roundWinner: number?, -- the side that won the round just played
 	matchWinner: number?,
+	-- The maps a match can be played on (keys of ArenaLayout.Maps), the one
+	-- being played, and after a match the vote for the next (system 22).
+	maps: { string },
+	map: string,
+	vote: MapVote.Vote?,
+	roll: MapVote.Roll,
 	-- By member: who on the other side has damaged their life under way,
 	-- for the assists when they die.
 	hurt: Roster.Hurt,
@@ -51,7 +62,11 @@ local ArenaRules = {}
 
 ArenaRules.SIDES = 2
 
-function ArenaRules.new(): State
+-- On `maps`, all three if none are given, the first match on one of them at
+-- random; `roll` is the dice, math.random's unless a test has its own.
+function ArenaRules.new(maps: { string }?, roll: MapVote.Roll?): State
+	local pool = maps or ArenaLayout.MAPS
+	local dice: MapVote.Roll = roll or math.random
 	return {
 		phase = "waiting",
 		members = {},
@@ -63,6 +78,10 @@ function ArenaRules.new(): State
 		phaseEndsAt = 0,
 		roundWinner = nil,
 		matchWinner = nil,
+		maps = pool,
+		map = pool[dice(#pool)],
+		vote = nil,
+		roll = dice,
 		hurt = {},
 		version = 0,
 	}
@@ -70,7 +89,13 @@ end
 
 local count, manned = Roster.count, Roster.manned
 
+-- On the map the vote picked, if there was one.
 local function newMatch(s: State)
+	local vote = s.vote
+	if vote then
+		s.map = MapVote.winner(vote, s.roll)
+		s.vote = nil
+	end
 	s.score = { 0, 0 }
 	s.match += 1
 	s.round = 0
@@ -84,7 +109,7 @@ end
 -- Everyone comes back, in their spawn, for the next round's buy phase, with
 -- the sides evened out.
 local function startRound(s: State, now: number): { number }
-	if s.phase == "matchOver" then
+	if s.phase == "matchOver" or s.phase == "vote" then
 		newMatch(s)
 	end
 	Roster.balance(s)
@@ -106,15 +131,8 @@ local function startRound(s: State, now: number): { number }
 	return out
 end
 
--- The round is over once a side has nobody left alive. It can't end with
--- both sides down: the first side out ends it, and the dead stay down until
--- the next round.
-local function checkRoundEnd(s: State, now: number)
-	local alive1, alive2 = count(s, 1, true), count(s, 2, true)
-	if alive1 > 0 and alive2 > 0 then
-		return
-	end
-	local winner = if alive1 == 0 then 2 else 1
+-- The round goes to `winner`'s side, and at winScore the match.
+local function endRound(s: State, winner: number, now: number)
 	s.roundWinner = winner
 	s.score[winner] += 1
 	Roster.roundPlayed(s)
@@ -129,10 +147,23 @@ local function checkRoundEnd(s: State, now: number)
 	s.version += 1
 end
 
+-- The round is over once a side has nobody left alive. It can't end with
+-- both sides down: the first side out ends it, and the dead stay down until
+-- the next round.
+local function checkRoundEnd(s: State, now: number)
+	local alive1, alive2 = count(s, 1, true), count(s, 2, true)
+	if alive1 == 0 or alive2 == 0 then
+		endRound(s, if alive1 == 0 then 2 else 1, now)
+	end
+end
+
 -- A side is empty: back to waiting. The score stays, unless the match was
--- already won, and anyone dead comes back after the respawn time.
+-- already won, and anyone dead comes back after the respawn time. A vote
+-- under way ends there, and the next match is on the same map, as whoever's
+-- left plays on in it.
 local function wait(s: State, now: number)
-	if s.phase == "matchOver" then
+	if s.phase == "matchOver" or s.phase == "vote" then
+		s.vote = nil
 		newMatch(s)
 	end
 	s.phase = "waiting"
@@ -174,12 +205,17 @@ function ArenaRules.join(s: State, id: number, now: number): { number }
 	return admit(s, id, now)
 end
 
--- Someone leaves, playing or in line. A place they leave goes to whoever's
--- first in line, as if they'd just joined. Returns who to spawn now.
+-- Someone leaves, playing or in line, with their vote if they had one. A
+-- place they leave goes to whoever's first in line, as if they'd just
+-- joined. Returns who to spawn now.
 function ArenaRules.leave(s: State, id: number, now: number): { number }
 	local playing = s.members[id] ~= nil
 	if not Roster.remove(s, id) then
 		return {}
+	end
+	local vote = s.vote
+	if vote then
+		MapVote.drop(vote, id)
 	end
 	s.version += 1
 	if not playing then
@@ -204,7 +240,7 @@ end
 -- Whether what happens now goes in the match's record: in a round or after
 -- one, not while waiting for an opponent or once the match is won.
 local function recorded(s: State): boolean
-	return s.phase ~= "waiting" and s.phase ~= "matchOver"
+	return s.phase ~= "waiting" and s.phase ~= "matchOver" and s.phase ~= "vote"
 end
 
 -- Someone has been damaged by someone else, `amount` taken from their health
@@ -261,10 +297,42 @@ function ArenaRules.step(s: State, now: number): { number }
 	if s.phase == "buy" then
 		s.phase = "live"
 		s.version += 1
-	elseif s.phase == "roundOver" or s.phase == "matchOver" then
+	elseif s.phase == "matchOver" and #s.maps > 1 then
+		s.vote = MapVote.new(s.maps, R.voteChoices.value, s.roll)
+		s.phase = "vote"
+		s.phaseEndsAt = now + R.voteTime.value
+		s.version += 1
+	elseif s.phase == "roundOver" or s.phase == "matchOver" or s.phase == "vote" then
 		return startRound(s, now)
 	end
 	return {}
+end
+
+-- Someone votes for the next map, by its number in the vote's list, or
+-- changes their vote: anyone the rules know, playing or in line, while the
+-- vote is on. Returns whether it counted.
+function ArenaRules.vote(s: State, id: number, option: number): boolean
+	local vote = s.vote
+	if s.phase ~= "vote" or not vote or not (s.members[id] or Roster.placeInLine(s, id)) then
+		return false
+	end
+	if not MapVote.cast(vote, id, option) then
+		return false
+	end
+	s.version += 1
+	return true
+end
+
+-- Ends the phase now, for testing (Workspace's MatchConfig.SKIP): the buy
+-- phase, the wait for the next round, the victory screen or the vote, and
+-- the round itself, which has no clock, as won by side 1.
+function ArenaRules.skip(s: State, now: number)
+	if s.phase == "live" then
+		endRound(s, 1, now)
+	elseif s.phase == "buy" or s.phase == "roundOver" or s.phase == "matchOver" or s.phase == "vote" then
+		s.phaseEndsAt = now
+		s.version += 1
+	end
 end
 
 ArenaRules.sideOf = Roster.sideOf

@@ -43,6 +43,9 @@
 --   VFTestSetting  "key=value": enters a setting as its box in the settings
 --                  menu does ("sensitivity=0.35", "scoped=0.8", "dpi=1600",
 --                  "crosshair=0;P;c;5;h;0"), then clears itself
+--   VFTestVote     1 to 3: votes for that map in the vote for the next map,
+--                  as a click on its card does (system 22), then clears
+--                  itself
 --
 -- Outside Studio this does nothing.
 
@@ -60,6 +63,7 @@ local BuyMenu = require(script.Parent.Parent.BuyMenu)
 local GroundGunsView = require(script.Parent.Parent.GroundGunsView)
 local Scoreboard = require(script.Parent.Parent.Scoreboard)
 local SettingsMenu = require(script.Parent.Parent.SettingsMenu)
+local VoteScreen = require(script.Parent.Parent.VoteScreen)
 local InputSampler = require(script.Parent.Parent.InputSampler)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
@@ -150,6 +154,11 @@ function TestAim.start(controller: any)
 		if typeof(board) == "boolean" then
 			player:SetAttribute("VFTestBoard", nil)
 			Scoreboard.held = board
+		end
+		local vote = player:GetAttribute("VFTestVote")
+		if typeof(vote) == "number" then
+			player:SetAttribute("VFTestVote", nil)
+			VoteScreen.vote(vote)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

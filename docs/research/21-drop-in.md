@@ -108,7 +108,7 @@ not in these tables is ours, and labelled as an estimate.
 | Watching | Your side's living players in first person, from their eyes as they're drawn. Left click watches the next, right click the one before | Community (competitive's rule, the buttons) |
 | Anyone not on a side | May watch anyone alive, as may someone who has just joined with nothing to look at yet | Community (casual's rule); estimate (just joined) |
 | A death | The view stays where it was for 2 s, yours or the watched player's, then moves on. A click ends it early. With nobody left to watch, it holds where it was | Estimate (2 s); community (the hold) |
-| The victory screen | 10 s, in both modes: everyone's kills, deaths, assists and average combat score under the result, the time left under them, then the next match starts on the same server | Estimate (10 s, half Counter-Strike's 20 s map vote, which system 22 will add) |
+| The victory screen | 10 s, in both modes: everyone's kills, deaths, assists and average combat score under the result, the time left under them, then the next match starts on the same server (in Skirmish after the vote for its map, system 22) | Estimate (10 s, half Counter-Strike's 20 s map vote) |
 | MATCH MVP | The best average combat score of the match; a tie goes to the side that won | Community (by ACS); estimate (the tie) |
 | TEAM MVP | The best on the other side | Community |
 | No MVP | A side's best with no score at all gets nothing | Estimate |
@@ -175,8 +175,8 @@ record, in both modes. Mid-round joiners get no character until the next round s
 
 ### Not here yet
 
-- **Choosing the next map.** System 22: three random maps for 15 s at the end of a match, the
-  most votes winning, and two more whitebox maps to choose between.
+- **Choosing the next map.** Added by system 22 ([22-map-vote](22-map-vote.md)): Skirmish B and C,
+  and a vote between three maps for 15 s after each match's victory screen.
 - **Other modes.** Gun game is system 23. System 24 is a Play menu to pick a mode and join a
   server running it. Until then, live servers play Skirmish.
 - **The other side's view.** Nobody on a side watches the other side, even with their own side

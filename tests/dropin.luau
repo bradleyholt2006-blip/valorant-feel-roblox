@@ -205,6 +205,7 @@ do
 		string.format("%.1f s", s.phaseEndsAt - t)
 	)
 	check("with the match's record still there to show", killer.kills > 2)
+	ArenaRules.step(s, s.phaseEndsAt) -- to the vote for the next map (system 22)
 	ArenaRules.step(s, s.phaseEndsAt)
 	check("which a new match clears", killer.kills == 0 and killer.score == 0 and killer.rounds == 0 and s.round == 1)
 	check(

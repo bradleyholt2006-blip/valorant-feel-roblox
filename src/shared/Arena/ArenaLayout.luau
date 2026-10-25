@@ -1,22 +1,27 @@
 --!strict
--- The arena's map (system 7): a whitebox of Skirmish A, the reference's
--- Skirmish layout for 1v1 and 2v2 ('a tight central corridor with side
--- peeks', thespike.gg). Riot publishes only its minimap (in Sheep Esports'
--- article on the mode, credited to Riot), so the plan is measured from that
--- image, in fractions of the hall's width and length as measured, and one
--- number, the hall's width in metres, sets the scale. The minimap has no
--- heights, so every height is ours.
+-- The arena's maps (system 7; B and C since system 22): whiteboxes of the
+-- reference's three Skirmish layouts, A, B and C, for 1v1 and 2v2. A is 'a
+-- tight central corridor with side peeks' (thespike.gg). The three share one
+-- hall and its two spawn rooms and differ in their cover: 'They all share
+-- the same overall layout but differ in the placement of obstacles' (Sheep
+-- Esports). Riot publishes only their minimaps (in Sheep Esports' article on
+-- the mode, credited to Riot), so each plan is measured from that image, in
+-- fractions of the hall's width and length as measured, and one number, the
+-- hall's width in metres, sets the scale. The minimap has no heights, so
+-- every height is ours.
 --
 -- Two spawn rooms face each other down the long axis of a rectangular hall,
--- and the plan is the same seen from either end (it turns onto itself about
--- the centre), so neither side is favoured: only one of each pair of
+-- and every plan is the same seen from either end (it turns onto itself
+-- about the centre), so neither side is favoured: only one of each pair of
 -- obstacles is listed here, and its partner is made by turning it half way
--- round the centre.
+-- round the centre. A piece at the centre is its own partner.
 --
 -- Plain data and maths in metres, y up, from the centre of the hall's floor:
--- the server builds ArenaLayout.parts() at ArenaLayout.origin, and the
--- offline tests check them (inside the walls, room to move everywhere, no
--- sightline from one spawn to the other). Side 1 spawns at -z, side 2 at +z.
+-- the server builds ArenaLayout.hallParts(), and the cover of the map being
+-- played, ArenaLayout.coverParts(key), at ArenaLayout.origin, and the
+-- offline tests check every map (inside the walls, room to move everywhere,
+-- no sightline from one spawn to the other). Side 1 spawns at -z, side 2 at
+-- +z.
 
 -- Same status convention as MovementConfig, plus one:
 --   "measured" - ours, measured from a public source (here, the minimap's pixels)
@@ -43,7 +48,9 @@ local function p(value: number, status: Status, source: string): Param
 	return { value = value, status = status, source = source }
 end
 
-local MINIMAP = "Riot's Skirmish A minimap (Sheep Esports, 'Riot Games unveils new Skirmish game mode at Champions 2025'), measured from its pixels"
+local ARTICLE = "Sheep Esports, 'Riot Games unveils new Skirmish game mode at Champions 2025'"
+local MINIMAP = "Riot's Skirmish A minimap (" .. ARTICLE .. "), measured from its pixels"
+local MINIMAPS = "Riot's three Skirmish minimaps (" .. ARTICLE .. "), measured from their pixels"
 
 local ArenaLayout = {}
 
@@ -88,19 +95,84 @@ export type Piece = {
 	crates: number?, -- crates side by side along the piece (1 if nil)
 }
 
--- One of each pair; the centre block is its own partner. Where the two of a
--- pair measured differently, the mean of the two: the second double crate's
--- tilt was 20 and 17 degrees, the second wall crate at y 0.34 and 0.35.
-ArenaLayout.Pieces = {
-	{ name = "CentreBlock", x = 0.50, y = 0.50, length = 0.16, depth = 0.16, tilt = 0, height = "centre" },
-	{ name = "SideCrate", x = 0.21, y = 0.50, length = 0.086, depth = 0.086, tilt = 0, height = "low" },
-	{ name = "DoubleCrate", x = 0.31, y = 0.19, length = 0.175, depth = 0.087, tilt = -20, height = "high", crates = 2 },
-	{ name = "DoubleCrate", x = 0.65, y = 0.28, length = 0.175, depth = 0.087, tilt = 18.5, height = "high", crates = 2 },
-	{ name = "WallCrate", x = 0.0425, y = 0.345, length = 0.085, depth = 0.085, tilt = 0, height = "low" },
-	{ name = "WallCrate", x = 0.0425, y = 0.80, length = 0.085, depth = 0.085, tilt = 0, height = "low" },
-} :: { Piece }
-ArenaLayout.piecesStatus = "measured" :: Status
-ArenaLayout.piecesSource = MINIMAP .. ". Each piece's partner is turned half way round the centre"
+-- A map: its name, as the vote shows it, and its cover, one of each pair.
+export type Map = {
+	name: string,
+	pieces: { Piece },
+	status: Status, -- of where the pieces stand and how big they are
+	source: string,
+}
+
+-- The maps, in the order the vote lists them.
+ArenaLayout.MAPS = { "A", "B", "C" }
+
+-- Where the two of a pair measured differently, the mean of the two: A's
+-- second double crate's tilt was 20 and 17 degrees, its second wall crate at
+-- y 0.34 and 0.35. Which panel of the image is which map is our assumption,
+-- from the order the wiki lists the layouts' files: A on the left, then B
+-- and C.
+ArenaLayout.Maps = {
+	A = {
+		name = "Skirmish A",
+		pieces = {
+			{ name = "CentreBlock", x = 0.50, y = 0.50, length = 0.16, depth = 0.16, tilt = 0, height = "centre" },
+			{ name = "SideCrate", x = 0.21, y = 0.50, length = 0.086, depth = 0.086, tilt = 0, height = "low" },
+			{ name = "DoubleCrate", x = 0.31, y = 0.19, length = 0.175, depth = 0.087, tilt = -20, height = "high", crates = 2 },
+			{ name = "DoubleCrate", x = 0.65, y = 0.28, length = 0.175, depth = 0.087, tilt = 18.5, height = "high", crates = 2 },
+			{ name = "WallCrate", x = 0.0425, y = 0.345, length = 0.085, depth = 0.085, tilt = 0, height = "low" },
+			{ name = "WallCrate", x = 0.0425, y = 0.80, length = 0.085, depth = 0.085, tilt = 0, height = "low" },
+		},
+		status = "measured",
+		source = MINIMAP .. ". Each piece's partner is turned half way round the centre",
+	},
+	-- A screen across the hall in front of each spawn, a smaller centre
+	-- block, small crates turned a little, a long crate with a small one at
+	-- its end angled across each half, and against each long wall a long
+	-- crate with a small one on its hall side.
+	B = {
+		name = "Skirmish B",
+		pieces = {
+			{ name = "Screen", x = 0.50, y = 0.16, length = 0.25, depth = 0.083, tilt = 0, height = "high" },
+			{ name = "CentreBlock", x = 0.50, y = 0.50, length = 0.10, depth = 0.10, tilt = 0, height = "high" },
+			{ name = "TiltedCrate", x = 0.25, y = 0.26, length = 0.086, depth = 0.086, tilt = 17, height = "low" },
+			-- Together 0.27 x 0.13, at (0.70, 0.35), turned 25 degrees.
+			{ name = "LongCrate", x = 0.666, y = 0.32, length = 0.175, depth = 0.087, tilt = 25, height = "high" },
+			{ name = "Crate", x = 0.7707, y = 0.3929, length = 0.086, depth = 0.086, tilt = 25, height = "low" },
+			-- Together 0.17 out from the left wall, centred 0.44 down it.
+			{ name = "WallLongCrate", x = 0.0435, y = 0.44, length = 0.175, depth = 0.087, tilt = 90, height = "high" },
+			{ name = "WallCrate", x = 0.13, y = 0.44, length = 0.086, depth = 0.086, tilt = 0, height = "low" },
+		},
+		status = "measured",
+		source = MINIMAPS
+			.. ", the middle panel. Ours (estimates): how the crates sit inside each group,"
+			.. " which way the small crates turn, and the heights",
+	},
+	-- A Z-shaped spine through the centre, a long crate out from the middle
+	-- of each long wall with a small one beside it, a double crate and an L
+	-- of three crates in each half, small crates turned a little, and a
+	-- small crate on each end wall beside the spawn's opening.
+	C = {
+		name = "Skirmish C",
+		pieces = {
+			-- The Z, 0.25 wide and 0.30 of the length long: its column, and a
+			-- block on the column's upper right (the lower left is its partner).
+			{ name = "Spine", x = 0.50, y = 0.50, length = 0.396, depth = 0.08, tilt = 90, height = "high" },
+			{ name = "SpineBlock", x = 0.5825, y = 0.4144, length = 0.17, depth = 0.085, tilt = 90, height = "high", crates = 2 },
+			{ name = "WallLongCrate", x = 0.095, y = 0.50, length = 0.19, depth = 0.087, tilt = 0, height = "high" },
+			{ name = "WallCrate", x = 0.043, y = 0.4345, length = 0.086, depth = 0.086, tilt = 0, height = "low" },
+			{ name = "DoubleCrate", x = 0.34, y = 0.19, length = 0.17, depth = 0.087, tilt = 0, height = "high", crates = 2 },
+			-- The L, about 0.16 x 0.15 of the length, at (0.76, 0.20).
+			{ name = "Stack", x = 0.80, y = 0.1856, length = 0.16, depth = 0.08, tilt = 90, height = "high", crates = 2 },
+			{ name = "StackCrate", x = 0.72, y = 0.2159, length = 0.08, depth = 0.08, tilt = 0, height = "low" },
+			{ name = "TiltedCrate", x = 0.21, y = 0.35, length = 0.086, depth = 0.086, tilt = 15, height = "low" },
+			{ name = "EndCrate", x = 0.335, y = 0.0326, length = 0.086, depth = 0.086, tilt = 0, height = "low" },
+		},
+		status = "measured",
+		source = MINIMAPS
+			.. ", the right-hand panel. Ours (estimates): how the crates sit inside the Z, the L and"
+			.. " the wall groups, which way the small crates turn, and the heights",
+	},
+} :: { [string]: Map }
 
 local P = ArenaLayout.Plan
 
@@ -149,20 +221,29 @@ local function heightOf(piece: Piece): number
 	return ArenaLayout.Heights[piece.height].value
 end
 
--- Every part of the arena, in metres from the hall's centre.
-function ArenaLayout.parts(): { Part }
-	local w, l, rw, rd = ArenaLayout.size()
-	local wallH, wallT = P.wallHeight.value, P.wallThickness.value
+type Add = (name: string, kind: Kind, center: vector, size: vector, yaw: number?, side: number?) -> ()
+type Pair = (name: string, kind: Kind, center: vector, size: vector, yaw: number?) -> ()
+
+-- A list of parts, and how to add one, or one and its partner turned half
+-- way round (a box turned half way round keeps its yaw).
+local function builder(): ({ Part }, Add, Pair)
 	local out: { Part } = {}
 	local function add(name: string, kind: Kind, center: vector, size: vector, yaw: number?, side: number?)
 		table.insert(out, { name = name, kind = kind, center = center, size = size, yaw = yaw or 0, side = side })
 	end
-	-- A part and its partner turned half way round (a box turned half way
-	-- round keeps its yaw).
 	local function pair(name: string, kind: Kind, center: vector, size: vector, yaw: number?)
 		add(name, kind, center, size, yaw, nil)
 		add(name, kind, ArenaLayout.turned(center), size, yaw, nil)
 	end
+	return out, add, pair
+end
+
+-- What every map shares, in metres from the hall's centre: the floor, the
+-- walls, the spawn rooms, their barriers, and the grid.
+function ArenaLayout.hallParts(): { Part }
+	local w, l, rw, rd = ArenaLayout.size()
+	local wallH, wallT = P.wallHeight.value, P.wallThickness.value
+	local out, add, pair = builder()
 	-- From x0 to x1 along x, at z, from the floor up.
 	local function wallX(name: string, x0: number, x1: number, z: number)
 		pair(name, "wall", vector.create((x0 + x1) / 2, wallH / 2, z), vector.create(x1 - x0, wallH, wallT))
@@ -187,27 +268,6 @@ function ArenaLayout.parts(): { Part }
 	wallZ("RoomWall", rw / 2 + wallT / 2, -l / 2 - rd - wallT, -l / 2 - wallT)
 	wallX("RoomBack", -rw / 2 - wallT, rw / 2 + wallT, -l / 2 - rd - wallT / 2)
 
-	-- Cover, from the minimap.
-	for _, piece in ArenaLayout.Pieces do
-		local center = vector.create((piece.x - 0.5) * w, 0, (piece.y - 0.5) * l)
-		-- The minimap is the view from above (side 1 at the top), where a
-		-- positive yaw turns counterclockwise.
-		local yaw = math.rad(-piece.tilt)
-		local h = heightOf(piece)
-		local crates = piece.crates or 1
-		local along = vector.create(math.cos(yaw), 0, -math.sin(yaw)) -- the piece's own x axis
-		local each = piece.length * w / crates
-		for i = 1, crates do
-			local offset = (i - (crates + 1) / 2) * each
-			local at = center + along * offset + vector.create(0, h / 2, 0)
-			if piece.name == "CentreBlock" then
-				add(piece.name, "cover", at, vector.create(each, h, piece.depth * w), yaw)
-			else
-				pair(piece.name, "cover", at, vector.create(each, h, piece.depth * w), yaw)
-			end
-		end
-	end
-
 	-- Each room's barrier, across its opening, and its floor.
 	local bt = P.barrierThickness.value
 	for side = 1, 2 do
@@ -224,6 +284,43 @@ function ArenaLayout.parts(): { Part }
 	end
 	for z = -math.floor(l / 4) * 2, l / 2 - 0.01, 2 do
 		add("GridLine", "marking", vector.create(0, 0.005, z), vector.create(w, 0.01, 0.04))
+	end
+	return out
+end
+
+-- A map's cover (a key of ArenaLayout.Maps), from its minimap, in metres
+-- from the hall's centre.
+function ArenaLayout.coverParts(key: string): { Part }
+	local w, l = ArenaLayout.size()
+	local out, add, pair = builder()
+	for _, piece in ArenaLayout.Maps[key].pieces do
+		local center = vector.create((piece.x - 0.5) * w, 0, (piece.y - 0.5) * l)
+		-- The minimap is the view from above (side 1 at the top), where a
+		-- positive yaw turns counterclockwise.
+		local yaw = math.rad(-piece.tilt)
+		local h = heightOf(piece)
+		local crates = piece.crates or 1
+		local along = vector.create(math.cos(yaw), 0, -math.sin(yaw)) -- the piece's own x axis
+		local each = piece.length * w / crates
+		local own = math.abs(piece.x - 0.5) < 1e-9 and math.abs(piece.y - 0.5) < 1e-9
+		for i = 1, crates do
+			local offset = (i - (crates + 1) / 2) * each
+			local at = center + along * offset + vector.create(0, h / 2, 0)
+			if own then
+				add(piece.name, "cover", at, vector.create(each, h, piece.depth * w), yaw)
+			else
+				pair(piece.name, "cover", at, vector.create(each, h, piece.depth * w), yaw)
+			end
+		end
+	end
+	return out
+end
+
+-- Every part of a map (A if none is named), in metres from the hall's centre.
+function ArenaLayout.parts(key: string?): { Part }
+	local out = ArenaLayout.hallParts()
+	for _, part in ArenaLayout.coverParts(key or ArenaLayout.MAPS[1]) do
+		table.insert(out, part)
 	end
 	return out
 end

@@ -13,7 +13,8 @@
 -- left at their foot and the MVPs picked out, as the reference's end of match
 -- had them: MATCH MVP, the best combat score of the match (a tie goes to the
 -- side that won), and TEAM MVP, the best on the other side. Anyone not on a
--- side, waiting in line, sees the side that leads (or won) first.
+-- side, waiting in line, sees the side that leads (or won) first. Tab shows
+-- it again during the vote for the next map that follows (system 22).
 --
 -- Everything comes from the player attributes the server keeps (Arena), and
 -- each player's shield from what combat events have said of it. While either
@@ -214,8 +215,9 @@ function Scoreboard.start()
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, not on)
 		end
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
-		local over = arena ~= nil and arena:GetAttribute("Phase") == "matchOver"
-		panel.Visible = on and arena ~= nil and (Scoreboard.held or over)
+		local phase = if arena then arena:GetAttribute("Phase") else nil
+		local over = phase == "matchOver" or phase == "vote"
+		panel.Visible = on and arena ~= nil and (Scoreboard.held or phase == "matchOver")
 		footer.Visible = panel.Visible and over
 		if not panel.Visible or not arena then
 			return
@@ -242,7 +244,10 @@ function Scoreboard.start()
 			title = string.format('<font color="#%s">%s</font>', Ui.hex(if not playing then Ui.TEXT elseif won then ally else enemy), title)
 			local endsAt = arena:GetAttribute("PhaseEndsAt")
 			local left = if typeof(endsAt) == "number" then math.max(endsAt - Workspace:GetServerTimeNow(), 0) else 0
-			footer.Text = string.format("NEXT MATCH IN %d", math.ceil(left))
+			-- What follows: the vote for the next map, where the mode has one,
+			-- then the next match.
+			local coming = if phase == "matchOver" and arena:GetAttribute("MapVote") == true then "MAP VOTE" else "NEXT MATCH"
+			footer.Text = string.format("%s IN %d", coming, math.ceil(left))
 		else
 			local name = if not spike then "SKIRMISH" elseif format then string.upper(format.name) else "SPIKE ROUNDS"
 			title = name .. (if round > 0 then string.format("   ROUND %d", round) else "")
