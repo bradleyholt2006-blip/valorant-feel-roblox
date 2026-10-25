@@ -99,8 +99,8 @@ All values live in `src/shared/Net/NetConfig.luau`, each with its status and sou
 | Spark at once, server confirm on the body part and moving with it | yes | Confirmed (Patch 1.07) |
 | Hit confirm size and lifetime | 7 cm head, 8 cm body, 0.35 s | Estimate (smaller for heads is confirmed) |
 | Network Buffering | +0, +15.6, +31.25 ms over our minimum | Confirmed steps (Riot: 1, 3 and 5 frames) |
-| Snapshot rate | 60 Hz, every server frame | Roblox's frame rate (the reference: 128 Hz) |
-| Render delay | measured: the 98th percentile of how late snapshots arrive, plus one send interval, plus 2 ms | Estimate (the reference: a fixed 7.8125 ms) |
+| Snapshot rate | 60 Hz: every server frame at Roblox's 60 Hz, and 60 a second from a server that steps faster (Studio's, at about 217 Hz) | Roblox's frame rate (the reference: 128 Hz) |
+| Render delay | measured: the 98th percentile of how late snapshots arrive, plus one send interval, plus 2 ms; snapshots handled at one moment count once, and the first half second's don't count | Estimate (the reference: a fixed 7.8125 ms) |
 | Render clock correction | eases (63% of a gap in 0.1 s), at most 10% faster or slower; jumps only when more than 0.25 s off | Estimate |
 | Players and dummies in the snapshots | paced: each tick shown at its own time, as far behind the server's time as the newest tick was on all but 1% of the last 2 s of frames, plus 2 ms; eased like the render clock; never past the newest tick | Estimate (the reference runs queued moves on its own 128 Hz tick, half a frame behind on average) |
 | History | 64 snapshots per entity (about a second) | Estimate (needs only to cover the cap) |
@@ -216,6 +216,16 @@ and speeding up again reach 0.36 m/s, so the lab calls a jump under 0.5 smooth.
   everyone. The clock eases toward its target, closing 63% of a gap in 0.1 s and running at most
   10% faster or slower than real time, and never runs backwards, so neither a change in latency
   nor the small change each arrival makes to the target shows as jitter.
+- **Bursts of snapshots count once.** A client that stalls (a long frame, loading) handles every
+  snapshot that came in meanwhile at once, and draws nothing until it has, so those snapshots
+  were never late for a frame; counted one by one they made a 0.3 s stall raise the delay to
+  280 ms for the next 2 s. So snapshots handled within 1 ms of each other count as one moment,
+  at the worst of them, and the percentile is over moments. Joining is the big case: Roblox holds
+  a remote's events until its first listener connects, so a client that has just joined gets
+  seconds of old snapshots at once. That held the delay at 660 ms in the offline test, and in
+  Studio every shot in the first 3 s after joining was rewound to the cap. The first half
+  second's arrivals don't count at all, and until there are some to measure the delay is two
+  send intervals.
 - **Paced snapshots.** The server runs a player's moves the moment they arrive, and they arrive in
   bunches: a client at 60 fps sends two or three 128 Hz moves a packet, and each 60 Hz server
   frame runs whatever has come in since the last. Sending each frame's newest pose made other
@@ -265,6 +275,11 @@ and speeding up again reach 0.36 m/s, so the lab calls a jump under 0.5 smooth.
 
 ### Roblox differences that matter
 
+- **Studio's server runs fast.** In Studio the server steps at about 217 Hz, not 60, and the old
+  rule of a minimum spacing between snapshots let 72 a second through. Now a server stepping
+  faster than 60 Hz earns a share of a send each frame and sends on the frame nearest a whole one
+  (`SendSchedule`), so Studio sends 60 a second like a live server, and a 60 Hz server still sends
+  on every frame, however unevenly its frames come.
 - **60 Hz frames.** The server's frame and the snapshot rate are 60 Hz against the reference's
   128 Hz, so our render delay is about 24-30 ms against 7.8 ms, and a rewind is 20-30 ms longer
   than the reference's at the same ping (40 ms at zero ping, 124 ms at 80 ms of round trip).
@@ -297,14 +312,15 @@ and speeding up again reach 0.36 m/s, so the lab calls a jump under 0.5 smooth.
 | --- | --- |
 | `src/shared/Net/NetConfig.luau` | The cap, render clock, pacing and buffering numbers, and the reference values the lab compares with, each with status and source |
 | `src/shared/Net/PoseHistory.luau` | Pose history and the one interpolation rule both sides use |
-| `src/shared/Net/InterpClock.luau` | The render clock: delay measured from snapshot arrivals, eased, never backwards |
+| `src/shared/Net/InterpClock.luau` | The render clock: delay measured from snapshot arrivals, a burst counted once, eased, never backwards |
+| `src/shared/Net/SendSchedule.luau` | Which server frames send a snapshot: every one at 60 Hz, 60 a second from a faster server |
 | `src/shared/Net/MovePacer.luau` | Each player's and dummy's ticks put on a steady timeline for the snapshots |
 | `src/shared/Net/MotionMeter.luau` | How evenly something moves on screen: speed and the biggest jump, for the lab and the tests |
 | `src/shared/Combat/LagCompensation.luau` | Server history, rewind time with the cap, rewound targets |
 | `src/shared/Combat/ShotResolver.luau` | Skips targets whose bounding sphere is off the ray (`nearRay`) |
 | `src/shared/Combat/Hitboxes.luau` | `region`, `boxFraction` and `boxPoint` for confirms pinned to a box |
 | `src/shared/Net/PlayerCodec.luau` | Snapshots carry a sequence number |
-| `src/server/Replication.luau` | A snapshot of the paced poses every server frame, quantised before anything sees it |
+| `src/server/Replication.luau` | A snapshot of the paced poses on each frame `SendSchedule` picks, quantised before anything sees it |
 | `src/server/CombatServer.luau` | Rewinds, resolves and sends the detailed verdict |
 | `src/server/PlayerSimServer.luau` | One input per player per round, so shots resolve in tick order; paces each player's moves |
 | `src/server/Dummies.luau` | Ticks the dummies on the server's clock and paces them |
@@ -361,6 +377,8 @@ session can confirm:
 - The render clock settles on Roblox's real snapshot timing (the lab's "held a pose" should stay
   near 0% with no simulated loss), and Roblox doesn't bunch several snapshots into one frame
   often enough to need a bigger delay.
+- Shots in the first seconds after joining are rewound as little as later ones, and Studio's
+  snapshots come at 60 a second.
 - `viewTime` is read before the remote entities move each frame (render priorities
   Camera + 1 for the player, Camera + 2 for remote entities, First for NetSim).
 - Hit confirms stay on the body part as the target moves, and go when it dies (it leaves the
