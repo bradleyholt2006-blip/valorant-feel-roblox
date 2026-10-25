@@ -152,15 +152,17 @@ local function sold(item: Shop.Item): boolean
 end
 
 -- Whether buying is open for us now, as the server will see it: never in
--- gun game, whose guns come with its levels (system 23), and all match long
--- in deathmatch.
+-- gun game, whose guns come with its levels (system 23), nor in Team
+-- Deathmatch, whose come with its stages (system 27: B is the loadout menu
+-- there, LoadoutMenu), and all match long in deathmatch.
 function BuyMenu.canBuy(): boolean
 	if not PlayerController.alive then
 		return false
 	end
+	local mode = Workspace:GetAttribute(ArenaConfig.MODE)
 	if Workspace:GetAttribute(ArenaConfig.ON) ~= true then
 		return true
-	elseif Workspace:GetAttribute(ArenaConfig.MODE) == "gungame" then
+	elseif mode == "gungame" or mode == "teamdeathmatch" then
 		return false
 	end
 	local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)

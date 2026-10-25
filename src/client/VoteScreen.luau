@@ -12,7 +12,7 @@
 --
 -- Everything comes from the arena model's attributes (Arena): Phase "vote",
 -- VoteMaps ("A,B,C", keys of ArenaLayout.Maps, or in the spike rounds and
--- deathmatch of SpikeMaps.Maps), Votes ("2,0,1"), Map (the one just
+-- both deathmatches of SpikeMaps.Maps), Votes ("2,0,1"), Map (the one just
 -- played), Mode and PhaseEndsAt, and your own vote, ArenaConfig.VOTE.
 
 local Players = game:GetService("Players")
@@ -301,9 +301,10 @@ function VoteScreen.start()
 		end
 		local viewport = Workspace.CurrentCamera.ViewportSize
 		scale.Scale = math.min(1, (viewport.X - 40) / width, (viewport.Y - 40) / height)
-		-- Deathmatch is played on the spike rounds' maps (system 26).
+		-- Both deathmatches are played on the spike rounds' maps (systems 26
+		-- and 27).
 		local mode = arena:GetAttribute("Mode")
-		local spike = mode == "spike" or mode == "deathmatch"
+		local spike = mode == "spike" or mode == "deathmatch" or mode == "teamdeathmatch"
 		local text = (if spike then "spike:" else "") .. table.concat(keys, ",")
 		if text ~= built then
 			built = text

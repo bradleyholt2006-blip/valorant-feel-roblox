@@ -7,11 +7,12 @@
 --     a new kit, each half takes away what was bought, and each round gives
 --     the signature its free charge and takes back the charges kills brought
 --     back. Charges are bought in the buy menu (ShopServer), one at a time
---   * on the course and in Skirmish, where nothing is bought, every life
---     starts with every charge, and on the course a spent charge comes back
---     a moment after, so it can be practised (ours). So does the ultimate
---     on the course: every life starts with its points full, and they fill
---     again a moment after it's over (system 19)
+--   * on the course, in Skirmish and in Team Deathmatch (system 27), where
+--     nothing is bought, every life starts with every charge, and on the
+--     course a spent charge comes back a moment after, so it can be
+--     practised (ours). So does the ultimate on the course: every life
+--     starts with its points full, and they fill again a moment after it's
+--     over (system 19)
 --   * the ultimate's points: one for a kill (a dummy's too), a death, a
 --     plant and a defuse; and kills bring the signature's charge back
 --     (Jett's: two). A kill with a single Blade Storm knife brings all its
@@ -168,9 +169,9 @@ function AbilityServer.start()
 		}
 		Remotes.get().Ability:FireAllClients(event)
 	end)
-	-- Every life is the agent's, and on the course and in Skirmish starts
-	-- with every charge, and on the course with the ultimate's points full;
-	-- in gun game and deathmatch, with none.
+	-- Every life is the agent's, and on the course, in Skirmish and in Team
+	-- Deathmatch starts with every charge, and on the course with the
+	-- ultimate's points full; in gun game and deathmatch, with none.
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
 		change(player, function(kit)
 			kit.agent = AbilityServer.agent

@@ -215,6 +215,15 @@ do
 	GunGameRules.step(skip, 4)
 	GunGameRules.skip(skip, 5)
 	check("and the victory screen and the vote", skip.phase == "vote" and #GunGameRules.step(skip, 5) == 2 and skip.phase == "live")
+
+	-- Players 1 and 3 on one side, 2 on the other.
+	local helped = game()
+	for id = 1, 3 do
+		GunGameRules.join(helped, id, 0)
+	end
+	GunGameRules.damaged(helped, 3, 2, 40)
+	GunGameRules.died(helped, 2, 1, 1, "vandal")
+	check("damage to an enemy a teammate then kills is an assist", helped.members[3].assists == 1 and helped.members[1].assists == 0)
 end
 
 -- Who plays ------------------------------------------------------------------------

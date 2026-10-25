@@ -6,7 +6,8 @@
 -- switching between them with the 'left and right mouse button' (the
 -- Counter-Strike Wiki; community). Anyone not on a side, waiting in line for
 -- a place, may watch anyone; in deathmatch (system 26), where each side is
--- one player, the dead watch nobody, and are back in a moment. After a
+-- one player, the dead watch nobody, and are back in a moment, as they are
+-- in Team Deathmatch (system 27) after a moment watching a teammate. After a
 -- death, yours or the watched player's, the view stays where it was for a
 -- moment, and once nobody you may watch is alive it holds there, as
 -- Counter-Strike's cameras stay 'frozen at the last viewed position of the
@@ -88,16 +89,16 @@ local function viewOf(player: Player): View?
 	return { eye = Units.toStuds(pose.position + vector.create(0, eye, 0)), yaw = pose.yaw, pitch = pose.pitch }
 end
 
--- When you play next, as the line under the name says it. Gun game and
--- deathmatch have no rounds: the dead come back in a moment (systems 23 and
--- 26).
+-- When you play next, as the line under the name says it. Gun game and both
+-- deathmatches have no rounds: the dead come back in a moment (systems 23,
+-- 26 and 27).
 local function whenYouPlay(phase: any, mode: any): string
 	local line = me:GetAttribute(ArenaConfig.LINE)
 	if typeof(line) == "number" then
 		return string.format("You're %s in line: you play once a place opens", Ui.ordinal(line))
 	elseif me:GetAttribute(MatchConfig.ALIVE) == true then
 		return "" -- spawning now
-	elseif phase == "waiting" or mode == "gungame" or mode == "deathmatch" then
+	elseif phase == "waiting" or mode == "gungame" or mode == "deathmatch" or mode == "teamdeathmatch" then
 		return "You come back in a moment"
 	end
 	return "You play from the next round"

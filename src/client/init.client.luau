@@ -19,6 +19,7 @@ local Spectate = require(script.Spectate)
 local VoteScreen = require(script.VoteScreen)
 local PlayMenu = require(script.PlayMenu)
 local BuyMenu = require(script.BuyMenu)
+local LoadoutMenu = require(script.LoadoutMenu)
 local ClientSettings = require(script.ClientSettings)
 local CrosshairView = require(script.CrosshairView)
 local SettingsMenu = require(script.SettingsMenu)
@@ -78,6 +79,8 @@ VoteScreen.start()
 PlayMenu.start()
 -- B: every gun and shield, in the arena's buy phase and any time on the course.
 BuyMenu.start()
+-- B in Team Deathmatch: the loadout to carry in each of its stages.
+LoadoutMenu.start()
 -- Your sensitivity and crosshair, kept between sessions; O for the menu.
 ClientSettings.start()
 CrosshairView.start(PlayerController)

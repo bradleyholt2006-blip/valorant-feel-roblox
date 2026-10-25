@@ -6,7 +6,8 @@
 -- side's colour: you and your side in the ally colour, the other side (and,
 -- on the course, everyone else) in the enemy colour. A row you're in, as
 -- the killer or the one killed, is outlined in gold. A death nobody caused
--- (the spike's blast) has the spike for its killer.
+-- has what caused it for its killer: the spike's blast, or a spawn room's
+-- burn (Team Deathmatch, system 27).
 --
 -- It reads the server's damage events (the Combat remote), which every
 -- client gets.
@@ -17,6 +18,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local TeamDeathmatchConfig = require(Shared.Arena.TeamDeathmatchConfig)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
@@ -85,7 +87,8 @@ local function describe(kill: Kill): string
 		table.insert(parts, tinted(nameOf(attacker), colourOf(attacker)))
 		table.insert(parts, if def then def.name else "?")
 	else
-		table.insert(parts, tinted(if def then string.upper(def.name) else "?", SPIKE_RED))
+		local cause = if def then string.upper(def.name) elseif kill.weapon == TeamDeathmatchConfig.BURN then "SPAWN ROOM" else "?"
+		table.insert(parts, tinted(cause, SPIKE_RED))
 	end
 	if kill.head then
 		table.insert(parts, tinted("HS", HEAD))

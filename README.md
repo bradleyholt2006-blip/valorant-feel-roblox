@@ -166,6 +166,14 @@ Built one system at a time:
     gun. Every gun is free at any time, every life wears Heavy Armor, and there are no abilities,
     so no glide. The victory screen shows everyone in their places, then the vote for the next
     map - [research and design](docs/research/26-deathmatch.md)
+27. **Team Deathmatch**: the reference's 5v5 Team Deathmatch on the spike rounds' three maps, a
+    seventh mode on the Play menu. The first side to 100 kills wins, or the side with more after
+    9 minutes 30 seconds, in four stages; a tie is a draw. B picks a loadout for each stage, a gun
+    and its shield, before the match or in your spawn room, and each new stage hands its loadout
+    over a moment in. The dead are back in 1.5 s in their side's spawn room, can't be hurt for 15 s
+    or until they fire or leave it, and the room burns anyone who stays after that, as the other
+    side's does at once. Then the victory screen, `DRAW` for a tie, and the vote for the next map -
+    [research and design](docs/research/27-team-deathmatch.md)
 
 ## Running it
 
@@ -184,8 +192,8 @@ Built one system at a time:
    the spike rounds, on three maps of their own with the same vote, P again their shorter
    Swiftplay format, and P again puts everyone back on the course. A live server opens on the
    Play menu, and only once you press PLAY are you in a match; in Studio M opens the menu, where
-   PLAY for another mode switches the server to it, as P does. Deathmatch is only on the menu.
-   PLAY's teleports between servers only work once the place is published.
+   PLAY for another mode switches the server to it, as P does. Both deathmatches are only on the
+   menu. PLAY's teleports between servers only work once the place is published.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
@@ -193,7 +201,8 @@ Controls: WASD, Shift walk, Ctrl crouch, Space jump, mouse 1 fire, mouse 2 zoom 
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
-during the buy phase and while waiting for an opponent; in deathmatch any time, guns alone), Tab
+during the buy phase and while waiting for an opponent; in deathmatch any time, guns alone; in
+Team Deathmatch B is the loadout menu, before the match or in your spawn room), Tab
 held the scoreboard (the arena and the spike rounds), mouse 1 and 2, while you're down in either,
 the next or the last teammate to watch,
 a click on a map card, during the vote after a match, your vote for the next map,
@@ -203,8 +212,8 @@ and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife 
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
 Drift). The spike rounds charge credits; the course and the arena are free. On the course a spent
 charge comes back 1.5 s after it's done, and the ultimate's points are full at every life and fill
-again 1.5 s after Blade Storm ends; in the arena every life starts with every charge, and gun
-game and deathmatch have no abilities.
+again 1.5 s after Blade Storm ends; in the arena and Team Deathmatch every life starts with every
+charge, and gun game and deathmatch have no abilities.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's

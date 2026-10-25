@@ -27,7 +27,8 @@
 -- for the swing's damage from in front or from behind. Its verdict goes back
 -- to the one swinging with what the server tested, and the others hear it.
 --
--- The spike's blast kills outright, with nobody to credit (kill).
+-- The spike's blast kills outright, with nobody to credit (kill), and Team
+-- Deathmatch's spawn rooms burn whoever they shouldn't have in them (hurt).
 --
 -- Each damage event says whether the bullets went through a wall first, for
 -- the kill feed (system 16), and every hit that took something is told to
@@ -63,12 +64,13 @@ local DT = 1 / MovementConfig.TickRate.value
 local CombatServer = {}
 
 -- Called with every hit that took health or shield: who did it (nil for the
--- spike's blast), to whom, and how much, before a kill's death listeners.
+-- spike's blast and a spawn room's burn), to whom, and how much, before a
+-- kill's death listeners.
 CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, number) -> () }
 -- Called with every kill, players' and dummies' alike: who did it (nil for
--- the spike's blast), who died, the weapon and the mode it fired in (a
--- WeaponSim.Shot's; nil for a swing or the blast), before the death
--- listeners.
+-- the spike's blast and a spawn room's burn), who died, the weapon and the
+-- mode it fired in (a WeaponSim.Shot's; nil for a swing, the blast or a
+-- burn), before the death listeners.
 CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity, string, string?) -> () }
 -- Whether an entity can't be hurt now (gun game's spawn protection, system
 -- 23): shots and swings go through it, as through a teammate.
@@ -82,7 +84,8 @@ function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 	LagCompensation.record(history, time, poses)
 end
 
--- `attacker` is nil for a death nobody caused (the spike's blast);
+-- `attacker` is nil for damage nobody caused (the spike's blast, a spawn
+-- room's burn);
 -- `wallbang`, that the bullets went through a wall on the way; `mode`, the
 -- way the weapon fired, for a shot.
 local function damage(
@@ -100,8 +103,9 @@ local function damage(
 			listener(attacker, victim, result.damage)
 		end
 	end
+	-- A hit from nobody (a spawn room's burn) doesn't slow.
 	local hp = WeaponConfig.Health
-	if result.damage > 0 and victim.sim and not result.killed then
+	if result.damage > 0 and attacker and victim.sim and not result.killed then
 		PlayerSim.applyTag(victim.sim, Tuning.config(), hp.tagSpeedMultiplier.value, hp.tagDuration.value, DT)
 		if victim.player then
 			PlayerSimServer.markDirty(victim.player)
@@ -134,6 +138,15 @@ local LETHAL = 1e4
 function CombatServer.kill(victim: Entities.Entity, weapon: string)
 	if victim.health.alive then
 		damage(nil, victim, LETHAL, "body", weapon)
+	end
+end
+
+-- Hurts an entity by `amount`, through its shield as any hit, with nobody
+-- to credit, as `weapon` (Team Deathmatch's spawn rooms, system 27). Clients
+-- hear of it as damage with no attacker, and a kill if it was the last.
+function CombatServer.hurt(victim: Entities.Entity, amount: number, weapon: string)
+	if victim.health.alive then
+		damage(nil, victim, amount, "body", weapon)
 	end
 end
 
