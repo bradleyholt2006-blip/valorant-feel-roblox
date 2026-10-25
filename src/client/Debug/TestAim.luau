@@ -16,7 +16,16 @@
 --   VFTestAimRegion         "head", "body" (the default) or "legs"
 --
 -- VFTestAimEntity wins over VFTestAimPoint, which wins over the angles.
--- Clearing them gives the mouse back. Outside Studio this does nothing.
+-- Clearing them gives the mouse back. Two more drive the weapons without a
+-- mouse button held:
+--
+--   VFTestButtons  PlayerSim button flags held on top of the real input
+--                  while set (Fire 128, AltFire 256, Reload 512, Crouch 32;
+--                  MovementSim.Buttons has the rest)
+--   VFTestGive     a weapon id: asks for it as the debug give does, then
+--                  clears itself
+--
+-- Outside Studio this does nothing.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,6 +37,7 @@ local PlayerSim = require(Shared.PlayerSim)
 local Units = require(Shared.Units)
 
 local CameraController = require(script.Parent.Parent.CameraController)
+local InputSampler = require(script.Parent.Parent.InputSampler)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
 local TestAim = {}
@@ -69,6 +79,14 @@ function TestAim.start(controller: any)
 	end
 	-- Just before the player's own render step, which samples the aim.
 	RunService:BindToRenderStep("VFTestAim", Enum.RenderPriority.Camera.Value, function()
+		local player = Players.LocalPlayer
+		local buttons = player:GetAttribute("VFTestButtons")
+		InputSampler.extraButtons = if typeof(buttons) == "number" then bit32.band(buttons, 1023) else 0
+		local give = player:GetAttribute("VFTestGive")
+		if typeof(give) == "string" and give ~= "" then
+			player:SetAttribute("VFTestGive", nil)
+			controller.requestWeapon(give)
+		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then
 			return
@@ -81,7 +99,6 @@ function TestAim.start(controller: any)
 			CameraController.pitch = math.clamp(pitch, -MAX_PITCH, MAX_PITCH)
 			return
 		end
-		local player = Players.LocalPlayer
 		local yaw = player:GetAttribute("VFTestYaw")
 		local pitch = player:GetAttribute("VFTestPitch")
 		if typeof(yaw) == "number" then

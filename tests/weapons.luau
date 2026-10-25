@@ -1,6 +1,7 @@
 --!strict
 -- Weapon firing (system 2): fire rate, ammo, reload, equip, scope, movement
--- speed by weapon and the hit slow.
+-- speed by weapon and the hit slow. The rest of the arsenal's ways of firing
+-- (system 9) are in arsenal.luau.
 
 local MovementConfig = require("../src/shared/Movement/MovementConfig")
 local MovementSim = require("../src/shared/Movement/MovementSim")
@@ -31,16 +32,22 @@ local function newPlayer(loadout: { string }?): PlayerSim.State
 	return s
 end
 
--- Steps `ticks` ticks with the same buttons; returns the shots fired.
+-- Steps `ticks` ticks with the same buttons; returns the bullets fired.
 local function run(s: PlayerSim.State, buttons: number, ticks: number, slot: number?): { WeaponSim.Shot }
 	local shots = {}
 	for _ = 1, ticks do
-		local shot = PlayerSim.step(s, input(buttons, slot or s.weapons.equipped), cfg, floor, DT)
-		if shot then
+		local fired = PlayerSim.step(s, input(buttons, slot or s.weapons.equipped), cfg, floor, DT)
+		for _, shot in fired or {} do
 			table.insert(shots, shot)
 		end
 	end
 	return shots
+end
+
+-- The loadout that puts `id` in its slot.
+local function loadoutFor(id: string): { string }
+	local def = WeaponConfig.get(id)
+	return { if def.slot == 1 then id else "vandal", if def.slot == 2 then id else "classic", "knife" }
 end
 
 local function now(s: PlayerSim.State): number
@@ -52,52 +59,88 @@ local function ticksFor(seconds: number): number
 end
 
 H.section("Weapon metrics")
-for _, id in { "vandal", "phantom", "operator", "sheriff", "classic" } do
-	local def = WeaponConfig.get(id)
-	local s = newPlayer({ if def.slot == 1 then id else "vandal", if def.slot == 2 then id else "classic", "knife" })
-	s.weapons.equipped = def.slot
-	local shots = {}
-	-- Auto: hold. Semi: a perfect clicker, pressing on the first tick the
-	-- weapon is ready (a press during the cooldown is not buffered).
-	for _ = 1, ticksFor(def.magazine.value / def.fireRate.value + 1) do
-		local ready = (s.movement.tick + 1) * DT >= s.weapons.nextFireTime - 1e-9 and not s.weapons.fireHeld
-		local buttons = if def.fireMode == "auto" or ready then B.Fire else 0
-		local shot = PlayerSim.step(s, input(buttons, def.slot), cfg, floor, DT)
-		if shot then
-			table.insert(shots, shot)
+for _, group in WeaponConfig.Arsenal do
+	for _, id in group.ids do
+		local def = WeaponConfig.get(id)
+		local s = newPlayer(loadoutFor(id))
+		s.weapons.equipped = def.slot
+		run(s, 0, ticksFor(def.equipTime.value), def.slot)
+		local rounds = {}
+		-- Auto: hold. Semi: a perfect clicker, pressing on the first tick the
+		-- weapon is ready (a press during the cooldown is not buffered).
+		for _ = 1, ticksFor(def.magazine.value / def.fireRate.value + 1) do
+			local ready = (s.movement.tick + 1) * DT >= s.weapons.nextFireTime - 1e-9 and not s.weapons.fireHeld
+			local buttons = if def.fireMode == "auto" or ready then B.Fire else 0
+			local fired = PlayerSim.step(s, input(buttons, def.slot), cfg, floor, DT)
+			if fired then
+				table.insert(rounds, fired[1])
+			end
+			if #rounds == def.magazine.value then
+				break
+			end
 		end
-		if #shots == def.magazine.value then
-			break
-		end
+		local mean = if #rounds > 1 then (rounds[#rounds].time - rounds[1].time) / (#rounds - 1) else 0
+		local body = WeaponConfig.shotsToKill(def, "body", 10, 150) or 0
+		local head = WeaponConfig.shotsToKill(def, "head", 10, 150) or 0
+		print(string.format(
+			"[%s] %d cr %s %.2f rps -> measured %.2f rps, mag of %d empties in %.2f s, reload %.2f s, %.2f m/s, 150 HP at 10 m: head x%d, body x%d %.0f ms",
+			id,
+			def.price.value,
+			def.fireMode,
+			def.fireRate.value,
+			if mean > 0 then 1 / mean else 0,
+			#rounds,
+			if #rounds > 0 then rounds[#rounds].time - rounds[1].time else 0,
+			def.reloadTime.value,
+			cfg.baseRunSpeed * def.moveMultiplier.value,
+			head,
+			body,
+			(body - 1) * WeaponSim.fireInterval(def, 0) * 1000
+		))
 	end
-	local mean = if #shots > 1 then (shots[#shots].time - shots[1].time) / (#shots - 1) else 0
-	local body = WeaponConfig.shotsToKill(def, "body", 10, 150) or 0
-	print(string.format(
-		"[%s] %s %.2f rps -> measured %.2f rps (%.2f ticks/shot), mag of %d empties in %.2f s, reload %.2f s, TTK body x%d %.0f ms",
-		id,
-		def.fireMode,
-		def.fireRate.value,
-		if mean > 0 then 1 / mean else 0,
-		mean / DT,
-		#shots,
-		if #shots > 0 then shots[#shots].time - shots[1].time else 0,
-		def.reloadTime.value,
-		body,
-		(body - 1) * WeaponSim.fireInterval(def, 0) * 1000
-	))
 end
 
 H.section("Weapon tests")
 
 do
 	local ok = true
+	local function labelled(name: string, param: any)
+		if type(param) ~= "table" or type(param.value) ~= "number" or type(param.status) ~= "string" or param.source == "" then
+			ok = false
+			print("    missing or unlabelled: " .. name)
+		end
+	end
 	for id, def in WeaponConfig.Defs do
-		for _, key in { "fireRate", "magazine", "reserve", "reloadTime", "equipTime", "moveMultiplier", "damageSource" } do
+		for _, key in { "price", "fireRate", "magazine", "reserve", "reloadTime", "equipTime", "moveMultiplier", "damageSource" } do
+			labelled(id .. "." .. key, (def :: any)[key])
+		end
+		for _, key in { "pellets", "reloadPerRound", "reloadOneRound", "deadzoneFraction" } do
 			local param = (def :: any)[key]
-			if type(param) ~= "table" or type(param.value) ~= "number" or param.source == "" then
-				ok = false
-				print("    missing or unlabelled: " .. id .. "." .. key)
+			if param ~= nil then
+				labelled(id .. "." .. key, param)
 			end
+		end
+		local ads = def.ads
+		if ads then
+			labelled(id .. ".ads.fireRateMultiplier", ads.fireRateMultiplier)
+			labelled(id .. ".ads.moveMultiplier", ads.moveMultiplier)
+			local burst = ads.burst
+			if burst then
+				labelled(id .. ".ads.burst.rounds", burst.rounds)
+				labelled(id .. ".ads.burst.rate", burst.rate)
+				labelled(id .. ".ads.burst.perSecond", burst.perSecond)
+			end
+		end
+		local alt = def.alt
+		if alt then
+			labelled(id .. ".alt.fireRate", alt.fireRate)
+			labelled(id .. ".alt.pellets", alt.pellets)
+			labelled(id .. ".alt.ammo", alt.ammo)
+		end
+		local spinUp = def.spinUp
+		if spinUp then
+			labelled(id .. ".spinUp.maxRate", spinUp.maxRate)
+			labelled(id .. ".spinUp.time", spinUp.time)
 		end
 		local last = -1
 		for _, band in def.damage do
@@ -139,7 +182,7 @@ do
 	local during = run(s, B.Fire, remaining)
 	check("no shots while reloading", #during == 0 and WeaponSim.isReloading(s.weapons))
 	run(s, 0, 2)
-	check("reload refills the magazine from reserve", not WeaponSim.isReloading(s.weapons) and s.weapons.ammo[1] == 25 and s.weapons.reserve[1] == 50, string.format("%d / %d", s.weapons.ammo[1], s.weapons.reserve[1]))
+	check("reload refills the magazine from reserve (Vandal 25 + 50, Patch 6.11)", not WeaponSim.isReloading(s.weapons) and s.weapons.ammo[1] == 25 and s.weapons.reserve[1] == 25, string.format("%d / %d", s.weapons.ammo[1], s.weapons.reserve[1]))
 end
 
 do
@@ -150,7 +193,7 @@ do
 	run(s, B.Reload, 1)
 	check("manual reload starts", WeaponSim.isReloading(s.weapons))
 	run(s, 0, ticksFor(WeaponConfig.get("vandal").reloadTime.value))
-	check("manual reload tops up only what was fired", s.weapons.ammo[1] == 25 and s.weapons.reserve[1] == 75 - fired, string.format("fired %d -> %d / %d", fired, s.weapons.ammo[1], s.weapons.reserve[1]))
+	check("manual reload tops up only what was fired", s.weapons.ammo[1] == 25 and s.weapons.reserve[1] == 50 - fired, string.format("fired %d -> %d / %d", fired, s.weapons.ammo[1], s.weapons.reserve[1]))
 end
 
 do
@@ -177,9 +220,9 @@ do
 	WeaponSim.give(s.weapons, 2, "sheriff") -- full magazine again
 	local spam = {}
 	for i = 1, ticksFor(2) do
-		local shot = PlayerSim.step(s, input(if i % 2 == 1 then B.Fire else 0, 2), cfg, floor, DT)
-		if shot then
-			table.insert(spam, shot)
+		local fired = PlayerSim.step(s, input(if i % 2 == 1 then B.Fire else 0, 2), cfg, floor, DT)
+		if fired then
+			table.insert(spam, fired[1])
 		end
 	end
 	local minGap = math.huge
@@ -285,14 +328,15 @@ end
 
 do
 	local s = newPlayer()
-	local shot = PlayerSim.step(s, input(B.Fire, 1, math.pi / 2, 0), cfg, floor, DT)
+	local fired = PlayerSim.step(s, input(B.Fire, 1, math.pi / 2, 0), cfg, floor, DT)
+	local shot = fired and fired[1]
 	check("shot leaves from the eye", shot ~= nil and near(shot.origin.y - s.movement.position.y, cfg.standEyeHeight, 1e-5), if shot then tostring(shot.origin) else "no shot")
 	check("yaw pi/2 aims along -X", shot ~= nil and near(shot.aim.x, -1, 1e-6) and near(shot.aim.z, 0, 1e-6))
 	-- The bullet itself leaves somewhere inside the first-shot cone (system 3).
 	local off = if shot then math.deg(math.acos(math.clamp(vector.dot(shot.aim, shot.direction), -1, 1))) else 99
 	check("first standing shot stays inside the 0.25 degree cone", shot ~= nil and off <= 0.25 + 1e-3, string.format("%.4f deg", off))
 	local pitched = PlayerSim.step(newPlayer(), input(B.Fire, 1, 0, math.rad(30)), cfg, floor, DT)
-	check("pitch 30 degrees up aims at sin(30) upward", pitched ~= nil and near(pitched.aim.y, 0.5, 1e-6))
+	check("pitch 30 degrees up aims at sin(30) upward", pitched ~= nil and near(pitched[1].aim.y, 0.5, 1e-6))
 end
 
 do

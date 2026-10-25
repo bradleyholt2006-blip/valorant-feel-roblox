@@ -14,6 +14,11 @@
 -- Each record keeps both, and what each side tested: the targets near the
 -- ray, their poses and the snapshots those came from. When the two disagree
 -- the record says why (Cause); the Hit Reg Lab counts the reasons.
+--
+-- A record is one bullet; a shotgun round is several, a volley. The server
+-- sends one verdict per round with each bullet's outcome, and each target's
+-- total for the round (Volley), which is what the hit marker, the damage
+-- number and the hit sounds show.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -111,10 +116,29 @@ export type Record = {
 
 local ClientShots = {}
 
+-- What one round did to one target, as the server added it up.
+export type VolleyHit = {
+	targetId: number,
+	region: string,
+	damage: number, -- the round's damage after range and walls, before the target's health caps it
+	pellets: number, -- bullets that hit
+	killed: boolean,
+	point: vector, -- where the first of them hit, metres
+}
+
+-- A round's verdict: its bullets' records and what it did to each target.
+export type Volley = {
+	weapon: string,
+	records: { Record },
+	hits: { VolleyHit },
+}
+
 ClientShots.MAX_RECORDS = 256
 ClientShots.records = {} :: { Record } -- oldest first
 ClientShots.firedListeners = {} :: { (Record) -> () }
+-- Called for each bullet's verdict, then once for its round with the totals.
 ClientShots.verdictListeners = {} :: { (Record) -> () }
+ClientShots.volleyListeners = {} :: { (Volley) -> () }
 
 local MOVING_SPEED = 0.5 -- m/s; a target faster than this counts as moving
 
@@ -347,34 +371,36 @@ local function classify(r: Record, v: Verdict): Cause
 	return "edge"
 end
 
-local function onVerdict(v: any)
-	if typeof(v) ~= "table" or typeof(v.shotNumber) ~= "number" or typeof(v.endPoint) ~= "Vector3" then
-		return
+-- One bullet's verdict: the round's shared part `v` and the bullet's `p`.
+local function onPellet(v: any, p: any, killed: { [number]: boolean }): Record?
+	if typeof(p) ~= "table" or typeof(p.shotNumber) ~= "number" or typeof(p.endPoint) ~= "Vector3" then
+		return nil
 	end
-	local record = find(v.shotNumber)
+	local record = find(p.shotNumber)
 	if not record then
 		ClientShots.stats.unmatchedVerdicts += 1
-		return
+		return nil
 	end
 	if record.verdict then
-		return
+		return nil
 	end
-	local point = Units.toMetres(v.endPoint)
+	local point = Units.toMetres(p.endPoint)
+	local target = if typeof(p.target) == "number" then p.target else nil
 	local verdict: Verdict = {
-		targetId = v.target,
-		region = v.region,
-		distance = if typeof(v.distance) == "number" then v.distance else vector.magnitude(point - record.shot.origin),
+		targetId = target,
+		region = if typeof(p.region) == "string" then p.region else nil,
+		distance = if typeof(p.distance) == "number" then p.distance else vector.magnitude(point - record.shot.origin),
 		point = point,
-		blockedAt = if typeof(v.blockedAt) == "number" then v.blockedAt else record.predicted.blockedAt,
-		multiplier = if typeof(v.multiplier) == "number" then v.multiplier else 1,
-		walls = parseWalls(v.walls),
-		damage = v.damage,
-		killed = v.killed,
-		hitPoint = asVector(v.hitPoint),
+		blockedAt = if typeof(p.blockedAt) == "number" then p.blockedAt else record.predicted.blockedAt,
+		multiplier = if typeof(p.multiplier) == "number" then p.multiplier else 1,
+		walls = parseWalls(p.walls),
+		damage = if typeof(p.damage) == "number" then p.damage else nil,
+		killed = if target then killed[target] == true else nil,
+		hitPoint = asVector(p.hitPoint),
 		rewind = if typeof(v.rewind) == "number" then v.rewind else 0,
 		clamped = v.clamped == true,
 		origin = asVector(v.origin),
-		direction = asVector(v.direction),
+		direction = asVector(p.direction),
 		tested = parseTested(v.tested),
 	}
 	record.verdict = verdict
@@ -406,6 +432,54 @@ local function onVerdict(v: any)
 	end
 	for _, listener in ClientShots.verdictListeners do
 		listener(record)
+	end
+	return record
+end
+
+local function onVerdict(v: any)
+	if typeof(v) ~= "table" or typeof(v.pellets) ~= "table" then
+		return
+	end
+	local hits: { VolleyHit } = {}
+	local killed: { [number]: boolean } = {}
+	if typeof(v.hits) == "table" then
+		for _, h in v.hits do
+			if typeof(h) == "table" and typeof(h.target) == "number" and typeof(h.damage) == "number" then
+				killed[h.target] = h.killed == true
+				table.insert(hits, {
+					targetId = h.target,
+					region = if typeof(h.region) == "string" then h.region else "body",
+					damage = h.damage,
+					pellets = if typeof(h.pellets) == "number" then h.pellets else 1,
+					killed = h.killed == true,
+					point = vector.create(0, 0, 0),
+				})
+			end
+		end
+	end
+	local records: { Record } = {}
+	for _, p in v.pellets do
+		local record = onPellet(v, p, killed)
+		if record then
+			table.insert(records, record)
+		end
+	end
+	if #records == 0 then
+		return -- not ours to show (an earlier life, or already shown)
+	end
+	-- Each target's total shows where the first bullet to hit it landed.
+	for _, hit in hits do
+		for _, record in records do
+			local verdict = record.verdict
+			if verdict and verdict.targetId == hit.targetId then
+				hit.point = verdict.point
+				break
+			end
+		end
+	end
+	local volley: Volley = { weapon = if typeof(v.weapon) == "string" then v.weapon else records[1].shot.weapon, records = records, hits = hits }
+	for _, listener in ClientShots.volleyListeners do
+		listener(volley)
 	end
 end
 

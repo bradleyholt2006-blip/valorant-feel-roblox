@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
+local WeaponSim = require(Shared.Weapons.WeaponSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -211,15 +212,14 @@ function CombatHud.start()
 	black({ Size = UDim2.new(0, 1, 1, 0), Position = UDim2.fromScale(0.5, 0) })
 
 	-- Events ------------------------------------------------------------------
-	table.insert(ClientShots.verdictListeners, function(record: ClientShots.Record)
-		local verdict = record.verdict
-		if not verdict or not verdict.targetId then
-			return
-		end
-		markerStart = os.clock()
-		markerColor = if verdict.killed then KILL_COLOR elseif verdict.region == "head" then HEAD_COLOR else Ui.TEXT
-		if CombatHud.damageNumbers and verdict.damage then
-			damageNumber(verdict.point, verdict.damage, markerColor)
+	-- One marker and number per round and target: a shotgun's pellets add up.
+	table.insert(ClientShots.volleyListeners, function(volley: ClientShots.Volley)
+		for _, hit in volley.hits do
+			markerStart = os.clock()
+			markerColor = if hit.killed then KILL_COLOR elseif hit.region == "head" then HEAD_COLOR else Ui.TEXT
+			if CombatHud.damageNumbers then
+				damageNumber(hit.point, hit.damage, markerColor)
+			end
 		end
 	end)
 
@@ -241,8 +241,9 @@ function CombatHud.start()
 		local alive = PlayerController.alive
 
 		local hp = RemoteEntities.healthOf(PlayerController.entityId)
-		healthText.Text = tostring(hp.health)
-		shieldText.Text = if hp.shield > 0 then string.format("+%d", hp.shield) else ""
+		-- Whole points, rounded up: a player on 0.4 is still alive.
+		healthText.Text = tostring(math.ceil(hp.health - 1e-9))
+		shieldText.Text = if hp.shield > 0 then string.format("+%d", math.ceil(hp.shield - 1e-9)) else ""
 		dead.Visible = not alive and sim ~= nil
 
 		local zoom = 1
@@ -259,7 +260,9 @@ function CombatHud.start()
 			local t = sim.movement.tick * DT
 			local fill, label = nil, ""
 			if w.reloadEndTime > 0 then
-				fill = 1 - math.clamp((w.reloadEndTime - t) / math.max(def.reloadTime.value, 1e-3), 0, 1)
+				-- This step of the reload: the whole of it, or one round.
+				local step = WeaponSim.reloadStep(def, w.ammo[slot], w.reserve[slot])
+				fill = 1 - math.clamp((w.reloadEndTime - t) / math.max(step, 1e-3), 0, 1)
 				label = "reloading"
 			elseif t < w.equipEndTime then
 				fill = 1 - math.clamp((w.equipEndTime - t) / math.max(def.equipTime.value, 1e-3), 0, 1)

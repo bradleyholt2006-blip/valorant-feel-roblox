@@ -8,6 +8,12 @@
 -- sides agree on which tick every shot happened. Shots are returned as events;
 -- the caller (client effects, server hit resolution) decides what to do.
 --
+-- A weapon fires in the mode it's held in (WeaponConfig.mode): from the hip,
+-- zoomed, or the Classic's right click. One trigger pull fires one round, or
+-- in a burst mode a burst of rounds a fixed time apart that carries on by
+-- itself. A round is a volley of bullets: one, or a shotgun's pellets, which
+-- share the round's recoil and each take their own place in its cone.
+--
 -- Times are seconds of simulation time (tick * dt). 1/128 is exact in binary,
 -- so client and server compute bit-identical times.
 
@@ -22,17 +28,21 @@ export type State = {
 	reserve: { number }, -- [slot]
 	equipped: number,
 	equipEndTime: number, -- can't fire before this
+	-- Can't pull the trigger again before this; recovery counts from it.
 	nextFireTime: number,
-	reloadEndTime: number, -- 0 when not reloading
+	reloadEndTime: number, -- 0 when not reloading; for a round-at-a-time reload, when this round goes in
 	scoped: number, -- 0 = hip, n = ads.zoom[n]
 	fireHeld: boolean,
 	altHeld: boolean,
 	lastShotTime: number,
-	sprayIndex: number, -- shots in the current spray; fractional once partly recovered
-	shotCounter: number, -- total shots this life; picks each shot's random numbers
+	sprayIndex: number, -- rounds in the current spray; fractional once partly recovered
+	shotCounter: number, -- total bullets this life; picks each bullet's random numbers
 	seed: number, -- per-life random seed, chosen by the server
-	recoilYaw: number, -- sideways drift (degrees, + = right) the next bullet starts from
+	recoilYaw: number, -- sideways drift (degrees, + = right) the next round starts from
 	swayDir: number, -- drift direction: -1, 1, or 0 before the drift starts
+	burstLeft: number, -- rounds still to come in the burst under way
+	burstNext: number, -- when its next round fires
+	spin: number, -- 0-1: how far a spinning fire rate has risen (the Odin)
 }
 
 export type Shot = {
@@ -40,8 +50,14 @@ export type Shot = {
 	time: number,
 	slot: number,
 	weapon: string,
+	mode: WeaponConfig.ModeName,
 	shotNumber: number,
-	sprayIndex: number, -- bullets before this one in the spray, after recovery
+	-- The bullets one round fires together: the first one's shot number, this
+	-- bullet's place among them and how many there are.
+	volley: number,
+	pellet: number,
+	pellets: number,
+	sprayIndex: number, -- rounds before this one in the spray, after recovery
 	bullet: number, -- sprayIndex + 1: the bullet number the curves are read at
 	origin: vector, -- eye position, metres
 	yaw: number,
@@ -92,6 +108,9 @@ function WeaponSim.newState(loadout: { string }?, seed: number?): State
 		seed = (seed or 0) % 2 ^ 32,
 		recoilYaw = 0,
 		swayDir = 0,
+		burstLeft = 0,
+		burstNext = 0,
+		spin = 0,
 	}
 	for slot = 1, 3 do
 		WeaponSim.give(s, slot, s.loadout[slot])
@@ -117,6 +136,9 @@ local function draw(s: State, t: number)
 	s.swayDir = 0
 	s.lastShotTime = -math.huge
 	s.nextFireTime = 0
+	s.burstLeft = 0
+	s.burstNext = 0
+	s.spin = 0
 end
 
 -- Puts a weapon in a slot with full ammo (server-side loadout changes). When
@@ -152,17 +174,48 @@ function WeaponSim.isReloading(s: State): boolean
 	return s.reloadEndTime > 0
 end
 
+-- Seconds between rounds as the weapon is held (`scoped` as in State), within
+-- a burst for a burst mode.
 function WeaponSim.fireInterval(def: WeaponConfig.WeaponDef, scoped: number): number
-	local rate = def.fireRate.value
-	if scoped > 0 and def.ads then
-		rate *= def.ads.fireRateMultiplier.value
+	return WeaponConfig.mode(def, scoped).interval
+end
+
+-- Seconds between rounds in `mode` once a spinning fire rate has risen by `spin`.
+function WeaponSim.spinInterval(mode: WeaponConfig.Mode, spin: number): number
+	local spinUp = mode.spin
+	if not spinUp or spin <= 0 then
+		return mode.interval
 	end
-	return if rate > 0 then 1 / rate else math.huge
+	return 1 / (mode.rate + (spinUp.maxRate.value - mode.rate) * spin)
+end
+
+-- How long the reload step that starts now takes, with `ammo` in the
+-- magazine and `reserve` left: one round for a gun that loads a round at a
+-- time, the one-round time when a single round goes in (the Outlaw), or the
+-- whole reload.
+function WeaponSim.reloadStep(def: WeaponConfig.WeaponDef, ammo: number, reserve: number): number
+	local perRound = def.reloadPerRound
+	if perRound then
+		return perRound.value
+	end
+	local oneRound = def.reloadOneRound
+	if oneRound and math.min(def.magazine.value - ammo, reserve) == 1 then
+		return oneRound.value
+	end
+	return def.reloadTime.value
+end
+
+-- Rounds a reload step puts in at its end.
+local function reloadAmount(def: WeaponConfig.WeaponDef, ammo: number, reserve: number): number
+	local take = math.min(def.magazine.value - ammo, reserve)
+	return if def.reloadPerRound then math.min(take, 1) else take
 end
 
 local function startReload(s: State, def: WeaponConfig.WeaponDef, t: number)
-	s.reloadEndTime = t + def.reloadTime.value
+	local slot = s.equipped
+	s.reloadEndTime = t + WeaponSim.reloadStep(def, s.ammo[slot], s.reserve[slot])
 	s.scoped = 0
+	s.burstLeft = 0
 end
 
 local function canReload(s: State, def: WeaponConfig.WeaponDef): boolean
@@ -170,10 +223,75 @@ local function canReload(s: State, def: WeaponConfig.WeaponDef): boolean
 	return def.fireMode ~= "none" and s.reloadEndTime == 0 and s.ammo[slot] < def.magazine.value and s.reserve[slot] > 0
 end
 
+-- Whether the trigger (or right click) in `held` fires `mode` this tick:
+-- automatic modes while held, semi-automatic ones on a fresh press.
+local function pulled(mode: WeaponConfig.Mode, held: boolean, wasHeld: boolean): boolean
+	return held and (mode.fireMode == "auto" or (mode.fireMode == "semi" and not wasHeld))
+end
+
+-- Fires one round in `mode`: its bullets, its ammo and its place in the
+-- spray. `factor` is how much of the spray is left (Accuracy.recoveryFactor).
+local function fireRound(s: State, def: WeaponConfig.WeaponDef, mode: WeaponConfig.Mode, factor: number, t: number, origin: vector, tick: number, input: any, ctx: Accuracy.Context?): { Shot }
+	local slot = s.equipped
+	-- A mode that takes a round per bullet (the Classic's right click) fires
+	-- a bullet for each round left when there are fewer than it takes.
+	local rounds = math.min(mode.ammo, s.ammo[slot])
+	local bullets = if mode.ammo > 1 then math.max(mode.pellets * rounds // mode.ammo, 1) else mode.pellets
+	s.ammo[slot] -= rounds
+
+	local spray = s.sprayIndex * factor
+	local sway = s.recoilYaw * factor
+	if factor == 0 then
+		s.swayDir = 0 -- a fresh spray drifts whichever way it likes
+	end
+	s.lastShotTime = t
+
+	local context = ctx or STILL
+	local bullet = spray + 1
+	local cone = Accuracy.cone(mode.accuracy, context, bullet)
+	local recoilPitch, recoilYaw = Accuracy.recoil(mode.recoil, context, bullet, sway, mode.zoomed)
+	local aim = Accuracy.aim(input.yaw, input.pitch)
+	local volley = s.shotCounter + 1
+	local shots: { Shot } = table.create(bullets)
+	for pellet = 1, bullets do
+		s.shotCounter += 1
+		local offset, angle = Accuracy.offset(s.seed, s.shotCounter, cone.radius, cone.power)
+		shots[pellet] = {
+			tick = tick,
+			time = t,
+			slot = slot,
+			weapon = def.id,
+			mode = mode.name,
+			shotNumber = s.shotCounter,
+			volley = volley,
+			pellet = pellet,
+			pellets = bullets,
+			sprayIndex = spray,
+			bullet = bullet,
+			origin = origin,
+			yaw = input.yaw,
+			pitch = input.pitch,
+			aim = aim,
+			direction = Accuracy.direction(input.yaw, input.pitch, recoilPitch, recoilYaw, offset, angle),
+			recoilPitch = recoilPitch,
+			recoilYaw = recoilYaw,
+			cone = cone,
+			offset = offset,
+			offsetAngle = angle,
+			moveState = context.moveState,
+			scoped = s.scoped,
+		}
+	end
+	s.sprayIndex = bullet
+	s.recoilYaw, s.swayDir = Accuracy.advanceSway(mode.recoil, bullet, sway, s.swayDir, s.seed, volley)
+	return shots
+end
+
 -- Advance one tick. `t` is the simulation time of this tick, `origin` the eye
 -- position after this tick's movement and `ctx` what the shooter is doing
--- (for the cone and recoil). Returns the shot fired this tick, if any.
-function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vector, tick: number, ctx: Accuracy.Context?): Shot?
+-- (for the cone and recoil). Returns the bullets fired this tick, if any:
+-- one round's, at most.
+function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vector, tick: number, ctx: Accuracy.Context?): { Shot }?
 	local buttons: number = input.buttons
 	local fire = has(buttons, Buttons.Fire)
 	local alt = has(buttons, Buttons.AltFire)
@@ -189,19 +307,27 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 	local slot = s.equipped
 	local def = WeaponConfig.get(s.loadout[slot])
 
-	-- 2. Reload completes: the whole magazine is refilled at the end.
+	-- 2. A reload step completes: the whole magazine at the end, or one
+	-- round, then the next, until it's full or the reserve runs out.
 	if s.reloadEndTime > 0 and t >= s.reloadEndTime - EPS then
-		local take = math.min(def.magazine.value - s.ammo[slot], s.reserve[slot])
+		local take = reloadAmount(def, s.ammo[slot], s.reserve[slot])
 		s.ammo[slot] += take
 		s.reserve[slot] -= take
-		s.reloadEndTime = 0
+		local perRound = def.reloadPerRound
+		if perRound and s.ammo[slot] < def.magazine.value and s.reserve[slot] > 0 then
+			s.reloadEndTime += perRound.value
+		else
+			s.reloadEndTime = 0
+		end
 	end
 
 	local equipping = t < s.equipEndTime - EPS
 
 	-- 3. Alt-fire cycles zoom levels (rifle ADS, Operator 2.5x -> 5x -> off).
+	-- A burst under way stops.
 	if alt and not s.altHeld and def.ads and not equipping and s.reloadEndTime == 0 then
 		s.scoped = (s.scoped + 1) % (#def.ads.zoom + 1)
+		s.burstLeft = 0
 	end
 
 	-- 4. Manual reload.
@@ -209,70 +335,69 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 		startReload(s, def, t)
 	end
 
-	-- 5. Fire. Auto weapons fire while held; semi-auto needs a fresh press.
-	local shot: Shot? = nil
-	local trigger = fire and (def.fireMode == "auto" or (def.fireMode == "semi" and not s.fireHeld))
-	if trigger and not equipping and s.reloadEndTime == 0 and s.ammo[slot] > 0 and t >= s.nextFireTime - EPS then
-		local interval = WeaponSim.fireInterval(def, s.scoped)
-		-- How much of the spray recovered since the last shot decides which
-		-- bullet of the spray this is.
-		local factor = Accuracy.recoveryFactor(def.accuracy, interval, t - s.lastShotTime, dt)
-		local spray = s.sprayIndex * factor
-		local sway = s.recoilYaw * factor
-		if factor == 0 then
-			s.swayDir = 0 -- a fresh spray drifts whichever way it likes
-		end
-		-- Holding the trigger through the cooldown keeps the exact cadence
-		-- (shots land on ticks, the remainder carries over); otherwise the
-		-- cooldown restarts from now.
-		if t - s.nextFireTime < dt - EPS then
-			s.nextFireTime += interval
-		else
-			s.nextFireTime = t + interval
-		end
-		s.ammo[slot] -= 1
-		s.shotCounter += 1
-		s.lastShotTime = t
+	local mode = WeaponConfig.mode(def, s.scoped)
+	local altMode = WeaponConfig.altMode(def)
+	local primary = pulled(mode, fire, s.fireHeld)
+	local secondary = altMode ~= nil and pulled(altMode, alt, s.altHeld)
 
-		local context = ctx or STILL
-		local scoped = s.scoped > 0 and def.ads ~= nil
-		local bullet = spray + 1
-		local cone = Accuracy.cone(def, context, bullet, scoped)
-		local recoilPitch, recoilYaw = Accuracy.recoil(def, context, bullet, sway, scoped)
-		local offset, angle = Accuracy.offset(s.seed, s.shotCounter, cone.radius, cone.power)
-		shot = {
-			tick = tick,
-			time = t,
-			slot = slot,
-			weapon = def.id,
-			shotNumber = s.shotCounter,
-			sprayIndex = spray,
-			bullet = bullet,
-			origin = origin,
-			yaw = input.yaw,
-			pitch = input.pitch,
-			aim = Accuracy.aim(input.yaw, input.pitch),
-			direction = Accuracy.direction(input.yaw, input.pitch, recoilPitch, recoilYaw, offset, angle),
-			recoilPitch = recoilPitch,
-			recoilYaw = recoilYaw,
-			cone = cone,
-			offset = offset,
-			offsetAngle = angle,
-			moveState = context.moveState,
-			scoped = s.scoped,
-		}
-		s.sprayIndex = bullet
-		s.recoilYaw, s.swayDir = Accuracy.advanceSway(def.recoil, bullet, sway, s.swayDir, s.seed, s.shotCounter)
+	-- 5. A reload that loads a round at a time stops when the trigger is
+	-- pulled with a round in the magazine, keeping the rounds already in.
+	if s.reloadEndTime > 0 and def.reloadPerRound and (primary or secondary) and s.ammo[slot] > 0 then
+		s.reloadEndTime = 0
 	end
 
-	-- 6. Auto-reload once the magazine is empty and the last shot's cooldown is over.
-	if s.ammo[slot] == 0 and not equipping and t >= s.nextFireTime - EPS and canReload(s, def) then
+	-- 6. Fire. A burst under way fires its next round on time by itself;
+	-- otherwise the trigger fires a round, the left button before the right.
+	local shots: { Shot }? = nil
+	local ready = not equipping and s.reloadEndTime == 0
+	if s.burstLeft > 0 then
+		if t >= s.burstNext - EPS then
+			if ready and s.ammo[slot] > 0 then
+				shots = fireRound(s, def, mode, 1, t, origin, tick, input, ctx)
+				s.burstLeft -= 1
+				s.burstNext += mode.interval
+			else
+				s.burstLeft = 0
+			end
+		end
+	else
+		local fired = if primary then mode elseif secondary then altMode else nil
+		if fired and ready and s.ammo[slot] > 0 and t >= s.nextFireTime - EPS then
+			-- How much of the spray recovered since the gun could fire again
+			-- decides which bullet of the spray this is.
+			local factor = Accuracy.recoveryFactor(fired.accuracy, t - s.nextFireTime, dt)
+			-- Holding the trigger through the cooldown keeps the exact cadence
+			-- (shots land on ticks, the remainder carries over); otherwise the
+			-- cooldown restarts from now.
+			local nominal = if t - s.nextFireTime < dt - EPS then s.nextFireTime else t
+			shots = fireRound(s, def, fired, factor, t, origin, tick, input, ctx)
+			if fired.burstRounds > 1 then
+				s.burstLeft = fired.burstRounds - 1
+				s.burstNext = nominal + fired.interval
+				s.nextFireTime = nominal + fired.burstInterval
+			else
+				s.nextFireTime = nominal + WeaponSim.spinInterval(fired, s.spin)
+			end
+		end
+	end
+
+	-- 7. A spinning fire rate rises while the trigger is held on a gun that
+	-- can fire, and falls back at once when it can't or isn't.
+	local spinUp = mode.spin
+	if spinUp and fire and ready and s.ammo[slot] > 0 then
+		s.spin = math.min(s.spin + dt / spinUp.time.value, 1)
+	else
+		s.spin = 0
+	end
+
+	-- 8. Auto-reload once the magazine is empty and the last shot's cooldown is over.
+	if s.ammo[slot] == 0 and not equipping and s.burstLeft == 0 and t >= s.nextFireTime - EPS and canReload(s, def) then
 		startReload(s, def, t)
 	end
 
 	s.fireHeld = fire
 	s.altHeld = alt
-	return shot
+	return shots
 end
 
 return WeaponSim

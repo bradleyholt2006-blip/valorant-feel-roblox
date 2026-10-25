@@ -1,13 +1,19 @@
 --!strict
--- Weapon definitions. Same status convention as MovementConfig:
+-- Weapon definitions (systems 2, 3 and 9). Same status convention as MovementConfig:
 --   "confirmed" - Riot patch notes / dev blog / in-game
 --   "community" - wiki or fan-site stat pages (they mirror the in-game Arsenal screen)
---   "estimate"  - ours; to be measured (docs/research/02-weapon-firing.md)
+--   "estimate"  - ours; to be measured (docs/research/02-weapon-firing.md, 09-arsenal.md)
 --
 -- Speeds are multipliers of MovementConfig.Params.baseRunSpeed (6.75 m/s, the
--- knife speed). Damage bands are per hit, by distance in metres; beyond the
--- last band the last band applies. Angles (spread, recoil) are degrees; see
+-- knife speed). Damage bands are per hit, or per pellet for a gun that fires
+-- several at once, by distance in metres; beyond the last band the last band
+-- applies. Angles (spread, recoil) are degrees; see
 -- docs/research/03-spread-recoil.md for what each accuracy value means.
+--
+-- A weapon fires in up to three modes (WeaponConfig.mode): from the hip;
+-- zoomed, aiming down sights or through a scope, which some guns fire in
+-- bursts; and the Classic's right click. Each mode has its own cadence,
+-- bullets per shot and accuracy.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -21,13 +27,16 @@ export type Param = { value: number, status: Status, source: string }
 export type Curve = { { number } }
 export type CurveParam = { points: Curve, status: Status, source: string }
 
+-- The buy menu's groups, in its order.
+export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee"
+
 export type AccuracyDef = {
 	-- Firing error: radius of the cone of fire by bullet number.
 	firingError: CurveParam,
-	scopedFiringError: CurveParam?, -- replaces firingError while scoped (snipers)
-	adsReduction: Param, -- taken off firingError while aiming down sights (flat, per Riot)
 	crouchMultiplier: Param, -- firingError multiplier while crouched (percentage, per Riot)
-	recoveryTime: Param, -- Gun Recovery Time: wait this long and the next shot is a first shot again
+	-- Gun Recovery Time: once the gun can fire again, waiting this long more
+	-- makes the next shot a first shot again.
+	recoveryTime: Param,
 	tapEfficiency: Param, -- how fast a partly waited-out spray recovers; higher = taps accrue less
 	-- Movement error, added on top (the reference applies movement penalties
 	-- additively). Which one applies is a binary state, see Accuracy.
@@ -45,9 +54,12 @@ export type RecoilDef = {
 	swayFlipChance: Param, -- chance per bullet that the drift reverses early
 	runPitchMultiplier: Param, -- vertical recoil multiplier while running
 	crouchYawMultiplier: Param, -- sideways recoil multiplier while crouched and still
-	adsMultiplier: Param, -- recoil multiplier while aiming down sights or scoped
+	adsMultiplier: Param, -- recoil multiplier while zoomed
 	cameraFraction: Param, -- share of the recoil the view follows, hip fire
-	adsCameraFraction: Param, -- the same aiming down sights or scoped
+	adsCameraFraction: Param, -- the same zoomed
+	-- How far the view jumps on each shot and settles back, on top of the
+	-- recoil: visual only, for guns whose bullets don't climb (snipers).
+	viewKick: Param?,
 }
 
 export type DamageBand = { maxRange: number, head: number, body: number, legs: number }
@@ -55,30 +67,75 @@ export type DamageBand = { maxRange: number, head: number, body: number, legs: n
 -- Wall penetration class, as the Arsenal lists it (Low / Medium / High).
 export type PenetrationClass = "none" | "low" | "medium" | "high"
 
+-- A burst: one trigger pull fires `rounds` rounds `rate` a second apart, and
+-- holding the trigger fires `perSecond` bursts a second.
+export type BurstDef = { rounds: Param, rate: Param, perSecond: Param }
+
 export type AdsDef = {
 	zoom: { number }, -- zoom levels cycled by alt-fire (FOV divisor)
 	fireRateMultiplier: Param,
 	moveMultiplier: Param,
+	accuracy: AccuracyDef, -- replaces the hip accuracy while zoomed
+	burst: BurstDef?, -- zoomed, the gun fires bursts (Stinger, Bulldog)
 }
+
+-- A right click that fires instead of zooming (the Classic's three bullets).
+export type AltDef = {
+	fireMode: "auto" | "semi",
+	fireRate: Param, -- clicks per second
+	pellets: Param, -- bullets per click
+	ammo: Param, -- rounds a click uses; with fewer left it fires one bullet per round
+	accuracy: AccuracyDef,
+	recoil: RecoilDef,
+}
+
+-- A fire rate that rises while the trigger is held (the Odin), from fireRate
+-- to maxRate over `time` seconds. Hip fire only.
+export type SpinDef = { maxRate: Param, time: Param }
 
 export type WeaponDef = {
 	id: string,
 	name: string,
+	category: Category,
 	slot: number, -- 1 primary, 2 secondary, 3 melee
+	price: Param, -- credits
 	fireMode: "auto" | "semi" | "none",
 	fireRate: Param, -- rounds per second
+	pellets: Param?, -- bullets per shot (shotguns), each with its own damage
+	spinUp: SpinDef?,
 	magazine: Param,
 	reserve: Param,
 	reloadTime: Param,
+	reloadPerRound: Param?, -- loads one round at a time, this long each (Bucky, Marshal)
+	reloadOneRound: Param?, -- a reload for a single missing round takes this long (Outlaw)
 	equipTime: Param,
 	moveMultiplier: Param,
 	deadzoneFraction: Param?, -- overrides MovementConfig deadzone
 	damage: { DamageBand },
 	damageSource: Param, -- status/source for the whole damage table (value unused)
 	penetration: PenetrationClass,
+	suppressed: boolean, -- quiet, and its tracers aren't shown to anyone else
 	ads: AdsDef?,
+	alt: AltDef?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
+}
+
+-- One way a weapon fires, put together from its definition (WeaponConfig.mode).
+export type ModeName = "hip" | "zoom" | "alt"
+export type Mode = {
+	name: ModeName,
+	fireMode: "auto" | "semi" | "none",
+	rate: number, -- rounds per second (within a burst, for a burst)
+	interval: number, -- seconds between rounds (within a burst)
+	burstRounds: number, -- rounds one trigger pull fires: 1 unless the mode fires bursts
+	burstInterval: number, -- seconds from a burst's first round to the next burst's
+	pellets: number, -- bullets per round
+	ammo: number, -- rounds one trigger pull uses
+	spin: SpinDef?,
+	accuracy: AccuracyDef,
+	recoil: RecoilDef,
+	zoomed: boolean,
 }
 
 local function p(value: number, status: Status, source: string): Param
@@ -89,310 +146,1106 @@ local function c(points: Curve, status: Status, source: string): CurveParam
 	return { points = points, status = status, source = source }
 end
 
+local WIKI = "VALORANT Wiki (wiki.playvalorant.com, Weird Gloop)"
 local METABOT = "metabot.gg weapon page (mirrors the in-game Arsenal stats)"
+local BOTH = WIKI .. " and " .. METABOT
 local P050 = "Patch 0.50"
+local P109 = "Patch 1.09"
 local P202 = "Patch 2.02"
 local P30 = "Patch 3.0"
 local P611 = "Patch 6.11"
-local P910 = "Patch 9.10 (quoted by esports.gg and Sportskeeda)"
+local P910 = "Patch 9.10"
+local P1200 = "Patch 12.00"
+local P1301 = "Patch 13.01"
+local P1306 = "Patch 13.06"
+-- Changes the wiki lists in each gun's history, from patch notes we have not read ourselves.
+local HISTORY = WIKI .. ", the gun's patch history"
+
+-- A community value from the wiki's weapon page, checked against metabot.
+local function wiki(value: number, what: string?): Param
+	return p(value, "community", if what then BOTH .. ": " .. what else BOTH)
+end
+
+local function band(maxRange: number, head: number, body: number, legs: number): DamageBand
+	return { maxRange = maxRange, head = head, body = body, legs = legs }
+end
+
+-- Our firing-error shape: tight for the first bullets, a jump around bullets
+-- 4 and 5 (gamer.org on the Vandal), then levelling off. Each point is a
+-- fraction of the way to the bullet where the maximum is reached, and of
+-- the way from the first shot's cone to the maximum's.
+local SPREAD_SHAPE = { { 0, 0 }, { 1 / 12, 0.026 }, { 1 / 8, 0.154 }, { 1 / 6, 0.333 }, { 1 / 4, 0.538 }, { 3 / 8, 0.744 }, { 7 / 12, 0.897 }, { 1, 1 } }
+
+-- A firing-error curve from `first` at bullet 1 to `max` at bullet `maxAt`,
+-- along our shape. `source` says where the two ends come from.
+local function spread(first: number, max: number, maxAt: number, source: string): CurveParam
+	if first == max or maxAt <= 1 then
+		return c({ { 1, first } }, "community", source)
+	end
+	local points = {}
+	for _, point in SPREAD_SHAPE do
+		table.insert(points, { 1 + point[1] * (maxAt - 1), first + point[2] * (max - first) })
+	end
+	return c(points, "estimate", source .. "; the shape between them is ours")
+end
+
+-- Movement error by state: crouch-walking, walking, running, in the air.
+type Moving = { crouch: Param, walk: Param, run: Param, air: Param }
+
+local function accuracy(firingError: CurveParam, crouch: Param, recovery: Param, tap: Param, moving: Moving): AccuracyDef
+	return {
+		firingError = firingError,
+		crouchMultiplier = crouch,
+		recoveryTime = recovery,
+		tapEfficiency = tap,
+		runError = moving.run,
+		walkError = moving.walk,
+		crouchMoveError = moving.crouch,
+		airError = moving.air,
+	}
+end
+
+-- The same accuracy zoomed: another curve, and sometimes another crouch
+-- multiplier or recovery. Moving costs the same either way (no source gives
+-- zoomed movement errors).
+local function zoomed(hip: AccuracyDef, firingError: CurveParam, crouch: Param?, recovery: Param?): AccuracyDef
+	local out = table.clone(hip)
+	out.firingError = firingError
+	if crouch then
+		out.crouchMultiplier = crouch
+	end
+	if recovery then
+		out.recoveryTime = recovery
+	end
+	return out
+end
+
+type Sway = { start: Param, step: Param, max: Param, flip: Param }
+type RecoilMods = { run: Param, crouchYaw: Param, ads: Param, camera: Param, adsCamera: Param, viewKick: Param? }
+
+local function recoil(pitch: CurveParam, sway: Sway, mods: RecoilMods): RecoilDef
+	return {
+		pitch = pitch,
+		swayStart = sway.start,
+		swayStep = sway.step,
+		swayMax = sway.max,
+		swayFlipChance = sway.flip,
+		runPitchMultiplier = mods.run,
+		crouchYawMultiplier = mods.crouchYaw,
+		adsMultiplier = mods.ads,
+		cameraFraction = mods.camera,
+		adsCameraFraction = mods.adsCamera,
+		viewKick = mods.viewKick,
+	}
+end
+
+local function sway(start: number, step: number, max: number, flip: number, why: string?): Sway
+	local source = why or "Measure from a spray against a wall"
+	return {
+		start = p(start, "estimate", source),
+		step = p(step, "estimate", source),
+		max = p(max, "estimate", source),
+		flip = p(flip, "estimate", source),
+	}
+end
+
+local NO_SWAY: Sway = {
+	start = p(99, "estimate", "No sideways drift"),
+	step = p(0, "estimate", "No sideways drift"),
+	max = p(0, "estimate", "No sideways drift"),
+	flip = p(0, "estimate", "No sideways drift"),
+}
+
+-- Recoil shapes are ours throughout: no source publishes one.
+local function climb(points: Curve, why: string?): CurveParam
+	return c(points, "estimate", why or "Shape only; measure from a spray against a wall (09-arsenal.md section 3)")
+end
+
+-- Shared values -------------------------------------------------------------
+
 local CLASSICK = "Riot lead gameplay designer (Sportskeeda, Jul 2020): 'ADS provides a flat spread reduction, while crouch provides a percentage reduction'"
+
+-- Movement error is set per weapon class ("All Rifles" in the patch notes).
+local RIFLE_MOVING: Moving = {
+	crouch = p(0.8, "confirmed", P202 .. ": rifle crouch-moving error 0.3 to 0.8 (no later change found)"),
+	walk = p(3, "confirmed", P910 .. ": rifles 'Walk Inaccuracy: 2 >>> 3'"),
+	run = p(6, "confirmed", P910 .. ": rifles 'Run Inaccuracy: 5 >> 6'"),
+	air = wiki(10, "rifles' jumping error"),
+}
+local SMG_MOVING: Moving = { crouch = wiki(0.15), walk = wiki(1), run = wiki(2.5), air = wiki(10) }
+local SHOTGUN_MOVING: Moving = { crouch = wiki(0.5), walk = wiki(1), run = wiki(2), air = wiki(4) }
+local SNIPER_MOVING: Moving = { crouch = wiki(7.5), walk = wiki(10), run = wiki(15), air = wiki(20) }
+local HEAVY_MOVING: Moving = {
+	crouch = wiki(0.4),
+	walk = p(3, "confirmed", P910 .. ": machine guns 'Walk Inaccuracy: 2.4 >>> 3'"),
+	run = p(6.5, "confirmed", P910 .. ": machine guns 'Run Inaccuracy: 6 >>> 6.5'"),
+	air = wiki(10),
+}
+local PISTOL_CROUCH_MOVE = p(0.5, "confirmed", P910 .. ": all pistols 'Moving while crouching Inaccuracy: .1 >>> .5'")
+
+local RIFLE_CROUCH = wiki(0.85, "rifles' crouch multiplier. " .. CLASSICK)
+local SMG_CROUCH = wiki(0.85)
+local SHOTGUN_CROUCH = wiki(0.85, "from its spread table (the page's x0.75 disagrees with that table)")
+local SNIPER_CROUCH = wiki(0.9)
+local HEAVY_CROUCH = wiki(0.6, "Patch 9.05 in the gun's history: crouching 'spread/recoil benefit' 40%")
+local BURST_CROUCH = wiki(0.75, "zoomed burst fire")
+
+local RUN_RIFLE = p(1.8, "confirmed", P611 .. ": 'Vertical Recoil Multiplier While Running', Vandal and Phantom 1.5 >>> 1.8")
+local RUN_UNLISTED = p(1.5, "estimate", P611 .. " doesn't list this gun; 1.5 was the Vandal's, Phantom's and Spectre's value before it")
+local RUN_NONE = p(1, "estimate", "Not published; " .. P611 .. " lists rifles, the Spectre and the Frenzy only")
+local CROUCH_YAW = p(0.85, "confirmed", P050 .. ": the Vandal's crouched yaw reduction 'matches the crouch benefits of other rifles'")
+local CROUCH_YAW_ESTIMATE = p(0.85, "estimate", "Assumed like rifles")
+local ADS_RECOIL = p(0.9, "estimate", "Fandom (Phantom): zooming 'further reduces recoil and spread'; the amount is not published")
+local NO_ADS_RECOIL = p(1, "estimate", "No zoom, or not published")
+local AIM_MOVE = wiki(0.76, "zoomed run speed 76%")
+
+local function camera(hip: number, ads: number?): (Param, Param)
+	return p(hip, "estimate", "Share of the recoil the view shows; measure crosshair travel against impact travel"),
+		p(ads or hip, "estimate", "The same zoomed; zooming 'amplifies screen movement' (esports.net)")
+end
 
 local WeaponConfig = {}
 
 WeaponConfig.Slots = { Primary = 1, Secondary = 2, Melee = 3 }
 
-local ADS_RIFLE: AdsDef = {
-	zoom = { 1.25 },
-	fireRateMultiplier = p(0.9, "community", "PC Gamer gun guide: Vandal ADS 8.32 rps vs 9.25 hip, Phantom 9.9 vs 11"),
-	moveMultiplier = p(0.76, "estimate", "Not published for rifles; measure ADS walk speed"),
+-- Pistols ---------------------------------------------------------------------
+
+local classicHip = accuracy(
+	spread(0.4, 1.8, 6, WIKI .. ": first shot 0.4, maximum 1.8; maximum at bullet 6 is ours"),
+	wiki(0.75),
+	p(0.3, "estimate", "Not published"),
+	p(2, "estimate", "Not published"),
+	{
+		crouch = PISTOL_CROUCH_MOVE,
+		walk = p(1.1, "confirmed", P910 .. ": Classic 'Walking Inaccuracy: 0.84 >>> 1.1'"),
+		run = p(2.3, "confirmed", P910 .. ": Classic 'Run Inaccuracy: 2 >>> 2.3'"),
+		air = wiki(7),
+	}
+)
+local classicCamera, classicAdsCamera = camera(0.3)
+
+local classicAlt: AltDef = {
+	fireMode = "semi",
+	fireRate = wiki(2.22, "right click"),
+	pellets = p(3, "community", "Inven Global: the right click 'shoots a burst of three bullets at the same time', each doing 'as much damage as a bullet fired using the Classic's primary fire'"),
+	ammo = p(3, "estimate", "Not published: a round per bullet assumed; count the clicks a magazine gives (09-arsenal.md section 3)"),
+	accuracy = accuracy(
+		spread(1.9, 5.78, 4, WIKI .. ": right click first 1.9, maximum 5.78; maximum at click 4 is ours"),
+		wiki(0.9, "right click"),
+		p(0.4, "estimate", "Not published"),
+		p(2, "estimate", "Not published"),
+		{
+			crouch = wiki(0, "right click"),
+			walk = wiki(0.6, "right click"),
+			run = p(1.5, "confirmed", P910 .. ": Classic right click running 1.3 >>> 1.5"),
+			air = p(2.25, "confirmed", P910 .. ": Classic right click jumping 2.1 >>> 2.25"),
+		}
+	),
+	recoil = recoil(climb({ { 1, 0 }, { 2, 1.5 }, { 3, 2.6 }, { 5, 3.5 } }), sway(2, 0.6, 1.5, 0.4), {
+		run = RUN_NONE,
+		crouchYaw = CROUCH_YAW_ESTIMATE,
+		ads = NO_ADS_RECOIL,
+		camera = p(0.4, "estimate", "Measure"),
+		adsCamera = p(0.4, "estimate", "No zoom"),
+	}),
 }
 
--- Movement error is set per weapon class ("All Rifles" in the patch notes).
-local RIFLE_RUN = p(6, "confirmed", P910 .. ": rifles 'Run Inaccuracy: 5 >> 6'")
-local RIFLE_WALK = p(3, "confirmed", P910 .. ": rifles 'Walk Inaccuracy: 2 >>> 3'")
-local RIFLE_CROUCH_MOVE = p(0.8, "confirmed", P202 .. ": rifle crouch-moving error 0.3 to 0.8 (no later change found)")
-local RIFLE_AIR = p(8, "estimate", "Not published; the reference orders the penalties crouch-move < walk < run < airborne (Fandom, Weapons)")
-local RIFLE_CROUCH = p(0.85, "community", "gamer.org: 0.2 deg standing, 0.17 crouched (Phantom). " .. CLASSICK)
-local PISTOL_CROUCH_MOVE = p(0.5, "confirmed", P910 .. ": all pistols 'Moving while crouching Inaccuracy: .1 >>> .5'")
+local shortyHip = accuracy(
+	c({ { 1, 4 } }, "community", WIKI .. ": 4 for every shot"),
+	SHOTGUN_CROUCH,
+	p(0.3, "estimate", "Not published"),
+	p(1, "estimate", "Not published"),
+	SHOTGUN_MOVING
+)
+local frenzyHip = accuracy(
+	spread(0.65, 1.7, 5, WIKI .. ": first 0.65 (" .. P611 .. ": 'Min spread increased from .45 >>> .65'), maximum 1.7, 'reached in 5 bullets instead of 6' (" .. P611 .. ")"),
+	wiki(0.85),
+	p(0.3, "estimate", "Not published"),
+	p(2, "estimate", "Not published"),
+	{ crouch = PISTOL_CROUCH_MOVE, walk = wiki(0.8), run = wiki(2), air = wiki(7) }
+)
+local ghostHip = accuracy(
+	spread(0.3, 1.65, 6, WIKI .. ": first 0.3, maximum 1.65; maximum at bullet 6 is ours"),
+	wiki(0.75),
+	p(0.3, "estimate", "Not published"),
+	p(2, "estimate", "Not published"),
+	{ crouch = PISTOL_CROUCH_MOVE, walk = wiki(1.1), run = wiki(2.3), air = wiki(7) }
+)
+local banditHip = accuracy(
+	spread(0.275, 1.97, 5, WIKI .. ": first 0.275, maximum 1.97; maximum at bullet 5 is ours"),
+	wiki(0.75),
+	p(0.4, "community", HISTORY .. ": Patch 13.00 recovery 0.45 >>> 0.4"),
+	p(4, "community", HISTORY .. ": Patch 13.00 tap efficiency 3 >>> 4"),
+	{ crouch = wiki(0.5), walk = wiki(1.2), run = wiki(2.7), air = wiki(7) }
+)
+local sheriffHip = accuracy(
+	spread(0.25, 2.75, 4, WIKI .. ": first 0.25, maximum 2.75; maximum at bullet 4 is ours, spamming is meant to be wild"),
+	wiki(0.75),
+	p(0.25, "estimate", "Not published"),
+	p(1.5, "estimate", "Not published"),
+	{
+		crouch = PISTOL_CROUCH_MOVE,
+		walk = p(1.2, "confirmed", P30 .. ": Sheriff 'Walking inaccuracy changed from .25 >>> 1.2'"),
+		run = p(3, "confirmed", P30 .. ": Sheriff 'Running inaccuracy changed from 2.0 >>> 3.0' (Patch 9.10 did not list the Sheriff)"),
+		air = wiki(7),
+	}
+)
+
+-- SMGs ------------------------------------------------------------------------
+
+local stingerHip = accuracy(
+	spread(0.65, 1.5, 6, WIKI .. ": first 0.65, maximum 1.5, 'reached at 6 bullets instead of 7' (Patch 11.08 in its history)"),
+	SMG_CROUCH,
+	p(0.35, "estimate", "Not published"),
+	p(2, "estimate", "Not published"),
+	SMG_MOVING
+)
+local spectreHip = accuracy(
+	spread(0.4, 1.4, 10, WIKI .. ": first 0.4, maximum 1.4; maximum at bullet 10 is ours"),
+	SMG_CROUCH,
+	p(0.35, "estimate", "Not published"),
+	p(3, "community", HISTORY .. ": Patch 11.08 tap efficiency 2 >>> 3"),
+	SMG_MOVING
+)
+
+-- Shotguns --------------------------------------------------------------------
+
+local buckyHip = accuracy(c({ { 1, 3 } }, "community", WIKI .. ": 3 for every shot"), SHOTGUN_CROUCH, p(0.4, "estimate", "Not published"), p(1, "estimate", "Not published"), SHOTGUN_MOVING)
+local judgeHip = accuracy(
+	spread(2.5, 4, 4, WIKI .. ": first 2.5, maximum 4; maximum at shot 4 is ours"),
+	SHOTGUN_CROUCH,
+	p(0.4, "estimate", "Not published"),
+	p(1.5, "estimate", "Not published"),
+	SHOTGUN_MOVING
+)
+
+-- Rifles ----------------------------------------------------------------------
+
+local RIFLE_SPRAY_AT = 25 -- the bullet our rifle curves reach their maximum at
+
+local bulldogHip = accuracy(
+	spread(0.3, 1.25, RIFLE_SPRAY_AT, WIKI .. ": first 0.3, maximum 1.25"),
+	RIFLE_CROUCH,
+	p(0.35, "estimate", "Not published"),
+	p(3, "estimate", "Not published"),
+	RIFLE_MOVING
+)
+local guardianHip = accuracy(
+	spread(0.1, 1.58, 5, WIKI .. ": first 0.1, maximum 1.58; maximum at bullet 5 is ours"),
+	RIFLE_CROUCH,
+	p(0.3, "estimate", "Not published"),
+	p(3, "estimate", "Not published"),
+	RIFLE_MOVING
+)
+local phantomHip = accuracy(
+	spread(0.2, 0.9, RIFLE_SPRAY_AT, WIKI .. ": first 0.2, maximum 0.9"),
+	RIFLE_CROUCH,
+	p(0.35, "confirmed", P050 .. ": Phantom 'Gun Recovery Time: .55s >> .35s'"),
+	p(4, "confirmed", P050 .. ": Phantom 'Tap Efficiency: 3 >> 4'"),
+	RIFLE_MOVING
+)
+local vandalHip = accuracy(
+	spread(0.25, 1.0, RIFLE_SPRAY_AT, WIKI .. ": first 0.25, maximum 1.0"),
+	RIFLE_CROUCH,
+	p(0.375, "confirmed", P050 .. ": Vandal 'Gun Recovery Time: .4s >> .375s'"),
+	p(6, "confirmed", P050 .. ": Vandal 'Tap Efficiency: 4 >> 6'"),
+	RIFLE_MOVING
+)
+local wardenHip = accuracy(
+	spread(0.15, 1.0, 8, METABOT .. ": first 0.15 (Beebom: the best first shot of any rifle); the maximum 1.0 and bullet 8 are ours, not published"),
+	p(0.85, "estimate", "Not published; assumed like rifles"),
+	p(0.35, "estimate", "Not published"),
+	p(4, "estimate", "Not published"),
+	{
+		crouch = p(0.8, "estimate", "Not published; assumed like rifles"),
+		walk = p(3, "estimate", "Not published; assumed like rifles"),
+		run = p(6, "estimate", "Not published; assumed like rifles"),
+		air = p(10, "estimate", "Not published; assumed like rifles"),
+	}
+)
+
+-- Snipers ---------------------------------------------------------------------
+
+local marshalHip = accuracy(c({ { 1, 1 } }, "community", WIKI .. ": 1 unscoped"), SNIPER_CROUCH, p(0.1, "estimate", "Not published; every shot is a first shot"), p(1, "estimate", "Not used: a flat curve"), SNIPER_MOVING)
+local outlawHip = accuracy(
+	c({ { 1, 3.5 } }, "community", WIKI .. ": 3.5 unscoped"),
+	SNIPER_CROUCH,
+	p(0.15, "confirmed", P1301 .. ": Outlaw recovery after the first shot 0.1 >>> 0.15"),
+	p(1, "estimate", "Not published"),
+	SNIPER_MOVING
+)
+local operatorHip = accuracy(
+	c({ { 1, 5 } }, "community", WIKI .. ": 5 unscoped (gamer.org: '5 deg deviation')"),
+	SNIPER_CROUCH,
+	p(0.1, "estimate", "Not published; every shot is a first shot"),
+	p(1, "estimate", "Not used: a flat curve"),
+	{ crouch = wiki(7.5), walk = wiki(10), run = wiki(15), air = wiki(15) }
+)
+
+-- Machine guns ----------------------------------------------------------------
+
+local aresHip = accuracy(
+	c({ { 1, 1.0 }, { 13, 0.7 } }, "community", WIKI .. ": Patch 4.01 changed its spread 'from .8 to .7 after 10 bullets to 1.0 to .7 after 13 bullets'"),
+	HEAVY_CROUCH,
+	p(0.4, "estimate", "Not published"),
+	p(2, "estimate", "Not published"),
+	HEAVY_MOVING
+)
+local odinHip = accuracy(
+	spread(0.8, 1.3, 10, WIKI .. ": first 0.8, maximum 1.3; maximum at bullet 10 is ours"),
+	wiki(0.6),
+	p(0.4, "estimate", "Not published"),
+	p(2, "estimate", "Not published"),
+	HEAVY_MOVING
+)
+
+local KNIFE_NA = p(0, "estimate", "n/a")
 
 WeaponConfig.Defs = {
-	vandal = {
-		id = "vandal",
-		name = "Vandal",
-		slot = 1,
-		fireMode = "auto",
-		fireRate = p(9.75, "community", METABOT),
-		magazine = p(25, "community", METABOT),
-		reserve = p(75, "community", "Liquipedia Vandal: ammo capacity 75"),
-		reloadTime = p(2.5, "community", METABOT),
-		equipTime = p(1.0, "community", METABOT),
-		moveMultiplier = p(0.80, "community", METABOT .. " (80% = 5.40 m/s)"),
-		damage = { { maxRange = 50, head = 160, body = 40, legs = 34 } },
-		damageSource = p(0, "community", "Liquipedia / metabot: 160/40/34, no falloff"),
-		penetration = "medium",
-		ads = ADS_RIFLE,
-		accuracy = {
-			firingError = c(
-				{ { 1, 0.25 }, { 3, 0.3 }, { 4, 0.55 }, { 5, 0.9 }, { 7, 1.3 }, { 10, 1.7 }, { 15, 2.0 }, { 25, 2.2 } },
-				"estimate",
-				"Bullet 1 is the community 0.25 deg (metabot). The rest is our shape: tight for three bullets, jumping at bullets 4 to 5 (gamer.org), then levelling off"
-			),
-			adsReduction = p(0.093, "community", "Sportskeeda, 2020: first bullet 0.25 hip, 0.157 ADS. " .. CLASSICK),
-			crouchMultiplier = RIFLE_CROUCH,
-			recoveryTime = p(0.375, "confirmed", P050 .. ": Vandal 'Gun Recovery Time: .4s >> .375s'"),
-			tapEfficiency = p(6, "confirmed", P050 .. ": Vandal 'Tap Efficiency: 4 >> 6'"),
-			runError = RIFLE_RUN,
-			walkError = RIFLE_WALK,
-			crouchMoveError = RIFLE_CROUCH_MOVE,
-			airError = RIFLE_AIR,
-		},
-		recoil = {
-			pitch = c(
-				{ { 1, 0 }, { 2, 0.3 }, { 3, 0.75 }, { 4, 1.4 }, { 6, 2.8 }, { 9, 4.6 }, { 12, 5.6 }, { 16, 6.1 }, { 25, 6.4 } },
-				"estimate",
-				"Shape only: the spray always climbs, then levels off into a T (esports.net spray guide). Measure from a spray against a wall"
-			),
-			swayStart = p(8, "estimate", "Riot: 'the first several bullets have fully deterministic recoil' (Riot_Classick, quoted by turbosmurfs.gg); the Ares and Odin notes count yaw recoil 'after the first 8 bullets'"),
-			swayStep = p(0.55, "estimate", "Sideways drift per bullet; measure"),
-			swayMax = p(2.6, "estimate", "Half the width of the top of the T; measure"),
-			swayFlipChance = p(0.12, "estimate", "The drift direction is random and can switch (esports.net); measure how often"),
-			runPitchMultiplier = p(1.8, "confirmed", P611 .. ": 'Vertical Recoil Multiplier While Running', Vandal 1.5 >>> 1.8"),
-			crouchYawMultiplier = p(0.85, "confirmed", P050 .. ": Vandal 'Horizontal (Yaw) Recoil reduced by 15% while crouched and stationary'"),
-			adsMultiplier = p(0.9, "estimate", "Fandom (Phantom): ADS reduces recoil and spread; the amount is not published"),
-			cameraFraction = p(0.25, "estimate", "In hip fire the bullets climb away from the crosshair (esports.net); measure crosshair travel against impact travel"),
-			adsCameraFraction = p(0.9, "estimate", "ADS 'keeps shots on target' and 'amplifies screen movement' (esports.net)"),
-		},
-	},
-	phantom = {
-		id = "phantom",
-		name = "Phantom",
-		slot = 1,
-		fireMode = "auto",
-		fireRate = p(11, "community", METABOT),
-		magazine = p(30, "community", METABOT),
-		reserve = p(60, "estimate", "Two magazines assumed"),
-		reloadTime = p(2.5, "community", METABOT),
-		equipTime = p(1.0, "community", METABOT),
-		moveMultiplier = p(0.80, "community", METABOT),
-		damage = {
-			{ maxRange = 20, head = 156, body = 39, legs = 33 },
-			{ maxRange = 50, head = 140, body = 35, legs = 30 },
-		},
-		damageSource = p(0, "community", "Body and the 20 m boundary are Patch 9.10 (quoted by Sportskeeda): 'Now does 39 damage per bullet from 0-20m and 35 damage per bullet 20m+'; head 156 / 140 and legs 33 / 30 from metabot"),
-		penetration = "medium",
-		ads = ADS_RIFLE,
-		accuracy = {
-			firingError = c(
-				{ { 1, 0.2 }, { 3, 0.24 }, { 4, 0.42 }, { 5, 0.7 }, { 7, 1.05 }, { 10, 1.4 }, { 15, 1.65 }, { 30, 1.8 } },
-				"estimate",
-				"Bullet 1 is the community 0.2 deg (metabot). The rest is our shape, the Vandal's but tighter (Fandom: 'low spread')"
-			),
-			adsReduction = p(0.09, "community", "Sportskeeda, 2020: first bullet 0.20 hip, 0.11 ADS. " .. CLASSICK),
-			crouchMultiplier = RIFLE_CROUCH,
-			recoveryTime = p(0.35, "confirmed", P050 .. ": Phantom 'Gun Recovery Time: .55s >> .35s'"),
-			tapEfficiency = p(4, "confirmed", P050 .. ": Phantom 'Tap Efficiency: 3 >> 4'"),
-			runError = RIFLE_RUN,
-			walkError = RIFLE_WALK,
-			crouchMoveError = RIFLE_CROUCH_MOVE,
-			airError = RIFLE_AIR,
-		},
-		recoil = {
-			pitch = c(
-				{ { 1, 0 }, { 2, 0.25 }, { 3, 0.6 }, { 4, 1.15 }, { 6, 2.3 }, { 9, 3.9 }, { 12, 4.8 }, { 16, 5.2 }, { 30, 5.5 } },
-				"estimate",
-				"The same T, a little lower than the Vandal's (pull down 'head to waist' against 'head to thigh', gamer.org)"
-			),
-			swayStart = p(9, "estimate", "See the Vandal; the Phantom is described as easier to control"),
-			swayStep = p(0.45, "estimate", "Sideways drift per bullet; measure"),
-			swayMax = p(2.2, "estimate", "Half the width of the top of the T; measure"),
-			swayFlipChance = p(0.12, "estimate", "The drift direction is random and can switch (esports.net); measure how often"),
-			runPitchMultiplier = p(1.8, "confirmed", P611 .. ": 'Vertical Recoil Multiplier While Running', Phantom 1.5 >>> 1.8"),
-			crouchYawMultiplier = p(0.85, "confirmed", P050 .. ": the Vandal's crouched yaw reduction 'matches the crouch benefits of other rifles'"),
-			adsMultiplier = p(0.9, "estimate", "Fandom: ADS 'further reduces recoil and spread'; the amount is not published"),
-			cameraFraction = p(0.25, "estimate", "As the Vandal"),
-			adsCameraFraction = p(0.9, "estimate", "As the Vandal"),
-		},
-	},
-	operator = {
-		id = "operator",
-		name = "Operator",
-		slot = 1,
-		fireMode = "semi",
-		fireRate = p(0.6, "confirmed", "Patch 1.09: 'Firing rate reduced from .75 >>> .6'"),
-		magazine = p(5, "community", METABOT),
-		reserve = p(10, "estimate", "Two magazines assumed"),
-		reloadTime = p(3.7, "community", METABOT),
-		equipTime = p(1.5, "community", METABOT),
-		moveMultiplier = p(0.76, "community", METABOT .. " (76% = 5.13 m/s)"),
-		deadzoneFraction = p(0.15, "confirmed", "Patch 1.09: deadzone 30% >>> 15%"),
-		damage = { { maxRange = 50, head = 255, body = 150, legs = 120 } },
-		damageSource = p(0, "confirmed", "Patch 1.09 leg 127 >>> 120; head/body from metabot"),
-		penetration = "high",
-		ads = {
-			zoom = { 2.5, 5 },
-			fireRateMultiplier = p(1.0, "estimate", "Bolt action; scoping assumed not to change cadence"),
-			moveMultiplier = p(0.72, "confirmed", "Patch 1.09: scoped movement speed 76% >>> 72%"),
-		},
-		accuracy = {
-			firingError = c({ { 1, 5 } }, "community", "metabot: first bullet accuracy 5 deg (gamer.org: '5 deg deviation' unscoped)"),
-			scopedFiringError = c({ { 1, 0 } }, "community", "Fandom, Weapons: snipers have no first-shot spread when scoped"),
-			adsReduction = p(0, "estimate", "Unused: the scoped curve replaces the hip one"),
-			crouchMultiplier = p(0.85, "estimate", "Assumed like rifles"),
-			recoveryTime = p(1.0, "estimate", "Not published; shorter than the 1.67 s bolt cycle, so every shot is a first shot"),
-			tapEfficiency = p(1, "estimate", "Not used by a bolt action"),
-			runError = p(9, "estimate", "Not published for snipers; worse than rifles to match the 15% deadzone"),
-			walkError = p(4.5, "estimate", "Not published for snipers"),
-			crouchMoveError = p(2, "estimate", "Not published for snipers"),
-			airError = p(12, "estimate", "Not published for snipers"),
-		},
-		recoil = {
-			pitch = c({ { 1, 0 }, { 2, 2.5 } }, "estimate", "The kick after a shot, recovered before the bolt is back"),
-			swayStart = p(99, "estimate", "No sideways drift"),
-			swayStep = p(0, "estimate", "No sideways drift"),
-			swayMax = p(0, "estimate", "No sideways drift"),
-			swayFlipChance = p(0, "estimate", "No sideways drift"),
-			runPitchMultiplier = p(1, "estimate", "Not published"),
-			crouchYawMultiplier = p(1, "estimate", "No sideways recoil"),
-			adsMultiplier = p(1, "estimate", "Not published"),
-			cameraFraction = p(0.5, "estimate", "Measure"),
-			adsCameraFraction = p(1, "estimate", "The scope kicks with the shot; measure"),
-		},
-	},
 	classic = {
 		id = "classic",
 		name = "Classic",
+		category = "sidearm",
 		slot = 2,
+		price = wiki(0, "free, and everyone has one"),
 		fireMode = "semi",
-		fireRate = p(6.75, "community", METABOT),
-		magazine = p(12, "community", METABOT),
-		reserve = p(36, "estimate", "Three magazines assumed"),
-		reloadTime = p(1.75, "community", METABOT),
-		equipTime = p(0.75, "community", METABOT),
-		moveMultiplier = p(0.85, "community", METABOT),
-		damage = {
-			{ maxRange = 30, head = 78, body = 26, legs = 22 },
-			{ maxRange = 50, head = 66, body = 22, legs = 19 },
-		},
-		damageSource = p(0, "community", METABOT),
+		fireRate = wiki(6.75),
+		magazine = wiki(12),
+		reserve = wiki(36),
+		reloadTime = wiki(1.75),
+		equipTime = wiki(0.75),
+		moveMultiplier = wiki(0.85, "5.73 m/s"),
+		damage = { band(30, 78, 26, 22.1), band(50, 66, 22, 18.7) },
+		damageSource = wiki(0, "26 body x3 head x0.85 legs, 22 past 30 m"),
 		penetration = "low",
-		ads = nil, -- the reference's alt-fire is a 3-round burst; not implemented yet
-		accuracy = {
-			firingError = c({ { 1, 0.4 }, { 2, 0.55 }, { 3, 0.9 }, { 5, 1.6 }, { 8, 2.2 } }, "estimate", "Bullet 1 is the community 0.4 deg (metabot); the rest is ours"),
-			adsReduction = p(0, "estimate", "No ADS"),
-			crouchMultiplier = p(0.85, "estimate", "Assumed like rifles"),
-			recoveryTime = p(0.3, "estimate", "Not published"),
-			tapEfficiency = p(2, "estimate", "Not published"),
-			runError = p(2.3, "confirmed", P910 .. ": Classic 'Run Inaccuracy: 2 >>> 2.3'"),
-			walkError = p(1.1, "confirmed", P910 .. ": Classic 'Walking Inaccuracy: 0.84 >>> 1.1'"),
-			crouchMoveError = PISTOL_CROUCH_MOVE,
-			airError = p(3.5, "estimate", "Not published for the left click (the right-click burst's jumping value is 2.25, Patch 9.10)"),
-		},
-		recoil = {
-			pitch = c({ { 1, 0 }, { 2, 0.4 }, { 3, 0.9 }, { 5, 1.8 }, { 8, 2.6 } }, "estimate", "Measure"),
-			swayStart = p(2, "estimate", "Pistols kick sideways from the start; measure"),
-			swayStep = p(0.3, "estimate", "Measure"),
-			swayMax = p(1.0, "estimate", "Measure"),
-			swayFlipChance = p(0.3, "estimate", "Measure"),
-			runPitchMultiplier = p(1, "estimate", "Patch 6.11 lists rifles, the Spectre and the Frenzy only"),
-			crouchYawMultiplier = p(0.85, "estimate", "Assumed like rifles"),
-			adsMultiplier = p(1, "estimate", "No ADS"),
-			cameraFraction = p(0.3, "estimate", "Measure"),
-			adsCameraFraction = p(0.3, "estimate", "No ADS"),
-		},
+		suppressed = false,
+		alt = classicAlt,
+		accuracy = classicHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 0.4 }, { 3, 0.9 }, { 5, 1.8 }, { 8, 2.6 } }), sway(2, 0.3, 1.0, 0.3, "Pistols kick sideways from the start; measure"), {
+			run = RUN_NONE,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = NO_ADS_RECOIL,
+			camera = classicCamera,
+			adsCamera = classicAdsCamera,
+		}),
+	},
+	shorty = {
+		id = "shorty",
+		name = "Shorty",
+		category = "sidearm",
+		slot = 2,
+		price = p(300, "confirmed", P611 .. ": Shorty 'Price adjusted from $150 >>> $300'"),
+		fireMode = "semi",
+		fireRate = wiki(3.0),
+		pellets = wiki(15),
+		magazine = wiki(2),
+		reserve = p(6, "confirmed", P611 .. ": Shorty 'Reserve ammo adjusted from 10 >>> 6'"),
+		reloadTime = wiki(1.75),
+		equipTime = wiki(0.75),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(7, 22, 11, 9.35), band(15, 12, 6, 5.1), band(50, 6, 3, 2.55) },
+		damageSource = p(0, "confirmed", P611 .. ": body 11 to 7 m and 6 to 15 m ('12 >>> 11', '8 >>> 6'); 3 beyond, head x2 and legs x0.85 from " .. WIKI),
+		penetration = "low",
+		suppressed = false,
+		accuracy = shortyHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 1.5 } }), NO_SWAY, {
+			run = RUN_NONE,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = NO_ADS_RECOIL,
+			camera = p(0.4, "estimate", "Measure"),
+			adsCamera = p(0.4, "estimate", "No zoom"),
+		}),
+	},
+	frenzy = {
+		id = "frenzy",
+		name = "Frenzy",
+		category = "sidearm",
+		slot = 2,
+		price = wiki(450),
+		fireMode = "auto",
+		fireRate = wiki(10),
+		magazine = p(15, "confirmed", P910 .. ": Frenzy magazine 13 >>> 15"),
+		reserve = wiki(45),
+		reloadTime = wiki(1.5),
+		equipTime = wiki(1.0, "its fast and instant draws, 0.45 and 0.15, match the 0.75 s sidearms"),
+		moveMultiplier = wiki(0.85, "5.73 m/s"),
+		damage = { band(20, 78, 26, 22.1), band(50, 63, 21, 17.85) },
+		damageSource = wiki(0, "26 body to 20 m, 21 beyond; head x3, legs x0.85"),
+		penetration = "low",
+		suppressed = false,
+		accuracy = frenzyHip,
+		recoil = recoil(
+			climb({ { 1, 0 }, { 2, 0.4 }, { 3, 0.9 }, { 5, 1.6 }, { 15, 2.0 } }, P611 .. ": 'Maximum recoil will be reached in 5 bullets instead of 6'; the heights are ours"),
+			sway(3, 0.35, 1.4, 0.25),
+			{
+				run = p(1.5, "confirmed", P611 .. ": 'Vertical Recoil Multiplier While Running', Frenzy 1.25 >>> 1.5"),
+				crouchYaw = CROUCH_YAW_ESTIMATE,
+				ads = NO_ADS_RECOIL,
+				camera = p(0.3, "estimate", "Measure"),
+				adsCamera = p(0.3, "estimate", "No zoom"),
+			}
+		),
+	},
+	ghost = {
+		id = "ghost",
+		name = "Ghost",
+		category = "sidearm",
+		slot = 2,
+		price = wiki(500),
+		fireMode = "semi",
+		fireRate = wiki(6.75),
+		magazine = p(13, "confirmed", P910 .. ": Ghost magazine 15 >>> 13"),
+		reserve = wiki(39),
+		reloadTime = wiki(1.5),
+		equipTime = wiki(0.75),
+		moveMultiplier = wiki(0.85, "5.73 m/s"),
+		damage = { band(30, 105, 30, 25.5), band(50, 87.5, 25, 21.25) },
+		damageSource = wiki(0, "30 body to 30 m, 25 beyond; head x3.5, legs x0.85"),
+		penetration = "medium",
+		suppressed = true,
+		accuracy = ghostHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 0.35 }, { 3, 0.8 }, { 5, 1.6 }, { 8, 2.3 } }), sway(2, 0.25, 0.9, 0.3), {
+			run = RUN_NONE,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = NO_ADS_RECOIL,
+			camera = p(0.3, "estimate", "Measure"),
+			adsCamera = p(0.3, "estimate", "No zoom"),
+		}),
+	},
+	bandit = {
+		id = "bandit",
+		name = "Bandit",
+		category = "sidearm",
+		slot = 2,
+		price = p(600, "confirmed", P1200 .. ": 'a precision sidearm with 1-tap headshot power', 600 credits"),
+		fireMode = "semi",
+		fireRate = wiki(5.1),
+		magazine = p(8, "confirmed", P1200 .. ": 8 rounds"),
+		reserve = p(24, "confirmed", P1200 .. ": 24 in reserve"),
+		reloadTime = p(1.5, "confirmed", P1200 .. ": reload 1.5 s"),
+		equipTime = p(0.75, "confirmed", P1200 .. ": equip 0.75 s"),
+		moveMultiplier = p(0.85, "community", METABOT .. ": 85% (the wiki says 5.4 m/s, 80%)"),
+		damage = { band(10, 152.1, 39, 33.15), band(30, 128.7, 39, 33.15), band(50, 112.2, 34, 28.9) },
+		damageSource = wiki(0, "39 body to 30 m and 34 beyond; head x3.9 to 10 m, then x3.3; legs x0.85"),
+		penetration = "medium",
+		suppressed = false,
+		accuracy = banditHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 1.2 }, { 3, 2.2 }, { 5, 3.2 } }), sway(2, 0.4, 1.2, 0.3), {
+			run = RUN_NONE,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = NO_ADS_RECOIL,
+			camera = p(0.35, "estimate", "Measure"),
+			adsCamera = p(0.35, "estimate", "No zoom"),
+		}),
 	},
 	sheriff = {
 		id = "sheriff",
 		name = "Sheriff",
+		category = "sidearm",
 		slot = 2,
+		price = wiki(800),
 		fireMode = "semi",
-		fireRate = p(4, "community", METABOT),
-		magazine = p(6, "community", METABOT),
-		reserve = p(24, "estimate", "Four magazines assumed"),
-		reloadTime = p(2.25, "community", METABOT),
-		equipTime = p(1.0, "community", METABOT),
-		moveMultiplier = p(0.80, "community", METABOT),
-		damage = {
-			{ maxRange = 30, head = 160, body = 55, legs = 47 },
-			{ maxRange = 50, head = 145, body = 50, legs = 43 },
-		},
-		damageSource = p(0, "community", METABOT),
+		fireRate = wiki(4),
+		magazine = wiki(6),
+		reserve = wiki(24),
+		reloadTime = wiki(2.25),
+		equipTime = wiki(1.0),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(30, 159.5, 55, 46.75), band(50, 145, 50, 42.5) },
+		damageSource = wiki(0, "55 body to 30 m, 50 beyond; head x2.9, legs x0.85 (the wiki rounds 159.5 down, metabot up)"),
 		penetration = "high",
+		suppressed = false,
+		accuracy = sheriffHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 1.6 }, { 3, 3.0 }, { 4, 4.0 }, { 6, 4.8 } }, "A big kick per shot; measure"), sway(2, 0.6, 1.5, 0.35), {
+			run = RUN_NONE,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = NO_ADS_RECOIL,
+			camera = p(0.35, "estimate", "Measure"),
+			adsCamera = p(0.35, "estimate", "No zoom"),
+		}),
+	},
+	stinger = {
+		id = "stinger",
+		name = "Stinger",
+		category = "smg",
+		slot = 1,
+		price = wiki(1100),
+		fireMode = "auto",
+		fireRate = wiki(16),
+		magazine = wiki(20),
+		reserve = wiki(60),
+		reloadTime = wiki(2.25),
+		equipTime = wiki(0.75),
+		moveMultiplier = wiki(0.85, "5.73 m/s"),
+		damage = { band(15, 67.5, 27, 22.95), band(50, 57.5, 23, 19.55) },
+		damageSource = wiki(0, "27 body to 15 m, 23 beyond; head x2.5, legs x0.85"),
+		penetration = "low",
+		suppressed = false,
+		ads = {
+			zoom = { 1.15 },
+			fireRateMultiplier = p(1, "community", "n/a: zoomed it fires bursts"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(
+				stingerHip,
+				spread(0.35, 2.74, 8, WIKI .. ": zoomed burst first 0.35, maximum 2.74; maximum at bullet 8 is ours"),
+				BURST_CROUCH,
+				p(0.4, "community", HISTORY .. ": Patch 2.03 burst recovery 0.4")
+			),
+			burst = {
+				rounds = wiki(4, "zoomed: 4-round bursts"),
+				rate = wiki(18, "18 rounds a second within a burst"),
+				perSecond = wiki(2.118, "2.118 bursts a second"),
+			},
+		},
+		accuracy = stingerHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 0.25 }, { 4, 0.9 }, { 6, 1.6 }, { 10, 2.4 }, { 20, 3.0 } }), sway(4, 0.35, 1.6, 0.15), {
+			run = RUN_UNLISTED,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = ADS_RECOIL,
+			camera = p(0.3, "estimate", "Measure"),
+			adsCamera = p(0.8, "estimate", "Measure"),
+		}),
+	},
+	spectre = {
+		id = "spectre",
+		name = "Spectre",
+		category = "smg",
+		slot = 1,
+		price = wiki(1600),
+		fireMode = "auto",
+		fireRate = wiki(13.33),
+		magazine = wiki(30),
+		reserve = wiki(90),
+		reloadTime = wiki(2.25),
+		equipTime = wiki(0.75),
+		moveMultiplier = wiki(0.85, "5.73 m/s"),
+		damage = { band(15, 78, 26, 22.1), band(30, 66, 22, 18.7), band(50, 60, 20, 17) },
+		damageSource = wiki(0, "26 body to 15 m, 22 to 30 m, 20 beyond; head x3, legs x0.85"),
+		penetration = "low",
+		suppressed = true,
+		ads = {
+			zoom = { 1.15 },
+			fireRateMultiplier = wiki(0.9, "zoomed 90% (12 rps)"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(spectreHip, spread(0.25, 1.25, 10, WIKI .. ": zoomed first 0.25, maximum 1.25")),
+		},
+		accuracy = spectreHip,
+		recoil = recoil(
+			climb({ { 1, 0 }, { 2, 0.2 }, { 4, 0.7 }, { 6, 1.3 }, { 10, 2.2 }, { 16, 2.8 }, { 30, 3.1 } }),
+			{
+				start = p(5, "community", HISTORY .. ": Patch 11.08 protected bullets, which never drift, 4 >>> 5"),
+				step = p(0.3, "estimate", "Measure"),
+				max = p(1.4, "estimate", "Measure"),
+				flip = p(0.12, "estimate", "Measure; Patch 11.08 moved its switch time 0.18 >>> 0.28 s, which we don't model"),
+			},
+			{
+				run = p(1.8, "confirmed", P611 .. ": 'Vertical Recoil Multiplier While Running', Spectre 1.5 >>> 1.8"),
+				crouchYaw = CROUCH_YAW_ESTIMATE,
+				ads = ADS_RECOIL,
+				camera = p(0.3, "estimate", "Measure"),
+				adsCamera = p(0.8, "estimate", "Measure"),
+			}
+		),
+	},
+	bucky = {
+		id = "bucky",
+		name = "Bucky",
+		category = "shotgun",
+		slot = 1,
+		price = wiki(850),
+		fireMode = "semi",
+		fireRate = wiki(1.1),
+		pellets = wiki(15),
+		magazine = wiki(5),
+		reserve = wiki(10),
+		reloadTime = wiki(2.5, "a full magazine"),
+		reloadPerRound = wiki(0.5, "a shell at a time"),
+		equipTime = wiki(1.0),
+		moveMultiplier = wiki(0.75, "5.06 m/s"),
+		damage = { band(8, 34, 17, 14.45), band(12, 26, 13, 11.05), band(50, 18, 9, 7.65) },
+		damageSource = wiki(0, "per pellet: 17 body to 8 m, 13 to 12 m, 9 beyond; head x2, legs x0.85"),
+		penetration = "low",
+		suppressed = false,
+		accuracy = buckyHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 1.4 }, { 5, 2.6 } }), NO_SWAY, {
+			run = RUN_NONE,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = NO_ADS_RECOIL,
+			camera = p(0.5, "estimate", "Measure"),
+			adsCamera = p(0.5, "estimate", "No zoom"),
+		}),
+	},
+	judge = {
+		id = "judge",
+		name = "Judge",
+		category = "shotgun",
+		slot = 1,
+		price = wiki(1850),
+		fireMode = "auto",
+		fireRate = wiki(3.5),
+		pellets = wiki(12),
+		magazine = wiki(5),
+		reserve = wiki(15),
+		reloadTime = wiki(2.2),
+		equipTime = wiki(1.0),
+		moveMultiplier = wiki(0.75, "5.06 m/s"),
+		damage = { band(10, 34, 17, 14.45), band(15, 20, 10, 8.5), band(50, 14, 7, 5.95) },
+		damageSource = wiki(0, "per pellet: 17 body to 10 m, 10 to 15 m, 7 beyond; head x2, legs x0.85"),
+		penetration = "low",
+		suppressed = false,
+		accuracy = judgeHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 1.0 }, { 3, 1.8 }, { 5, 2.8 } }), sway(2, 0.5, 1.5, 0.3), {
+			run = RUN_NONE,
+			crouchYaw = CROUCH_YAW_ESTIMATE,
+			ads = NO_ADS_RECOIL,
+			camera = p(0.4, "estimate", "Measure"),
+			adsCamera = p(0.4, "estimate", "No zoom"),
+		}),
+	},
+	bulldog = {
+		id = "bulldog",
+		name = "Bulldog",
+		category = "rifle",
+		slot = 1,
+		price = wiki(2050),
+		fireMode = "auto",
+		fireRate = wiki(10),
+		magazine = wiki(24),
+		reserve = wiki(72),
+		reloadTime = wiki(2.5),
+		equipTime = wiki(1.0),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(50, 115.5, 35, 29.75) },
+		damageSource = wiki(0, "35 body, head x3.3, legs x0.85, no falloff"),
+		penetration = "medium",
+		suppressed = false,
 		ads = {
 			zoom = { 1.25 },
-			fireRateMultiplier = p(1.0, "estimate", "Assumed unchanged"),
-			moveMultiplier = p(0.76, "estimate", "Assumed same as rifles"),
+			fireRateMultiplier = p(1, "community", "n/a: zoomed it fires bursts"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(
+				bulldogHip,
+				spread(0.1, 1.5, 6, WIKI .. ": zoomed burst first 0.1, maximum 1.5; maximum at bullet 6 is ours"),
+				BURST_CROUCH,
+				p(0.35, "community", HISTORY .. ": Patch 4.0 burst recovery 0.4 >>> 0.35")
+			),
+			burst = {
+				rounds = wiki(3, "zoomed: 3-round bursts"),
+				rate = wiki(13.333, "13.33 rounds a second within a burst"),
+				perSecond = wiki(2.105, "2.105 bursts a second"),
+			},
 		},
-		accuracy = {
-			firingError = c({ { 1, 0.25 }, { 2, 1.0 }, { 3, 2.0 }, { 4, 3.0 }, { 6, 3.6 } }, "estimate", "Bullet 1 is the community 0.25 deg (metabot); the follow-ups are ours, spamming is meant to be wild"),
-			adsReduction = p(0.1, "estimate", "Fandom: ADS modes have lower spread; the amount is not published"),
-			crouchMultiplier = p(0.85, "estimate", "Assumed like rifles"),
-			recoveryTime = p(0.45, "estimate", "Not published; longer than the 0.25 s fire interval"),
-			tapEfficiency = p(1.5, "estimate", "Not published"),
-			runError = p(3, "confirmed", P30 .. ": Sheriff 'Running inaccuracy changed from 2.0 >>> 3.0' (Patch 9.10 did not list the Sheriff)"),
-			walkError = p(1.2, "confirmed", P30 .. ": Sheriff 'Walking inaccuracy changed from .25 >>> 1.2'"),
-			crouchMoveError = PISTOL_CROUCH_MOVE,
-			airError = p(4.5, "estimate", "Not published"),
+		accuracy = bulldogHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 0.25 }, { 3, 0.65 }, { 4, 1.2 }, { 6, 2.2 }, { 9, 3.4 }, { 12, 4.1 }, { 16, 4.5 }, { 24, 4.7 } }), sway(6, 0.4, 2.0, 0.12), {
+			run = RUN_UNLISTED,
+			crouchYaw = CROUCH_YAW,
+			ads = ADS_RECOIL,
+			camera = p(0.25, "estimate", "As the Vandal"),
+			adsCamera = p(0.9, "estimate", "As the Vandal"),
+		}),
+	},
+	guardian = {
+		id = "guardian",
+		name = "Guardian",
+		category = "rifle",
+		slot = 1,
+		price = wiki(2250),
+		fireMode = "semi",
+		fireRate = wiki(5.25),
+		magazine = wiki(12),
+		reserve = wiki(36),
+		reloadTime = wiki(2.5),
+		equipTime = wiki(1.0),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(50, 195, 65, 48.75) },
+		damageSource = wiki(0, "65 body, head x3, legs x0.75, no falloff"),
+		penetration = "high",
+		suppressed = false,
+		ads = {
+			zoom = { 1.5 },
+			fireRateMultiplier = wiki(1, "zoomed 100%"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(guardianHip, spread(0, 1.48, 5, WIKI .. ": zoomed first 0, maximum 1.48")),
 		},
-		recoil = {
-			pitch = c({ { 1, 0 }, { 2, 1.6 }, { 3, 3.0 }, { 4, 4.0 }, { 6, 4.8 } }, "estimate", "A big kick per shot; measure"),
-			swayStart = p(2, "estimate", "Measure"),
-			swayStep = p(0.6, "estimate", "Measure"),
-			swayMax = p(1.5, "estimate", "Measure"),
-			swayFlipChance = p(0.35, "estimate", "Measure"),
-			runPitchMultiplier = p(1, "estimate", "Patch 6.11 lists rifles, the Spectre and the Frenzy only"),
-			crouchYawMultiplier = p(0.85, "estimate", "Assumed like rifles"),
-			adsMultiplier = p(0.9, "estimate", "Assumed like rifles"),
-			cameraFraction = p(0.35, "estimate", "Measure"),
-			adsCameraFraction = p(0.8, "estimate", "Measure"),
+		accuracy = guardianHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 0.9 }, { 3, 1.7 }, { 5, 2.6 }, { 8, 3.1 } }), sway(3, 0.3, 1.0, 0.3), {
+			run = RUN_UNLISTED,
+			crouchYaw = CROUCH_YAW,
+			ads = ADS_RECOIL,
+			camera = p(0.3, "estimate", "Measure"),
+			adsCamera = p(0.9, "estimate", "Measure"),
+		}),
+	},
+	phantom = {
+		id = "phantom",
+		name = "Phantom",
+		category = "rifle",
+		slot = 1,
+		price = wiki(2900),
+		fireMode = "auto",
+		fireRate = wiki(11),
+		magazine = wiki(30),
+		reserve = p(60, "confirmed", P611 .. ": 'Phantom Reserve ammo adjusted from 90 >>> 60'"),
+		reloadTime = wiki(2.5),
+		equipTime = wiki(1.0),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(20, 156, 39, 33.15), band(50, 140, 35, 29.75) },
+		damageSource = p(0, "community", "Body and the 20 m boundary are " .. P910 .. ": 'Now does 39 damage per bullet from 0-20m and 35 damage per bullet 20m+'; head x4 and legs x0.85 from " .. WIKI),
+		penetration = "medium",
+		suppressed = true,
+		ads = {
+			zoom = { 1.25 },
+			fireRateMultiplier = wiki(0.9, "zoomed 90% (9.9 rps)"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(phantomHip, spread(0.11, 0.91, RIFLE_SPRAY_AT, WIKI .. ": zoomed first 0.11, maximum 0.91 (Sportskeeda, 2020: 0.20 hip, 0.11 zoomed)")),
 		},
+		accuracy = phantomHip,
+		recoil = recoil(
+			climb(
+				{ { 1, 0 }, { 2, 0.25 }, { 3, 0.6 }, { 4, 1.15 }, { 6, 2.3 }, { 9, 3.9 }, { 12, 4.8 }, { 16, 5.2 }, { 30, 5.5 } },
+				"The Vandal's T, a little lower (pull down 'head to waist' against 'head to thigh', gamer.org)"
+			),
+			{
+				start = p(8, "community", HISTORY .. ": Patch 11.08 protected bullets, which never drift, 6 >>> 8"),
+				step = p(0.45, "estimate", "Sideways drift per bullet; measure"),
+				max = p(2.2, "estimate", "Half the width of the top of the T; measure"),
+				flip = p(0.10, "community", HISTORY .. ": Patch 11.08 switch chance 6% >>> 10% (its switch time, 0.6 s, we don't model)"),
+			},
+			{
+				run = RUN_RIFLE,
+				crouchYaw = CROUCH_YAW,
+				ads = ADS_RECOIL,
+				camera = p(0.25, "estimate", "As the Vandal"),
+				adsCamera = p(0.9, "estimate", "As the Vandal"),
+			}
+		),
+	},
+	vandal = {
+		id = "vandal",
+		name = "Vandal",
+		category = "rifle",
+		slot = 1,
+		price = wiki(2900),
+		fireMode = "auto",
+		fireRate = wiki(9.75),
+		magazine = wiki(25),
+		reserve = p(50, "confirmed", P611 .. ": 'Vandal Reserve ammo adjusted from 75 >>> 50'"),
+		reloadTime = wiki(2.5),
+		equipTime = wiki(1.0),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(50, 160, 40, 34) },
+		damageSource = wiki(0, "40 body, head x4, legs x0.85, no falloff"),
+		penetration = "medium",
+		suppressed = false,
+		ads = {
+			zoom = { 1.25 },
+			fireRateMultiplier = wiki(0.9, "zoomed 90% (8.775 rps); PC Gamer: 8.32 rps against 9.25 from the hip"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(vandalHip, spread(0.157, 1.02, RIFLE_SPRAY_AT, WIKI .. ": zoomed first 0.157, maximum 1.02 (Sportskeeda, 2020: 0.25 hip, 0.157 zoomed)")),
+		},
+		accuracy = vandalHip,
+		recoil = recoil(
+			climb(
+				{ { 1, 0 }, { 2, 0.3 }, { 3, 0.75 }, { 4, 1.4 }, { 6, 2.8 }, { 9, 4.6 }, { 12, 5.6 }, { 16, 6.1 }, { 25, 6.4 } },
+				"Shape only: the spray always climbs, then levels off into a T (esports.net spray guide). Measure from a spray against a wall"
+			),
+			{
+				start = p(6, "community", HISTORY .. ": Patch 11.08 protected bullets, which never drift, 4 >>> 6"),
+				step = p(0.55, "estimate", "Sideways drift per bullet; measure"),
+				max = p(2.6, "estimate", "Half the width of the top of the T; measure"),
+				flip = p(0.10, "community", HISTORY .. ": Patch 11.08 switch chance 6% >>> 10% (its switch time, 0.6 s, we don't model)"),
+			},
+			{
+				run = RUN_RIFLE,
+				crouchYaw = p(0.85, "confirmed", P050 .. ": Vandal 'Horizontal (Yaw) Recoil reduced by 15% while crouched and stationary'"),
+				ads = ADS_RECOIL,
+				camera = p(0.25, "estimate", "In hip fire the bullets climb away from the crosshair (esports.net); measure crosshair travel against impact travel"),
+				adsCamera = p(0.9, "estimate", "Zooming 'keeps shots on target' and 'amplifies screen movement' (esports.net)"),
+			}
+		),
+	},
+	warden = {
+		id = "warden",
+		name = "Warden",
+		category = "rifle",
+		slot = 1,
+		price = p(2900, "confirmed", P1306 .. ": 'the latest automatic Rifle to join the Vandal and Phantom in the 2900 credits tier'"),
+		fireMode = "auto",
+		fireRate = p(6.5, "confirmed", P1306 .. ": fire rate 6.5"),
+		magazine = p(18, "confirmed", P1306 .. ": 18 rounds"),
+		reserve = p(36, "confirmed", P1306 .. ": 36 in reserve"),
+		reloadTime = p(2.5, "confirmed", P1306 .. ": reload 2.5"),
+		equipTime = p(1.0, "confirmed", P1306 .. ": equip 'Normal: 1.0'"),
+		moveMultiplier = p(0.8, "community", METABOT .. ": 80%"),
+		damage = { band(50, 200, 50, 42) },
+		damageSource = p(0, "confirmed", P1306 .. ": '50 at all ranges', '200 headshot', '42 leg'"),
+		penetration = "medium",
+		suppressed = false,
+		ads = {
+			zoom = { 2 },
+			fireRateMultiplier = p(1, "estimate", "Not published; assumed unchanged, like the Guardian's"),
+			moveMultiplier = p(0.76, "estimate", "Not published; assumed like the other rifles"),
+			accuracy = zoomed(wardenHip, spread(0, 1.0, 8, "Not published: zoomed first 0 (like the Guardian) and maximum 1.0 are ours")),
+		},
+		accuracy = wardenHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 0.7 }, { 3, 1.4 }, { 5, 2.4 }, { 8, 3.2 }, { 12, 3.6 }, { 18, 3.8 } }), sway(6, 0.4, 1.6, 0.12), {
+			run = RUN_UNLISTED,
+			crouchYaw = CROUCH_YAW,
+			ads = ADS_RECOIL,
+			camera = p(0.3, "estimate", "Measure"),
+			adsCamera = p(1, "estimate", "A 2x scope kicks with the shot; measure"),
+		}),
+	},
+	marshal = {
+		id = "marshal",
+		name = "Marshal",
+		category = "sniper",
+		slot = 1,
+		price = wiki(950),
+		fireMode = "semi",
+		fireRate = wiki(1.5),
+		magazine = wiki(5),
+		reserve = wiki(15),
+		reloadTime = wiki(2.5, "a full magazine"),
+		reloadPerRound = wiki(0.5, "a round at a time"),
+		equipTime = wiki(1.25),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(50, 202, 101, 85.85) },
+		damageSource = wiki(0, "101 body, head x2, legs x0.85, no falloff"),
+		penetration = "medium",
+		suppressed = false,
+		ads = {
+			zoom = { 3.5 },
+			fireRateMultiplier = wiki(0.8, "scoped 80% (1.2 rps)"),
+			moveMultiplier = wiki(0.9, "scoped run speed 90%"),
+			accuracy = zoomed(marshalHip, c({ { 1, 0 } }, "community", WIKI .. ": 0 scoped")),
+		},
+		accuracy = marshalHip,
+		recoil = recoil(climb({ { 1, 0 } }, "A bolt action: every shot is a first shot, so the bullets don't climb"), NO_SWAY, {
+			run = RUN_NONE,
+			crouchYaw = p(1, "estimate", "No sideways recoil"),
+			ads = p(1, "estimate", "Not published"),
+			camera = p(0.5, "estimate", "Measure"),
+			adsCamera = p(1, "estimate", "The scope kicks with the shot; measure"),
+			viewKick = p(1.2, "estimate", "The kick each shot shows; measure"),
+		}),
+	},
+	outlaw = {
+		id = "outlaw",
+		name = "Outlaw",
+		category = "sniper",
+		slot = 1,
+		price = wiki(2400),
+		fireMode = "semi",
+		fireRate = wiki(2.75),
+		magazine = wiki(2),
+		reserve = wiki(10),
+		reloadTime = wiki(3.8, "both rounds"),
+		reloadOneRound = wiki(2.3, "one round"),
+		equipTime = wiki(1.25),
+		moveMultiplier = wiki(0.8, "5.4 m/s"),
+		damage = { band(50, 238, 140, 119) },
+		damageSource = wiki(0, "140 body, head x1.7, legs x0.85, no falloff"),
+		penetration = "high",
+		suppressed = false,
+		ads = {
+			zoom = { 3.5 },
+			fireRateMultiplier = wiki(1, "scoped 100%"),
+			moveMultiplier = wiki(0.8, "scoped run speed 80%"),
+			accuracy = zoomed(outlawHip, c({ { 1, 0 }, { 2, 2.25 } }, "confirmed", P1301 .. ": Outlaw spread after the first shot 0 >>> 2.25 (0 for a first shot, " .. WIKI .. ")")),
+		},
+		accuracy = outlawHip,
+		recoil = recoil(climb({ { 1, 0 }, { 2, 4.0 } }, P1301 .. ": Outlaw recoil after the first shot 0 >>> 4.0 (confirmed); the curve's shape is ours"), NO_SWAY, {
+			run = RUN_NONE,
+			crouchYaw = p(1, "estimate", "No sideways recoil"),
+			ads = p(1, "estimate", "Not published"),
+			camera = p(0.5, "estimate", "Measure"),
+			adsCamera = p(1, "estimate", "The scope kicks with the shot; measure"),
+			viewKick = p(1.5, "estimate", "The kick each shot shows; measure"),
+		}),
+	},
+	operator = {
+		id = "operator",
+		name = "Operator",
+		category = "sniper",
+		slot = 1,
+		price = wiki(4700),
+		fireMode = "semi",
+		fireRate = p(0.6, "confirmed", P109 .. ": 'Firing rate reduced from .75 >>> .6'"),
+		magazine = wiki(5),
+		reserve = wiki(10),
+		reloadTime = wiki(3.7),
+		equipTime = wiki(1.5),
+		moveMultiplier = wiki(0.76, "5.13 m/s"),
+		deadzoneFraction = p(0.15, "confirmed", P109 .. ": deadzone 30% >>> 15%"),
+		damage = { band(50, 255, 150, 120) },
+		damageSource = p(0, "confirmed", P109 .. " leg 127 >>> 120; head and body from " .. WIKI),
+		penetration = "high",
+		suppressed = false,
+		ads = {
+			zoom = { 2.5, 5 },
+			fireRateMultiplier = wiki(1, "scoped 100%"),
+			moveMultiplier = p(0.72, "confirmed", P109 .. ": scoped movement speed 76% >>> 72%"),
+			accuracy = zoomed(operatorHip, c({ { 1, 0 } }, "community", WIKI .. ": 0 scoped")),
+		},
+		accuracy = operatorHip,
+		recoil = recoil(climb({ { 1, 0 } }, "A bolt action: every shot is a first shot, so the bullets don't climb"), NO_SWAY, {
+			run = RUN_NONE,
+			crouchYaw = p(1, "estimate", "No sideways recoil"),
+			ads = p(1, "estimate", "Not published"),
+			camera = p(0.5, "estimate", "Measure"),
+			adsCamera = p(1, "estimate", "The scope kicks with the shot; measure"),
+			viewKick = p(1.8, "estimate", "The kick each shot shows; measure"),
+		}),
+	},
+	ares = {
+		id = "ares",
+		name = "Ares",
+		category = "heavy",
+		slot = 1,
+		price = wiki(1600),
+		fireMode = "auto",
+		fireRate = wiki(13, "no spin-up since Patch 4.0"),
+		magazine = wiki(50),
+		reserve = wiki(100),
+		reloadTime = wiki(3.25),
+		equipTime = wiki(1.25),
+		moveMultiplier = wiki(0.76, "5.13 m/s"),
+		damage = { band(30, 75, 30, 25.5), band(50, 70, 28, 23.8) },
+		damageSource = wiki(0, "30 body to 30 m, 28 beyond; head x2.5, legs x0.85"),
+		penetration = "high",
+		suppressed = false,
+		ads = {
+			zoom = { 1.15 },
+			fireRateMultiplier = wiki(1, "zoomed 100%"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(aresHip, c({ { 1, 0.9 }, { 13, 0.55 } }, "community", WIKI .. ": zoomed 0.9, tightening to 0.55")),
+		},
+		accuracy = aresHip,
+		recoil = recoil(
+			climb({ { 1, 0 }, { 2, 0.2 }, { 5, 0.8 }, { 10, 1.6 }, { 20, 2.4 }, { 50, 2.8 } }),
+			sway(8, 0.25, 1.6, 0.08, "The Ares and Odin notes count yaw recoil 'after the first 8 bullets'; the rest is ours"),
+			{
+				run = RUN_UNLISTED,
+				crouchYaw = p(0.6, "community", HISTORY .. ": Patch 9.05 crouching 'spread/recoil benefit' 40%"),
+				ads = ADS_RECOIL,
+				camera = p(0.3, "estimate", "Measure"),
+				adsCamera = p(0.8, "estimate", "Measure"),
+			}
+		),
+	},
+	odin = {
+		id = "odin",
+		name = "Odin",
+		category = "heavy",
+		slot = 1,
+		price = wiki(3200),
+		fireMode = "auto",
+		fireRate = wiki(12),
+		spinUp = {
+			maxRate = p(15.6, "community", "dodge.gg: '12 rounds/sec, spinning up to 15.6 rounds/sec with sustained fire'"),
+			time = p(1.0, "estimate", "Not published; count the shots in each tenth of a second of a held spray (09-arsenal.md section 3)"),
+		},
+		magazine = wiki(100),
+		reserve = wiki(200),
+		reloadTime = wiki(5.0),
+		equipTime = wiki(1.25),
+		moveMultiplier = wiki(0.76, "5.13 m/s"),
+		damage = { band(30, 95, 38, 32.3), band(50, 77.5, 31, 26.35) },
+		damageSource = wiki(0, "38 body to 30 m, 31 beyond; head x2.5, legs x0.85"),
+		penetration = "high",
+		suppressed = false,
+		ads = {
+			zoom = { 1.15 },
+			fireRateMultiplier = wiki(1.3, "zoomed it fires at 15.6 straight away, with no spin-up"),
+			moveMultiplier = AIM_MOVE,
+			accuracy = zoomed(odinHip, spread(0.79, 1.36, 10, WIKI .. ": zoomed first 0.79, maximum 1.36")),
+		},
+		accuracy = odinHip,
+		recoil = recoil(
+			climb({ { 1, 0 }, { 2, 0.25 }, { 5, 1.0 }, { 10, 2.0 }, { 20, 3.0 }, { 100, 3.4 } }),
+			sway(8, 0.3, 2.0, 0.08, "The Ares and Odin notes count yaw recoil 'after the first 8 bullets'; the rest is ours"),
+			{
+				run = RUN_UNLISTED,
+				crouchYaw = p(0.6, "estimate", "Assumed like the Ares (its crouch spread is x0.6 too)"),
+				ads = ADS_RECOIL,
+				camera = p(0.3, "estimate", "Measure"),
+				adsCamera = p(0.8, "estimate", "Measure"),
+			}
+		),
 	},
 	knife = {
 		id = "knife",
 		name = "Knife",
+		category = "melee",
 		slot = 3,
+		price = wiki(0, "everyone has one"),
 		fireMode = "none", -- melee attacks are a later system
 		fireRate = p(0, "estimate", "Not implemented"),
-		magazine = p(0, "estimate", "n/a"),
-		reserve = p(0, "estimate", "n/a"),
-		reloadTime = p(0, "estimate", "n/a"),
-		equipTime = p(0.75, "estimate", "Not published"),
+		magazine = KNIFE_NA,
+		reserve = KNIFE_NA,
+		reloadTime = KNIFE_NA,
+		equipTime = wiki(0.6),
 		moveMultiplier = p(1.0, "community", "Fandom Melee: 'standard run speed of 6.75 m/s'"),
-		damage = { { maxRange = 0, head = 0, body = 0, legs = 0 } },
-		damageSource = p(0, "estimate", "n/a"),
+		damage = { band(0, 0, 0, 0) },
+		damageSource = KNIFE_NA,
 		penetration = "none",
-		ads = nil,
-		accuracy = {
-			firingError = c({ { 1, 0 } }, "estimate", "n/a"),
-			adsReduction = p(0, "estimate", "n/a"),
-			crouchMultiplier = p(1, "estimate", "n/a"),
-			recoveryTime = p(0.1, "estimate", "n/a"),
-			tapEfficiency = p(1, "estimate", "n/a"),
-			runError = p(0, "estimate", "n/a"),
-			walkError = p(0, "estimate", "n/a"),
-			crouchMoveError = p(0, "estimate", "n/a"),
-			airError = p(0, "estimate", "n/a"),
-		},
-		recoil = {
-			pitch = c({ { 1, 0 } }, "estimate", "n/a"),
-			swayStart = p(99, "estimate", "n/a"),
-			swayStep = p(0, "estimate", "n/a"),
-			swayMax = p(0, "estimate", "n/a"),
-			swayFlipChance = p(0, "estimate", "n/a"),
-			runPitchMultiplier = p(1, "estimate", "n/a"),
-			crouchYawMultiplier = p(1, "estimate", "n/a"),
-			adsMultiplier = p(1, "estimate", "n/a"),
-			cameraFraction = p(0, "estimate", "n/a"),
-			adsCameraFraction = p(0, "estimate", "n/a"),
-		},
+		suppressed = false,
+		accuracy = accuracy(c({ { 1, 0 } }, "estimate", "n/a"), p(1, "estimate", "n/a"), p(0.1, "estimate", "n/a"), p(1, "estimate", "n/a"), {
+			crouch = KNIFE_NA,
+			walk = KNIFE_NA,
+			run = KNIFE_NA,
+			air = KNIFE_NA,
+		}),
+		recoil = recoil(c({ { 1, 0 } }, "estimate", "n/a"), NO_SWAY, {
+			run = p(1, "estimate", "n/a"),
+			crouchYaw = p(1, "estimate", "n/a"),
+			ads = p(1, "estimate", "n/a"),
+			camera = KNIFE_NA,
+			adsCamera = KNIFE_NA,
+		}),
 	},
 } :: { [string]: WeaponDef }
 
--- Stable byte ids for the wire format (0 = empty slot).
-WeaponConfig.Ids = { "classic", "knife", "operator", "phantom", "sheriff", "vandal" }
+-- Stable byte ids for the wire format (0 = empty slot): the first six as
+-- they always were, the rest in alphabetical order after them.
+WeaponConfig.Ids = {
+	"classic",
+	"knife",
+	"operator",
+	"phantom",
+	"sheriff",
+	"vandal",
+	"ares",
+	"bandit",
+	"bucky",
+	"bulldog",
+	"frenzy",
+	"ghost",
+	"guardian",
+	"judge",
+	"marshal",
+	"odin",
+	"outlaw",
+	"shorty",
+	"spectre",
+	"stinger",
+	"warden",
+}
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do
 	WeaponConfig.IndexOf[id] = i
 end
+
+-- The buy menu's groups and the guns in each, in the reference's order.
+WeaponConfig.Arsenal = {
+	{ category = "sidearm" :: Category, name = "Sidearms", ids = { "classic", "shorty", "frenzy", "ghost", "bandit", "sheriff" } },
+	{ category = "smg" :: Category, name = "SMGs", ids = { "stinger", "spectre" } },
+	{ category = "shotgun" :: Category, name = "Shotguns", ids = { "bucky", "judge" } },
+	{ category = "rifle" :: Category, name = "Rifles", ids = { "bulldog", "guardian", "phantom", "vandal", "warden" } },
+	{ category = "sniper" :: Category, name = "Snipers", ids = { "marshal", "outlaw", "operator" } },
+	{ category = "heavy" :: Category, name = "Machine guns", ids = { "ares", "odin" } },
+}
 
 WeaponConfig.DefaultLoadout = { "vandal", "classic", "knife" }
 
@@ -420,7 +1273,7 @@ WeaponConfig.Penetration = {
 	classSource = p(
 		0,
 		"community",
-		"Weapon classes (WeaponDef.penetration): Shacknews (Apr 2020) and Codashop (Oct 2020) stat tables, Liquipedia Vandal 'Medium'. Riot names the classes in Patch 1.03 (Guardian 'Medium >>> Heavy')"
+		"Weapon classes (WeaponDef.penetration): the VALORANT Wiki's weapon pages, Shacknews (Apr 2020) and Codashop (Oct 2020) stat tables, Liquipedia Vandal 'Medium'. Riot names the classes in Patch 1.03 (Guardian 'Medium >>> Heavy') and gives the Bandit's and the Warden's (Medium) in Patches 12.00 and 13.06"
 	),
 	-- Thickest single wall of each material a class gets through, hit square on (metres).
 	limits = {
@@ -443,37 +1296,122 @@ WeaponConfig.Penetration = {
 -- Accuracy rules shared by every weapon.
 WeaponConfig.Accuracy = {
 	-- Added to the cone for MovementConfig.jumpLandPenaltyTime after landing.
-	landError = p(7, "confirmed", "Patch 1.09, all weapons: 'Jump land inaccuracy value increased from 5.0 >>> 7.0 (more inaccurate for .225s after a land)', a binary state"),
+	landError = p(7, "confirmed", P109 .. ", all weapons: 'Jump land inaccuracy value increased from 5.0 >>> 7.0 (more inaccurate for .225s after a land)', a binary state"),
 	-- Error power ("center biasing" at Riot) decides where in the cone a
 	-- bullet lands: its distance from the centre is radius * u ^ power for a
 	-- uniform random u. 0.5 spreads bullets evenly over the cone, 1 piles them
 	-- toward the centre, and higher piles them more.
 	errorPower = p(1, "estimate", P611 .. ": centre biasing works 'as intended for stationary firing'; the amount is not published"),
 	moveErrorPower = p(0.6, "estimate", P611 .. ": shots fired while moving 'are now almost uniformly random within their spread cone'"),
+	-- Seconds the view takes to settle after a viewKick (RecoilDef).
+	viewKickTime = p(0.35, "estimate", "Measure from footage: how long a sniper's view takes to settle after a shot"),
 }
 
 function WeaponConfig.get(id: string): WeaponDef
 	return WeaponConfig.Defs[id] or WeaponConfig.Defs.knife
 end
 
--- Damage for one hit at a distance (metres) on a region.
+-- Modes -------------------------------------------------------------------------
+
+local function makeMode(
+	name: ModeName,
+	fireMode: "auto" | "semi" | "none",
+	rate: number,
+	pellets: number,
+	ammo: number,
+	acc: AccuracyDef,
+	rec: RecoilDef,
+	isZoomed: boolean,
+	burst: BurstDef?,
+	spin: SpinDef?
+): Mode
+	local interval = if rate > 0 then 1 / rate else math.huge
+	local rounds, burstInterval = 1, interval
+	if burst then
+		rate = burst.rate.value
+		interval = 1 / rate
+		rounds = burst.rounds.value
+		burstInterval = 1 / burst.perSecond.value
+	end
+	return {
+		name = name,
+		fireMode = fireMode,
+		rate = rate,
+		interval = interval,
+		burstRounds = rounds,
+		burstInterval = burstInterval,
+		pellets = pellets,
+		ammo = ammo,
+		spin = spin,
+		accuracy = acc,
+		recoil = rec,
+		zoomed = isZoomed,
+	}
+end
+
+type Modes = { hip: Mode, zoom: Mode?, alt: Mode? }
+local modes: { [string]: Modes } = {}
+for id, def in WeaponConfig.Defs do
+	local pellets = if def.pellets then def.pellets.value else 1
+	local set: Modes = {
+		hip = makeMode("hip", def.fireMode, def.fireRate.value, pellets, 1, def.accuracy, def.recoil, false, nil, def.spinUp),
+	}
+	local ads = def.ads
+	if ads then
+		set.zoom = makeMode("zoom", def.fireMode, def.fireRate.value * ads.fireRateMultiplier.value, pellets, 1, ads.accuracy, def.recoil, true, ads.burst, nil)
+	end
+	local alt = def.alt
+	if alt then
+		set.alt = makeMode("alt", alt.fireMode, alt.fireRate.value, alt.pellets.value, alt.ammo.value, alt.accuracy, alt.recoil, false, nil, nil)
+	end
+	modes[id] = set
+end
+
+-- How the weapon fires now: from the hip, zoomed (`scoped` > 0, for a weapon
+-- that zooms) or, with `alt`, its right click if it fires one.
+function WeaponConfig.mode(def: WeaponDef, scoped: number, alt: boolean?): Mode
+	local set = modes[def.id] or modes.knife
+	if alt and set.alt then
+		return set.alt
+	end
+	if scoped > 0 and set.zoom then
+		return set.zoom
+	end
+	return set.hip
+end
+
+-- The right click's mode, for a weapon whose right click fires.
+function WeaponConfig.altMode(def: WeaponDef): Mode?
+	local set = modes[def.id]
+	return set and set.alt
+end
+
+-- Damage ------------------------------------------------------------------------
+
+-- Damage for one hit (one pellet) at a distance (metres) on a region.
 function WeaponConfig.damageAt(def: WeaponDef, region: "head" | "body" | "legs", distance: number): number
 	local bands = def.damage
-	for _, band in bands do
-		if distance <= band.maxRange then
-			return band[region]
+	for _, b in bands do
+		if distance <= b.maxRange then
+			return b[region]
 		end
 	end
 	return bands[#bands][region]
 end
 
--- Hits to kill a target with `hp` total (health + shields) on one region.
+-- Damage of a whole shot that lands every pellet on one region.
+function WeaponConfig.shotDamage(def: WeaponDef, region: "head" | "body" | "legs", distance: number): number
+	return WeaponConfig.damageAt(def, region, distance) * (if def.pellets then def.pellets.value else 1)
+end
+
+-- Shots to kill a target with `hp` total (health + shields) on one region,
+-- every pellet hitting.
 function WeaponConfig.shotsToKill(def: WeaponDef, region: "head" | "body" | "legs", distance: number, hp: number): number?
-	local dmg = WeaponConfig.damageAt(def, region, distance)
+	local dmg = WeaponConfig.shotDamage(def, region, distance)
 	if dmg <= 0 then
 		return nil
 	end
-	return math.ceil(hp / dmg)
+	return math.ceil(hp / dmg - 1e-9)
 end
 
 return WeaponConfig

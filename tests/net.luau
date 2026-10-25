@@ -84,6 +84,9 @@ local function sameWeapons(a: WeaponSim.State, b: WeaponSim.State): boolean
 		and a.seed == b.seed
 		and a.recoilYaw == b.recoilYaw
 		and a.swayDir == b.swayDir
+		and a.burstLeft == b.burstLeft
+		and a.burstNext == b.burstNext
+		and a.spin == b.spin
 end
 
 do
@@ -107,9 +110,9 @@ do
 		local input = inputAt(i)
 		local sa = PlayerSim.step(a, input, cfg, floor, DT)
 		local sb = PlayerSim.step(b, input, cfg, floor, DT)
-		shotsA += if sa then 1 else 0
-		shotsB += if sb then 1 else 0
-		if (sa == nil) ~= (sb == nil) or (sa and sb and (sa.origin ~= sb.origin or sa.direction ~= sb.direction or sa.time ~= sb.time)) then
+		shotsA += if sa then #sa else 0
+		shotsB += if sb then #sb else 0
+		if (sa == nil) ~= (sb == nil) or (sa and sb and (#sa ~= #sb or sa[1].origin ~= sb[1].origin or sa[1].direction ~= sb[1].direction or sa[1].time ~= sb[1].time)) then
 			identical = false
 		end
 	end

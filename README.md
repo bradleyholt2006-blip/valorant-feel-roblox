@@ -38,6 +38,11 @@ Built one system at a time:
    buy phase. The sounds are Pro Sound Effects' recordings from the Creator Store's free library,
    and Roblox's own character sounds are off -
    [research and design](docs/research/08-sound.md)
+9. **The arsenal**: all 20 guns and the knife, with every way they fire: semi and automatic, the
+   Stinger's and the Bulldog's bursts zoomed, the Classic's three-bullet right click, shotgun
+   pellets that land as one hit, shell-by-shell reloads, the Outlaw's double tap, the Odin's rising
+   fire rate, every zoom and scope, and suppressed guns whose tracers only their own side sees -
+   [research and design](docs/research/09-arsenal.md)
 
 ## Running it
 
@@ -73,15 +78,18 @@ In the sound lab: `[` / `]` footstep radius (this client only), Y practice dummi
 Scripted playtests (Studio only): a tool that can press keys but can't move the mouse aims by
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
 `VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
+`VFTestButtons` holds input flags on top of the real ones (128 fire, 256 right click, 512 reload),
+and `VFTestGive` set to a weapon id gives that weapon, which is also how to get the guns 4-8
+don't cover until there's a buy menu.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still
 read.
 
 ## Tests
 
-The shared simulation (movement, weapons, spread and recoil, hitboxes, wire formats, pose
-history, render clock, move pacing, lag compensation and wall penetration), the look's maths,
-the arena's rules and map, and the sound's rules (footsteps, landings, distance curves, walls in
-the way, reload parts) are pure Luau and run outside Roblox:
+The shared simulation (movement, weapons and every gun's way of firing, spread and recoil,
+hitboxes, wire formats, pose history, render clock, move pacing, lag compensation and wall
+penetration), the look's maths, the arena's rules and map, and the sound's rules (footsteps,
+landings, distance curves, walls in the way, reload parts) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

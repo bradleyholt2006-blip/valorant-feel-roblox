@@ -11,10 +11,12 @@
 --            steps, their jumps, their draws or their aiming
 --
 -- A reload plays in parts as it goes (a magazine out, then in, then the
--- bolt), each when the reload is far enough through; switching weapons
--- cuts it off.
+-- bolt), each when the reload is far enough through, and a gun that loads a
+-- round at a time plays a part for each round; switching weapons cuts it
+-- off.
 --   hits     on the server's verdict, the shooter hears a body hit or a
---            headshot, and a kill sound that rises with each kill of a life
+--            headshot, once a round however many pellets hit, and a kill
+--            sound that rises with each kill of a life
 --
 -- Your steps come from your predicted ticks, others' from their poses as
 -- they are drawn (RemoteEntities), so they line up with where they're
@@ -107,6 +109,7 @@ end
 
 export type WorldOptions = {
 	volume: number?,
+	pitch: number?, -- times the sound's own pitch
 	follow: (() -> vector?)?,
 	air: boolean?, -- gunshots dull with distance
 }
@@ -129,7 +132,7 @@ function GameSounds.playWorld(sound: string, at: vector, who: string, opts: Worl
 	if o.air then
 		cutoff = math.min(cutoff, SoundMath.airCutoff(distance))
 	end
-	local voice = SoundEngine.play(sound, "world", { position = at, follow = o.follow, cutoff = cutoff, volume = (o.volume or 1) * gain })
+	local voice = SoundEngine.play(sound, "world", { position = at, follow = o.follow, cutoff = cutoff, volume = (o.volume or 1) * gain, pitch = o.pitch })
 	GameSounds.counts.world += 1
 	note({
 		at = os.clock(),
@@ -176,20 +179,30 @@ end
 -- Reloads ------------------------------------------------------------------------
 
 -- A reload under way: its parts, when it started, how long it takes, the
--- next part to play and the voice of the last one played.
-type Reload = { cues: { SoundConfig.Cue }, start: number, length: number, nextCue: number, voice: SoundEngine.Voice? }
+-- next part to play, the voice of the last one played, and whether it
+-- starts over when it's done (someone else's round-at-a-time reload, whose
+-- rounds we can't see go in).
+type Reload = { cues: { SoundConfig.Cue }, start: number, length: number, nextCue: number, voice: SoundEngine.Voice?, repeats: boolean }
 
-local function newReload(weapon: string, start: number): Reload?
+local function newReload(weapon: string, start: number, length: number, repeats: boolean?): Reload?
 	local sounds = SoundConfig.Weapons[weapon]
 	local cues = if sounds then sounds.reload else nil
-	if not cues then
+	if not cues or length <= 0 then
 		return nil
 	end
-	return { cues = cues, start = start, length = WeaponConfig.get(weapon).reloadTime.value, nextCue = 1, voice = nil }
+	return { cues = cues, start = start, length = length, nextCue = 1, voice = nil, repeats = repeats == true }
 end
 
 -- Plays the parts of `r` that are due at `now` with `play`.
 local function playDue(r: Reload, now: number, play: (string) -> SoundEngine.Voice?)
+	while r.repeats and now - r.start >= r.length do
+		local due = SoundMath.cuesDue(r.cues, r.nextCue, r.length, r.length)
+		for _, sound in due do
+			r.voice = play(sound) or r.voice
+		end
+		r.start += r.length
+		r.nextCue = 1
+	end
 	local due, nextCue = SoundMath.cuesDue(r.cues, r.nextCue, now - r.start, r.length)
 	r.nextCue = nextCue
 	for _, sound in due do
@@ -247,12 +260,14 @@ local function onTick(info: any)
 				own(sounds.draw)
 				lastDrawAt = now
 			end
-		elseif was.reloadEndTime == 0 and w.reloadEndTime > 0 then
-			ownReload = newReload(id, w.reloadEndTime - WeaponConfig.get(id).reloadTime.value)
+		elseif w.reloadEndTime > 0 and w.reloadEndTime ~= was.reloadEndTime then
+			-- A reload starts, or one that loads a round at a time starts
+			-- the next round.
+			ownReload = newReload(id, now, w.reloadEndTime - now)
 		end
 		local def = WeaponConfig.get(id)
 		local ready = def.fireMode ~= "none" and w.reloadEndTime == 0 and now >= w.equipEndTime
-		if SoundMath.dryHeard(fire and not was.fire, info.shot ~= nil, w.ammo[w.equipped], ready) then
+		if SoundMath.dryHeard(fire and not was.fire, info.shots ~= nil, w.ammo[w.equipped], ready) then
 			own("dry")
 		end
 	end
@@ -267,11 +282,11 @@ local function onTick(info: any)
 		end
 	end
 
-	local shot = info.shot
-	if shot then
-		local shotSounds = SoundConfig.Weapons[shot.weapon]
+	local shots = info.shots
+	if shots then
+		local shotSounds = SoundConfig.Weapons[shots[1].weapon]
 		if shotSounds and shotSounds.shot then
-			own(shotSounds.shot)
+			own(shotSounds.shot, nil, shotSounds.pitch) -- one sound a round, however many pellets
 		end
 	end
 end
@@ -285,15 +300,20 @@ local function onSpawn()
 	kills = 0
 end
 
-local function onVerdict(record: ClientShots.Record)
-	local v = record.verdict
-	if not v or not v.targetId then
+local function onVolley(volley: ClientShots.Volley)
+	if #volley.hits == 0 then
 		return
 	end
-	ui(if v.region == "head" then "headshot" else "hitBody")
-	if v.killed then
-		kills += 1
-		ui("kill", SoundMath.killPitch(kills))
+	local head = false
+	for _, hit in volley.hits do
+		head = head or hit.region == "head"
+	end
+	ui(if head then "headshot" else "hitBody")
+	for _, hit in volley.hits do
+		if hit.killed then
+			kills += 1
+			ui("kill", SoundMath.killPitch(kills))
+		end
 	end
 end
 
@@ -347,7 +367,13 @@ local function onFrame()
 
 		if pose.reloading and not r.reloading then
 			local weapon = WeaponConfig.Ids[pose.weapon]
-			r.reload = if weapon then newReload(weapon, renderTime) else nil
+			if weapon then
+				local def = WeaponConfig.get(weapon)
+				local perRound = def.reloadPerRound
+				r.reload = newReload(weapon, renderTime, if perRound then perRound.value else def.reloadTime.value, perRound ~= nil)
+			else
+				r.reload = nil
+			end
 		elseif r.reloading and pose.weapon ~= r.weapon then
 			-- Switched weapons mid-reload.
 			cancelReload(r.reload)
@@ -395,7 +421,7 @@ local function onShotFx(fx: any)
 		muted(sounds.shot, who, at, "buy phase")
 		return
 	end
-	GameSounds.playWorld(sounds.shot, at, who, { air = true })
+	GameSounds.playWorld(sounds.shot, at, who, { air = true, pitch = sounds.pitch })
 end
 
 -- Settings ------------------------------------------------------------------------
@@ -435,7 +461,7 @@ function GameSounds.start()
 
 	table.insert(PlayerController.tickListeners, onTick)
 	table.insert(PlayerController.spawnListeners, onSpawn)
-	table.insert(ClientShots.verdictListeners, onVerdict)
+	table.insert(ClientShots.volleyListeners, onVolley)
 	NetSim.on(Remotes.get().ShotFx, onShotFx)
 	RunService:BindToRenderStep("VFGameSounds", Enum.RenderPriority.Camera.Value + 3, onFrame)
 end

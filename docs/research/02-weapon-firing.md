@@ -101,6 +101,8 @@ difference, and the offline metrics report prints the same numbers.
 ## 4. Confirmed vs estimated, as implemented
 
 All values live in `src/shared/Weapons/WeaponConfig.luau`, each with its status and source.
+System 9 ([09-arsenal](09-arsenal.md)) added the other guns and moved several of these values onto
+the wiki's numbers; the rows below are as they stand now.
 
 | Parameter | Value | Status |
 | --- | --- | --- |
@@ -108,12 +110,11 @@ All values live in `src/shared/Weapons/WeaponConfig.luau`, each with its status 
 | Deadzone, every other weapon | 27.5% | Confirmed |
 | Fire rates, magazines, reloads, draw times, speeds, damage | table above | Community |
 | Phantom falloff boundary and body damage | 20 m, 39 then 35 | Confirmed |
-| Rifle ADS | 1.25x, fire rate x0.9 | Community |
-| Rifle ADS move speed | 76% | Estimate |
-| Sheriff ADS | 1.25x, fire rate x1.0, move 76% | Estimate |
-| Operator scoped fire rate | x1.0 | Estimate |
-| Reserve ammo | Vandal 75 (community); Phantom 60, Operator 10, Classic 36, Sheriff 24 | Estimate |
-| Knife draw time | 0.75 s | Estimate |
+| Rifle ADS | 1.25x, fire rate x0.9, move 76% | Community |
+| Sheriff | No zoom: the wiki lists no right click for it (system 2 had guessed 1.25x) | Community |
+| Operator scoped fire rate | x1.0 | Community |
+| Reserve ammo | Vandal 50 and Phantom 60 (Patch 6.11); Operator 10, Classic 36, Sheriff 24 | Confirmed (Vandal, Phantom); community |
+| Knife draw time | 0.6 s | Community |
 | Tagging | 72.5% slow (confirmed) for 0.15 s (estimate) | Mixed |
 | Health and shields | 100 + 50 heavy (25 light) | Community |
 | Hitboxes (standing, width x height x depth) | head 0.24 x 0.26 x 0.24 m centred at 1.62 m, body 0.44 x 0.64 x 0.28 m, legs 0.34 x 0.85 x 0.26 m; crouched versions blend in with the crouch | Estimate |
@@ -194,7 +195,8 @@ Roblox differences from the reference that matter here:
   how often its verdict and the client's guess agree.
 - No animation on hitboxes. Wall penetration, using each weapon's penetration class, is system 5
   ([05-wall-penetration.md](05-wall-penetration.md)).
-- Not in this system: the Classic's burst alt-fire, knife attacks, abilities, the buy phase.
+- Not in this system: knife attacks and abilities. The Classic's right click and the other guns
+  came with system 9 ([09-arsenal](09-arsenal.md)), the buy phase with system 7.
 
 ## 6. Implementation map
 

@@ -120,8 +120,9 @@ function PlayerSim.eye(s: State, cfg: any): vector
 	return s.movement.position + vector.create(0, MovementSim.eyeHeight(s.movement, cfg), 0)
 end
 
--- Advance one tick. Returns the shot fired this tick, if any.
-function PlayerSim.step(s: State, input: any, cfg: any, world: any, dt: number): WeaponSim.Shot?
+-- Advance one tick. Returns the bullets fired this tick, if any (one round's:
+-- several for a shotgun).
+function PlayerSim.step(s: State, input: any, cfg: any, world: any, dt: number): { WeaponSim.Shot }?
 	MovementSim.step(s.movement, input, cfg, PlayerSim.maxSpeed(s, cfg), world, dt)
 	local tick = s.movement.tick
 	local ctx = PlayerSim.accuracyContext(s, input.buttons, cfg, dt)

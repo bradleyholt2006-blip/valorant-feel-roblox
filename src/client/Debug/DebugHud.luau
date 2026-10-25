@@ -25,7 +25,6 @@ local MovementConfig = require(Shared.Movement.MovementConfig)
 local MovementSim = require(Shared.Movement.MovementSim)
 local JumpAnalyzer = require(Shared.Movement.JumpAnalyzer)
 local PlayerSim = require(Shared.PlayerSim)
-local WeaponSim = require(Shared.Weapons.WeaponSim)
 local Accuracy = require(Shared.Weapons.Accuracy)
 local Units = require(Shared.Units)
 
@@ -205,12 +204,11 @@ function DebugHud.start(controller: any)
 		if sim then
 			local def = PlayerSim.def(sim)
 			local w = sim.weapons
-			local scoped = w.scoped > 0 and def.ads ~= nil
 			local now = sim.movement.tick / MovementConfig.TickRate.value
-			local bullet, sway = Accuracy.next(def, w, now, 1 / MovementConfig.TickRate.value, WeaponSim.fireInterval(def, w.scoped))
+			local bullet, sway, mode = Accuracy.next(def, w, now, 1 / MovementConfig.TickRate.value)
 			local ctx = PlayerSim.accuracyContext(sim, lastInput, cfg, 1 / MovementConfig.TickRate.value)
-			local nextCone = Accuracy.cone(def, ctx, bullet, scoped)
-			local up, right = Accuracy.recoil(def, ctx, bullet, sway, scoped)
+			local nextCone = Accuracy.cone(mode.accuracy, ctx, bullet)
+			local up, right = Accuracy.recoil(mode.recoil, ctx, bullet, sway, mode.zoomed)
 			local viewport = Workspace.CurrentCamera.ViewportSize
 			local pixelsPerTan = viewport.X / 2 / math.tan(math.rad(CameraController.zoomedFov(CameraController.zoom)) / 2)
 			local cx = math.tan(math.rad(right) + CameraController.kickYaw) * pixelsPerTan
@@ -218,7 +216,7 @@ function DebugHud.start(controller: any)
 			local r = math.max(math.tan(math.rad(nextCone.radius)) * pixelsPerTan, 1)
 			cone.Size = UDim2.fromOffset(r * 2, r * 2)
 			cone.Position = UDim2.fromOffset(cx - r, cy - r)
-			local firstShot = Accuracy.cone(def, ctx, 1, scoped).radius - nextCone.movement - nextCone.landing
+			local firstShot = Accuracy.cone(mode.accuracy, ctx, 1).radius - nextCone.movement - nextCone.landing
 			ring.Color = if nextCone.radius <= firstShot + 1e-6 then Ui.GOOD elseif nextCone.movement + nextCone.landing > 0 then Ui.BAD else Ui.NEUTRAL
 			coneText = string.format("cone    %5.2f deg  bullet %.2f  %s%s", nextCone.radius, bullet, ctx.moveState, if ctx.landing then " +land" else "")
 		end
