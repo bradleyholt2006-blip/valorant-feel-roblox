@@ -29,5 +29,6 @@ require("./scoreboard")
 require("./abilities")
 require("./cloudburst")
 require("./bladestorm")
+require("./drift")
 
 H.finish()

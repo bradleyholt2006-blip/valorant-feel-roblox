@@ -27,7 +27,8 @@
 --            drop are SpikeView's, out in the world through playWorld
 --   abilities  a cast's gust or swish (system 17): yours on the Self bus,
 --            others' where they cast, both through playCast (AbilityEffects
---            says when)
+--            says when); and a glide's gusts again and again while it lasts
+--            (Drift, system 20), yours from your ticks and others' on them
 --
 -- Your steps come from your predicted ticks, others' from their poses as
 -- they are drawn (RemoteEntities), so they line up with where they're
@@ -65,7 +66,7 @@ local SoundEngine = require(script.Parent.SoundEngine)
 local GameSounds = {}
 
 local DT = 1 / MovementConfig.TickRate.value
-local F, L = SoundConfig.Footsteps, SoundConfig.Landing
+local F, L, D = SoundConfig.Footsteps, SoundConfig.Landing, SoundConfig.Drift
 local FEET = vector.create(0, 0.1, 0) -- a step sounds just above the feet
 local CHEST = vector.create(0, 1.2, 0) -- a reload at the weapon
 local DEVICE = vector.create(0, 0.4, 0) -- a plant or a defuse, low down at the spike
@@ -282,6 +283,7 @@ local lastDrawAt = -math.huge -- simulation time of the last draw sound
 local kills = 0
 local ownChannel: Channel? = nil
 local carried = false -- the spike, as of the last tick
+local ownGlideAt: number? = nil -- simulation time of your glide's last gust
 
 local function onTick(info: any)
 	local s = info.sim
@@ -380,6 +382,14 @@ local function onTick(info: any)
 		stopCue(ownChannel)
 		ownChannel = nil
 	end
+
+	-- Gliding: a gust each so often, the last left to ring out as it ends.
+	if not m.gliding then
+		ownGlideAt = nil
+	elseif ownGlideAt == nil or now - ownGlideAt >= D.every.value - 1e-9 then
+		own(D.sound, D.ownVolume.value)
+		ownGlideAt = now
+	end
 end
 
 -- Your knife swings: the whoosh, and the blade striking the level where your
@@ -408,6 +418,7 @@ local function onSpawn()
 	stopCue(ownChannel)
 	ownChannel = nil
 	carried = false
+	ownGlideAt = nil
 end
 
 local function onVolley(volley: ClientShots.Volley)
@@ -438,6 +449,7 @@ type Remote = {
 	weapon: number,
 	reload: Reload?,
 	channel: Channel?, -- a plant or a defuse under way
+	glideAt: number?, -- when their glide's last gust played
 }
 local remotes: { [number]: Remote } = {}
 
@@ -463,6 +475,7 @@ local function onFrame()
 			r.reload, r.reloading = nil, false
 			stopCue(r.channel)
 			r.channel = nil
+			r.glideAt = nil
 			continue
 		end
 		local who = RemoteEntities.nameOf(id)
@@ -541,6 +554,24 @@ local function onFrame()
 		else
 			stopCue(r.channel)
 			r.channel = nil
+		end
+
+		-- Gliding: a gust each so often, kept on them as they sink.
+		local glideAt = r.glideAt
+		if not pose.gliding then
+			r.glideAt = nil
+		elseif glideAt == nil or renderTime - glideAt >= D.every.value then
+			r.glideAt = renderTime
+			local at = pose.position + CHEST
+			if silenced then
+				muted(D.sound, who, at, "buy phase")
+			else
+				GameSounds.playWorld(D.sound, at, who, {
+					follow = function()
+						return drawnAt(id)
+					end,
+				})
+			end
 		end
 	end
 	for id, r in remotes do
@@ -675,6 +706,8 @@ function GameSounds.start()
 		SoundEngine.prepare(sound, "world", C.ability.points)
 		SoundEngine.prepare(sound, "self")
 	end
+	SoundEngine.prepare(D.sound, "world", C.ability.points)
+	SoundEngine.prepare(D.sound, "self")
 
 	table.insert(PlayerController.tickListeners, onTick)
 	table.insert(PlayerController.spawnListeners, onSpawn)

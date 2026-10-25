@@ -10,6 +10,9 @@
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
+--   * Drift's glide: for others, faint rings of air left at the waist as
+--     they sink, so the air seems to rush up past them (system 20). It comes
+--     in their pose, so it's drawn as they are
 -- Your own casts show the tick you press them (PlayerController's
 -- castListeners); others' come from the server (the Ability remote) and
 -- wait for the frame on your screen to reach them, so they line up with
@@ -38,12 +41,14 @@ local BLADE = Color3.fromRGB(150, 230, 255)
 local WAIST = 1 -- metres above the feet
 local CHEST = 1.3
 local STALE = 1 -- seconds: a cast the screen is this far past isn't shown
+local GLIDE_EVERY = 0.2 -- seconds between a glide's rings
 
 type Due = { kind: string, at: number, position: vector, direction: vector, entity: number }
 
 local folder: Folder? = nil
 local due: { Due } = {}
 local flashUntil = 0
+local glidedAt: { [number]: number } = {} -- each glider's last ring, os.clock()
 
 local function holder(): Folder
 	local f = folder
@@ -91,15 +96,17 @@ local function animate(part: BasePart, duration: number, update: (number) -> ())
 end
 
 -- A flat ring of air at `at` (metres), spreading from `from` to `to` metres
--- across over `duration`, fading as it goes.
-local function ring(at: vector, from: number, to: number, duration: number)
+-- across over `duration`, fading as it goes from `transparency` (0.5 unless
+-- given).
+local function ring(at: vector, from: number, to: number, duration: number, transparency: number?)
+	local clear = transparency or 0.5
 	-- A cylinder's axis is its X: turned up, it lies flat.
 	local cframe = CFrame.new(Units.toStuds(at)) * CFrame.Angles(0, 0, math.pi / 2)
-	local p = newPart(vector.create(0.04, from, from), cframe, 0.5, Enum.PartType.Cylinder)
+	local p = newPart(vector.create(0.04, from, from), cframe, clear, Enum.PartType.Cylinder)
 	animate(p, duration, function(k)
 		local d = from + (to - from) * k
 		p.Size = Units.toStuds(vector.create(0.04, d, d))
-		p.Transparency = 0.5 + 0.5 * k
+		p.Transparency = clear + (1 - clear) * k
 	end)
 end
 
@@ -148,6 +155,11 @@ local function storm(feet: vector)
 			p.Transparency = 0.3 + 0.7 * k * k
 		end)
 	end
+end
+
+-- A ring of a glide, at the waist of someone sinking through it.
+local function glide(feet: vector)
+	ring(feet + vector.create(0, WAIST, 0), 0.9, 1.4, 0.35, 0.8)
 end
 
 -- What a cast shows, at `feet` (metres); `own` for the local player's.
@@ -228,6 +240,26 @@ function AbilityEffects.start()
 		end
 		local left = flashUntil - os.clock()
 		stroke.Transparency = if left > 0 then 1 - 0.5 * left / 0.25 else 1
+
+		-- Others gliding, where they're drawn.
+		local clock = os.clock()
+		local gliding: { [number]: boolean } = {}
+		for _, id in RemoteEntities.ids() do
+			local pose = if RemoteEntities.isPresent(id) then RemoteEntities.sample(id, now) else nil
+			if pose and pose.alive and pose.gliding then
+				gliding[id] = true
+				local last = glidedAt[id]
+				if last == nil or clock - last >= GLIDE_EVERY then
+					glidedAt[id] = clock
+					glide(pose.position)
+				end
+			end
+		end
+		for id in glidedAt do
+			if not gliding[id] then
+				glidedAt[id] = nil
+			end
+		end
 	end)
 end
 

@@ -11,7 +11,8 @@
 -- ultimate. C and Q are basic abilities, bought a charge at a time in the
 -- buy phase. E is the signature, with a free charge every round. X is the
 -- ultimate, cast once its points are full: a point for each kill, death,
--- plant, defuse and ultimate orb.
+-- plant, defuse and ultimate orb. An agent can also have a passive, which
+-- takes no slot or key of its own: Jett's Drift (system 20).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -47,6 +48,7 @@ export type Agent = {
 	id: string,
 	name: string,
 	abilities: { string }, -- ids, by slot: C, Q, E, X
+	passive: string?, -- what the agent always has, without a key (Jett's "drift")
 }
 
 local AbilityConfig = {}
@@ -131,7 +133,7 @@ AbilityConfig.Defs = {
 } :: { [string]: AbilityDef }
 
 AbilityConfig.Agents = {
-	jett = { id = "jett", name = "Jett", abilities = { "cloudburst", "updraft", "tailwind", "bladestorm" } },
+	jett = { id = "jett", name = "Jett", abilities = { "cloudburst", "updraft", "tailwind", "bladestorm" }, passive = "drift" },
 } :: { [string]: Agent }
 
 -- Everyone plays this agent until there's an agent select.
@@ -197,6 +199,18 @@ AbilityConfig.Cloudburst = {
 AbilityConfig.BladeStorm = {
 	-- From the cast until the first knife can go.
 	windup = p(1.02, "community", BLADE .. ": 'Initial windup time' 1.02 s"),
+}
+
+-- Jett's Drift (system 20), her passive: holding jump while she falls holds
+-- her fall to a glide. The rise isn't slowed, and her movement along the
+-- ground and her aim in the air are as in any fall. Nothing public gives
+-- the glide's speed; it's ours, to be measured from public footage
+-- (20-drift.md, section 3).
+AbilityConfig.Drift = {
+	-- The fastest she falls while gliding, metres a second.
+	fallSpeed = p(2, "estimate", "Not published; ours. Time a glide from Updraft's top to the floor in a public clip"),
+	-- How quickly a faster fall slows to the glide when jump is held mid-fall.
+	brake = p(60, "estimate", "Ours, metres a second each second. Frame-count a press mid-fall in a public clip"),
 }
 
 return AbilityConfig

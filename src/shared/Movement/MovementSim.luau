@@ -15,7 +15,9 @@
 -- timings (docs/research/01-movement.md), unlike Source-engine games where
 -- it stops you far sooner. In the air it borrows from Counter-Strike
 -- instead: its air acceleration, so air strafing works as it does there, but
--- held to running speed, which is what Valorant players report.
+-- held to running speed, which is what Valorant players report. Abilities
+-- change a tick through Motion: Jett's Updraft and Tailwind (system 17) and
+-- her Drift, a glide while jump is held in a fall (system 20).
 
 export type World = {
 	-- Sweep an axis-aligned box (center, halfExtents) along delta. Returns the
@@ -54,6 +56,9 @@ export type State = {
 	jumpLatched: boolean, -- jump must be released before the next jump
 	lastJumpTick: number,
 	lastLandTick: number,
+	-- Whether the last tick's fall was held to a glide (Jett's Drift, system
+	-- 20), for the sound and the look; nothing steps from it.
+	gliding: boolean,
 }
 
 local Buttons = {
@@ -84,7 +89,12 @@ local Buttons = {
 --     player off the ground, and the keys steer as in the air
 --   * cap: the most speed along the ground kept from the last tick, before
 --     anything else this one (what's left of a dash as it ends)
-export type Motion = { dash: vector?, lift: number?, cap: number? }
+--   * glide: in the air, the fastest fall (Jett's Drift, system 20, while
+--     jump is held). A fall that would pass it this tick stops there, and
+--     one already faster slows to it at `brake` (m/s each second). Rising
+--     isn't slowed
+export type Glide = { speed: number, brake: number }
+export type Motion = { dash: vector?, lift: number?, cap: number?, glide: Glide? }
 
 -- Unreal's constants: a braking player under 10 cm/s stops dead, and a speed
 -- counts as over the limit only beyond 1% (of its square) to absorb rounding.
@@ -126,6 +136,7 @@ function MovementSim.newState(position: vector): State
 		jumpLatched = false,
 		lastJumpTick = -math.huge,
 		lastLandTick = -math.huge,
+		gliding = false,
 	}
 end
 
@@ -251,6 +262,17 @@ local function airVelocity(vel: vector, wishDir: vector, wishSpeed: number, dt: 
 		h *= limit / speed
 	end
 	return vector.create(h.x, vel.y, h.z)
+end
+
+-- A tick of falling: gravity, or with a glide (Jett's Drift) a fall held to
+-- its speed. Returns the velocity and whether the glide held it.
+local function fall(vel: vector, glide: Glide?, gravity: number, dt: number): (vector, boolean)
+	local fallen = vel - UP * (gravity * dt)
+	if not glide or fallen.y >= -glide.speed then
+		return fallen, false
+	end
+	local vy = if vel.y >= -glide.speed then -glide.speed else math.min(vel.y + glide.brake * dt, -glide.speed)
+	return vector.create(vel.x, vy, vel.z), true
 end
 
 local function clipVelocity(vel: vector, normal: vector): vector
@@ -471,6 +493,10 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	local jumpHeld = has(buttons, Buttons.Jump)
 	if not jumpHeld then
 		s.jumpLatched = false
+	elseif not s.grounded then
+		-- Held in the air (to glide, say), it has to be let go of before it
+		-- jumps again, so a landing with it held doesn't hop.
+		s.jumpLatched = true
 	end
 
 	if dash then
@@ -495,8 +521,9 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 		vel = airVelocity(vel, wishDir, airWishSpeed, dt, cfg)
 	end
 
+	local glided = false
 	if not s.grounded and not dash and not lift then
-		vel -= UP * (cfg.gravity * dt)
+		vel, glided = fall(vel, if motion then motion.glide else nil, cfg.gravity, dt)
 	end
 
 	local height = MovementSim.boxHeight(s, cfg)
@@ -527,6 +554,7 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	end
 	s.grounded = onGround
 	s.groundNormal = normal
+	s.gliding = glided and not onGround
 
 	s.position = center - UP * (height * 0.5)
 	s.velocity = vel

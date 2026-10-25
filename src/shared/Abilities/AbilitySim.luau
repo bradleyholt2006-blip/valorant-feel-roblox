@@ -20,6 +20,9 @@
 --     full, and while it lasts X draws its knives again. The knives are a
 --     weapon of their own (WeaponSim's fifth slot), which PlayerSim puts in
 --     hand: this says when, and it's over once they're gone
+-- And her passive, Drift (system 20): with jump held, a fall is held to a
+-- glide, which MovementSim does. It takes no charge, and nothing but a dash
+-- or a lift under way stops it.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -122,6 +125,12 @@ end
 
 function AbilitySim.def(s: State, slot: number): AbilityConfig.AbilityDef?
 	return AbilityConfig.abilityOf(s.agent, slot)
+end
+
+-- Whether the kit's agent has `passive` (Jett's "drift").
+function AbilitySim.hasPassive(s: State, passive: string): boolean
+	local agent = AbilityConfig.Agents[s.agent]
+	return agent ~= nil and agent.passive == passive
 end
 
 -- The slot the kit holds an ability in, if it holds it.
@@ -286,8 +295,9 @@ end
 -- The kit in a few characters, for the server to tell clients (scripted
 -- checks read it): each slot's charges and most, the ultimate's points and
 -- what they need, and what's under way at `t`, as "C0/2 Q1/1 E0/1 X3/8
--- ready", or "X0/8 storm" in Blade Storm.
-function AbilitySim.summary(s: State, t: number): string
+-- ready", or "X0/8 storm" in Blade Storm, and "glide" while `gliding` (the
+-- movement's, for Drift).
+function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
 		table.insert(parts, string.format("%s%d/%d", AbilityConfig.KEYS[slot], s.charges[slot], AbilitySim.maxCharges(s, slot)))
@@ -305,6 +315,9 @@ function AbilitySim.summary(s: State, t: number): string
 		table.insert(parts, "ready")
 	elseif t < s.readyUntil - EPS then
 		table.insert(parts, "windup")
+	end
+	if gliding then
+		table.insert(parts, "glide")
 	end
 	return table.concat(parts, " ")
 end
@@ -465,6 +478,9 @@ function AbilitySim.step(
 		motion.dash = vector.create(s.dashX, 0, s.dashZ)
 	elseif AbilitySim.lifting(s, t) then
 		motion.lift = AbilitySim.liftSpeed(cfg.gravity, dt)
+	elseif MovementSim.has(buttons, B.Jump) and AbilitySim.hasPassive(s, "drift") then
+		-- Drift: once she's falling, the fall is held to a glide.
+		motion.glide = { speed = AbilityConfig.Drift.fallSpeed.value, brake = AbilityConfig.Drift.brake.value }
 	end
 	return motion, casts
 end

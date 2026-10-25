@@ -396,6 +396,11 @@ SoundConfig.Sounds = {
 	storm = sound(0.8, 0.02, 2, {
 		asset(9116190959, "Knife Fast Scraping Draws Pull Out 17 (SFX)", 0.180, 0.2),
 	}, 0.7),
+	-- Drift (system 20): a stand-in for the glide's wind, Updraft's gust
+	-- slowed right down and quiet, played over and over (SoundConfig.Drift).
+	glide = sound(0.35, 0.08, 4, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.5),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, and a
@@ -427,6 +432,18 @@ SoundConfig.Spike = {
 	-- Once its half is saved, a defuse sounds higher: 'the audio cue given
 	-- when defusing changes to a higher pitch' (the VALORANT Wiki).
 	halfPitch = p(1.25, "estimate", "A defuse from the half, times its pitch before"),
+}
+
+-- Jett's glide (Drift, system 20). The reference's has a sound of its own,
+-- which others hear: 'Fixed a bug where Drift's passive gliding SFX was
+-- audible from the other side of Astra's Cosmic Divide' (Patch 12.04). No
+-- wind that runs on turned up in the library yet, so ours is its gust again
+-- and again for as long as the glide lasts: yours on the Self bus, and
+-- others' on them, out to the ability curve's edge.
+SoundConfig.Drift = {
+	sound = "glide",
+	every = p(0.3, "estimate", "Seconds from one gust of a glide to the next, so they run together"),
+	ownVolume = p(0.6, "estimate", "Your own glide against someone else's next to you, so it doesn't cover their steps"),
 }
 
 -- Which sounds each weapon makes, by WeaponConfig id. The library has five

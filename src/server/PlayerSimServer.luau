@@ -186,6 +186,7 @@ local function currentPose(r: Record): PlayerCodec.Pose
 		-- Defusing, the weapon is put away.
 		weapon = if r.sim.spike.channel == SpikeSim.DEFUSING then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 		channel = r.sim.spike.channel,
+		gliding = m.gliding,
 	}
 end
 

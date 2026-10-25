@@ -182,7 +182,13 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf32(c, m.groundNormal.x)
 	wf32(c, m.groundNormal.y)
 	wf32(c, m.groundNormal.z)
-	w8(c, (if m.grounded then 1 else 0) + (if m.crouched then 2 else 0) + (if m.jumpLatched then 4 else 0))
+	w8(
+		c,
+		(if m.grounded then 1 else 0)
+			+ (if m.crouched then 2 else 0)
+			+ (if m.jumpLatched then 4 else 0)
+			+ (if m.gliding then 8 else 0)
+	)
 	wf64(c, m.crouchAlpha)
 	w32(c, ago(m.tick, m.lastJumpTick))
 	w32(c, ago(m.tick, m.lastLandTick))
@@ -272,6 +278,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		grounded = bit32.band(flags, 1) ~= 0,
 		crouched = bit32.band(flags, 2) ~= 0,
 		jumpLatched = bit32.band(flags, 4) ~= 0,
+		gliding = bit32.band(flags, 8) ~= 0,
 		groundNormal = vector.create(nx, ny, nz),
 		crouchAlpha = crouchAlpha,
 		lastJumpTick = tick - jumpAgo,
@@ -406,6 +413,8 @@ export type Pose = {
 	-- Planting (1) or defusing (2) the spike, or neither (0), for the sounds
 	-- and the look (system 12).
 	channel: number,
+	-- Gliding (Jett's Drift, system 20), for the sound and the look.
+	gliding: boolean,
 }
 
 local SNAP_HEADER = 8 + 2 + 1 -- server time, sequence number, pose count
@@ -446,6 +455,7 @@ function PlayerCodec.quantizePose(pose: Pose): Pose
 		reloading = pose.reloading,
 		weapon = pose.weapon,
 		channel = pose.channel,
+		gliding = pose.gliding,
 	}
 end
 
@@ -471,6 +481,7 @@ function PlayerCodec.encodeSnapshot(serverTime: number, poses: { Pose }, seq: nu
 				+ (if pose.quiet then 4 else 0)
 				+ (if pose.reloading then 8 else 0)
 				+ 16 * math.clamp(pose.channel, 0, 3)
+				+ (if pose.gliding then 64 else 0)
 		)
 		w8(c, pose.weapon)
 	end
@@ -507,6 +518,7 @@ function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose }, number)
 			reloading = bit32.band(flags, 8) ~= 0,
 			weapon = weapon,
 			channel = bit32.extract(flags, 4, 2),
+			gliding = bit32.band(flags, 64) ~= 0,
 		})
 	end
 	return serverTime, poses, seq

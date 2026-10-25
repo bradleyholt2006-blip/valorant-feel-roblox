@@ -168,6 +168,7 @@ do
 			reloading = true,
 			weapon = WeaponConfig.IndexOf.vandal,
 			channel = 2,
+			gliding = false,
 		},
 		{
 			id = PlayerCodec.entityIdForUser(123456789012),
@@ -181,6 +182,7 @@ do
 			reloading = false,
 			weapon = 0,
 			channel = 0,
+			gliding = true,
 		},
 	}
 	local time, decoded = PlayerCodec.decodeSnapshot(PlayerCodec.encodeSnapshot(987.25, poses))
@@ -189,6 +191,7 @@ do
 		local q = PlayerCodec.quantizePose(poses[i])
 		ok = ok and d.id == poses[i].id and d.position == q.position and d.yaw == q.yaw and d.pitch == q.pitch and d.crouchAlpha == q.crouchAlpha and d.grounded == q.grounded
 		ok = ok and d.alive == q.alive and d.quiet == q.quiet and d.reloading == q.reloading and d.weapon == q.weapon and d.channel == q.channel
+		ok = ok and d.gliding == q.gliding
 	end
 	check("snapshots decode to exactly the quantised poses the server keeps", ok)
 	check("a pose carries a defuse (2) and no plant or defuse (0)", decoded[1].channel == 2 and decoded[2].channel == 0)

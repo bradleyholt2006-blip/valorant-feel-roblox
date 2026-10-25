@@ -111,7 +111,7 @@ function AbilityServer.sell(player: Player, id: string): boolean
 end
 
 -- Once a server frame: the course's refills, the ultimate's points with
--- them, and each kit told to clients.
+-- them, and each kit told to clients, with Drift's glide.
 function AbilityServer.step(now: number)
 	for _, player in Players:GetPlayers() do
 		local kit = PlayerSimServer.abilitiesOf(player)
@@ -131,7 +131,8 @@ function AbilityServer.step(now: number)
 				PlayerSimServer.markDirty(player)
 			end
 		end
-		local text = AbilitySim.summary(kit, t)
+		local sim = PlayerSimServer.getSim(player)
+		local text = AbilitySim.summary(kit, t, sim ~= nil and sim.movement.gliding)
 		if shown[player] ~= text then
 			shown[player] = text
 			player:SetAttribute(AbilityConfig.KIT_ATTRIBUTE, text)
