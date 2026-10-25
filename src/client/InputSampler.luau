@@ -58,6 +58,9 @@ InputSampler.extraButtons = 0
 -- While set (the buy menu is open), the mouse buttons are the menu's: they
 -- neither fire nor zoom.
 InputSampler.blockMouse = false
+-- Flags never sent, whatever's held: G's in gun game, whose guns can't be
+-- dropped (ArenaHud, system 23).
+InputSampler.blockButtons = 0
 
 local function flagFor(input: InputObject): number
 	for _, binding in InputSampler.Bindings do
@@ -116,7 +119,7 @@ function InputSampler.sample(): number
 			buttons = bit32.bor(buttons, binding.flag)
 		end
 	end
-	return buttons
+	return bit32.band(buttons, bit32.bnot(InputSampler.blockButtons))
 end
 
 return InputSampler

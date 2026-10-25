@@ -16,6 +16,10 @@
 -- side, waiting in line, sees the side that leads (or won) first. Tab shows
 -- it again during the vote for the next map that follows (system 22).
 --
+-- In gun game (system 23) the rows go by level, not combat score: each has
+-- the player's level where the ACS goes, and the gun of it, for both sides,
+-- where the guns go. So MATCH MVP is whoever won, on the last level.
+--
 -- Everything comes from the player attributes the server keeps (Arena), and
 -- each player's shield from what combat events have said of it. While either
 -- is on, Roblox's own player list, which Tab would open, is off.
@@ -29,6 +33,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
@@ -72,8 +77,9 @@ type Row = { frame: Frame, strip: Frame, cells: { [string]: TextLabel } }
 -- the other side.
 local MATCH_MVP, TEAM_MVP = "MATCH MVP", "TEAM MVP"
 
--- What a row shows of a player.
-type Line = { player: Player, kills: number, deaths: number, assists: number, acs: number, alive: boolean }
+-- What a row shows of a player, and what orders the rows: the combat score,
+-- or in gun game the level.
+type Line = { player: Player, kills: number, deaths: number, assists: number, acs: number, level: number, rank: number, alive: boolean }
 
 local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
@@ -84,24 +90,31 @@ local function number(player: Player, name: string): number
 	return if typeof(value) == "number" then value else 0
 end
 
--- The players on a side, best combat score first.
-local function linesOf(side: number): { Line }
+-- The players on a side, best combat score (in gun game, level, and on the
+-- same level whoever leads or won, `leader`) first.
+local function linesOf(side: number, gunGame: boolean, leader: any): { Line }
 	local out: { Line } = {}
 	for _, player in Players:GetPlayers() do
 		if player:GetAttribute(ArenaConfig.SIDE) == side then
+			local acs = MatchRules.average(number(player, MatchConfig.SCORE), number(player, MatchConfig.ROUNDS))
+			local level = number(player, GunGameConfig.LEVEL)
 			table.insert(out, {
 				player = player,
 				kills = number(player, MatchConfig.KILLS),
 				deaths = number(player, MatchConfig.DEATHS),
 				assists = number(player, MatchConfig.ASSISTS),
-				acs = MatchRules.average(number(player, MatchConfig.SCORE), number(player, MatchConfig.ROUNDS)),
+				acs = acs,
+				level = level,
+				rank = if gunGame then level else acs,
 				alive = player:GetAttribute(MatchConfig.ALIVE) ~= false,
 			})
 		end
 	end
 	table.sort(out, function(a: Line, b: Line): boolean
-		if a.acs ~= b.acs then
-			return a.acs > b.acs
+		if a.rank ~= b.rank then
+			return a.rank > b.rank
+		elseif gunGame and (a.player.UserId == leader) ~= (b.player.UserId == leader) then
+			return a.player.UserId == leader
 		elseif a.kills ~= b.kills then
 			return a.kills > b.kills
 		end
@@ -223,6 +236,14 @@ function Scoreboard.start()
 			return
 		end
 		local spike = arena:GetAttribute("Mode") == "spike"
+		local gunGame = arena:GetAttribute("Mode") == "gungame"
+		local ladder = {}
+		if gunGame then
+			local text = arena:GetAttribute("Ladder")
+			for id in string.gmatch(if typeof(text) == "string" then text else "", "[^,]+") do
+				table.insert(ladder, id)
+			end
+		end
 		local score = { arena:GetAttribute("Score1") or 0, arena:GetAttribute("Score2") or 0 }
 		local winner = arena:GetAttribute("MatchWinner")
 		local mySide = me:GetAttribute(ArenaConfig.SIDE)
@@ -249,7 +270,11 @@ function Scoreboard.start()
 			local coming = if phase == "matchOver" and arena:GetAttribute("MapVote") == true then "MAP VOTE" else "NEXT MATCH"
 			footer.Text = string.format("%s IN %d", coming, math.ceil(left))
 		else
-			local name = if not spike then "SKIRMISH" elseif format then string.upper(format.name) else "SPIKE ROUNDS"
+			local name = if gunGame
+				then "GUN GAME"
+				elseif not spike then "SKIRMISH"
+				elseif format then string.upper(format.name)
+				else "SPIKE ROUNDS"
 			title = name .. (if round > 0 then string.format("   ROUND %d", round) else "")
 		end
 		header.Text = string.format(
@@ -264,13 +289,16 @@ function Scoreboard.start()
 		-- MVPs where the guns go.
 		titles.credits.Visible = spike and not over
 		titles.loadout.Visible = not over
+		titles.acs.Text = if gunGame then "LEVEL" else "ACS"
+		titles.loadout.Text = if gunGame then "GUN" else "LOADOUT"
 
-		local lines = { linesOf(side), linesOf(other) }
+		local leader = arena:GetAttribute("Leader")
+		local lines = { linesOf(side, gunGame, leader), linesOf(other, gunGame, leader) }
 		local shown = math.clamp(math.max(#lines[1], #lines[2]), 1, ROWS)
 		-- Which table has the match's MVP: the best of the two sides' best.
 		local first, second = lines[1][1], lines[2][1]
 		local mvpTable = 1
-		if second and (not first or second.acs > first.acs or (second.acs == first.acs and other == winner)) then
+		if second and (not first or second.rank > first.rank or (second.rank == first.rank and other == winner)) then
 			mvpTable = 2
 		end
 		panel.Size = UDim2.fromOffset(WIDTH, heightFor(shown))
@@ -281,7 +309,7 @@ function Scoreboard.start()
 			local y = top + (i - 1) * (shown * (ROW_H + ROW_GAP) + SIDE_GAP)
 			-- The side's best, if they scored at all.
 			local best = sideLines[1]
-			local mvp = if over and best and best.acs > 0 then best.player else nil
+			local mvp = if over and best and best.rank > 0 then best.player else nil
 			local badge = if i == mvpTable then MATCH_MVP else TEAM_MVP
 			for r, row in rows do
 				local line = sideLines[r]
@@ -304,13 +332,18 @@ function Scoreboard.start()
 				cells.k.Text = tostring(line.kills)
 				cells.d.Text = tostring(line.deaths)
 				cells.a.Text = tostring(line.assists)
-				cells.acs.Text = tostring(line.acs)
+				cells.acs.Text = tostring(if gunGame then line.level else line.acs)
 				local credits = player:GetAttribute(if ours then MatchConfig.CREDITS else MatchConfig.START_CREDITS)
 				cells.credits.Text = if spike and not over and typeof(credits) == "number" then tostring(credits) else ""
 				cells.credits.TextColor3 = GOLD
 				if over then
 					cells.loadout.Text = if player == mvp then "<b>" .. badge .. "</b>" else ""
 					cells.loadout.TextColor3 = if badge == MATCH_MVP then GOLD else Ui.TEXT
+				elseif gunGame then
+					-- Everyone's gun is their level's, so both sides show.
+					local def = WeaponConfig.Defs[ladder[line.level] or ""]
+					cells.loadout.Text = if def then string.upper(def.name) else ""
+					cells.loadout.TextColor3 = Ui.TEXT
 				else
 					cells.loadout.Text = if ours then loadoutOf(player) else ""
 					cells.loadout.TextColor3 = Ui.TEXT

@@ -135,6 +135,14 @@ Built one system at a time:
     and after each victory screen everyone votes for the next for 15 s, clicking one of three map
     cards that each show the map's plan. The most votes wins, a tie or no votes at all is settled
     at random, and the next match starts on it - [research and design](docs/research/22-map-vote.md)
+23. **Gun game**: Counter-Strike's Arms Race played in the arena with the reference's guns, on
+    Skirmish's three maps and with the same vote between matches. Each player climbs a ladder of
+    12 guns, one kill a level, from the Vandal or the Phantom to the knife, with a gun of each kind
+    picked at random for each match. A kill on the knife's level wins the match for the killer's
+    side, or after 10 minutes whoever is furthest up, and a knife kill also knocks the one killed
+    down a level. The dead are back in 1.5 s and can't be hurt for 5 s or until they fire. Up to
+    four a side, with no buying, no abilities and no guns on the ground -
+    [research and design](docs/research/23-gun-game.md)
 
 ## Running it
 
@@ -149,8 +157,9 @@ Built one system at a time:
    left. A live server starts the arena by itself; in Studio you start on the course, and P puts
    everyone in the server in the arena: you spawn in your side's room and wait there for an
    opponent, and whoever joins goes on the side with fewer players. After each match everyone
-   votes for the next of Skirmish's three maps. P again starts the spike rounds, P again their
-   shorter Swiftplay format, and P again puts everyone back on the course.
+   votes for the next of Skirmish's three maps. P again starts gun game in the same hall, P again
+   the spike rounds, P again their shorter Swiftplay format, and P again puts everyone back on the
+   course.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
@@ -166,17 +175,20 @@ and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife 
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
 Drift). The spike rounds charge credits; the course and the arena are free. On the course a spent
 charge comes back 1.5 s after it's done, and the ultimate's points are full at every life and fill
-again 1.5 s after Blade Storm ends; in the arena every life starts with every charge.
+again 1.5 s after Blade Storm ends; in the arena every life starts with every charge, and gun
+game has no abilities.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
-Arena: P moves on through the arena, the spike rounds, Swiftplay and off (Studio or place owner
-only). In either, the buy menu and the debug keys 5-9 (below) work for anyone during the buy
-phase, and while waiting for an opponent; the debug keys stay free in the spike rounds. A new
-match in the arena puts everyone back on its starting kit (Vandal, Classic, knife, Heavy Armor);
-in the spike rounds, each half and each death leaves you the Classic and the knife, with no
-shield, and 800 credits at each half.
+Arena: P moves on through the arena, gun game, the spike rounds, Swiftplay and off (Studio or
+place owner only). In the arena and the spike rounds, the buy menu and the debug keys 5-9 (below)
+work for anyone during the buy phase, and while waiting for an opponent; the debug keys stay free
+in the spike rounds. A new match in the arena puts everyone back on its starting kit (Vandal,
+Classic, knife, Heavy Armor); in the spike rounds, each half and each death leaves you the Classic
+and the knife, with no shield, and 800 credits at each half. Gun game has neither the buy menu nor
+the debug keys: each life starts on your level's gun, the knife and Heavy Armor, a kill puts the
+next gun in your hands at once, and G does nothing, as its guns can't be dropped.
 Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (on at
 the start in Studio, off on a live server; with the next shot's cone round the crosshair, how far
 the crosshair's lines have spread and the last jump measured; G with the HUD on and the knife in
@@ -204,12 +216,16 @@ set to true presses F, `VFTestBoard` set to true or false holds the scoreboard o
 or lets it go, and `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would. Each of
 the last nine clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
-From the server, Workspace's `VFArenaMode` (`skirmish` or `spike`), `VFMatchFormat` (`standard`,
-`competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip` set true ends
-the phase under way (a buy phase, a round, the wait for the next, the victory screen or the vote;
-a Skirmish round goes to side 1). The arena's model says which of Skirmish's maps is played
-(`Map`), and during the vote the maps to pick from and their votes (`VoteMaps`, `Votes`), with
-each player's own vote as `VFMapVote`. In the spike
+From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame` or `spike`), `VFMatchFormat`
+(`standard`, `competitive` or `swiftplay`) and `VFArenaOn` choose what's played, and `VFMatchSkip`
+set true ends the phase under way (a buy phase, a round, the wait for the next, a gun game match,
+the victory screen or the vote; a Skirmish round goes to side 1, and a gun game match to whoever is
+furthest up). The arena's model says which of the arena's maps is played (`Map`), and during the
+vote the maps to pick from and their votes (`VoteMaps`, `Votes`), with each player's own vote as
+`VFMapVote`. In gun game it also has the match's guns, a level each (`Ladder`, as
+`vandal,phantom,...`), and the UserId of whoever is furthest up, or won (`Leader`), and each
+player's level is their `VFGunLevel` attribute, with `VFProtected` true while their spawn
+protection lasts. In the spike
 rounds each player's credits are their `VFCredits` attribute, and each side's losses in a row
 `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in Workspace's
 `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's record is in
@@ -227,7 +243,9 @@ cloud as parts.
 The shared simulation (movement, weapons and every gun's way of firing, the knife's swings and what
 they catch, the spike's plant, defuse and drop, spread and recoil, hitboxes, wire formats, pose
 history, render clock, move pacing, lag compensation and wall penetration), the look's maths, the
-arena's rules and its three maps, the vote for the next map, the sound's rules (footsteps, landings,
+arena's rules and its three maps, the vote for the next map, gun game (its ladders of guns, levels,
+knife kills, spawn protection, the time limit, and joining, leaving and evening the sides out in a
+match), the sound's rules (footsteps, landings,
 distance curves, walls in the way, reload parts), the settings (crosshair codes and the pixels they
 draw, sensitivity and cm/360), the spike's rules (sites, the defuse's reach, its beeps and its
 blast), the spike rounds' rules and map, the economy (what each round pays, kills, the plant, the

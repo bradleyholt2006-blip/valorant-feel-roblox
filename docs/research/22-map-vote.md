@@ -210,7 +210,8 @@ its number in the list, and the rules decide whether it counts.
 
 - **More maps.** The vote already picks three at random from more. A second map for the spike
   rounds would give them a vote too.
-- **Gun game and a Play menu.** Systems 23 and 24.
+- **A Play menu.** System 24. Gun game, system 23, is played on the same three maps with the same
+  vote after each match ([23-gun-game](23-gun-game.md)).
 
 ## 6. Implementation map
 

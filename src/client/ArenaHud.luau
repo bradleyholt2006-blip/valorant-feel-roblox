@@ -9,9 +9,14 @@
 -- has the round's clock, which gives way to the spike once it's planted, and
 -- whether your side attacks or defends; the buy phase says what's at stake
 -- (match point, overtime) and your credits, and a round's end says how it was
--- won and when the sides swap. P asks the server for the next of: the arena,
--- the spike rounds, the spike rounds in Swiftplay's format, and off (Studio
--- or the place owner).
+-- won and when the sides swap. In gun game (system 23) the top bar has each
+-- side's highest level either side of the match's clock, your level under
+-- it, and under the bar the gun you're on and the next; moving up or being
+-- knifed down shows in the middle for a moment, as does your spawn
+-- protection, the gun you move up to is drawn as it's handed over, and G
+-- does nothing, as the guns can't be dropped. P asks the server for the next
+-- of: the arena, gun game, the spike rounds, the spike rounds in Swiftplay's
+-- format, and off (Studio or the place owner).
 --
 -- Either side of the top bar, who's alive (system 16): a tile for each
 -- player, yours on the left and theirs on the right, as the reference's
@@ -27,12 +32,17 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
+local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
+local PlayerSim = require(Shared.PlayerSim)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
+local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Remotes = require(Shared.Net.Remotes)
 
 local Ui = require(script.Parent.Debug.Ui)
+local InputSampler = require(script.Parent.InputSampler)
+local PlayerController = require(script.Parent.PlayerController)
 local Visuals = require(script.Parent.Visuals)
 
 local ArenaHud = {}
@@ -120,14 +130,50 @@ end
 
 -- What P asks for next.
 local function nextMode(): string
+	local mode = Workspace:GetAttribute(ArenaConfig.MODE)
 	if Workspace:GetAttribute(ArenaConfig.ON) ~= true then
 		return "skirmish"
-	elseif Workspace:GetAttribute(ArenaConfig.MODE) ~= "spike" then
+	elseif mode == "gungame" then
 		return MatchConfig.DEFAULT_FORMAT
+	elseif mode ~= "spike" then
+		return "gungame"
 	elseif Workspace:GetAttribute(MatchConfig.FORMAT) == MatchConfig.DEFAULT_FORMAT then
 		return "swiftplay"
 	end
 	return "off"
+end
+
+local function split(text: any): { string }
+	local out = {}
+	if typeof(text) == "string" then
+		for item in string.gmatch(text, "[^,]+") do
+			table.insert(out, item)
+		end
+	end
+	return out
+end
+
+-- A gun's name as the HUD has it.
+local function gunName(id: string?): string
+	local def = if id then WeaponConfig.Defs[id] else nil
+	return if def then string.upper(def.name) else ""
+end
+
+-- Seconds a level's change shows in the middle (ours).
+local FLASH_TIME = 1.5
+
+-- Draws the gun `id` from its slot: at once if it's there already, or once
+-- the server's handed it over.
+local function draw(id: string)
+	local def = WeaponConfig.Defs[id]
+	local sim = PlayerController.sim
+	if not def then
+		return
+	elseif sim and sim.weapons.loadout[def.slot] == id then
+		PlayerController.selectSlot(def.slot)
+	else
+		PlayerController.drawWhenGiven(def.slot, id)
+	end
 end
 
 function ArenaHud.start()
@@ -170,6 +216,17 @@ function ArenaHud.start()
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
 
+	-- Gun game's: the gun you're on and the next, under the bar.
+	local guns = Ui.label(gui, {
+		Size = UDim2.fromOffset(480, 18),
+		Position = UDim2.new(0.5, -240, 0, 70),
+		TextSize = 14,
+		Font = Enum.Font.GothamBold,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextStrokeTransparency = 0.5,
+		Visible = false,
+	})
+
 	local banner = Ui.label(centre, {
 		Size = UDim2.fromOffset(800, 44),
 		Position = UDim2.new(0.5, -400, 0.22, 0),
@@ -197,15 +254,24 @@ function ArenaHud.start()
 
 	local arena = Workspace:WaitForChild(ArenaConfig.MODEL)
 	local me = Players.LocalPlayer
+	-- Gun game: your level as last seen, in which phase, and what its last
+	-- change shows until when.
+	local seenLevel: number? = nil
+	local seenPhase: any = nil
+	local flash = { title = "", sub = "", colour = Ui.TEXT, untilTime = 0 }
 
 	RunService.RenderStepped:Connect(function()
 		local on = Workspace:GetAttribute(ArenaConfig.ON) == true
+		-- Gun game's guns can't be dropped, as in Arms Race: G does nothing.
+		InputSampler.blockButtons = if on and Workspace:GetAttribute(ArenaConfig.MODE) == "gungame" then PlayerSim.Buttons.Drop else 0
 		local phase = arena:GetAttribute("Phase")
 		local side = me:GetAttribute(ArenaConfig.SIDE)
 		if not on or typeof(phase) ~= "string" or typeof(side) ~= "number" then
 			bar.Visible = false
+			guns.Visible = false
 			banner.Visible = false
 			subtitle.Visible = false
+			seenLevel, seenPhase = nil, nil
 			for _, row in tiles do
 				for _, tile in row do
 					tile.frame.Visible = false
@@ -225,6 +291,11 @@ function ArenaHud.start()
 		local format = if typeof(formatKey) == "string" then MatchConfig.Formats[formatKey] else nil
 		local attackers = arena:GetAttribute("Attackers")
 		local spike = arena:GetAttribute("Mode") == "spike" and format ~= nil and typeof(attackers) == "number"
+		local gunGame = arena:GetAttribute("Mode") == "gungame"
+		guns.Visible = false
+		if not gunGame then
+			seenLevel, seenPhase = nil, nil
+		end
 
 		local width = if spike then 280 else 240
 		bar.Size = UDim2.fromOffset(width, 58)
@@ -287,6 +358,47 @@ function ArenaHud.start()
 				if MatchRules.swapsAfter(format, roundNumber) then
 					sub ..= "   SWITCHING SIDES"
 				end
+			end
+		elseif gunGame then
+			local ladder = split(arena:GetAttribute("Ladder"))
+			local level = me:GetAttribute(GunGameConfig.LEVEL)
+			local levelNow: number? = if typeof(level) == "number" then level else nil
+			local playing = phase == "live" or phase == "waiting"
+			round.Text = if phase == "live" then clock(left) else "GUN GAME"
+			target.Text = if levelNow then string.format("LEVEL %d OF %d", levelNow, #ladder) else string.format("%d LEVELS", #ladder)
+			if levelNow and playing then
+				local gun, nextGun = ladder[levelNow], ladder[levelNow + 1]
+				guns.Visible = true
+				guns.Text = string.format('<font color="#%s">%s</font>', Ui.hex(GOLD), gunName(gun))
+					.. (if nextGun then "   NEXT  " .. gunName(nextGun) else "   A KILL WINS")
+			end
+			-- A change of level in a match under way: up, with the next gun
+			-- drawn as it comes, or down to a knife.
+			local before = seenLevel
+			if levelNow and before and levelNow ~= before and phase == "live" and seenPhase == "live" then
+				if levelNow > before then
+					local gun = ladder[levelNow]
+					flash.title = string.format("LEVEL %d", levelNow)
+					flash.sub = if levelNow == #ladder then "THE KNIFE: A KILL WINS THE MATCH" else gunName(gun)
+					flash.colour = ally
+					if gun and PlayerController.alive then
+						draw(gun)
+					end
+				else
+					flash.title = "KNIFED"
+					flash.sub = string.format("Down to level %d", levelNow)
+					flash.colour = enemy
+				end
+				flash.untilTime = os.clock() + FLASH_TIME
+			end
+			seenLevel, seenPhase = levelNow, phase
+			if phase == "waiting" then
+				title = "WAITING FOR AN OPPONENT"
+				sub = "Gun game: a kill with each gun moves you on to the next, and a knife kill on the last level wins"
+			elseif phase == "live" and os.clock() < flash.untilTime then
+				title, sub, colour = flash.title, flash.sub, flash.colour
+			elseif phase == "live" and me:GetAttribute(GunGameConfig.PROTECTED) == true then
+				sub = "SPAWN PROTECTION   until you fire"
 			end
 		else
 			round.Text = if roundNumber > 0 then string.format("ROUND %d", roundNumber) else "ARENA"

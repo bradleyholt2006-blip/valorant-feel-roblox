@@ -136,13 +136,16 @@ local function stakes(arena: Instance?): MatchRules.Payout?
 	return MatchRules.payout(format, round, if typeof(streak) == "number" then streak else 0)
 end
 
--- Whether buying is open for us now, as the server will see it.
+-- Whether buying is open for us now, as the server will see it: never in
+-- gun game, whose guns come with its levels (system 23).
 function BuyMenu.canBuy(): boolean
 	if not PlayerController.alive then
 		return false
 	end
 	if Workspace:GetAttribute(ArenaConfig.ON) ~= true then
 		return true
+	elseif Workspace:GetAttribute(ArenaConfig.MODE) == "gungame" then
+		return false
 	end
 	local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 	local phase = arena and arena:GetAttribute("Phase")

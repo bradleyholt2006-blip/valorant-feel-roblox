@@ -16,6 +16,8 @@
 --     plant and a defuse; and kills bring the signature's charge back
 --     (Jett's: two). A kill with a single Blade Storm knife brings all its
 --     knives back (PlayerSim.killedWith, system 19)
+--   * in gun game (system 23) there are none: every life starts with an
+--     empty kit, and nothing fills it
 -- Each cast is told to every client (the Ability remote) for its sound and
 -- look, when the frame on their screen reaches it, but Blade Storm's knives
 -- drawn again, which others see in hand. The caster's own client has
@@ -46,6 +48,9 @@ AbilityServer.economy = false
 -- Whether a spent charge comes back by itself, and the ultimate's points
 -- fill (the course).
 AbilityServer.refill = true
+-- Whether there are no abilities at all (gun game, as the reference's
+-- Escalation has 'No Agent-specific abilities').
+AbilityServer.off = false
 -- How long the course waits, once nothing's under way, before it fills a
 -- kit again (ours).
 AbilityServer.REFILL_DELAY = 1.5
@@ -157,9 +162,12 @@ function AbilityServer.start()
 		Remotes.get().Ability:FireAllClients(event)
 	end)
 	-- Every life on the course and in Skirmish starts with every charge,
-	-- and on the course with the ultimate's points full.
+	-- and on the course with the ultimate's points full; in gun game, with
+	-- none.
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
-		if not AbilityServer.economy then
+		if AbilityServer.off then
+			change(player, AbilitySim.empty)
+		elseif not AbilityServer.economy then
 			change(player, function(kit)
 				AbilitySim.fill(kit, AbilityServer.refill)
 			end)
@@ -168,13 +176,13 @@ function AbilityServer.start()
 	table.insert(CombatServer.killListeners, function(attacker, victim, weapon, mode)
 		local by = if attacker then attacker.player else nil
 		local sim = if by and by ~= victim.player then PlayerSimServer.getSim(by) else nil
-		if by and sim then
+		if by and sim and not AbilityServer.off then
 			PlayerSim.killedWith(sim, weapon, mode)
 			PlayerSimServer.markDirty(by)
 		end
 	end)
 	table.insert(PlayerSimServer.deathListeners, function(player: Player)
-		change(player, AbilitySim.died)
+		change(player, if AbilityServer.off then AbilitySim.empty else AbilitySim.died)
 	end)
 	table.insert(SpikeServer.objectiveListeners, function(player: Player, kind: "planted" | "defused")
 		local points = AbilityConfig.Points

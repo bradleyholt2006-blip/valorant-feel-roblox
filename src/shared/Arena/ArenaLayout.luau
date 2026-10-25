@@ -72,6 +72,7 @@ ArenaLayout.Plan = {
 	wallThickness = p(1, "estimate", "Metres; outside the floor plan, so it changes nothing inside"),
 	barrierThickness = p(0.2, "estimate", "Metres. The spawn barrier across each room's opening during the buy phase"),
 	spotSpacing = p(2, "estimate", "Metres between the two spawn spots in each room (2v2)"),
+	rowSpacing = p(1.2, "estimate", "Metres back from the room's first two spots to two more, for gun game's four a side (system 23)"),
 }
 
 -- Cover is either low enough to see over standing, with your head showing
@@ -204,15 +205,18 @@ function ArenaLayout.room(side: number): Rect
 	return { min = back, max = mouth }
 end
 
--- Each side's spawn spots, the first for whoever joined that side first.
+-- Each side's spawn spots, the first for whoever joined that side first:
+-- two across the room's middle, and two more behind them for gun game.
 function ArenaLayout.spots(side: number): { Spot }
 	local _, l, _, rd = ArenaLayout.size()
 	local half = P.spotSpacing.value / 2
 	local out: { Spot } = {}
-	for _, x in { -half, half } do
-		local feet = vector.create(x, 0, -l / 2 - rd / 2)
-		-- Side 1 looks down +z (yaw pi); side 2, turned round, down -z.
-		table.insert(out, if side == 1 then { feet = feet, yaw = math.pi } else { feet = ArenaLayout.turned(feet), yaw = 0 })
+	for _, z in { -l / 2 - rd / 2, -l / 2 - rd / 2 - P.rowSpacing.value } do
+		for _, x in { -half, half } do
+			local feet = vector.create(x, 0, z)
+			-- Side 1 looks down +z (yaw pi); side 2, turned round, down -z.
+			table.insert(out, if side == 1 then { feet = feet, yaw = math.pi } else { feet = ArenaLayout.turned(feet), yaw = 0 })
+		end
 	end
 	return out
 end
