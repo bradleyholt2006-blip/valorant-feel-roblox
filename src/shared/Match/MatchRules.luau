@@ -17,6 +17,12 @@
 -- With nobody on one of the sides it waits, and anyone who dies comes back
 -- after respawnTime.
 --
+-- Who plays on which side is Roster's (system 21): someone who joins in a
+-- buy phase, or while waiting for an opponent, spawns at once, and anyone
+-- joining later waits for the next round to start; once both sides are full
+-- they wait in line for a place, and the sides are evened out before each
+-- round.
+--
 -- And the economy (system 14): each member's credits, and each side's
 -- losses in a row. Everyone starts each half on Credits.start; each round
 -- after pays, as it starts, for how the last one went: a win, a loss (more
@@ -25,51 +31,36 @@
 -- cap; and every overtime round starts everyone on Credits.overtime.
 -- Swiftplay pays its own schedule in place of the win and the loss.
 --
--- And the match's record (system 16), for the scoreboard: each member's
--- kills, deaths and assists, and their combat score (MatchConfig.Score):
--- damage to enemies, kills by how many enemies were alive, and more for
--- each kill after the first in a round. An assist is damage to an enemy a
--- teammate then kills in the same life. Everything counts in a round and
--- after it, not while waiting for an opponent or once the match is won. And
--- what each member had as the round started, which the other side sees.
+-- And the match's record (system 16), for the scoreboard, which Roster
+-- keeps: each member's kills, deaths and assists, and their combat score
+-- (MatchConfig.Score): damage to enemies, kills by how many enemies were
+-- alive, and more for each kill after the first in a round. Everything
+-- counts in a round and after it, not while waiting for an opponent or once
+-- the match is won. And what each member had as the round started, which
+-- the other side sees.
 --
 -- No Roblox APIs here: the server says who joins, leaves and dies, when the
 -- spike is planted, defused or goes off, and what time it is, and spawns
 -- whoever these functions return, dead or alive.
 
 local MatchConfig = require("./MatchConfig")
+local Roster = require("./Roster")
 
 local R = MatchConfig.Rules
 local C = MatchConfig.Credits
-local S = MatchConfig.Score
 
 export type Phase = "waiting" | "buy" | "live" | "planted" | "roundOver" | "matchOver"
 -- How a round was won.
 export type Reason = "eliminated" | "detonated" | "defused" | "time"
 
-export type Member = {
-	side: number,
-	order: number, -- when they joined, for their spawn spot
-	alive: boolean,
-	respawnAt: number?, -- while waiting: when they come back
-	credits: number,
-	-- What they had as the round started, after its pay: what the other
-	-- side's scoreboard shows of them (system 16).
-	startCredits: number,
-	-- The match's record (system 16).
-	kills: number,
-	deaths: number,
-	assists: number,
-	score: number, -- combat score, every round so far
-	rounds: number, -- rounds played to their end, for its average
-	roundKills: number, -- kills this round, for the multikill bonus
-}
+export type Member = Roster.Member
 
 export type State = {
 	format: MatchConfig.Format,
 	formatKey: string, -- its key in MatchConfig.Formats
 	phase: Phase,
 	members: { [number]: Member },
+	queue: { number }, -- who's waiting for a place (Roster)
 	joins: number,
 	score: { number }, -- by side
 	match: number, -- counts the matches, from 1, so the server knows a new one has started
@@ -86,7 +77,7 @@ export type State = {
 	spikePlanted: boolean, -- in the round being played, or just played
 	-- By member: who on the other side has damaged their life under way,
 	-- for the assists when they die (system 16).
-	hurt: { [number]: { [number]: boolean } },
+	hurt: Roster.Hurt,
 	version: number, -- goes up on every change, so the server knows to tell clients
 }
 
@@ -107,6 +98,7 @@ function MatchRules.new(format: string?): State
 		formatKey = key,
 		phase = "waiting",
 		members = {},
+		queue = {},
 		joins = 0,
 		score = { 0, 0 },
 		match = 1,
@@ -141,20 +133,7 @@ function MatchRules.overtime(format: MatchConfig.Format, round: number): boolean
 	return round > 2 * format.halfRounds.value
 end
 
-local function count(s: State, side: number, aliveOnly: boolean): number
-	local n = 0
-	for _, m in s.members do
-		if m.side == side and (m.alive or not aliveOnly) then
-			n += 1
-		end
-	end
-	return n
-end
-
--- Both sides have someone on them.
-local function manned(s: State): boolean
-	return count(s, 1, false) > 0 and count(s, 2, false) > 0
-end
+local count, manned = Roster.count, Roster.manned
 
 -- Whether the sides swap after round `round`: at the half, and after each
 -- round of a win-by-two overtime.
@@ -219,18 +198,13 @@ local function champion(s: State): number?
 	return MatchRules.winner(s.format, s.score[1], s.score[2])
 end
 
-local function clearRecord(m: Member)
-	m.kills, m.deaths, m.assists = 0, 0, 0
-	m.score, m.rounds, m.roundKills = 0, 0, 0
-end
-
 local function newMatch(s: State)
 	s.score = { 0, 0 }
 	s.match += 1
 	s.round = 0
 	s.matchWinner = nil
 	for _, m in s.members do
-		clearRecord(m)
+		Roster.clearRecord(m)
 	end
 	table.clear(s.hurt)
 end
@@ -293,12 +267,14 @@ local function payFor(s: State)
 end
 
 -- Everyone comes back, in their side's spawn, for the next round's buy
--- phase.
+-- phase, paid for the last round on the side they played it for, and then
+-- with the sides evened out.
 local function startRound(s: State, now: number): { number }
 	if s.phase == "matchOver" then
 		newMatch(s)
 	end
 	payFor(s)
+	Roster.balance(s)
 	s.round += 1
 	s.attackers = MatchRules.attackersIn(s.format, s.round)
 	s.phase = "buy"
@@ -313,6 +289,7 @@ local function startRound(s: State, now: number): { number }
 		m.respawnAt = nil
 		m.startCredits = m.credits
 		m.roundKills = 0
+		m.played = true
 		table.insert(out, id)
 	end
 	table.sort(out)
@@ -324,9 +301,7 @@ local function endRound(s: State, winner: number, reason: Reason, now: number)
 	s.roundWinner = winner
 	s.reason = reason
 	s.score[winner] += 1
-	for _, m in s.members do
-		m.rounds += 1
-	end
+	Roster.roundPlayed(s)
 	local won = champion(s)
 	if won then
 		s.phase = "matchOver"
@@ -376,44 +351,49 @@ local function wait(s: State, now: number)
 	s.version += 1
 end
 
--- Someone joins, on the side with fewer players (side 1 when level), with
--- Credits.start, or overtime's credits in overtime. Returns who to spawn
--- now: them, or everyone when they make the numbers for a round to start.
-function MatchRules.join(s: State, id: number, now: number): { number }
-	if s.members[id] then
+-- Puts someone on a side with a place (Roster), with Credits.start, or
+-- overtime's credits in overtime. Returns who to spawn now: them, in a buy
+-- phase or while waiting for an opponent, or everyone when they make the
+-- numbers for a round to start. Later they're down until the next round
+-- starts, and with both sides full they're in line.
+local function admit(s: State, id: number, now: number): { number }
+	local credits = if MatchRules.overtime(s.format, s.round) then C.overtime.value else C.start.value
+	local spawnsNow = s.phase == "waiting" or s.phase == "buy"
+	local m = Roster.add(s, id, R.sideSize.value, spawnsNow, credits)
+	s.version += 1
+	if not m then
 		return {}
 	end
-	s.joins += 1
-	local side = if count(s, 2, false) < count(s, 1, false) then 2 else 1
-	local credits = if MatchRules.overtime(s.format, s.round) then C.overtime.value else C.start.value
-	s.members[id] = {
-		side = side,
-		order = s.joins,
-		alive = true,
-		respawnAt = nil,
-		credits = credits,
-		startCredits = credits,
-		kills = 0,
-		deaths = 0,
-		assists = 0,
-		score = 0,
-		rounds = 0,
-		roundKills = 0,
-	}
-	s.version += 1
 	if s.phase == "waiting" and manned(s) then
 		return startRound(s, now)
 	end
-	return { id }
+	return if spawnsNow then { id } else {}
 end
 
-function MatchRules.leave(s: State, id: number, now: number)
-	if not s.members[id] then
-		return
+-- Someone joins. Returns who to spawn now.
+function MatchRules.join(s: State, id: number, now: number): { number }
+	if s.members[id] or Roster.placeInLine(s, id) then
+		return {}
 	end
-	s.members[id] = nil
-	s.hurt[id] = nil
+	return admit(s, id, now)
+end
+
+-- Someone leaves, playing or in line. A place they leave goes to whoever's
+-- first in line, as if they'd just joined. Returns who to spawn now.
+function MatchRules.leave(s: State, id: number, now: number): { number }
+	local playing = s.members[id] ~= nil
+	if not Roster.remove(s, id) then
+		return {}
+	end
 	s.version += 1
+	if not playing then
+		return {}
+	end
+	local out: { number } = {}
+	local nextInLine = Roster.nextInLine(s, R.sideSize.value)
+	if nextInLine then
+		out = admit(s, nextInLine, now)
+	end
 	if not manned(s) then
 		if s.phase ~= "waiting" then
 			wait(s, now)
@@ -422,6 +402,7 @@ function MatchRules.leave(s: State, id: number, now: number)
 		-- They may have been the last one standing on their side.
 		checkElimination(s, now)
 	end
+	return out
 end
 
 -- Whether what happens now goes in the match's record: in a round or after
@@ -430,34 +411,18 @@ local function recorded(s: State): boolean
 	return s.phase ~= "waiting" and s.phase ~= "matchOver"
 end
 
--- What a kill scores, with `alive` enemies alive for it, the one killed
--- among them.
-function MatchRules.killScore(alive: number): number
-	return S.kill[math.clamp(alive, 1, #S.kill)].value
-end
-
--- A combat score averaged over the rounds played (at least one), to the
--- nearest point: the scoreboard's ACS.
-function MatchRules.average(score: number, rounds: number): number
-	return math.floor(score / math.max(rounds, 1) + 0.5)
-end
+-- What a kill scores, and a combat score averaged over the rounds played:
+-- Roster's.
+MatchRules.killScore = Roster.killScore
+MatchRules.average = Roster.average
 
 -- Someone has been damaged by someone else, `amount` taken from their health
 -- and shield. Damage to an enemy scores, and is an assist if a teammate of
 -- the attacker then kills them in the same life.
 function MatchRules.damaged(s: State, attacker: number, victim: number, amount: number)
-	local by, m = s.members[attacker], s.members[victim]
-	if not by or not m or by.side == m.side or amount <= 0 or not recorded(s) then
-		return
+	if recorded(s) and Roster.damaged(s, attacker, victim, amount) then
+		s.version += 1
 	end
-	by.score += amount * S.damage.value
-	local hurt = s.hurt[victim]
-	if not hurt then
-		hurt = {}
-		s.hurt[victim] = hurt
-	end
-	hurt[attacker] = true
-	s.version += 1
 end
 
 -- Someone has died, killed by `killer` if anyone: a kill of someone on the
@@ -475,22 +440,7 @@ function MatchRules.died(s: State, id: number, now: number, killer: number?)
 		give(by, C.kill.value)
 	end
 	if recorded(s) then
-		m.deaths += 1
-		if by and by.side ~= m.side then
-			by.kills += 1
-			by.roundKills += 1
-			local multi = if by.roundKills > 1 then S.multiKill.value else 0
-			by.score += MatchRules.killScore(count(s, m.side, true) + 1) + multi
-			local hurt = s.hurt[id]
-			if hurt then
-				for other in hurt do
-					local helper = s.members[other]
-					if other ~= killer and helper and helper.side == by.side then
-						helper.assists += 1
-					end
-				end
-			end
-		end
+		Roster.recordDeath(s, id, killer)
 	end
 	s.hurt[id] = nil
 	s.version += 1
@@ -576,10 +526,7 @@ function MatchRules.step(s: State, now: number): { number }
 	return {}
 end
 
-function MatchRules.sideOf(s: State, id: number): number?
-	local m = s.members[id]
-	return if m then m.side else nil
-end
+MatchRules.sideOf = Roster.sideOf
 
 -- Whether someone's side attacks this round.
 function MatchRules.attacking(s: State, id: number): boolean
@@ -587,21 +534,8 @@ function MatchRules.attacking(s: State, id: number): boolean
 	return m ~= nil and m.side == s.attackers
 end
 
--- Which of their side's spawn spots someone takes: 1 for the first on that
--- side, 2 for the next, and so on.
-function MatchRules.spotOf(s: State, id: number): number?
-	local m = s.members[id]
-	if not m then
-		return nil
-	end
-	local n = 1
-	for _, other in s.members do
-		if other.side == m.side and other.order < m.order then
-			n += 1
-		end
-	end
-	return n
-end
+-- Which of their side's spawn spots someone takes (Roster).
+MatchRules.spotOf = Roster.spotOf
 
 -- The spawn barriers hold everyone in during the buy phase.
 function MatchRules.barriersUp(s: State): boolean

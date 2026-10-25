@@ -122,6 +122,14 @@ Built one system at a time:
     The rise, a dash and your speed along the ground are left alone, and you can shoot and cast as
     in any fall. Others hear a soft run of gusts and see rings of air left behind you as you sink -
     [research and design](docs/research/20-drift.md)
+21. **Matches that never stop**: a live server plays from the moment it starts, Skirmish for now,
+    so whoever joins drops into a match under way. They go on the side with fewer players: in a
+    buy phase they spawn at once, and later they watch a teammate until the next round, switching
+    with the mouse buttons. Past two a side (five in the spike rounds) they wait in line for a
+    place, and the sides are evened out before each round. Skirmish keeps the same record as the
+    spike rounds, and each match ends on a 10-second victory screen with everyone's kills, deaths,
+    assists and combat score and the MVPs, before the next starts on the same server -
+    [research and design](docs/research/21-drop-in.md)
 
 ## Running it
 
@@ -133,8 +141,9 @@ Built one system at a time:
    behind. In a place made from the Baseplate template, delete its `Baseplate` and
    `SpawnLocation` first.
 4. The arena is built beside the course, off to its right, and the spike rounds' map off to its
-   left. P puts everyone in the server in the arena: you spawn in your side's room and wait there
-   for an opponent, and anyone who joins plays for the other side. P again starts the spike
+   left. A live server starts the arena by itself; in Studio you start on the course, and P puts
+   everyone in the server in the arena: you spawn in your side's room and wait there for an
+   opponent, and whoever joins goes on the side with fewer players. P again starts the spike
    rounds, P again their shorter Swiftplay format, and P again puts everyone back on the course.
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
@@ -143,8 +152,9 @@ Controls: WASD, Shift walk, Ctrl crouch, Space jump, mouse 1 fire, mouse 2 zoom 
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
-during the buy phase and while waiting for an opponent), Tab held the scoreboard (the spike
-rounds), C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
+during the buy phase and while waiting for an opponent), Tab held the scoreboard (the arena and
+the spike rounds), mouse 1 and 2, while you're down in either, the next or the last teammate to watch,
+C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
 Drift). The spike rounds charge credits; the course and the arena are free. On the course a spent
@@ -160,12 +170,13 @@ phase, and while waiting for an opponent; the debug keys stay free in the spike 
 match in the arena puts everyone back on its starting kit (Vandal, Classic, knife, Heavy Armor);
 in the spike rounds, each half and each death leaves you the Classic and the knife, with no
 shield, and 800 credits at each half.
-Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (with the next
-shot's cone round the crosshair, how far the crosshair's lines have spread and the last jump
-measured; G with the HUD on and the knife in hand shows the server ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
-CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot, 5-9 give
-Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only). F7 and F8 are left
-alone because Studio takes them for Start and Run.
+Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (on at
+the start in Studio, off on a live server; with the next shot's cone round the crosshair, how far
+the crosshair's lines have spread and the last jump measured; G with the HUD on and the knife in
+hand shows the server ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears
+its stops), F6 record CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray
+plot, 5-9 give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only). F7 and
+F8 are left alone because Studio takes them for Start and Run.
 In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, U Network Buffering,
 K rewind cap 140 / 200 / 0 ms (0 is no lag compensation); its motion line measures how evenly the
 player or dummy nearest the crosshair moves.
@@ -191,8 +202,9 @@ the spike rounds' phase under way (a buy phase, a round or the wait for the next
 rounds each player's credits are their `VFCredits` attribute, and each side's losses in a row
 `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in Workspace's
 `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's record is in
-their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds` and `VFStartCredits`
-in the spike rounds, and `VFAlive` and `VFLoadout` in either. Each player's ability kit is their
+their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`, `VFAlive` and
+`VFLoadout` in either, and `VFStartCredits` in the spike rounds. `VFInLine` is a player's place in
+line while both sides are full. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
 what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide), and
 `VFTestBuy` set to `updraft` buys a charge. Where a player's last Cloudburst burst is their
@@ -210,7 +222,8 @@ cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast),
 rounds' rules and map, the economy (what each round pays, kills, the plant, the cap, what a
 purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the dead
 drop, walking over one and the one in view), the match's record (the combat score, kills,
-deaths, assists and the average), the ability kit (charges through rounds, halves, kills and
+deaths, assists and the average), who plays on which side (dropping in, the line and evening the
+sides out), the ability kit (charges through rounds, halves, kills and
 deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire), Cloudburst
 (the throw, its flight, its curve and what stops it, and the cloud's life), Blade Storm (the
 cast, single throws and the burst, the kills that bring the knives back, swapping, and what ends

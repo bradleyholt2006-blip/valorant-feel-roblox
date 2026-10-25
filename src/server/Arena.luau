@@ -39,6 +39,17 @@
 -- what was bought, and each round gives the signature its free charge. In
 -- Skirmish every life has every charge.
 --
+-- Matches that never stop (system 21): a live server plays from the moment
+-- it starts, Skirmish unless the place's VFArenaMode says otherwise, so
+-- whoever joins drops into a match under way, and one match follows another
+-- after the victory screen. Studio starts on the course, the practice range,
+-- unless the place's VFArenaOn says otherwise. Who plays on which side is
+-- Roster's: someone joining mid-round waits for the next round, anyone over
+-- the mode's team size waits in line for a place (ArenaConfig.LINE), and
+-- the sides are evened out before each round, so players move between teams
+-- here as the rules move them. In either mode every player has a record
+-- this match, for the scoreboard and the victory screen.
+--
 -- P (Studio or the place owner) moves on through the arena, the spike rounds
 -- in the standard format, the spike rounds in Swiftplay's, and off. So do
 -- Workspace's attributes, set from the server, which is how scripted checks
@@ -49,6 +60,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Teams = game:GetService("Teams")
 local Workspace = game:GetService("Workspace")
 
@@ -59,6 +71,7 @@ local ArenaRules = require(Shared.Arena.ArenaRules)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchMap = require(Shared.Match.MatchMap)
 local MatchRules = require(Shared.Match.MatchRules)
+local Roster = require(Shared.Match.Roster)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
@@ -257,6 +270,7 @@ local RECORD = {
 	MatchConfig.ROUNDS,
 	MatchConfig.ALIVE,
 	MatchConfig.LOADOUT,
+	ArenaConfig.LINE,
 }
 
 local function playerFor(id: number): Player?
@@ -304,6 +318,23 @@ local function spawn(ids: { number })
 	end
 end
 
+-- Puts each player on their side's team, or on none while they wait in line
+-- or nothing is played, as the rules have them now: the sides are evened
+-- out between rounds, and a place in line opens when someone leaves.
+local function seat(sides: Roster.Sides?)
+	for _, player in Players:GetPlayers() do
+		local id = player.UserId
+		local side = if sides then Roster.sideOf(sides, id) else nil
+		local team = if side then teams[side] else nil
+		if player.Team ~= team then
+			player.Team = team
+		end
+		player.Neutral = team == nil
+		player:SetAttribute(ArenaConfig.SIDE, side)
+		player:SetAttribute(ArenaConfig.LINE, if sides then Roster.placeInLine(sides, id) else nil)
+	end
+end
+
 -- Tells clients the phase and the score, moves the barriers, and tells the
 -- spike who attacks and whether it can be planted, when they've changed.
 local function publish()
@@ -313,9 +344,9 @@ local function publish()
 		return
 	end
 	published = version
+	local state = s or m
 	local root = model
 	if root then
-		local state = s or m
 		root:SetAttribute("Mode", mode)
 		root:SetAttribute("Phase", if state then state.phase else nil)
 		root:SetAttribute("Round", if state then state.round else nil)
@@ -333,26 +364,24 @@ local function publish()
 		root:SetAttribute("Streak1", if m then m.streak[1] else nil)
 		root:SetAttribute("Streak2", if m then m.streak[2] else nil)
 	end
-	if s then
-		for id, member in s.members do
+	-- Everyone's team, and the record of everyone playing.
+	seat(state)
+	local members: { [number]: Roster.Member }? = if s then s.members elseif m then m.members else nil
+	if members then
+		for id, member in members do
 			local player = playerFor(id)
-			if player then
-				player:SetAttribute(MatchConfig.ALIVE, member.alive)
+			if not player then
+				continue
 			end
-		end
-	end
-	if m then
-		for id, member in m.members do
-			local player = playerFor(id)
-			if player then
-				player:SetAttribute(MatchConfig.ALIVE, member.alive)
+			player:SetAttribute(MatchConfig.ALIVE, member.alive)
+			player:SetAttribute(MatchConfig.KILLS, member.kills)
+			player:SetAttribute(MatchConfig.DEATHS, member.deaths)
+			player:SetAttribute(MatchConfig.ASSISTS, member.assists)
+			player:SetAttribute(MatchConfig.SCORE, member.score)
+			player:SetAttribute(MatchConfig.ROUNDS, member.rounds)
+			if m then
 				player:SetAttribute(MatchConfig.CREDITS, member.credits)
 				player:SetAttribute(MatchConfig.START_CREDITS, member.startCredits)
-				player:SetAttribute(MatchConfig.KILLS, member.kills)
-				player:SetAttribute(MatchConfig.DEATHS, member.deaths)
-				player:SetAttribute(MatchConfig.ASSISTS, member.assists)
-				player:SetAttribute(MatchConfig.SCORE, member.score)
-				player:SetAttribute(MatchConfig.ROUNDS, member.rounds)
 			end
 		end
 	end
@@ -395,24 +424,33 @@ local function roundStarted()
 	end
 end
 
+-- Someone joins what's played, or leaves it: their team, and whoever spawns.
 local function join(player: Player)
 	local id = player.UserId
 	local ids: { number }
-	local side: number?
 	local s, m = skirmish, match
 	if s then
 		ids = ArenaRules.join(s, id, now())
-		side = ArenaRules.sideOf(s, id)
 	elseif m then
 		ids = MatchRules.join(m, id, now())
-		side = MatchRules.sideOf(m, id)
 	else
 		return
 	end
-	if side then
-		player.Team = teams[side]
-		player.Neutral = false
-		player:SetAttribute(ArenaConfig.SIDE, side)
+	publish()
+	roundStarted()
+	spawn(ids)
+end
+
+local function leave(player: Player)
+	local id = player.UserId
+	local ids: { number }
+	local s, m = skirmish, match
+	if s then
+		ids = ArenaRules.leave(s, id, now())
+	elseif m then
+		ids = MatchRules.leave(m, id, now())
+	else
+		return
 	end
 	publish()
 	roundStarted()
@@ -576,6 +614,9 @@ function Arena.step(time: number)
 end
 
 function Arena.start()
+	-- On from the start on a live server; in Studio as the place has it, off
+	-- unless it says otherwise. It starts once everything below is set up.
+	local on = Workspace:GetAttribute(ArenaConfig.ON) == true or not RunService:IsStudio()
 	Workspace:SetAttribute(ArenaConfig.ON, false)
 	if Workspace:GetAttribute(ArenaConfig.MODE) == nil then
 		Workspace:SetAttribute(ArenaConfig.MODE, "skirmish")
@@ -657,19 +698,24 @@ function Arena.start()
 		publish()
 		return paid
 	end
-	-- Every hit between players goes in the spike rounds' record.
+	-- Every hit between players goes in the record.
 	table.insert(CombatServer.damageListeners, function(attacker, victim, amount: number)
-		local m = match
+		local s, m = skirmish, match
 		local by = if attacker then attacker.player else nil
 		local hurt = victim.player
-		if m and by and hurt then
+		if not by or not hurt then
+			return
+		end
+		if s then
+			ArenaRules.damaged(s, by.UserId, hurt.UserId, amount)
+		elseif m then
 			MatchRules.damaged(m, by.UserId, hurt.UserId, amount)
 		end
 	end)
 	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
 		local s, m = skirmish, match
 		if s then
-			ArenaRules.died(s, player.UserId, now())
+			ArenaRules.died(s, player.UserId, now(), if killer then killer.UserId else nil)
 			publish()
 		elseif m then
 			MatchRules.died(m, player.UserId, now(), if killer then killer.UserId else nil)
@@ -684,15 +730,10 @@ function Arena.start()
 		queued[player] = nil
 		kitMatch[player] = nil
 		loadouts[player] = nil
-		local s, m = skirmish, match
-		if s then
-			ArenaRules.leave(s, player.UserId, now())
-			publish()
-		elseif m then
-			MatchRules.leave(m, player.UserId, now())
-			publish()
-		end
+		leave(player)
 	end)
+
+	Workspace:SetAttribute(ArenaConfig.ON, on)
 end
 
 return Arena

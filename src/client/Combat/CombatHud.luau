@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
@@ -20,6 +21,7 @@ local Units = require(Shared.Units)
 
 local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
+local Spectate = require(script.Parent.Parent.Spectate)
 local ClientShots = require(script.Parent.ClientShots)
 local Ui = require(script.Parent.Parent.Debug.Ui)
 
@@ -223,7 +225,10 @@ function CombatHud.start()
 		local regen = kind and kind.regen ~= nil
 		local worn = kind and (hp.shield > 0 or (regen and hp.pool > 0))
 		shieldKind.Text = if not kind or not worn then "" elseif regen then string.format("REGEN  %d LEFT", RemoteEntities.points(hp.pool)) else kind.name:upper()
-		dead.Visible = not alive and sim ~= nil
+		-- In rounds you play again from the next one, and once you're
+		-- watching a teammate, their name has the screen (Spectate).
+		dead.Visible = not alive and sim ~= nil and Spectate.watching == nil
+		dead.Text = if Workspace:GetAttribute(ArenaConfig.ON) == true then "ELIMINATED" else "ELIMINATED - respawning"
 
 		local zoom = 1
 		if sim then

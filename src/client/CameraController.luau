@@ -96,4 +96,14 @@ function CameraController.render(eyeStuds: Vector3, zoom: number?)
 	camera.CFrame = CFrame.new(eyeStuds) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
 end
 
+-- Looks out of someone else's eyes (Spectate): from `eyeStuds`, at their
+-- yaw and pitch, unzoomed. Your own aim is left as it is.
+function CameraController.lookFrom(eyeStuds: Vector3, yaw: number, pitch: number)
+	local camera = Workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.FieldOfView = verticalFov(CameraController.fieldOfView, camera.ViewportSize)
+	local clamped = math.clamp(pitch, -MAX_PITCH, MAX_PITCH)
+	camera.CFrame = CFrame.new(eyeStuds) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(clamped, 0, 0)
+end
+
 return CameraController

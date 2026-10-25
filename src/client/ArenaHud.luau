@@ -3,13 +3,13 @@
 -- is on: at the top, your side's score in the ally colour and the other
 -- side's in the enemy colour, with the round between them, like the
 -- reference's top bar; and in the middle, the buy phase's countdown and how a
--- round and the match ended. In the spike rounds the top bar also has the
--- round's clock, which gives way to the spike once it's planted, and whether
--- your side attacks or defends; the buy phase says what's at stake (match
--- point, overtime) and your credits, and a round's end says how it was won
--- and when the sides swap. P asks the server for the next of: the arena, the
--- spike rounds, the spike rounds in Swiftplay's format, and off (Studio or
--- the place owner).
+-- round ended (the match's end is the victory screen's, Scoreboard's). In the
+-- spike rounds the top bar also has the round's clock, which gives way to the
+-- spike once it's planted, and whether your side attacks or defends; the buy
+-- phase says what's at stake (match point, overtime) and your credits, and a
+-- round's end says how it was won and when the sides swap. P asks the server
+-- for the next of: the arena, the spike rounds, the spike rounds in
+-- Swiftplay's format, and off (Studio or the place owner).
 --
 -- Either side of the top bar, who's alive (system 16): a tile for each
 -- player, yours on the left and theirs on the right, as the reference's
@@ -301,16 +301,8 @@ function ArenaHud.start()
 			end
 		end
 		if phase == "matchOver" then
-			local won = arena:GetAttribute("MatchWinner") == side
-			title = if won then "VICTORY" else "DEFEAT"
-			colour = if won then ally else enemy
-			sub = string.format(
-				'<font color="#%s">%d</font>  -  <font color="#%s">%d</font>   a new match starts shortly',
-				Ui.hex(ally),
-				score[side],
-				Ui.hex(enemy),
-				score[other]
-			)
+			-- The victory screen (Scoreboard) has it.
+			title, sub = "", ""
 		end
 		banner.Visible = title ~= ""
 		banner.Text = title
