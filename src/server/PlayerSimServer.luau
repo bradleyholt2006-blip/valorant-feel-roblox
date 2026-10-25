@@ -40,6 +40,7 @@ local MovePacer = require(Shared.Net.MovePacer)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
+local StepTracker = require(Shared.Audio.StepTracker)
 
 local Entities = require(script.Parent.Entities)
 local Tuning = require(script.Parent.Tuning)
@@ -58,6 +59,7 @@ type Record = {
 	sim: PlayerSim.State,
 	inputs: InputQueue.Queue<PlayerCodec.WireInput>,
 	lastSeq: number,
+	buttons: number, -- of the last input run, for the sound others hear
 	ackDirty: boolean,
 	yaw: number,
 	pitch: number,
@@ -108,7 +110,7 @@ end
 
 -- The player's pose as the simulation has it now.
 local function currentPose(r: Record): PlayerCodec.Pose
-	local m = r.sim.movement
+	local m, w = r.sim.movement, r.sim.weapons
 	return {
 		id = r.entity.id,
 		position = m.position,
@@ -117,6 +119,9 @@ local function currentPose(r: Record): PlayerCodec.Pose
 		crouchAlpha = m.crouchAlpha,
 		grounded = m.grounded,
 		alive = true,
+		quiet = StepTracker.isQuiet(r.buttons, m.crouched),
+		reloading = WeaponSim.isReloading(w),
+		weapon = WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 	}
 end
 
@@ -152,6 +157,7 @@ local function onCharacter(r: Record, character: Model)
 	local feet = if point then point.feet else Units.toMetres(root.Position - Vector3.new(0, r.rootOffset, 0))
 	r.spawnFeet = feet + vector.create(0, 0.05, 0)
 	r.lastSeq += InputQueue.LIFE_GAP
+	r.buttons = 0
 	character:SetAttribute(CharacterRig.FIRST_SEQ, r.lastSeq + 1)
 	if point then
 		r.yaw, r.pitch = point.yaw, 0
@@ -219,6 +225,7 @@ local function onPlayerAdded(player: Player)
 		sim = PlayerSim.new(vector.create(0, 5, 0)),
 		inputs = InputQueue.new(),
 		lastSeq = 0,
+		buttons = 0,
 		ackDirty = false,
 		yaw = 0,
 		pitch = 0,
@@ -293,6 +300,7 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 			continue
 		end
 		r.lastSeq = input.seq
+		r.buttons = input.buttons
 		r.yaw = input.yaw
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
 		local shot = PlayerSim.step(r.sim, input, cfg, world, DT)

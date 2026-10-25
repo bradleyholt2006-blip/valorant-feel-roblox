@@ -75,6 +75,9 @@ local function blend(a: PlayerCodec.Pose, b: PlayerCodec.Pose, t: number): Playe
 		crouchAlpha = a.crouchAlpha + (b.crouchAlpha - a.crouchAlpha) * t,
 		grounded = b.grounded,
 		alive = b.alive,
+		quiet = b.quiet,
+		reloading = b.reloading,
+		weapon = b.weapon,
 	}
 end
 

@@ -39,7 +39,18 @@ local function rng(seed: number): () -> number
 end
 
 local function pose(id: number, x: number, yaw: number?, crouch: number?): PlayerCodec.Pose
-	return { id = id, position = vector.create(x, 0, -10), yaw = yaw or 0, pitch = 0, crouchAlpha = crouch or 0, grounded = true, alive = true }
+	return {
+		id = id,
+		position = vector.create(x, 0, -10),
+		yaw = yaw or 0,
+		pitch = 0,
+		crouchAlpha = crouch or 0,
+		grounded = true,
+		alive = true,
+		quiet = false,
+		reloading = false,
+		weapon = 0,
+	}
 end
 
 local function pct(n: number, d: number): string
@@ -210,6 +221,9 @@ do
 			crouchAlpha = r(),
 			grounded = true,
 			alive = true,
+			quiet = false,
+			reloading = false,
+			weapon = 0,
 		})
 		LagCompensation.record(server, t, { p })
 		local _, decoded = PlayerCodec.decodeSnapshot(PlayerCodec.encodeSnapshot(t, { p }, k))
@@ -307,7 +321,18 @@ local function simulate(case: NetCase): NetResult
 	local pacer = MovePacer.new()
 	local function targetPose(): PlayerCodec.Pose
 		local m = target.movement
-		return { id = TARGET_ID, position = m.position, yaw = math.pi, pitch = 0, crouchAlpha = m.crouchAlpha, grounded = m.grounded, alive = true }
+		return {
+			id = TARGET_ID,
+			position = m.position,
+			yaw = math.pi,
+			pitch = 0,
+			crouchAlpha = m.crouchAlpha,
+			grounded = m.grounded,
+			alive = true,
+			quiet = false,
+			reloading = false,
+			weapon = 0,
+		}
 	end
 	local history = LagCompensation.new()
 	local seen = PoseHistory.new()

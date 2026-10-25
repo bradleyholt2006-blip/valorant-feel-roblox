@@ -16,5 +16,6 @@ require("./pacing")
 require("./penetration")
 require("./visuals")
 require("./arena")
+require("./sound")
 
 H.finish()

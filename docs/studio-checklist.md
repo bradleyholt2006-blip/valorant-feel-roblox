@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the seven research
+Studio can show. It goes through every "Known gaps to check in Studio" item in the eight research
 docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes a little over an hour. Doing it in parts is fine; keep the order.
+It takes about an hour and a quarter. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -26,22 +26,25 @@ Fill in the results block at the end of this page and reply with it, plus:
 2. Install Rojo 7.x and its Studio plugin, run `rojo serve` in this repository and connect from
    the plugin.
 3. Open the Output window (View tab, Output).
-4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and section 10 needs one
-   and then two.
+4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 and 11
+   need one and then two. Section 11 needs headphones.
 
 | Key | What it does |
 | --- | --- |
-| F2 | Labs, one press each: Weapon Lab, Spray Lab, Hit Reg Lab, off |
+| F2 | Labs, one press each: Weapon Lab, Spray Lab, Hit Reg Lab, Sound Lab, off |
 | F3 | HUD panel (on at the start) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
 | G | Ghost box where the server has you (while the HUD is on) |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
+| [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
+| Y | Practice dummies' footsteps on and off (while the Sound Lab is open; off at the start) |
+| H | The Sound Lab's rings on the floor on and off |
 | F10 | Hitbox and wall overlay |
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
 | N | The next enemy outline colour |
 | P | The arena on and off |
-| Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops while it's open |
+| Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
 | 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
 
@@ -412,6 +415,61 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   themselves. Players 1 and 3 see each other with a faint blue outline, and their shots pass
   through each other without hurting. North loses a round only once both of its players are down.
 
+## 11. Sound
+
+From [08-sound.md](research/08-sound.md). Put headphones on, stop the game and press Play (F5) for
+one player, on the course. Open the Sound Lab (F2 four times). Its `last sounds` list shows each
+sound as it plays: whose it was, how far away, what was in the way, and why it wasn't heard when
+it wasn't.
+
+- **N1 Loading.** Within 10 s of spawning, the lab's output section reads
+  `voices playing 0, loaded N of N`, with nothing still loading. **Send:** the line, if anything is
+  still loading after 10 s, and any audio errors in the Output window.
+- **N2 Your steps.** Run (W). You hear your own steps quietly, about three a second, and the lab's
+  `your steps` line reads `heard within 20 m` in red, with a white ring of that size on the floor
+  at each step. Hold Shift: the steps stop and the line reads `silent (walking or crouching)`.
+  Crouching is silent too, and so is standing still.
+- **N3 Jumps and landings.** Jump on the spot: a soft rustle as you leave the ground and a thud as
+  you land. Jump up onto the 0.50 m red jump box: that landing is the softer one, which nobody else
+  hears. Step off it onto the floor: the heard thud again.
+- **N4 Shots.** Fire each weapon (4 to 8 give the Vandal, Phantom, Operator, Sheriff and Classic).
+  Each has its own sound. The Phantom's is the quietest and dullest, and the Operator's the
+  biggest. Hold fire with the Vandal: each shot is distinct and none is cut into a click.
+  **Send:** any shot that sounds too loud or too quiet next to the others, and any sound at all
+  that doesn't sound like what it's for (the [table of sounds](research/08-sound.md) says what
+  each one is).
+- **N5 Reloads and draws.** Fire a few shots and press R. The reload plays in parts as it goes, a
+  magazine out, a magazine in and a bolt or slide, the last one about as the ammo refills; the
+  Sheriff's opens and closes its cylinder, and the Operator works its bolt. Press R again and
+  switch weapons halfway through: the reload stops at once. Every switch plays a draw sound, and
+  the knife's is a blade.
+- **N6 Dry fire.** Empty a magazine and keep clicking without reloading: one dry click per click.
+- **N7 Hits.** Shoot a dummy in the body: a thud. In the head: a sharper, higher hit. Kill one: the
+  kill sound as well. Kill several in one life: each kill sound is a little higher than the last,
+  up to the fifth, and after you die it starts low again.
+- **N8 Dummies' steps.** Press Y. The strafing dummy 15 m ahead starts making running steps, heard
+  from where it is, with a blue ring at each one. The one at 30 m isn't heard: its steps show as
+  `not heard: out of range`, with grey rings. Walk back from the 15 m one until the lab shows its
+  steps at more than 20 m: they stop being heard there, and up to the edge they stay about as loud
+  as close up. Press Y again to turn them off.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9. Turn the
+arena on (P in window 1), keep the Sound Lab open in window 1, and play through a buy phase.
+
+- **N9 Buy phase.** While the barriers are up, window 1 hears nothing player 2 does: their steps,
+  shots and reloads show as `not heard: buy phase`. Once the barriers go, they're heard.
+- **N10 Direction and walls.** Player 2 runs round player 1 in the hall. Player 1 hears each step
+  from the side it's on, and nothing while player 2 walks (Shift) or crouches. Player 2 runs behind
+  the middle block: their steps sound duller, and the lab shows `walls` with a lower cutoff. Player
+  1's own steps, while both run, don't cover player 2's.
+- **N11 Their shots and reloads.** Player 2 fires from the far end of the hall: player 1 hears it
+  from there. Player 2 reloads within 15 m: player 1 hears the parts from where player 2 stands.
+  Further away, nothing.
+- **N12 Voice chat.** With voice chat on, no sound is heard twice.
+- **N13 Muting for tests.** In the server window, select player 1 under Players and add a boolean
+  attribute `VFTestMute`, ticked. Player 1 hears nothing, the lab shows `MUTED (VFTestMute)`, and
+  the meters still move when player 1 fires. Untick it and the sound comes back.
+
 ## Results
 
 ```
@@ -435,6 +493,10 @@ A2 arena: builds clean / something overlaps it (what); the hall feels too big / 
 A4 P while running: max ___ mm
 A8 round restart, on the player who was alive: max ___ mm
 A9 first to 10: VICTORY / DEFEAT, then a new match at 0-0: yes / no (what happened)
+N1 sounds loaded ___ of ___ (still loading after 10 s: ___)
+N4 too loud: ___; too quiet: ___
+N8 the 15 m strafer stops being heard at ___ m
+N10 steps behind the middle block sound duller: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -474,3 +536,9 @@ Didn't look right (IDs and what you saw):
 | 07 | The top bar and the banner follow the rounds on both screens | A5, A8, A9, A10 |
 | 07 | P turns it on and off, and off puts everyone back on the course | A4, A11 |
 | 07 | Whether 19 m feels right | A2 |
+| 08 | Every sound loads and plays, from the right place, at a sensible volume next to the others, and sounds like what it stands for | N1, N4, N5, N7 |
+| 08 | Others' steps sound where they're drawn and stop at 20 m; walking, crouching and a crate landing are silent | N3, N8, N10 |
+| 08 | Walls muffle, and the filter doesn't click when a sound starts | N10 |
+| 08 | Nothing is heard twice with voice chat on | N12 |
+| 08 | Your own steps don't cover anyone else's | N10 |
+| 08 | The buy phase is silent from the other side | N9 |
