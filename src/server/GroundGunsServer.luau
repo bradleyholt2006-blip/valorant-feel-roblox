@@ -41,6 +41,9 @@ local GroundGunsServer = {}
 
 -- Whether the dead drop their gun (the spike rounds).
 GroundGunsServer.dropOnDeath = false
+-- Whether a gun let go of with G goes down on the ground. In gun game
+-- (system 23) it doesn't: Arena hands it straight back.
+GroundGunsServer.drops = true
 
 local P = GroundGuns.Params
 -- A gun let go of with no ground this far below has fallen out of the world.
@@ -111,6 +114,9 @@ end
 -- G: thrown a little ahead of the feet, stopped short of a wall, landing
 -- where it falls.
 local function onDrop(player: Player, dropped: WeaponSim.Dropped, feet: vector, yaw: number)
+	if not GroundGunsServer.drops then
+		return
+	end
 	ShopServer.forget(player, dropped.slot)
 	local dir = vector.create(-math.sin(yaw), 0, -math.cos(yaw))
 	local from = feet + HAND

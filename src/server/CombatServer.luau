@@ -70,6 +70,9 @@ CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, numbe
 -- WeaponSim.Shot's; nil for a swing or the blast), before the death
 -- listeners.
 CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity, string, string?) -> () }
+-- Whether an entity can't be hurt now (gun game's spawn protection, system
+-- 23): shots and swings go through it, as through a teammate.
+CombatServer.protected = nil :: ((Entities.Entity) -> boolean)?
 
 local level = RobloxLevel.new()
 local history = LagCompensation.new()
@@ -215,7 +218,13 @@ local function rewindFor(attacker: Entities.Entity, viewTime: number): (LagCompe
 	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
 	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
 		local entity = Entities.get(id)
-		return id ~= attacker.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil and not teammates(attacker, entity)
+		local protected = CombatServer.protected
+		return id ~= attacker.id
+			and entity ~= nil
+			and entity.health.alive
+			and entity.pose() ~= nil
+			and not teammates(attacker, entity)
+			and not (protected and protected(entity))
 	end)
 	return rewind, rewound
 end

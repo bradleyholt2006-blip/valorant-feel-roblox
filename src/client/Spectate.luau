@@ -92,14 +92,15 @@ local function viewOf(player: Player): View?
 	return { eye = Units.toStuds(pose.position + vector.create(0, eye, 0)), yaw = pose.yaw, pitch = pose.pitch }
 end
 
--- When you play next, as the line under the name says it.
-local function whenYouPlay(phase: any): string
+-- When you play next, as the line under the name says it. Gun game has no
+-- rounds: the dead come back in a moment (system 23).
+local function whenYouPlay(phase: any, mode: any): string
 	local line = me:GetAttribute(ArenaConfig.LINE)
 	if typeof(line) == "number" then
 		return string.format("You're %s in line: you play once a place opens", ordinal(line))
 	elseif me:GetAttribute(MatchConfig.ALIVE) == true then
 		return "" -- spawning now
-	elseif phase == "waiting" then
+	elseif phase == "waiting" or mode == "gungame" then
 		return "You come back in a moment"
 	end
 	return "You play from the next round"
@@ -169,7 +170,7 @@ function Spectate.start()
 		-- The victory screen (Scoreboard) has the end of a match, and the vote
 		-- for the next map (VoteScreen) what follows it.
 		local over = phase == "matchOver" or phase == "vote"
-		local text = whenYouPlay(phase)
+		local text = whenYouPlay(phase, if arena then arena:GetAttribute("Mode") else nil)
 		if target and #list > 1 then
 			text ..= (if text ~= "" then "     " else "") .. "LEFT / RIGHT CLICK  switch"
 		end

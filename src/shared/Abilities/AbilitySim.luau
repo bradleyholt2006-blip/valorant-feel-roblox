@@ -171,6 +171,18 @@ function AbilitySim.reset(s: State)
 	AbilitySim.newHalf(s)
 end
 
+-- No abilities at all: no charges, no points, and nothing under way (gun
+-- game, system 23).
+function AbilitySim.empty(s: State)
+	for slot = C, X do
+		s.charges[slot] = 0
+	end
+	s.regained = 0
+	s.kills = 0
+	s.points = 0
+	AbilitySim.settle(s)
+end
+
 -- Each round: charges that came back by recharge go, and the signature has
 -- at least its free charges. Unused charges carry over.
 function AbilitySim.newRound(s: State)

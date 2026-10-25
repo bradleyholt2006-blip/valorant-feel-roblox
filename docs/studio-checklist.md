@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-two
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-three
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, section 25 three and then one, and section 26 two.
+   one and then two, section 25 three and then one, and sections 26 and 27 two.
 
 | Key | What it does |
 | --- | --- |
@@ -36,7 +36,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F3 | HUD panel (on at the start in Studio, off on a live server) |
 | F4 | Counter-Strafe Lab |
 | F6 | Record movement to a CSV in the Output window |
-| G | Drops the gun or the spike in hand; with the knife in hand and the HUD on, the ghost box where the server has you |
+| G | Drops the gun or the spike in hand (not in gun game); with the knife in hand and the HUD on, the ghost box where the server has you |
 | F | Picks up the gun on the ground you're looking at, swapping it for yours |
 | Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
 | [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
@@ -45,7 +45,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F10 | Hitbox and wall overlay |
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
 | N | The next enemy outline colour |
-| P | The next of: the arena (Skirmish), the spike rounds, the spike rounds in Swiftplay's format, and off |
+| P | The next of: the arena (Skirmish), gun game, the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
 | Click a map | During the vote for the next map, after a match in the arena: votes for it, or moves your vote to it |
@@ -55,9 +55,9 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
-| B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting) |
+| B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game) |
 | O | The settings menu: your sensitivity and crosshair |
-| 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
+| 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
 
 Every gun is in the buy menu. A gun can also come from an attribute, which is how scripted checks
@@ -1435,6 +1435,44 @@ Start a Local Server with 2 players, as in section 9, and press P once in window
   the buy phase names it, the cover is that map's with nothing of the last map's left, and the
   mouse turns the view again.
 
+## 27. Gun game
+
+From [23-gun-game.md](research/23-gun-game.md). A quick play of what changed, with two players.
+`workspace:SetAttribute("VFMatchSkip", true)` in the server's command bar ends a gun game match as
+if its time were up, so whoever's furthest up wins.
+
+Start a Local Server with 2 players, as in section 9, and press P twice in window 1 (Skirmish,
+then gun game).
+
+- **GG1 The start.** The Output says `[VF] Arena on: gun game, Skirmish A`, `B` or `C`, and both
+  players spawn in their rooms with no barriers up. The top bar has `10:00` counting down between
+  each side's level, 1 and 1, with `LEVEL 1 OF 12` under it, and under the bar the gun you hold in
+  gold and the next: `VANDAL   NEXT  PHANTOM`, or the other way round. You hold that gun, with
+  the knife on 3 and nothing on 2. B opens no buy menu, the keys 5 to 9 give nothing, C, Q, E and
+  X cast nothing, and G does nothing.
+- **GG2 A kill.** Each player fires once, into the floor. Player 2 goes to the opening of player
+  1's room and kills player 1. In window 2, `LEVEL 2` and the gun's name show in the middle for a
+  moment, the gun in hand changes to it at once, the line under the bar moves on to it and the next,
+  and your side's number on the top bar reads 2. Hold Tab in window 1: `GUN GAME` at the top, a
+  LEVEL column with 2 for player 2 and 1 for you, and a GUN column with each player's gun, player
+  2's too.
+- **GG3 Spawn protection.** Player 1 comes back 1.5 s later in their room, on level 1's gun, with
+  `SPAWN PROTECTION   until you fire` in the middle of window 1. Player 2, still at the opening,
+  shoots player 1 at once: in window 2 player 1 is drawn as a force field, and the label over them
+  stays at `100 + 50`. Then player 1 fires once: the line goes, player 1 looks solid again in
+  window 2, and player 2's next shot hurts. **Send:** a screenshot of window 2 with player 1 as a
+  force field.
+- **GG4 A knife kill.** Player 1 kills player 2 (player 1 to level 2). Player 2 comes back, and
+  with player 1 standing still, presses 3 and stabs player 1 in the back with the right button.
+  Window 1 shows `KNIFED` and `Down to level 1` in the middle, and window 2 `LEVEL 3` with the gun
+  of it, which is drawn in place of the knife.
+- **GG5 The end.** Run `VFMatchSkip` once in the server's command bar. Player 2, on level 3, wins:
+  `VICTORY` in window 2 and `DEFEAT` in window 1, the LEVEL column with 3 and 1, `MATCH MVP` in
+  gold on player 2, `TEAM MVP` on player 1, and `MAP VOTE IN 10` under it. **Send:** a screenshot.
+- **GG6 The next match.** At 0 the vote comes up, as in O3; vote or let it run out. Then both
+  players spawn for a new match on the map with the votes, on level 1, at `10:00`. In the Explorer,
+  `Workspace.VFArena`'s `Ladder` lists the new match's guns, most likely not the last match's.
+
 ## Results
 
 ```
@@ -1519,6 +1557,10 @@ F4 MATCH MVP on ___, TEAM MVP on ___; the countdown started at ___
 O1 the first map: ___
 O4 the outline and the count moved with each click: yes / no (what)
 O5 the next match on: ___; anything of the last map's cover left: yes / no (what)
+GG1 the first two guns: ___ then ___; anything that did work of B, 5 to 9, C, Q, E, X and G: ___
+GG3 player 1 a force field: yes / no; their label stayed at 100 + 50: yes / no
+GG4 in player 2's hands after the knife kill: ___
+GG5 MATCH MVP on ___, TEAM MVP on ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1663,3 +1705,9 @@ Didn't look right (IDs and what you saw):
 | 22 | Each map's cover builds where it should, with nothing left over from the last | O1, O5 |
 | 22 | The vote shows by itself after the victory screen: three cards, a click votes and outlines the card, and the counts and the time change for everyone | O2, O3, O4 |
 | 22 | The next match starts on the winner, with the map's name in the buy phase | O1, O5 |
+| 23 | P reaches gun game after Skirmish, and everyone spawns on level 1's gun with the knife: the top bar shows the levels and the clock, and under it the gun and the next | GG1 |
+| 23 | A kill puts the next gun in the killer's hands at once, with `LEVEL 2` and its name in the middle | GG2 |
+| 23 | A knife kill knocks the one killed down a level, with `KNIFED` on their screen | GG4 |
+| 23 | A respawn is a force field to others and can't be hurt, until it fires | GG3 |
+| 23 | A match's end: the victory screen goes by level, with MATCH MVP on the winner, then the vote, and the next match starts on the map voted for, with a new ladder | GG5, GG6 |
+| 23 | No buy menu, no abilities, and G does nothing | GG1 |

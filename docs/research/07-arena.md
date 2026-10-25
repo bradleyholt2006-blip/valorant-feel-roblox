@@ -307,6 +307,12 @@ map checks (inside the hall, the same from either end, room to move, no sightlin
 rooms) run on every map. The server builds the cover of the map being played, chosen by the vote
 after each match ([22-map-vote](22-map-vote.md)).
 
+### Gun game
+
+System 23 plays gun game in the same hall, on the same maps and with the same vote, up to four a
+side: each room has two more spawn spots, 1.2 m behind its first two, and no barriers go up, as
+there's no buy phase ([23-gun-game](23-gun-game.md)).
+
 ## 6. Implementation map
 
 | File | Role |

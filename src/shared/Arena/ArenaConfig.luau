@@ -26,10 +26,10 @@ ArenaConfig.MODEL = "VFArena"
 ArenaConfig.ON = "VFArenaOn"
 ArenaConfig.SIDE = "VFArenaSide"
 -- Workspace's attribute for what's played while it's on: "skirmish", here on
--- Skirmish A, B or C (system 22), or "spike", the rounds played for the
--- spike (system 13) on their own map, in the format Workspace's
--- MatchConfig.FORMAT names. Either way the arena's model carries the state
--- of play.
+-- Skirmish A, B or C (system 22), "gungame", gun game on the same maps
+-- (system 23, GunGameConfig), or "spike", the rounds played for the spike
+-- (system 13) on their own map, in the format Workspace's MatchConfig.FORMAT
+-- names. Whichever it is, the arena's model carries the state of play.
 ArenaConfig.MODE = "VFArenaMode"
 -- Each player's attribute for where they stand in line, while both sides
 -- are full: 1 for the next to play (system 21).

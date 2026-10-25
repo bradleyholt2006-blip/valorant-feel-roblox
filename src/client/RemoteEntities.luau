@@ -20,6 +20,9 @@
 --
 -- Where each entity is drawn every frame also goes into a MotionMeter, for
 -- the Hit Reg Lab's motion line.
+--
+-- A player whose spawn protection is on in gun game (system 23) is drawn as
+-- a force field, since shots go through them.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -35,6 +38,7 @@ local NetConfig = require(Shared.Net.NetConfig)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
+local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local Health = require(Shared.Combat.Health)
 local ShotResolver = require(Shared.Combat.ShotResolver)
@@ -388,8 +392,13 @@ local function onRender()
 		visual.model.Parent = if pose and id ~= RemoteEntities.viewing then folderFor(id) else nil
 		if pose then
 			RemoteEntities.placeBoxes(visual.parts, pose)
+			local protected = player ~= nil and player:GetAttribute(GunGameConfig.PROTECTED) == true
+			local material = if protected then Enum.Material.ForceField else Enum.Material.SmoothPlastic
 			for region, part in visual.parts do
 				part.Color = if (visual.flashUntil[region] or 0) > now then FLASH_COLOR else visual.colors[region]
+				if part.Material ~= material then
+					part.Material = material
+				end
 			end
 			local hp = RemoteEntities.healthOf(id)
 			local health = string.format("%d + %d", RemoteEntities.points(hp.health), RemoteEntities.points(hp.shield))

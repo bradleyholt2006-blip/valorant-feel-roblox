@@ -32,5 +32,6 @@ require("./bladestorm")
 require("./drift")
 require("./dropin")
 require("./mapvote")
+require("./gungame")
 
 H.finish()
