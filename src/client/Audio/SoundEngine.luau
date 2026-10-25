@@ -13,8 +13,9 @@
 -- gunshots) and emitter with the sound's distance curve; it is moved to
 -- where the sound is, or kept on the player it follows while it plays.
 -- Voices take turns, so when all of a sound's are busy the oldest is cut.
--- Each voice's asset is evened out to the same peak (SoundConfig.Level), and
--- a limiter after the master keeps a pile-up of shots from clipping.
+-- Each voice's asset is evened out to the same peak (SoundConfig.Level) as
+-- it plays on that voice's path, and a limiter after the master keeps a
+-- pile-up of shots from clipping.
 --
 -- The emitters and the listener share their own AudioInteractionGroup, so
 -- no other listener hears them (Roblox makes one on the camera for voice
@@ -109,7 +110,9 @@ local function newVoice(sound: string, bus: Bus, asset: SoundConfig.Asset, paren
 	player.AutoLoad = true
 	player.Looping = false
 	player.Asset = "rbxassetid://" .. asset.id
-	local voice: Voice = { sound = sound, bus = bus, player = player, start = asset.start, gain = SoundMath.assetGain(asset.peak) }
+	-- Out in the world a stereo take is summed to mono, and peaks lower.
+	local peak = if bus == "world" then asset.worldPeak or asset.peak else asset.peak
+	local voice: Voice = { sound = sound, bus = bus, player = player, start = asset.start, gain = SoundMath.assetGain(peak) }
 	player.Volume = math.min(def.volume * voice.gain, MAX_VOLUME)
 	if bus == "world" then
 		local attachment = Instance.new("Attachment")

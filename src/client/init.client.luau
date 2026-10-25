@@ -17,6 +17,9 @@ local BuyMenu = require(script.BuyMenu)
 local ClientSettings = require(script.ClientSettings)
 local CrosshairView = require(script.CrosshairView)
 local SettingsMenu = require(script.SettingsMenu)
+local ClientSpike = require(script.ClientSpike)
+local SpikeView = require(script.SpikeView)
+local SpikeHud = require(script.SpikeHud)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
 local DebugHud = require(script.Debug.DebugHud)
@@ -39,6 +42,10 @@ NetSim.start()
 RemoteEntities.start()
 -- The look: lighting, colour, vignette, and outlines on RemoteEntities' models (V, N).
 Visuals.start()
+-- The spike: what the server says of it, and what that lets you do, predicted.
+ClientSpike.start()
+PlayerController.objective = ClientSpike.context
+table.insert(PlayerController.spikeListeners, ClientSpike.onAct)
 PlayerController.start()
 ClientShots.start()
 -- The knife's swings: the client's guess at once, the server's verdict after.
@@ -53,6 +60,9 @@ BuyMenu.start()
 ClientSettings.start()
 CrosshairView.start(PlayerController)
 SettingsMenu.start()
+-- The spike in the world (its beeps and blast too) and on the HUD.
+SpikeView.start()
+SpikeHud.start()
 -- Footsteps, landings, gunshots, reloads, draws and hit sounds, with
 -- Roblox's own character sounds switched off.
 DefaultSounds.start()
@@ -85,12 +95,13 @@ end)
 -- Debug weapon give (Studio / place owner only, and anyone in the arena's buy
 -- phase), quicker than the buy menu for the guns tested most. The weapon goes
 -- into its slot with full ammo and is drawn.
+-- They start at 5: 4 is the spike's.
 local giveKeys: { [Enum.KeyCode]: string } = {
-	[Enum.KeyCode.Four] = "vandal",
-	[Enum.KeyCode.Five] = "phantom",
-	[Enum.KeyCode.Six] = "operator",
-	[Enum.KeyCode.Seven] = "sheriff",
-	[Enum.KeyCode.Eight] = "classic",
+	[Enum.KeyCode.Five] = "vandal",
+	[Enum.KeyCode.Six] = "phantom",
+	[Enum.KeyCode.Seven] = "operator",
+	[Enum.KeyCode.Eight] = "sheriff",
+	[Enum.KeyCode.Nine] = "classic",
 }
 UserInputService.InputBegan:Connect(function(input, processed)
 	local id = giveKeys[input.KeyCode]

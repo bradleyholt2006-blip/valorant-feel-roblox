@@ -432,7 +432,7 @@ health still lets 13.6 of a Vandal body shot through, which kills.
   the server's acks correct; the shield worn and what can be sold come from two player
   attributes the server sets, `VFShield` and `VFBought`. A gun you buy is drawn only once an ack
   shows it in its slot (`PlayerController.drawWhenGiven`), so a refused purchase changes nothing.
-  The debug keys 4 to 8 take the same path now, which stops them switching slots when the server
+  The debug keys 5 to 9 take the same path now, which stops them switching slots when the server
   says no.
 - **The mouse belongs to the menu while it's open.** The camera stops reading it and shows the
   cursor, and its buttons are masked out of the simulation's input (`InputSampler.blockMouse`), so
@@ -488,7 +488,7 @@ health still lets 13.6 of a Vandal body shot through, which kills.
 | --- | --- |
 | F2 (weapon lab) | Its first line adds the gun's group, price and pellets. A second line says how it fires zoomed (its zoom, and its bursts and their rate), with its right click, and while held (the spin-up, with how far it's risen now). The state line shows a burst still to come and a reload's current round; the fire rate line reads "expect 12 rising to 15.6" for the Odin; the reload line gives a round's time or the Outlaw's one-round time |
 | F2 (spray lab) | Says which curve the shot read: hip, zoomed or the right click's |
-| `VFTestGive` (Studio) | Set it on the local player to a weapon id (`odin`, `bucky` ...): it's given and drawn as 4 to 8 would, and the attribute clears itself |
+| `VFTestGive` (Studio) | Set it on the local player to a weapon id (`odin`, `bucky` ...): it's given and drawn as 5 to 9 would, and the attribute clears itself |
 | `VFTestButtons` (Studio) | PlayerSim button flags held on top of real input while it's set: 128 fire, 256 right click, 512 reload, 32 crouch. Holds the trigger without a mouse button |
 | B | The buy menu, while buying is open |
 | `VFTestBuy` (Studio) | Set it on the local player to an id (`odin`, `light` ...) to buy it, or to `-` and the id (`-odin`) to sell it back, as the menu's clicks would; it clears itself |

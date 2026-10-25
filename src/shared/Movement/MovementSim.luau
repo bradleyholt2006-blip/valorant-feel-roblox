@@ -39,7 +39,7 @@ export type Input = {
 	buttons: number,
 	yaw: number, -- radians, 0 looks down -Z (Roblox convention)
 	pitch: number, -- radians, positive looks up
-	slot: number, -- weapon slot the player wants equipped (1 primary, 2 secondary, 3 melee)
+	slot: number, -- weapon slot the player wants equipped (1 primary, 2 secondary, 3 melee, 4 the spike)
 	viewTime: number, -- server time of the remote world the client was looking at
 }
 
@@ -67,6 +67,8 @@ local Buttons = {
 	Fire = 128,
 	AltFire = 256,
 	Reload = 512,
+	Use = 1024, -- 4 held: the spike's plant and defuse (system 12)
+	Drop = 2048, -- G: drops the spike from the hand
 }
 
 -- Unreal's constants: a braking player under 10 cm/s stops dead, and a speed

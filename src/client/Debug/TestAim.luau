@@ -20,17 +20,19 @@
 -- menu without a mouse button:
 --
 --   VFTestButtons  PlayerSim button flags held on top of the real input
---                  while set (Fire 128, AltFire 256, Reload 512, Crouch 32;
+--                  while set (Fire 128, AltFire 256, Reload 512, Crouch 32,
+--                  Use 1024 for the spike's 4 held, Drop 2048 for G;
 --                  MovementSim.Buttons has the rest)
 --   VFTestGive     a weapon id: asks for it as the debug give does, then
---                  clears itself
+--                  clears itself ("spike" hands over the course's spike)
 --   VFTestBuy      an item id ("odin", "regen"): buys it as a click in the
 --                  buy menu would, or with a "-" in front sells it back;
 --                  then clears itself
 --   VFTestMenu     true opens the buy menu (if buying is open), false
 --                  closes it; then clears itself
---   VFTestSlot     1, 2 or 3: draws that slot as its number key does (3 is
---                  the knife), then clears itself
+--   VFTestSlot     1, 2, 3 or 4: draws that slot as its number key does (3
+--                  is the knife, 4 the spike while it's carried), then
+--                  clears itself
 --   VFTestSettingsMenu  true opens the settings menu, false closes it; then
 --                  clears itself
 --   VFTestSetting  "key=value": enters a setting as its box in the settings
@@ -95,7 +97,7 @@ function TestAim.start(controller: any)
 	RunService:BindToRenderStep("VFTestAim", Enum.RenderPriority.Camera.Value, function()
 		local player = Players.LocalPlayer
 		local buttons = player:GetAttribute("VFTestButtons")
-		InputSampler.extraButtons = if typeof(buttons) == "number" then bit32.band(buttons, 1023) else 0
+		InputSampler.extraButtons = if typeof(buttons) == "number" then bit32.band(buttons, 4095) else 0
 		local give = player:GetAttribute("VFTestGive")
 		if typeof(give) == "string" and give ~= "" then
 			player:SetAttribute("VFTestGive", nil)
@@ -131,9 +133,7 @@ function TestAim.start(controller: any)
 		local slot = player:GetAttribute("VFTestSlot")
 		if typeof(slot) == "number" then
 			player:SetAttribute("VFTestSlot", nil)
-			if slot == 1 or slot == 2 or slot == 3 then
-				controller.desiredSlot = slot
-			end
+			controller.selectSlot(slot)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

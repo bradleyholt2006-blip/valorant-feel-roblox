@@ -50,6 +50,7 @@ local function pose(id: number, x: number, yaw: number?, crouch: number?): Playe
 		quiet = false,
 		reloading = false,
 		weapon = 0,
+		channel = 0,
 	}
 end
 
@@ -278,6 +279,7 @@ do
 			quiet = false,
 			reloading = false,
 			weapon = 0,
+			channel = 0,
 		})
 		LagCompensation.record(server, t, { p })
 		local _, decoded = PlayerCodec.decodeSnapshot(PlayerCodec.encodeSnapshot(t, { p }, k))
@@ -386,6 +388,7 @@ local function simulate(case: NetCase): NetResult
 			quiet = false,
 			reloading = false,
 			weapon = 0,
+			channel = 0,
 		}
 	end
 	local history = LagCompensation.new()

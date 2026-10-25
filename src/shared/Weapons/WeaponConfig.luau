@@ -28,7 +28,8 @@ export type Curve = { { number } }
 export type CurveParam = { points: Curve, status: Status, source: string }
 
 -- The buy menu's groups, in its order.
-export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee"
+-- "spike" is the spike (system 12), carried in the fourth slot and never sold.
+export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike"
 
 export type AccuracyDef = {
 	-- Firing error: radius of the cone of fire by bullet number.
@@ -118,7 +119,7 @@ export type WeaponDef = {
 	id: string,
 	name: string,
 	category: Category,
-	slot: number, -- 1 primary, 2 secondary, 3 melee
+	slot: number, -- 1 primary, 2 secondary, 3 melee, 4 the spike
 	price: Param, -- credits
 	fireMode: "auto" | "semi" | "none",
 	fireRate: Param, -- rounds per second
@@ -139,6 +140,7 @@ export type WeaponDef = {
 	ads: AdsDef?,
 	alt: AltDef?,
 	melee: MeleeDef?, -- swings instead of firing (the knife)
+	spike: boolean?, -- the spike (system 12): planted, not fired (SpikeSim)
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
 }
@@ -1248,10 +1250,44 @@ WeaponConfig.Defs = {
 			adsCamera = KNIFE_NA,
 		}),
 	},
+	-- The spike (system 12): held in hand to plant it; fires nothing.
+	spike = {
+		id = "spike",
+		name = "Spike",
+		category = "spike",
+		slot = 4,
+		price = p(0, "community", "Not bought: the attackers are given it each round (VALORANT Wiki, Spike)"),
+		fireMode = "none",
+		fireRate = KNIFE_NA,
+		magazine = KNIFE_NA,
+		reserve = KNIFE_NA,
+		reloadTime = KNIFE_NA,
+		equipTime = p(0.5, "estimate", "Drawing the spike (4); not published"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with the spike in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(0, 0, 0, 0) },
+		damageSource = KNIFE_NA,
+		penetration = "none",
+		suppressed = false,
+		spike = true,
+		accuracy = accuracy(c({ { 1, 0 } }, "estimate", "n/a"), p(1, "estimate", "n/a"), p(0.1, "estimate", "n/a"), p(1, "estimate", "n/a"), {
+			crouch = KNIFE_NA,
+			walk = KNIFE_NA,
+			run = KNIFE_NA,
+			air = KNIFE_NA,
+		}),
+		recoil = recoil(c({ { 1, 0 } }, "estimate", "n/a"), NO_SWAY, {
+			run = p(1, "estimate", "n/a"),
+			crouchYaw = p(1, "estimate", "n/a"),
+			ads = p(1, "estimate", "n/a"),
+			camera = KNIFE_NA,
+			adsCamera = KNIFE_NA,
+		}),
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
--- they always were, the rest in alphabetical order after them.
+-- they always were, the rest in alphabetical order after them, and the
+-- spike after those.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1274,6 +1310,7 @@ WeaponConfig.Ids = {
 	"spectre",
 	"stinger",
 	"warden",
+	"spike",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

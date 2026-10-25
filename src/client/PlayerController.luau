@@ -1,6 +1,6 @@
 --!strict
 -- Client-side prediction and reconciliation for the local player's PlayerSim
--- (movement + weapons).
+-- (movement + weapons, and the spike's plant and defuse).
 --
 -- Every fixed 128 Hz tick we sample input, step PlayerSim immediately (so
 -- movement and shots respond on the frame you press), remember the input and
@@ -10,6 +10,11 @@
 -- yet. Shots and knife swings re-simulated during a replay are not re-fired:
 -- effects only play for the live tick. Visual position error from a correction is blended out
 -- over a few frames instead of snapping the camera.
+--
+-- The spike rides in slot 4: its key draws it while it's carried, and held
+-- plants or defuses it (InputSampler's Use). What the player may do with it
+-- each tick is the `objective` hook's (ClientSpike), the server's state of
+-- it as last heard.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,6 +30,8 @@ local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Accuracy = require(Shared.Weapons.Accuracy)
+local Spike = require(Shared.Spike.Spike)
+local SpikeSim = require(Shared.Spike.SpikeSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
 local Remotes = require(Shared.Net.Remotes)
@@ -61,6 +68,7 @@ export type TickInfo = {
 	accurateFraction: number, -- deadzone fraction of that speed
 	shots: { WeaponSim.Shot }?, -- the bullets fired this tick: one round's
 	swing: WeaponSim.Swing?, -- the knife swing that started this tick
+	act: SpikeSim.Act?, -- what happened with the spike this tick
 }
 
 export type Profile = {
@@ -100,6 +108,12 @@ PlayerController.shotListeners = {} :: { (WeaponSim.Shot, PlayerCodec.WireInput)
 -- Called for each knife swing the local player starts, with its input (live
 -- ticks only, like shots).
 PlayerController.swingListeners = {} :: { (WeaponSim.Swing, PlayerCodec.WireInput) -> () }
+-- Called with what happened with the spike in the local player's
+-- simulation (live ticks only, like shots).
+PlayerController.spikeListeners = {} :: { (SpikeSim.Act, PlayerCodec.WireInput) -> () }
+-- What the local player may do with the spike now (ClientSpike); nothing
+-- without.
+PlayerController.objective = nil :: (() -> Spike.Context)?
 -- Called when the local player (re)spawns with a fresh simulation.
 PlayerController.spawnListeners = {} :: { (PlayerSim.State) -> () }
 -- Increments on every spawn; shot numbers restart each life.
@@ -141,9 +155,18 @@ function PlayerController.profile(): Profile
 	}
 end
 
+local function objective(): Spike.Context?
+	local hook = PlayerController.objective
+	return if hook then hook() else nil
+end
+
 local function tick()
 	local s = sim :: PlayerSim.State
 	seq += 1
+	-- A slot emptied (the spike planted or dropped) stops being asked for.
+	if s.weapons.loadout[PlayerController.desiredSlot] == "" then
+		PlayerController.desiredSlot = s.weapons.equipped
+	end
 	local input: PlayerCodec.WireInput = {
 		seq = seq,
 		buttons = InputSampler.sample(),
@@ -156,7 +179,7 @@ local function tick()
 	}
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
-	local shots, swing = PlayerSim.step(s, input, PlayerController.cfg, world, DT)
+	local shots, swing, act = PlayerSim.step(s, input, PlayerController.cfg, world, DT, objective())
 	simTime += DT
 	PlayerController.buttons = input.buttons
 
@@ -176,6 +199,11 @@ local function tick()
 			listener(swing, input)
 		end
 	end
+	if act then
+		for _, listener in PlayerController.spikeListeners do
+			listener(act, input)
+		end
+	end
 
 	local profile = PlayerController.profile()
 	local info: TickInfo = {
@@ -188,6 +216,7 @@ local function tick()
 		accurateFraction = profile.accurateFraction,
 		shots = shots,
 		swing = swing,
+		act = act,
 	}
 	for _, listener in PlayerController.tickListeners do
 		listener(info)
@@ -226,7 +255,7 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 	-- spray position and drift go through `^` and could in principle round
 	-- differently on another machine's maths library, so they get a tolerance.
 	local gw, sw = guess.weapons, server.weapons
-	for slot = 1, 3 do
+	for slot = 1, WeaponSim.SLOTS do
 		if gw.loadout[slot] ~= sw.loadout[slot] or gw.ammo[slot] ~= sw.ammo[slot] or gw.reserve[slot] ~= sw.reserve[slot] then
 			return true, posErr
 		end
@@ -253,6 +282,18 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		return true, posErr
 	end
 	if guess.tagUntilTick ~= server.tagUntilTick or guess.tagMultiplier ~= server.tagMultiplier then
+		return true, posErr
+	end
+	local gs, ss = guess.spike, server.spike
+	if
+		gs.channel ~= ss.channel
+		or gs.channelStart ~= ss.channelStart
+		or gs.channelEnd ~= ss.channelEnd
+		or gs.halfStart ~= ss.halfStart
+		or gs.lastSlot ~= ss.lastSlot
+		or gs.dropHeld ~= ss.dropHeld
+		or gs.holdOver ~= ss.holdOver
+	then
 		return true, posErr
 	end
 	return false, posErr
@@ -322,8 +363,9 @@ local function onAck(payload: buffer)
 		stats.corrections += 1
 		local before = s.movement.position
 		local corrected = serverSim :: PlayerSim.State
+		local now = objective()
 		for _, input in pending do
-			PlayerSim.step(corrected, input, PlayerController.cfg, world, DT)
+			PlayerSim.step(corrected, input, PlayerController.cfg, world, DT, now)
 			predicted[input.seq] = PlayerSim.copy(corrected)
 		end
 		visualOffset += before - corrected.movement.position
@@ -437,7 +479,11 @@ local function onCharacter(character: Model)
 		CameraController.yaw = yaw
 		CameraController.pitch = 0
 	end
+	-- The last life's weapons, as the server keeps them, but not the spike.
 	local loadout = if sim then table.clone(sim.weapons.loadout) else nil
+	if loadout then
+		loadout[Spike.SLOT] = ""
+	end
 	sim = PlayerSim.new(feet, loadout)
 	PlayerController.sim = sim
 	PlayerController.desiredSlot = (sim :: PlayerSim.State).weapons.equipped
@@ -479,6 +525,15 @@ local function onCharacter(character: Model)
 	character.DescendantAdded:Connect(keepHidden)
 end
 
+-- Asks for the weapon in a slot to be drawn, as its number key does: one
+-- that's empty (the spike's, unless it's carried) is not asked for.
+function PlayerController.selectSlot(slot: number)
+	local s = sim
+	if s and slot == math.floor(slot) and slot >= 1 and slot <= WeaponSim.SLOTS and s.weapons.loadout[slot] ~= "" then
+		PlayerController.desiredSlot = slot
+	end
+end
+
 -- Asks the server to change a tuning parameter (Studio / place owner only).
 function PlayerController.requestTuning(key: string, value: number?)
 	remotes.Tuning:FireServer(key, value)
@@ -496,12 +551,19 @@ function PlayerController.drawWhenGiven(slot: number, id: string)
 end
 
 -- Debug weapon give (Studio / place owner only, and anyone in the arena's
--- buy phase); drawn once the server has given it.
+-- buy phase); drawn once the server has given it, or at once if its slot
+-- holds it already (the server refills it).
 function PlayerController.requestWeapon(id: string)
 	local def = WeaponConfig.Defs[id]
 	if def then
 		remotes.Loadout:FireServer(def.slot, id)
-		PlayerController.drawWhenGiven(def.slot, id)
+		local s = sim
+		if s and s.weapons.loadout[def.slot] == id then
+			awaitedWeapon = nil
+			PlayerController.selectSlot(def.slot)
+		else
+			PlayerController.drawWhenGiven(def.slot, id)
+		end
 	end
 end
 
@@ -555,11 +617,12 @@ function PlayerController.start()
 		task.spawn(onCharacter, localPlayer.Character)
 	end
 
-	local slotKeys = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3 }
+	-- 4 draws the spike, while it's carried.
+	local slotKeys = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = Spike.SLOT }
 	UserInputService.InputBegan:Connect(function(input, processed)
 		local slot = slotKeys[input.KeyCode]
 		if slot and not processed then
-			PlayerController.desiredSlot = slot
+			PlayerController.selectSlot(slot)
 		end
 	end)
 

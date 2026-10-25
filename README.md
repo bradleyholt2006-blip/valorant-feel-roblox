@@ -57,6 +57,13 @@ Built one system at a time:
     with their own crosshairs for aiming down sights and the sniper scope's dot, lines that spread
     as you move and fire and top lines that fade in a spray; a settings menu on O, and both kept
     for your next session - [research and design](docs/research/11-settings.md)
+12. **The spike**: carried in slot 4 and dropped with G, picked up by running over it; held 4
+    plants it in a site in 4 seconds and defuses it in 7, rooted, with half a defuse kept; a
+    defuse needs the defuser in range and in sight of it throughout; a 45-second countdown that
+    beeps faster as it ends, with the reference's tells (red lights and a rising casing while
+    defused, the white sphere at 7 seconds), and a blast that kills everyone within 35 m; all
+    predicted on your screen and decided by the server. On the course, two sites behind the spawn
+    where anyone can plant and defuse - [research and design](docs/research/12-spike.md)
 
 ## Running it
 
@@ -64,7 +71,8 @@ Built one system at a time:
 2. `rojo serve` in this folder, connect from Studio, press Play.
 3. With no `Map` in Workspace, a measurement course with a target lane and practice dummies is
    built automatically. Look straight ahead from the spawn to face the lane; the wallbang lane is
-   to the left. In a place made from the Baseplate template, delete its `Baseplate` and
+   to the left, and the spike's two sites are 26 m behind you, with the spike waiting 4 m
+   behind. In a place made from the Baseplate template, delete its `Baseplate` and
    `SpawnLocation` first.
 4. The arena is built beside the course, off to its right. P turns it on for everyone in the
    server: you spawn in your side's room and wait there for an opponent, and anyone who joins
@@ -73,19 +81,20 @@ Built one system at a time:
    system's Studio checks in order, with what each lab should read.
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
-R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), B buy menu (on the course at any time; in the arena
+R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
+while you carry it (hold 4 to plant it in a site or to defuse it, G drops it), B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent). Nothing costs anything yet.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
 Arena: P turns it on and off (Studio or place owner only). In the arena, the buy menu and the
-debug keys 4-8 (below) work for anyone during the buy phase, and while waiting for an opponent;
+debug keys 5-9 (below) work for anyone during the buy phase, and while waiting for an opponent;
 a new match puts everyone back on the starting kit (Vandal, Classic, knife, Heavy Armor).
 Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (with the next
 shot's cone round the crosshair, how far the crosshair's lines have spread and the last jump
-measured; G with the HUD on shows the server ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
-CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot, 4-8 give
+measured; G with the HUD on shows the server ghost, unless the spike is in hand), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
+CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot, 5-9 give
 Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only). F7 and F8 are left
 alone because Studio takes them for Start and Run.
 In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, U Network Buffering,
@@ -97,9 +106,10 @@ Scripted playtests (Studio only): a tool that can press keys but can't move the 
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
 `VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
 `VFTestButtons` holds input flags on top of the real ones (128 fire or slash, 256 right click or
-stab, 512 reload), `VFTestGive` set to a weapon id gives that weapon as 4-8 would, `VFTestBuy` set
+stab, 512 reload, 1024 the spike's 4 held, 2048 G), `VFTestGive` set to a weapon id gives that
+weapon as 5-9 would (`spike` hands over the course's spike), `VFTestBuy` set
 to an id buys it as the menu would (`-` and the id sells it back), `VFTestMenu` set to true or
-false opens or closes the menu, `VFTestSlot` set to 1, 2 or 3 draws that slot,
+false opens or closes the menu, `VFTestSlot` set to 1, 2, 3 or 4 draws that slot,
 `VFTestSettingsMenu` set to true or false opens or closes the settings menu, and `VFTestSetting`
 set to `key=value` (`sensitivity=0.8`, `scoped=0.5`, `dpi=1600` or `crosshair=0;P;c;5`) enters
 that setting as its box in the menu would. Each of the last six clears itself.
@@ -109,10 +119,12 @@ read.
 ## Tests
 
 The shared simulation (movement, weapons and every gun's way of firing, the knife's swings and
-what they catch, spread and recoil, hitboxes, wire formats, pose history, render clock, move
-pacing, lag compensation and wall penetration), the look's maths, the arena's rules and map, the sound's rules (footsteps,
-landings, distance curves, walls in the way, reload parts) and the settings (crosshair codes and
-the pixels they draw, sensitivity and cm/360) are pure Luau and run outside Roblox:
+what they catch, the spike's plant, defuse and drop, spread and recoil, hitboxes, wire formats,
+pose history, render clock, move pacing, lag compensation and wall penetration), the look's maths,
+the arena's rules and map, the sound's rules (footsteps, landings, distance curves, walls in the
+way, reload parts), the settings (crosshair codes and the pixels they draw, sensitivity and
+cm/360) and the spike's rules (sites, the defuse's reach, its beeps and its blast) are pure Luau
+and run outside Roblox:
 
 ```
 luau tests/run.luau

@@ -165,10 +165,11 @@ The report row (`luau tests/run.luau` prints it):
 - **Hit sounds wait for the server.** Like the hit confirm (system 4), they play on the server's
   verdict, not the client's guess.
 - **Every recording at the same level.** Library recordings come at all levels: the quietest we
-  play peaks at 0.03 of full scale and the loudest at 0.77. Each recording's peak was read from its
-  waveform (section 6), and it's turned up or down to the same peak before its sound's own volume,
-  so the volumes in `SoundConfig.Sounds` compare sounds, not recordings. A limiter after the master
-  keeps a pile-up of shots from clipping.
+  play peaks at 0.03 of full scale and the loudest at 0.78. Each recording's peak was measured as
+  it plays, straight to you and out in the world (section 6), and it's turned up or down to the
+  same peak on that path before its sound's own volume, so the volumes in `SoundConfig.Sounds`
+  compare sounds, not recordings. A limiter after the master keeps a pile-up of shots from
+  clipping.
 - **Voices made up front.** Each sound has a few voices, each its own `AudioPlayer` with the
   asset loaded, made when the game starts, so nothing waits on loading when it plays. The voices
   take turns, and when all are busy the oldest is cut. A spray's shots overlap, so rifles have
@@ -228,37 +229,61 @@ How they were found, all from inside Studio in BRINK, without playing anything:
    caught two mistakes a title wouldn't: the "Pistol Single Shots" are two guns, a silenced 9 mm and
    a .45 magnum, and ".470 Rifle" is shells being ejected, not a shot.
 4. `AudioPlayer:GetWaveformAsync` read each recording in 10 ms windows, keeping each window's
-   loudest sample. The **peak** is the loudest window. A recording **starts** at the first window
-   that reaches a quarter of its peak, and when that's 30 ms or more in, we skip to 10 ms before
-   it. The reload's last part instead skips to just before its main click, so the click comes on
-   its time, before the reload ends. The players had to be parented to load, so this ran in a
-   server-only Run-mode session with them in a temporary folder, unwired.
+   loudest sample. A recording **starts** at the first window that reaches a quarter of its
+   peak, and when that's 30 ms or more in, we skip to 10 ms before it. The reload's last part
+   instead skips to just before its main click, so the click comes on its time, before the reload
+   ends. The players had to be parented to load, so this ran in a server-only Run-mode session
+   with them in a temporary folder, unwired. `GetWaveformAsync` returns at most 8192 samples a
+   call, so a whole recording read at once is every twentieth sample or so, and misses peaks:
+   read it in 0.17 s pieces at 48,000 samples a second.
+5. The **peak** is how loud a recording plays, which isn't always its waveform's peak. Measured in
+   muted solo playtests in BRINK, with analyzers of our own wired to each recording (through an
+   `AudioChannelSplitter`, and to no output):
+   - Straight to you (the Self and UI buses), a mono recording is spread over both channels,
+     each getting 0.707 of it, and a stereo one keeps its own channels. `GetWaveformAsync` gives
+     a mono recording's signal but a stereo one's downmix, (L + R) / 2: the revolver's reads
+     0.51, and it plays at 0.62 left and 0.58 right.
+   - Out in the world (an `AudioEmitter` heard by the `AudioListener`), a stereo recording is
+     summed to mono and then placed: straight ahead each channel gets its downmix's peak, and a
+     mono recording's gets 0.707 of it, as straight to you. Hard to one side, the near channel
+     gets 1.34 times that.
+
+   So the table's peak is what the louder channel gets straight to you, and for a stereo
+   recording what each gets out in the world as well (`worldPeak`). Each voice is evened out on
+   its own path. Evened out on their waveforms before, mono recordings played about 3 dB under
+   stereo ones: the Sheriff (stereo) was the loudest shot and the Operator and the Classic (mono)
+   too quiet, which the regression run in BRINK on ffd966c heard on the Self bus's meter. The
+   knife's hits had been read from too few samples (0.15 and 0.19) and played 4.5 to 7.5 dB over.
+   The world figures for the suppressed pistol, two of the revolver's takes and the stab's second
+   whoosh are their waveforms' readings at a twentieth of the samples, and so may be a little
+   low.
 
 | Sound | Plays for | Recording (asset id) | Pro Sound Effects' description | Peak | Skips |
 | --- | --- | --- | --- | --- | --- |
-| `step` | running steps, yours and others' | Foot Stomp 3, 4, 6, 7 (9114523345, 9114523358, 9114523612, 9114523629) | "Foot Stomp, Hard Carpeted Floor" | 0.26, 0.30, 0.55, 0.21 | - |
-| `land` | a landing that's heard, at 0.82 speed | Foot Stomp 6, 4 | as above | 0.55, 0.30 | - |
-| `softLand` | your landing up onto something higher, at 0.9 speed | Foot Stomp 3, 7 | as above | 0.26, 0.21 | - |
+| `step` | running steps, yours and others' | Foot Stomp 3, 4, 6, 7 (9114523345, 9114523358, 9114523612, 9114523629) | "Foot Stomp, Hard Carpeted Floor" | 0.18, 0.22, 0.39, 0.18 | - |
+| `land` | a landing that's heard, at 0.82 speed | Foot Stomp 6, 4 | as above | 0.39, 0.22 | - |
+| `softLand` | your landing up onto something higher, at 0.9 speed | Foot Stomp 3, 7 | as above | 0.18, 0.18 | - |
 | `jump` | your jump | Knife Wipe Fast Swipes On Trousers 4 (9116199047) | "Fast Swipes on Trousers, Short Zipping Movements" | 0.03 | - |
-| `rifle` | Vandal | Galil Assault Rifle 1 (9114550557) | ".223, Single Shots, Exterior, CU, ... Very Powerful, Echo" | 0.77 | - |
-| `suppressed` | Phantom | Silenced Pistol 1, 3, 5, 7 (9119135215, 9119135228, 9119134567, 9119134978) | "H&K SOCOM Mk 23, Semi Auto .45, Suppressed, Single Shots" | 0.73 to 0.75 | - |
-| `sniper` | Operator | Rifle Single Shots 7, 8 (9118174271, 9118174539) | "Barrett M82 .50 Cal, Single Shots, Metal Clinks" | 0.54, 0.53 | - |
-| `revolver` | Sheriff | Smith Wesson 357 Magnum 2, 4, 8 (9119296692, 9119296944, 9119297250) | "Smith & Wesson .357 Magnum, Single Gunshots, Big Crack, Handling Clicks" | 0.47, 0.51, 0.53 | - |
-| `pistol` | Classic, at 1.08 speed | Pistol Single Shots 2 (9117400585) | "L.A.R. Grizzly Win Mag .45, Single Shots" | 0.54 | - |
-| `dry` | the trigger on an empty magazine | Moviola Toggle Switch Single Clicks Sharp 14 (9117029050), Toggle Switch Metal Industrial Equipment 10 (9120102194) | "Single Clicks, Sharp"; "Sharp Single Clicks" | 0.38, 0.31 | -, 0.02 s |
-| `magOut` | reloads: the magazine out | Ammo Magazine 1 (9113104176) | "Spring Release, Fast Insert, Eject, ... Pistol Gun, Click, Metal, Clip" | 0.68 | 0.04 s |
-| `magIn` | reloads: the magazine in, or the Sheriff's rounds | Ammo Magazine 2 (9113104517) | "Remove, Insert, Eject, Handle, Slide, Pistol Gun, Click" | 0.72 | 0.22 s |
-| `rack` | reloads: the bolt or slide at the end | Ppsh Burp Gun 7 (9117889191) | "PPSH Burp Gun, Cocking and Loading, Dull Metal Movements, Clicks" | 0.23 | 1.70 s, to just before its cocking click at 1.81 s |
-| `boltOpen` | the Operator's reload: the bolt opens | 470 Rifle 1, 3 (9113027869, 9113027964) | ".470 Rifle, Ejecting Empty Shell, Quiet" | 0.14, 0.33 | 0.27 s, 0.63 s |
-| `latch` | the Sheriff's reload: the cylinder out and back, at 1.15 speed | Metal Latches 1 (9116722545) | "Metal Latches, Snapping Impacts" (door hardware) | 0.47 | - |
-| `drawRifle` | drawing the Vandal, Phantom or Operator | Machine Gun Movement 2 (9116362481) | "Machine Gun Movement, Handling" | 0.60 | 0.08 s |
-| `drawPistol` | drawing the Sheriff or Classic | Gun From Holster 1 (9114701864) | "Gun From Holster, Pistol Grab" | 0.72 | 0.05 s |
-| `knife` | drawing the knife | Knife Fast Scraping Draws Pull Out 1, 17 (9116190984, 9116190959) | "Fast Scraping Draws, Pull Out, Some Metallic Ring" | 0.10, 0.19 | -, 0.20 s |
-| `hitBody` | your hit on a body | Body Hits Thuds 1 to 4 (9113518281, 9113518286, 9113518280, 9113518397) | "Body Hits, Impacts with Rubber Glove, Thuds" | 0.48, 0.68, 0.51, 0.63 | - |
-| `headshot` | your headshot | Anvil Hits Ringing Metal Clinks Some Muted 3 (9125362418) | "CU Ringing Metal Clink, Blacksmith, Sharp Dinging Impact" | 0.42 | - |
-| `kill` | your kill, higher with each kill of a life | Synth Sparkle Tone High Pitch Bell Tone Ding (9126073318) | "High Pitch Bell Tone, Ding, Ring, UI" | 0.13 | 0.09 s |
+| `rifle` | Vandal | Galil Assault Rifle 1 (9114550557) | ".223, Single Shots, Exterior, CU, ... Very Powerful, Echo" | 0.78 (stereo; 0.78 in the world) | - |
+| `suppressed` | Phantom | Silenced Pistol 1, 3, 5, 7 (9119135215, 9119135228, 9119134567, 9119134978) | "H&K SOCOM Mk 23, Semi Auto .45, Suppressed, Single Shots" | 0.77 (stereo; 0.73 to 0.75 in the world) | - |
+| `sniper` | Operator | Rifle Single Shots 7, 8 (9118174271, 9118174539) | "Barrett M82 .50 Cal, Single Shots, Metal Clinks" | 0.40, 0.39 | - |
+| `revolver` | Sheriff | Smith Wesson 357 Magnum 2, 4, 8 (9119296692, 9119296944, 9119297250) | "Smith & Wesson .357 Magnum, Single Gunshots, Big Crack, Handling Clicks" | 0.62, 0.61, 0.61 (stereo; 0.51, 0.51, 0.53 in the world) | - |
+| `pistol` | Classic, at 1.08 speed | Pistol Single Shots 2 (9117400585) | "L.A.R. Grizzly Win Mag .45, Single Shots" | 0.39 | - |
+| `dry` | the trigger on an empty magazine | Moviola Toggle Switch Single Clicks Sharp 14 (9117029050), Toggle Switch Metal Industrial Equipment 10 (9120102194) | "Single Clicks, Sharp"; "Sharp Single Clicks" | 0.27, 0.24 | -, 0.02 s |
+| `magOut` | reloads: the magazine out | Ammo Magazine 1 (9113104176) | "Spring Release, Fast Insert, Eject, ... Pistol Gun, Click, Metal, Clip" | 0.58 | 0.04 s |
+| `magIn` | reloads: the magazine in, or the Sheriff's rounds | Ammo Magazine 2 (9113104517) | "Remove, Insert, Eject, Handle, Slide, Pistol Gun, Click" | 0.55 | 0.22 s |
+| `rack` | reloads: the bolt or slide at the end | Ppsh Burp Gun 7 (9117889191) | "PPSH Burp Gun, Cocking and Loading, Dull Metal Movements, Clicks" | 0.19 | 1.70 s, to just before its cocking click at 1.81 s |
+| `boltOpen` | the Operator's reload: the bolt opens | 470 Rifle 1, 3 (9113027869, 9113027964) | ".470 Rifle, Ejecting Empty Shell, Quiet" | 0.17, 0.27 | 0.27 s, 0.63 s |
+| `latch` | the Sheriff's reload: the cylinder out and back, at 1.15 speed | Metal Latches 1 (9116722545) | "Metal Latches, Snapping Impacts" (door hardware) | 0.33 | - |
+| `drawRifle` | drawing the Vandal, Phantom or Operator | Machine Gun Movement 2 (9116362481) | "Machine Gun Movement, Handling" | 0.47 | 0.08 s |
+| `drawPistol` | drawing the Sheriff or Classic | Gun From Holster 1 (9114701864) | "Gun From Holster, Pistol Grab" | 0.55 | 0.05 s |
+| `knife` | drawing the knife | Knife Fast Scraping Draws Pull Out 1, 17 (9116190984, 9116190959) | "Fast Scraping Draws, Pull Out, Some Metallic Ring" | 0.11, 0.18 | -, 0.20 s |
+| `hitBody` | your hit on a body | Body Hits Thuds 1 to 4 (9113518281, 9113518286, 9113518280, 9113518397) | "Body Hits, Impacts with Rubber Glove, Thuds" | 0.35, 0.48, 0.46, 0.45 | - |
+| `headshot` | your headshot | Anvil Hits Ringing Metal Clinks Some Muted 3 (9125362418) | "CU Ringing Metal Clink, Blacksmith, Sharp Dinging Impact" | 0.50 (stereo) | - |
+| `kill` | your kill, higher with each kill of a life | Synth Sparkle Tone High Pitch Bell Tone Ding (9126073318) | "High Pitch Bell Tone, Ding, Ring, UI" | 0.18 (stereo) | 0.09 s |
 
-The knife's swings and strikes are in [10-knife](10-knife.md) section 5.
+The knife's swings and strikes are in [10-knife](10-knife.md) section 5, and the spike's sounds in
+[12-spike](12-spike.md) section 5.
 
 Stand-ins, where the library had nothing closer: the steps are foot stomps on a hard carpeted
 floor, not single running footsteps on concrete; the Phantom is a suppressed pistol; the Classic is

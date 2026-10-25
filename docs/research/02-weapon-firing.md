@@ -231,7 +231,7 @@ Roblox differences from the reference that matter here:
 | F10 | Hitbox overlay through walls: other players' hitboxes; per shot, the ray, the boxes the client tested, the client's end point (yellow) and the server's (blue), red when they disagree (system 4 adds the server's rewound boxes) |
 | always | Impact marks stay on walls (newest 80), so a spray leaves its pattern (system 3 adds the spray lab and a cone ring on the crosshair) |
 | Backspace | Clear impact marks and the shot log |
-| 4-8 | Give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only) |
+| 5-9 | Give Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only; 4-8 until the spike took 4 in system 12) |
 | 1 / 2 / 3 | Primary / secondary / knife |
 
 The target lane is straight ahead of the spawn: static dummies at 10, 30 and 50 m, strafing ones

@@ -238,9 +238,11 @@ function CombatHud.start()
 			return
 		end
 		local def = if typeof(event.weapon) == "string" then WeaponConfig.Defs[event.weapon] else nil
+		-- A death nobody caused (the spike's blast) has no name in front.
+		local by = if typeof(event.attacker) == "number" then nameOf(event.attacker) .. "  " else ""
 		local text = string.format(
-			"%s  [%s]  %s%s",
-			nameOf(event.attacker),
+			"%s[%s]  %s%s",
+			by,
 			if def then def.name else "?",
 			nameOf(event.target),
 			if event.region == "head" then "  (head)" else ""

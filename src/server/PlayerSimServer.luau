@@ -17,6 +17,10 @@
 -- Moves run in bunches as they arrive, so what the snapshots show of each
 -- player is paced onto a steady timeline first (MovePacer).
 --
+-- The spike's plant and defuse run in the simulation too (SpikeSim): what a
+-- player may do with it each tick comes from SpikeServer (objectiveFor), and
+-- what they did goes back to it (spikeListeners).
+--
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
 -- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
 -- life starts while the player is still alive (the arena restarts a round),
@@ -33,6 +37,8 @@ local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
+local Spike = require(Shared.Spike.Spike)
+local SpikeSim = require(Shared.Spike.SpikeSim)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
@@ -90,6 +96,15 @@ PlayerSimServer.loadoutRule = nil :: ((Player) -> boolean?)?
 PlayerSimServer.deathListeners = {} :: { (Player) -> () }
 -- Called when a player's new life starts.
 PlayerSimServer.spawnListeners = {} :: { (Player) -> () }
+-- What a player may do with the spike this tick, when there's one in play
+-- (SpikeServer); nothing without.
+PlayerSimServer.objectiveFor = nil :: ((Player) -> Spike.Context)?
+-- Called with what happened with the spike in a player's simulation: a
+-- plant, a defuse, a drop, or a defuse let go of.
+PlayerSimServer.spikeListeners = {} :: { (Player, SpikeSim.Act) -> () }
+-- The debug give of the spike: the one spike there is, handed over, not a
+-- new one (SpikeServer).
+PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
 -- How long a new life that's been asked for is waited for. Roblox loads a
 -- character in about a third of a second in Studio (measured); one that
 -- hasn't come by this is taken as not coming.
@@ -103,9 +118,13 @@ local onSwing: SwingHandler = function() end
 -- so its prediction draws the same bullets the server does.
 local seeds = Random.new()
 
--- A life keeps the last one's weapons, unless it starts on the starting kit.
+-- A life keeps the last one's weapons, unless it starts on the starting kit,
+-- but never the spike: a carrier drops it as they die.
 local function newSim(r: Record): PlayerSim.State
 	local loadout = if r.freshKit then nil else table.clone(r.sim.weapons.loadout)
+	if loadout then
+		loadout[Spike.SLOT] = ""
+	end
 	return PlayerSim.new(r.spawnFeet, loadout, seeds:NextInteger(0, 2 ^ 31 - 1))
 end
 
@@ -136,7 +155,9 @@ local function currentPose(r: Record): PlayerCodec.Pose
 		alive = true,
 		quiet = StepTracker.isQuiet(r.buttons, m.crouched),
 		reloading = WeaponSim.isReloading(w),
-		weapon = WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		-- Defusing, the weapon is put away.
+		weapon = if r.sim.spike.channel == SpikeSim.DEFUSING then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		channel = r.sim.spike.channel,
 	}
 end
 
@@ -292,8 +313,9 @@ local function onInput(player: Player, payload: any)
 	end
 end
 
--- Debug loadout changes, 4 to 8 (Studio / place owner); in the arena, its
--- buy phase decides. The buy menu is ShopServer's.
+-- Debug loadout changes, 5 to 9 (Studio / place owner); in the arena, its
+-- buy phase decides. The buy menu is ShopServer's. Asking for the spike
+-- hands over the one there is.
 local function onLoadout(player: Player, slot: any, id: any)
 	local r = records[player]
 	if not r or typeof(slot) ~= "number" or typeof(id) ~= "string" then
@@ -307,6 +329,13 @@ local function onLoadout(player: Player, slot: any, id: any)
 	if not allowed then
 		return
 	end
+	if id == Spike.ID then
+		local spikeGive = PlayerSimServer.spikeGive
+		if spikeGive then
+			spikeGive(player)
+		end
+		return
+	end
 	PlayerSimServer.give(player, slot, id)
 end
 
@@ -315,12 +344,27 @@ end
 function PlayerSimServer.give(player: Player, slot: number, id: string): boolean
 	local r = records[player]
 	local def = WeaponConfig.Defs[id]
-	if not r or not def or def.slot ~= slot then
+	if not r or not def or def.slot ~= slot or def.spike then
 		return false
 	end
 	WeaponSim.give(r.sim.weapons, slot, id, r.sim.movement.tick * DT)
 	r.ackDirty = true
 	return true
+end
+
+-- Gives a player the spike, in its slot and not drawn, or takes it from them
+-- (SpikeServer, which keeps track of the one there is).
+function PlayerSimServer.setSpike(player: Player, carry: boolean)
+	local r = records[player]
+	if not r then
+		return
+	end
+	if carry then
+		WeaponSim.give(r.sim.weapons, Spike.SLOT, Spike.ID)
+	else
+		SpikeSim.take(r.sim.spike, r.sim.weapons, r.sim.movement.tick * DT)
+	end
+	r.ackDirty = true
 end
 
 -- The weapon in one of a player's slots ("" for none), and the slot in hand.
@@ -384,9 +428,16 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.buttons = input.buttons
 		r.yaw = input.yaw
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
-		local shots, swing = PlayerSim.step(r.sim, input, cfg, world, DT)
+		local objectiveFor = PlayerSimServer.objectiveFor
+		local objective = if objectiveFor then objectiveFor(r.player) else nil
+		local shots, swing, act = PlayerSim.step(r.sim, input, cfg, world, DT, objective)
 		MovePacer.push(r.pacer, input.seq * DT, currentPose(r))
 		r.ackDirty = true
+		if act then
+			for _, listener in PlayerSimServer.spikeListeners do
+				listener(r.player, act)
+			end
+		end
 		if shots then
 			onShot(r.entity, shots, input.viewTime)
 		end

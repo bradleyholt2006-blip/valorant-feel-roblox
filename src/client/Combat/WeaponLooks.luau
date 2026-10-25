@@ -92,6 +92,16 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.2), offset = vector.create(0, 0.085, -0.15) }, -- top cover
 		},
 	},
+	-- The spike (system 12), held out in front: a squat case with a band of
+	-- light round it (original stand-in, as the rest).
+	spike = {
+		muzzle = vector.create(0, 0.1, -0.14),
+		pieces = {
+			{ size = vector.create(0.16, 0.2, 0.16), offset = vector.create(0, 0.02, -0.14) }, -- case
+			{ size = vector.create(0.17, 0.035, 0.17), offset = vector.create(0, 0.07, -0.14), accent = true }, -- light band
+			{ size = vector.create(0.09, 0.03, 0.09), offset = vector.create(0, 0.135, -0.14) }, -- cap
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -117,6 +127,7 @@ local SHAPE_OF: { [string]: string } = {
 	ares = "heavy",
 	odin = "heavy",
 	knife = "knife",
+	spike = "spike",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -141,6 +152,7 @@ local ACCENT: { [string]: Color3 } = {
 	ares = Color3.fromRGB(110, 120, 70),
 	odin = Color3.fromRGB(80, 80, 90),
 	knife = Color3.fromRGB(190, 195, 205),
+	spike = Color3.fromRGB(235, 70, 60),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

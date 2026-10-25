@@ -353,7 +353,7 @@ the course's ramps, angled wall and jump boxes.
 | G (HUD on) | Ghost: box at the last authoritative server position (not F7: Studio takes it for Start) |
 | Z (lab open) | Zero the cm/360 counter (not F8: Studio takes it for Run) |
 | 1 / 2 / 3 | Primary / secondary / knife (weapon speed comes from the equipped weapon) |
-| 4 / 6 | Give a Vandal / Operator to compare rifle and sniper movement (see system 2) |
+| 5 / 7 | Give a Vandal / Operator to compare rifle and sniper movement (see system 2; these were 4 / 6 until the spike took 4 in system 12) |
 
 Live tuning: in the lab box, type `groundFriction 3` and Enter. The server applies it and pushes it
 to every client so prediction stays in sync. `reset` clears overrides. `airSpeedLimit 100` takes

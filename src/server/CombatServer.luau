@@ -26,6 +26,8 @@
 -- in reach, the one nearest the aim that the level doesn't hide takes it,
 -- for the swing's damage from in front or from behind. Its verdict goes back
 -- to the one swinging with what the server tested, and the others hear it.
+--
+-- The spike's blast kills outright, with nobody to credit (kill).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -62,7 +64,8 @@ function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 	LagCompensation.record(history, time, poses)
 end
 
-local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount: number, region: string, weapon: string)
+-- `attacker` is nil for a death nobody caused (the spike's blast).
+local function damage(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, region: string, weapon: string)
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
 	local hp = WeaponConfig.Health
 	if result.damage > 0 and victim.sim and not result.killed then
@@ -73,7 +76,7 @@ local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount
 	end
 	local event = Entities.vitals(victim)
 	event.kind = "damage"
-	event.attacker = attacker.id
+	event.attacker = if attacker then attacker.id else nil
 	event.region = region
 	event.weapon = weapon
 	event.damage = result.damage
@@ -83,6 +86,18 @@ local function damage(attacker: Entities.Entity, victim: Entities.Entity, amount
 		victim.onKilled(attacker)
 	end
 	return result
+end
+
+-- More than anyone has: health and the heaviest shield together.
+local LETHAL = 1e4
+
+-- Kills an entity outright, shield and all, with nobody to credit, as
+-- `weapon` (the spike's blast). Clients hear of it as a kill with no
+-- attacker.
+function CombatServer.kill(victim: Entities.Entity, weapon: string)
+	if victim.health.alive then
+		damage(nil, victim, LETHAL, "body", weapon)
+	end
 end
 
 -- Regen Shields refilling: told to clients as they go, a few times a second.

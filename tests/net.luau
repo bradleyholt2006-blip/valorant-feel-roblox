@@ -46,7 +46,7 @@ do
 		return PlayerCodec.decodeInputs(PlayerCodec.encodeInputs({ input }, 1, 1)) == nil
 	end
 	check("slot 0 is rejected", bad({ seq = 1, buttons = 0, slot = 0, yaw = 0, pitch = 0, viewTime = 0 }))
-	check("slot 4 is rejected", bad({ seq = 1, buttons = 0, slot = 4, yaw = 0, pitch = 0, viewTime = 0 }))
+	check("slot 4 (the spike) is taken and slot 5 is rejected", not bad({ seq = 1, buttons = 0, slot = 4, yaw = 0, pitch = 0, viewTime = 0 }) and bad({ seq = 1, buttons = 0, slot = 5, yaw = 0, pitch = 0, viewTime = 0 }))
 	check("NaN viewTime is rejected", bad({ seq = 1, buttons = 0, slot = 1, yaw = 0, pitch = 0, viewTime = 0 / 0 }))
 	check("truncated packets are rejected", PlayerCodec.decodeInputs(buffer.create(18)) == nil)
 	check("non-buffers are rejected", PlayerCodec.decodeInputs("hello") == nil)
@@ -67,7 +67,7 @@ local function inputAt(i: number): PlayerCodec.WireInput
 end
 
 local function sameWeapons(a: WeaponSim.State, b: WeaponSim.State): boolean
-	for slot = 1, 3 do
+	for slot = 1, WeaponSim.SLOTS do
 		if a.loadout[slot] ~= b.loadout[slot] or a.ammo[slot] ~= b.ammo[slot] or a.reserve[slot] ~= b.reserve[slot] then
 			return false
 		end
@@ -162,6 +162,7 @@ do
 			quiet = false,
 			reloading = true,
 			weapon = WeaponConfig.IndexOf.vandal,
+			channel = 2,
 		},
 		{
 			id = PlayerCodec.entityIdForUser(123456789012),
@@ -174,6 +175,7 @@ do
 			quiet = true,
 			reloading = false,
 			weapon = 0,
+			channel = 0,
 		},
 	}
 	local time, decoded = PlayerCodec.decodeSnapshot(PlayerCodec.encodeSnapshot(987.25, poses))
@@ -181,9 +183,10 @@ do
 	for i, d in decoded do
 		local q = PlayerCodec.quantizePose(poses[i])
 		ok = ok and d.id == poses[i].id and d.position == q.position and d.yaw == q.yaw and d.pitch == q.pitch and d.crouchAlpha == q.crouchAlpha and d.grounded == q.grounded
-		ok = ok and d.alive == q.alive and d.quiet == q.quiet and d.reloading == q.reloading and d.weapon == q.weapon
+		ok = ok and d.alive == q.alive and d.quiet == q.quiet and d.reloading == q.reloading and d.weapon == q.weapon and d.channel == q.channel
 	end
 	check("snapshots decode to exactly the quantised poses the server keeps", ok)
+	check("a pose carries a defuse (2) and no plant or defuse (0)", decoded[1].channel == 2 and decoded[2].channel == 0)
 	check("snapshot rounding stays under a millimetre", near(decoded[1].position.x, 1.23456, 1e-3) and near(decoded[1].position.z, -30.987, 1e-3))
 	check("a snapshot fits an unreliable packet", PlayerCodec.SNAPSHOT_HEADER + PlayerCodec.SNAPSHOT_ENTRY * PlayerCodec.MAX_POSES_PER_SNAPSHOT <= 900)
 end

@@ -333,6 +333,7 @@ do
 				quiet = false,
 				reloading = false,
 				weapon = 0,
+				channel = 0,
 			},
 		})
 	end

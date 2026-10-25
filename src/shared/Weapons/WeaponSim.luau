@@ -27,7 +27,9 @@ local WeaponConfig = require("./WeaponConfig")
 local Accuracy = require("./Accuracy")
 
 export type State = {
-	loadout: { string }, -- [slot] = weapon id, "" for empty
+	-- [slot] = weapon id, "" for empty: 1 primary, 2 secondary, 3 melee, and
+	-- 4 the spike while it's carried (system 12)
+	loadout: { string },
 	ammo: { number }, -- [slot]
 	reserve: { number }, -- [slot]
 	equipped: number,
@@ -101,11 +103,15 @@ local Buttons = {
 	Reload = 512,
 }
 
+local WeaponSim = {}
+
+-- Slots a player has: the three weapons and the spike's.
+local SLOTS = 4
+WeaponSim.SLOTS = SLOTS
+
 local EPS = 1e-9
 
 local STILL: Accuracy.Context = { moveState = "still", crouched = false, landing = false }
-
-local WeaponSim = {}
 
 local function has(buttons: number, flag: number): boolean
 	return bit32.band(buttons, flag) ~= 0
@@ -114,9 +120,9 @@ end
 function WeaponSim.newState(loadout: { string }?, seed: number?): State
 	local ids = loadout or WeaponConfig.DefaultLoadout
 	local s: State = {
-		loadout = { ids[1] or "", ids[2] or "", ids[3] or "" },
-		ammo = { 0, 0, 0 },
-		reserve = { 0, 0, 0 },
+		loadout = { ids[1] or "", ids[2] or "", ids[3] or "", ids[4] or "" },
+		ammo = { 0, 0, 0, 0 },
+		reserve = { 0, 0, 0, 0 },
 		equipped = 1,
 		equipEndTime = 0,
 		nextFireTime = 0,
@@ -135,11 +141,11 @@ function WeaponSim.newState(loadout: { string }?, seed: number?): State
 		spin = 0,
 		combo = 0,
 	}
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		WeaponSim.give(s, slot, s.loadout[slot])
 	end
 	-- Equip the first non-empty slot.
-	for slot = 1, 3 do
+	for slot = 1, SLOTS do
 		if s.loadout[slot] ~= "" then
 			s.equipped = slot
 			break
@@ -180,6 +186,23 @@ function WeaponSim.give(s: State, slot: number, id: string, t: number?)
 	if t and slot == s.equipped then
 		draw(s, t)
 	end
+end
+
+-- Draws the weapon in hand again, as after a switch (once the spike has
+-- left the hand, or a defuse ends).
+function WeaponSim.redraw(s: State, t: number)
+	draw(s, t)
+	s.fireHeld = false
+	s.altHeld = false
+end
+
+-- Puts the weapon in hand away (for a defuse): a reload, a zoom or a burst
+-- under way stops.
+function WeaponSim.holster(s: State)
+	s.reloadEndTime = 0
+	s.scoped = 0
+	s.burstLeft = 0
+	s.spin = 0
 end
 
 function WeaponSim.copy(s: State): State
@@ -358,13 +381,20 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 
 	-- 1. Weapon switch: requested slot differs and holds a weapon.
 	local want: number = input.slot
-	if want ~= s.equipped and want >= 1 and want <= 3 and s.loadout[want] ~= "" then
+	if want ~= s.equipped and want >= 1 and want <= SLOTS and s.loadout[want] ~= "" then
 		s.equipped = want
 		draw(s, t)
 	end
 
 	local slot = s.equipped
 	local def = WeaponConfig.get(s.loadout[slot])
+
+	-- The spike in hand does nothing here: its plant is SpikeSim's.
+	if def.spike then
+		s.fireHeld = fire
+		s.altHeld = alt
+		return nil, nil
+	end
 
 	-- A knife swings, and has nothing to reload, zoom or fire.
 	local melee = def.melee
