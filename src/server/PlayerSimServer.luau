@@ -68,6 +68,7 @@ type Record = {
 	pacer: MovePacer.Pacer, -- the pose after each move, at the move's time
 	shown: PlayerCodec.Pose?, -- what this frame's snapshot shows
 	freshKit: boolean, -- the next life starts on the starting kit
+	spawnAskedAt: number?, -- os.clock() when a new life was asked for, until it starts
 }
 
 -- Called with the bullets of each round a player fires (several for a
@@ -89,6 +90,10 @@ PlayerSimServer.loadoutRule = nil :: ((Player) -> boolean?)?
 PlayerSimServer.deathListeners = {} :: { (Player) -> () }
 -- Called when a player's new life starts.
 PlayerSimServer.spawnListeners = {} :: { (Player) -> () }
+-- How long a new life that's been asked for is waited for. Roblox loads a
+-- character in about a third of a second in Studio (measured); one that
+-- hasn't come by this is taken as not coming.
+PlayerSimServer.SPAWN_WAIT = 5
 
 local records: { [Player]: Record } = {}
 local world = RobloxWorld.new()
@@ -174,6 +179,7 @@ local function onCharacter(r: Record, character: Model)
 		character:SetAttribute(CharacterRig.SPAWN_YAW, point.yaw)
 	end
 	character:SetAttribute(CharacterRig.SPAWN_FEET, Units.asVector3(r.spawnFeet))
+	r.spawnAskedAt = nil
 	r.sim = newSim(r)
 	r.inputs = InputQueue.new()
 	r.character = character
@@ -253,6 +259,7 @@ local function onPlayerAdded(player: Player)
 		pacer = MovePacer.new(),
 		shown = nil,
 		freshKit = false,
+		spawnAskedAt = nil,
 	}
 	records[player] = r
 	Entities.add(entity)
@@ -333,6 +340,22 @@ function PlayerSimServer.resetKit(player: Player)
 	if r then
 		r.freshKit = true
 	end
+end
+
+-- A new life has been asked for (the arena spawns everyone as a round
+-- starts); it starts when Roblox has loaded the character.
+function PlayerSimServer.expectSpawn(player: Player)
+	local r = records[player]
+	if r then
+		r.spawnAskedAt = os.clock()
+	end
+end
+
+-- Whether a new life has been asked for and hasn't started yet.
+function PlayerSimServer.spawnPending(player: Player): boolean
+	local r = records[player]
+	local at = if r then r.spawnAskedAt else nil
+	return at ~= nil and os.clock() - at < PlayerSimServer.SPAWN_WAIT
 end
 
 -- Whether a player is alive and playing.

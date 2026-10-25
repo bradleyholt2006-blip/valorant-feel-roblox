@@ -177,8 +177,11 @@ From [02-weapon-firing.md](research/02-weapon-firing.md). Press F2 once for the 
   (the lab says `OFF`), but never over. **Send:** the fire rate line for each weapon.
 - **W2 Reload and draw.** Fire a few shots and press R. The lab should read `reload 2500ms` for the
   Vandal and the Phantom, 2250 for the Sheriff, 1750 for the Classic and 3700 for the Operator.
-  Switch weapons and hold fire straight away: `draw->shot` is at least the equip time, which is
-  1000 ms for the Vandal, 750 for the Classic and 1500 for the Operator.
+  Switch weapons with its number key and fire as soon as you can: hold fire for an automatic,
+  and click again after the draw for a semi (a press during the draw isn't kept). `draw->shot`
+  is at least the equip time, which is 1000 ms for the Vandal, 750 for the Classic and 1500 for
+  the Operator. After a `VFTestGive` it can read about 40 ms short: the lab sees that draw only
+  when the server's ack arrives.
 - **W3 Damage and kills.** Shoot the static dummy at 10 m with the Vandal. The numbers that float
   up read 160 for the head, 40 for the body and 34 for the legs, and the part you hit flashes
   white. One headshot or four body shots kill it: it disappears, the kill feed shows it, and it's
@@ -583,6 +586,12 @@ Then two players, as in section 9, on the course.
 - **B9 The arena.** Press P in window 1. Each player is on the starting kit, whatever they bought
   on the course. The menu reads `SKIRMISH: EVERYTHING'S FREE` with the buy phase's countdown, and
   closes itself when the countdown ends (A6 has the rest).
+- **B10 Buying as the phase opens.** Play a round in which player 2 dies. As the next buy phase
+  opens, player 1, who was still alive, presses B and clicks the Odin straight away: they come
+  back in their room holding it, with its teal edge, and a right click sells it back. Player 2
+  buys the Bucky in the same first moment (with `VFTestBuy`, since the menu opens only once
+  they're back): they come back holding it. When player 1 died in B7, their health read `0`,
+  not `-0`.
 
 ## 14. The knife
 
@@ -675,6 +684,7 @@ G2 Bucky at 10 m, the number: ___
 G4 Odin held, fire rate: ___ rps
 B7 Light Armor after a Classic body shot: health ___, shield ___
 B8 Regen Shield: refill started ___ s after the hit, took ___ s
+B10 buys as the phase opens: kept / lost (which)
 K1 swings: a slash every ___ ms, a stab every ___ ms; the combo goes 1, 2, 3, 1: yes / no
 K4 the last hits: slash ___ m off the aim, ___ m out; stab ___ m off the aim, ___ m out
 K8 stab, 1, 3, stab: ___ ms between the stabs
@@ -733,6 +743,7 @@ Didn't look right (IDs and what you saw):
 | 09 | Hover shows the numbers, a click buys and draws, a right click sells back only this buy phase's purchases | B3, B4, B5 |
 | 09 | The HUD shows Light Armor's split and the Regen Shield refilling as the tests have them | B6, B7, B8 |
 | 09 | A new match in the arena puts everyone back on the starting kit | A9, B9 |
+| 09 | A buy the moment a buy phase opens lands on the new life and can be sold back | B10 |
 | 10 | The slash and the stab come at their rates, round the combo, and the swap cuts a stab short | K1, K8 |
 | 10 | Each does its damage from in front and from behind, through the shields, and kills as the tests have it | K2, K3, K9 |
 | 10 | A swing never reaches through a wall, a barrier or a teammate, but reaches a head over cover | K6, K9 |

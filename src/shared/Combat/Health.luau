@@ -119,4 +119,11 @@ function Health.reset(s: State)
 	Health.setShield(s, s.kind)
 end
 
+-- Whole points for display: a split hit leaves fractions, and anything left
+-- counts as a point. Nothing left reads 0, never -0.
+function Health.points(value: number): number
+	local whole = math.ceil(value - 1e-9)
+	return if whole > 0 then whole else 0
+end
+
 return Health

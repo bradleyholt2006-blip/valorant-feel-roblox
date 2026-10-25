@@ -132,7 +132,8 @@ end
 -- Once whatever event this is has been handled, and once each however many
 -- times they're asked for meanwhile. Each player's first life in a match
 -- starts on the starting kit, whatever they bought in the last match or on
--- the course.
+-- the course. Roblox takes a moment to load the character, and what they buy
+-- meanwhile is held for the new life (ShopServer).
 local function spawn(ids: { number })
 	local s = rules
 	for _, id in ids do
@@ -140,6 +141,9 @@ local function spawn(ids: { number })
 		if player and s and kitMatch[player] ~= s.match then
 			kitMatch[player] = s.match
 			PlayerSimServer.resetKit(player)
+		end
+		if player then
+			PlayerSimServer.expectSpawn(player)
 		end
 		if player and not queued[player] then
 			queued[player] = true
