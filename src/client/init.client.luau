@@ -17,6 +17,7 @@ local ArenaHud = require(script.ArenaHud)
 local Scoreboard = require(script.Scoreboard)
 local Spectate = require(script.Spectate)
 local VoteScreen = require(script.VoteScreen)
+local PlayMenu = require(script.PlayMenu)
 local BuyMenu = require(script.BuyMenu)
 local ClientSettings = require(script.ClientSettings)
 local CrosshairView = require(script.CrosshairView)
@@ -72,6 +73,9 @@ Scoreboard.start()
 Spectate.start()
 -- After each match's victory screen, the vote for the next map: click one.
 VoteScreen.start()
+-- M: the Play menu (system 24), a card for each mode and PLAY, up as you
+-- join a live server until you've pressed it.
+PlayMenu.start()
 -- B: every gun and shield, in the arena's buy phase and any time on the course.
 BuyMenu.start()
 -- Your sensitivity and crosshair, kept between sessions; O for the menu.

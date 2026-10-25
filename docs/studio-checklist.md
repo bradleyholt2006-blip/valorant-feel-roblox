@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-three
+Studio can show. It goes through every "Known gaps to check in Studio" item in the twenty-four
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -28,7 +28,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 3. Open the Output window (View tab, Output).
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
-   one and then two, section 25 three and then one, and sections 26 and 27 two.
+   one and then two, section 25 three and then one, and sections 26 to 28 two.
 
 | Key | What it does |
 | --- | --- |
@@ -1473,6 +1473,40 @@ then gun game).
   players spawn for a new match on the map with the votes, on level 1, at `10:00`. In the Explorer,
   `Workspace.VFArena`'s `Ladder` lists the new match's guns, most likely not the last match's.
 
+## 28. The Play menu
+
+From [24-play-menu.md](research/24-play-menu.md). A quick play of what changed, with two players.
+Studio can't teleport, so there PLAY for another mode switches the server to it, as P does; the
+teleports between servers need the place published (PM6).
+
+Start a Local Server with 2 players, as in section 9. Both start on the course, as before.
+
+- **PM1 The menu.** Press M in window 1: `PLAY` at the top, `This server is on the course.` under
+  it with Studio's note, and five cards: SKIRMISH `2v2`, GUN GAME `4v4`, UNRATED `5v5`,
+  COMPETITIVE `5v5` and SWIFTPLAY `5v5`, each with how it's won and `NOBODY YET`, and none with
+  `THIS SERVER`. The SKIRMISH card is outlined in gold, the button under the cards reads
+  `PLAY SKIRMISH`, `M  close` is at the top right, and the mouse moves a cursor. **Send:** a
+  screenshot.
+- **PM2 Picking.** Click the GUN GAME card: the outline moves to it, and the button reads
+  `PLAY GUN GAME`. Press M: the menu closes, and the mouse turns the view again.
+- **PM3 PLAY another mode.** Press M, click GUN GAME, then PLAY GUN GAME. The menu closes, the
+  Output says `[VF] Arena on: gun game, Skirmish A`, `B` or `C`, and both players spawn in gun
+  game, as in GG1.
+- **PM4 This server's mode.** Press M in window 2: the GUN GAME card has `THIS SERVER` and the
+  outline, and within a second reads `2 PLAYING` in gold, with `NOBODY YET` on the others. Click
+  PLAY GUN GAME: the menu closes, and nothing else changes.
+- **PM5 Over the victory screen and the vote.** Run `VFMatchSkip` once in the server's command
+  bar, as in GG5, and the victory screen shows. Press M in window 1: the victory screen goes while
+  the menu is open, and comes back as M closes it. At the vote, the cards go and come back the
+  same way. Without keys, `VFTestPlayMenu` set to true and then false on the local player does
+  what M does.
+- **PM6 A live server.** Only once the place is published, with its Max Players at least 10: join
+  it. The Play menu is up from the start, with `THIS SERVER` on SKIRMISH and no `M  close`, and M
+  doesn't close it. PLAY SKIRMISH drops you into its match. Then M, GUN GAME and PLAY GUN GAME:
+  `TELEPORTING TO GUN GAME...` under the button, then Roblox's teleport, and on the new server
+  you're straight in gun game with no menu. A second player doing the same lands on the same
+  server.
+
 ## Results
 
 ```
@@ -1561,6 +1595,9 @@ GG1 the first two guns: ___ then ___; anything that did work of B, 5 to 9, C, Q,
 GG3 player 1 a force field: yes / no; their label stayed at 100 + 50: yes / no
 GG4 in player 2's hands after the knife kill: ___
 GG5 MATCH MVP on ___, TEAM MVP on ___
+PM1 anything on the cards that read differently: ___
+PM4 the GUN GAME card's count: ___
+PM6 (live) PLAY GUN GAME took ___ s to land; the second player on the same server: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -1711,3 +1748,8 @@ Didn't look right (IDs and what you saw):
 | 23 | A respawn is a force field to others and can't be hurt, until it fires | GG3 |
 | 23 | A match's end: the victory screen goes by level, with MATCH MVP on the winner, then the vote, and the next match starts on the map voted for, with a new ladder | GG5, GG6 |
 | 23 | No buy menu, no abilities, and G does nothing | GG1 |
+| 24 | M opens the menu over the course or a match: five cards, `THIS SERVER` on the one the server plays, and counts that follow who's in the server | PM1, PM4 |
+| 24 | PLAY for another mode switches the server to it, and the menu closes | PM3 |
+| 24 | PLAY for the mode the server plays closes the menu, and nothing else changes | PM4 |
+| 24 | The vote and the victory screen hide while the menu is open | PM5 |
+| 24 | On a live server only: the menu is up as you join, PLAY for Skirmish drops you into the match, and PLAY for another mode teleports you to a server playing it | PM6 |
