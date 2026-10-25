@@ -190,12 +190,14 @@ The report row (`luau tests/run.luau` prints it):
 - **Roblox's audio objects.** The reference mixes its own way. Ours is `AudioPlayer` to
   `AudioFilter` to `AudioEmitter`, heard by an `AudioListener` on the camera, then faders to an
   `AudioDeviceOutput`. Roblox now discourages the older `Sound` object.
-- **Roblox's own character sounds are off.** Roblox adds a script that plays its own sounds for
-  every character: running, jumping, falling, landing and dying. Most never fire on our
-  characters, which the simulation moves, but in BRINK its falling sound played on every jump
-  (measured), and its death sound plays whenever a Humanoid dies, as ours do on each death. An
-  empty LocalScript named `RbxCharacterSounds` in StarterPlayerScripts stops Roblox adding it
-  (community: the long-standing way to replace Roblox's default player scripts).
+- **Roblox's own character sounds are off.** Roblox adds a script, `RbxCharacterSounds`, that
+  plays its own sounds for every character: running, jumping, falling, landing and dying. Most
+  never fire on our characters, which the simulation moves, but in BRINK its falling sound played
+  on every jump (measured), and its death sound plays whenever a Humanoid dies, as ours do on each
+  death. The long-standing way to stop Roblox adding it, an empty script of the same name in
+  StarterPlayerScripts (community), no longer works: in BRINK, Play replaced ours with the
+  default (measured). So the client switches the script off as it appears and removes the sounds
+  it already made on each character's root.
 - **Stereo, not HRTF.** Roblox places sounds left and right as it does; there's no HRTF option
   like the reference's. Riot mixed in stereo too until Patch 2.06.
 - **No sounds of our own.** The reference's sounds are its own recordings. Ours are Pro Sound
@@ -278,7 +280,7 @@ are candidates for them.
 | `src/client/Audio/SoundEngine.luau` | The buses, the listener, every sound's voices, playing and stopping them, the meters |
 | `src/client/Audio/GameSounds.luau` | What makes a sound, who hears it, and where |
 | `src/client/Debug/SoundLab.luau` | The Sound Lab (F2, fourth page) |
-| `src/overrides/RbxCharacterSounds.client.luau` | Takes the place of Roblox's default character sounds |
+| `src/client/Audio/DefaultSounds.luau` | Switches Roblox's default character sounds off |
 | `src/shared/Net/PlayerCodec.luau`, `src/shared/Net/PoseHistory.luau` | `quiet`, `reloading` and `weapon` in each snapshot pose |
 | `src/server/PlayerSimServer.luau`, `src/server/Dummies.luau` | Fill them in from each tick's input and weapons |
 | `tests/sound.luau` | The rules on the real movement code, the curves and filters, the levels and reload parts, and the report above |
@@ -336,3 +338,7 @@ A solo playtest, muted with `VFTestMute`, on main at 1e6308f (measured):
   value there, and the one at 30 m wasn't.
 - Not played: hit sounds, the kill sound's rise and dry fire, which need mouse input the check
   left out. Nothing was listened to, so how it all sounds is still to check by ear.
+
+A second check, on main at 6f2e51e: giving yourself the Sheriff (7) while holding the Vandal
+played one draw, where the first check heard two. The same-named `RbxCharacterSounds` script
+did nothing: Play put Roblox's default in its place, with the same nine sounds on the root.
