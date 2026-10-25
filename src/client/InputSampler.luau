@@ -24,7 +24,8 @@ InputSampler.Bindings = {
 	{ flag = B.Left, keys = { Enum.KeyCode.A } },
 	{ flag = B.Right, keys = { Enum.KeyCode.D } },
 	{ flag = B.Walk, keys = { Enum.KeyCode.LeftShift } },
-	{ flag = B.Crouch, keys = { Enum.KeyCode.LeftControl, Enum.KeyCode.C } },
+	-- Crouch is the reference's Left Ctrl; its C is an ability's.
+	{ flag = B.Crouch, keys = { Enum.KeyCode.LeftControl } },
 	{ flag = B.Jump, keys = { Enum.KeyCode.Space } },
 	{ flag = B.Fire, mouse = { Enum.UserInputType.MouseButton1 } },
 	{ flag = B.AltFire, mouse = { Enum.UserInputType.MouseButton2 } },
@@ -33,6 +34,12 @@ InputSampler.Bindings = {
 	-- Spike" both, held to plant or defuse; G its "Drop Equipped Item".
 	{ flag = B.Use, keys = { Enum.KeyCode.Four } },
 	{ flag = B.Drop, keys = { Enum.KeyCode.G } },
+	-- The ability kit (system 17), on the reference's default keys
+	-- (AbilityConfig.KeySources).
+	{ flag = B.AbilityC, keys = { Enum.KeyCode.C } },
+	{ flag = B.AbilityQ, keys = { Enum.KeyCode.Q } },
+	{ flag = B.AbilityE, keys = { Enum.KeyCode.E } },
+	{ flag = B.Ultimate, keys = { Enum.KeyCode.X } },
 } :: { Binding }
 
 local latched = 0

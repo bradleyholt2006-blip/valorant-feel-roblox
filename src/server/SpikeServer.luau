@@ -58,6 +58,10 @@ export type Events = {
 
 local SpikeServer = {}
 
+-- Called with each plant and defuse that counts, and who made it (system
+-- 17: the ultimate's points).
+SpikeServer.objectiveListeners = {} :: { (Player, "planted" | "defused") -> () }
+
 local layout: string? = nil -- the sites in play; nil while there's no spike
 local zones: { Spike.Zone } = {}
 local startAt = Spike.CourseStart
@@ -227,6 +231,9 @@ local function onAct(player: Player, act: SpikeSim.Act)
 		detonateAt = time + P.detonateTime.value
 		halfSaved = false
 		publish()
+		for _, listener in SpikeServer.objectiveListeners do
+			listener(player, "planted")
+		end
 		if events then
 			events.planted(detonateAt)
 		end
@@ -252,6 +259,9 @@ local function onAct(player: Player, act: SpikeSim.Act)
 		-- The spike rounds put a new one down as the next round starts.
 		respawnAt = if events then nil else time + P.courseRespawn.value
 		publish()
+		for _, listener in SpikeServer.objectiveListeners do
+			listener(player, "defused")
+		end
 		if events then
 			events.defused(time)
 		end

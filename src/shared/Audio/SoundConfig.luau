@@ -136,6 +136,13 @@ SoundConfig.Curves = {
 	beep = curve({ { 0, 1 }, { 5, 1 }, { 20, 0.6 }, { 35, 0.35 }, { 50, 0 } }, "estimate", "Heard past the blast's edge, so a player who's running clear still hears it; no published radius"),
 	-- And the blast, like gunfire, across the map.
 	blast = curve({ { 0, 1 }, { 10, 1 }, { 40, 0.7 }, { 100, 0.4 }, { 200, 0 } }, "estimate", "Heard map-wide, as a gunshot is"),
+	-- Abilities show on the minimap's sound circle too (Patch 1.0's
+	-- 'ability sounds'), so they have an edge (system 17).
+	ability = curve(
+		{ { 0, 1 }, { 3, 1 }, { 15, 0.6 }, { 28, 0.3 }, { 30, 0 } },
+		"estimate",
+		"Heard about as far as footsteps, a little further; no published radius"
+	),
 	-- The spike dropped: heard faintly out to about 50 m.
 	drop = curve(
 		{ { 0, 1 }, { 3, 1 }, { 15, 0.5 }, { 35, 0.15 }, { 50, 0 } },
@@ -356,7 +363,27 @@ SoundConfig.Sounds = {
 	spikePickup = sound(0.6, 0.03, 2, {
 		asset(9116722545, "Metal Latches 1 (SFX)", 0.334),
 	}),
+	-- Abilities (system 17), from the knife's measured whooshes: Updraft's
+	-- gust low and heavy, Tailwind's dash quick, and its gust readying a
+	-- thin swish, slowed.
+	gust = sound(0.9, 0.03, 3, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.75),
+	dash = sound(0.9, 0.03, 3, {
+		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.483, 0.11),
+	}, 1.15),
+	windup = sound(0.6, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 0.6),
 }
+
+-- What each kind of cast sounds like (AbilitySim.Cast's kind), heard as
+-- the ability curve says (system 17).
+SoundConfig.Abilities = {
+	lift = "gust",
+	dash = "dash",
+	ready = "windup",
+} :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
 -- drop from where it is, and the plant's or the defuse's beeping from

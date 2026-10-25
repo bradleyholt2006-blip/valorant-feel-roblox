@@ -21,6 +21,10 @@
 -- player may do with it each tick comes from SpikeServer (objectiveFor), and
 -- what they did goes back to it (spikeListeners).
 --
+-- So does the ability kit (system 17, AbilitySim), which every life keeps
+-- from the last: what's cast goes to castListeners (AbilityServer), and
+-- AbilityServer changes the kit between ticks.
+--
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
 -- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
 -- life starts while the player is still alive (the arena restarts a round),
@@ -40,6 +44,7 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Accuracy = require(Shared.Weapons.Accuracy)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
@@ -108,6 +113,8 @@ PlayerSimServer.spikeListeners = {} :: { (Player, SpikeSim.Act) -> () }
 -- Called with the gun a player let go of with G (system 15), with their feet
 -- and the way they faced as they did.
 PlayerSimServer.dropListeners = {} :: { (Player, WeaponSim.Dropped, vector, number) -> () }
+-- Called with each ability a player casts (system 17).
+PlayerSimServer.castListeners = {} :: { (Player, AbilitySim.Cast) -> () }
 -- The debug give of the spike: the one spike there is, handed over, not a
 -- new one (SpikeServer).
 PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
@@ -130,14 +137,18 @@ local onSwing: SwingHandler = function() end
 local seeds = Random.new()
 
 -- A life keeps the last one's weapons, unless it starts on the starting kit,
--- but never the spike: a carrier drops it as they die.
+-- but never the spike: a carrier drops it as they die. It keeps the last
+-- one's ability kit too, with nothing under way.
 local function newSim(r: Record): PlayerSim.State
 	local kit = r.kit
 	local loadout = if not r.freshKit then table.clone(r.sim.weapons.loadout) elseif kit then table.clone(kit) else nil
 	if loadout then
 		loadout[Spike.SLOT] = ""
 	end
-	return PlayerSim.new(r.spawnFeet, loadout, seeds:NextInteger(0, 2 ^ 31 - 1))
+	local sim = PlayerSim.new(r.spawnFeet, loadout, seeds:NextInteger(0, 2 ^ 31 - 1))
+	sim.abilities = AbilitySim.copy(r.sim.abilities)
+	AbilitySim.settle(sim.abilities)
+	return sim
 end
 
 local function setupCollisionGroup()
@@ -165,7 +176,8 @@ local function currentPose(r: Record): PlayerCodec.Pose
 		crouchAlpha = m.crouchAlpha,
 		grounded = m.grounded,
 		alive = true,
-		quiet = StepTracker.isQuiet(r.buttons, m.crouched),
+		-- A dash makes no steps (system 17).
+		quiet = StepTracker.isQuiet(r.buttons, m.crouched) or AbilitySim.dashing(r.sim.abilities, m.tick * DT),
 		reloading = WeaponSim.isReloading(w),
 		-- Defusing, the weapon is put away.
 		weapon = if r.sim.spike.channel == SpikeSim.DEFUSING then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
@@ -465,7 +477,7 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
 		local objectiveFor = PlayerSimServer.objectiveFor
 		local objective = if objectiveFor then objectiveFor(r.player) else nil
-		local shots, swing, act, dropped = PlayerSim.step(r.sim, input, cfg, world, DT, objective)
+		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective)
 		MovePacer.push(r.pacer, input.seq * DT, currentPose(r))
 		r.ackDirty = true
 		if act then
@@ -476,6 +488,13 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		if dropped then
 			for _, listener in PlayerSimServer.dropListeners do
 				listener(r.player, dropped, r.sim.movement.position, input.yaw)
+			end
+		end
+		if casts then
+			for _, cast in casts do
+				for _, listener in PlayerSimServer.castListeners do
+					listener(r.player, cast)
+				end
 			end
 		end
 		if shots then
@@ -556,6 +575,19 @@ function PlayerSimServer.start(handler: ShotHandler, swingHandler: SwingHandler)
 	local remotes = Remotes.get()
 	remotes.PlayerInput.OnServerEvent:Connect(onInput)
 	remotes.Loadout.OnServerEvent:Connect(onLoadout)
+end
+
+-- A player's ability kit, for AbilityServer to change between ticks
+-- (markDirty after).
+function PlayerSimServer.abilitiesOf(player: Player): AbilitySim.State?
+	local r = records[player]
+	return if r then r.sim.abilities else nil
+end
+
+-- The simulation time of a player's last move run.
+function PlayerSimServer.timeOf(player: Player): number?
+	local r = records[player]
+	return if r then r.sim.movement.tick * DT else nil
 end
 
 -- Read access for other systems.

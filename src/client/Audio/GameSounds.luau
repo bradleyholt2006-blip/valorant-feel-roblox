@@ -25,6 +25,9 @@
 --            yours on the Self bus and others' where they are, and a latch
 --            as you pick it up; the spike's own beeps, defuse, blast and
 --            drop are SpikeView's, out in the world through playWorld
+--   abilities  a cast's gust or swish (system 17): yours on the Self bus,
+--            others' where they cast, both through playCast (AbilityEffects
+--            says when)
 --
 -- Your steps come from your predicted ticks, others' from their poses as
 -- they are drawn (RemoteEntities), so they line up with where they're
@@ -47,6 +50,7 @@ local Remotes = require(Shared.Net.Remotes)
 local SoundConfig = require(Shared.Audio.SoundConfig)
 local SoundMath = require(Shared.Audio.SoundMath)
 local StepTracker = require(Shared.Audio.StepTracker)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local Spike = require(Shared.Spike.Spike)
 local Units = require(Shared.Units)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
@@ -283,12 +287,17 @@ local function onTick(info: any)
 	local s = info.sim
 	local m = s.movement
 	local buttons: number = info.input.buttons
-	local quiet = StepTracker.isQuiet(buttons, m.crouched)
+	-- A dash makes no steps, and a lift is no jump (system 17): each has
+	-- its own sound.
+	local t = m.tick * DT
+	local quiet = StepTracker.isQuiet(buttons, m.crouched) or AbilitySim.dashing(s.abilities, t)
 	for _, e in StepTracker.push(ownSteps, { time = info.time, position = m.position, grounded = m.grounded, quiet = quiet }) do
 		if e.kind == "step" and e.loud then
 			own("step", F.ownVolume.value)
 		elseif e.kind == "jump" then
-			own("jump")
+			if not AbilitySim.lifting(s.abilities, t) then
+				own("jump")
+			end
 		elseif e.kind == "land" then
 			if e.loud then
 				own("land", L.ownVolume.value)
@@ -585,6 +594,28 @@ local function onSwingFx(fx: any)
 	end
 end
 
+-- Abilities -----------------------------------------------------------------------
+
+-- A cast's sound (system 17): yours, or with `id` someone else's at `at`
+-- (metres, their feet), unheard from the other side in the buy phase.
+function GameSounds.playCast(kind: string, at: vector, id: number?)
+	local sound = SoundConfig.Abilities[kind]
+	if not sound then
+		return
+	end
+	if id == nil then
+		own(sound)
+		return
+	end
+	local who = RemoteEntities.nameOf(id)
+	local where = at + CHEST
+	if inBuyPhaseAcross(id) then
+		muted(sound, who, where, "buy phase")
+		return
+	end
+	GameSounds.playWorld(sound, where, who)
+end
+
 -- Settings ------------------------------------------------------------------------
 
 -- This client's footstep radius: the footstep curve stretched to it.
@@ -640,6 +671,10 @@ function GameSounds.start()
 	SoundEngine.prepare(spike.defused, "world", C.beep.points)
 	SoundEngine.prepare(spike.blast, "world", C.blast.points)
 	SoundEngine.prepare(spike.drop, "world", C.drop.points)
+	for _, sound in SoundConfig.Abilities do
+		SoundEngine.prepare(sound, "world", C.ability.points)
+		SoundEngine.prepare(sound, "self")
+	end
 
 	table.insert(PlayerController.tickListeners, onTick)
 	table.insert(PlayerController.spawnListeners, onSpawn)

@@ -1,6 +1,6 @@
 --!strict
 -- One player's full deterministic simulation: movement + weapons + hit slow,
--- and the spike's plant and defuse (system 12).
+-- the spike's plant and defuse (system 12), and the ability kit (system 17).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -16,11 +16,13 @@ local WeaponConfig = require("./Weapons/WeaponConfig")
 local Accuracy = require("./Weapons/Accuracy")
 local Spike = require("./Spike/Spike")
 local SpikeSim = require("./Spike/SpikeSim")
+local AbilitySim = require("./Abilities/AbilitySim")
 
 export type State = {
 	movement: MovementSim.State,
 	weapons: WeaponSim.State,
 	spike: SpikeSim.State,
+	abilities: AbilitySim.State,
 	tagUntilTick: number,
 	tagMultiplier: number,
 }
@@ -41,6 +43,7 @@ function PlayerSim.new(feet: vector, loadout: { string }?, seed: number?): State
 		movement = MovementSim.newState(feet),
 		weapons = WeaponSim.newState(loadout, seed),
 		spike = SpikeSim.new(),
+		abilities = AbilitySim.new(),
 		tagUntilTick = 0,
 		tagMultiplier = 1,
 	}
@@ -51,6 +54,7 @@ function PlayerSim.copy(s: State): State
 		movement = MovementSim.copy(s.movement),
 		weapons = WeaponSim.copy(s.weapons),
 		spike = SpikeSim.copy(s.spike),
+		abilities = AbilitySim.copy(s.abilities),
 		tagUntilTick = s.tagUntilTick,
 		tagMultiplier = s.tagMultiplier,
 	}
@@ -132,11 +136,14 @@ function PlayerSim.rooted(s: State): boolean
 	return s.spike.channel ~= SpikeSim.NONE
 end
 
+-- Buttons that start a plant or a defuse, which a dash doesn't.
+local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire)
+
 -- Advance one tick. Returns the bullets fired this tick, if any (one round's:
 -- several for a shotgun), the knife swing that started, if one did, what
--- happened with the spike, if anything, and the gun G let go of, if it did
--- (system 15). `objective` is what this player can do with the spike now
--- (Spike.NONE when nothing).
+-- happened with the spike, if anything, the gun G let go of, if it did
+-- (system 15), and the abilities cast, if any (system 17). `objective` is
+-- what this player can do with the spike now (Spike.NONE when nothing).
 function PlayerSim.step(
 	s: State,
 	input: any,
@@ -144,23 +151,37 @@ function PlayerSim.step(
 	world: any,
 	dt: number,
 	objective: Spike.Context?
-): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?, WeaponSim.Dropped?)
-	-- The plant and the defuse go first: the tick they start on, they root.
-	-- G lets go of the spike if it's in hand (SpikeSim), and otherwise of the
-	-- gun in hand, once nothing is under way.
+): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?, WeaponSim.Dropped?, { AbilitySim.Cast }?)
+	-- The plant and the defuse go first: the tick they start on, they root,
+	-- and nothing's cast. G lets go of the spike if it's in hand (SpikeSim),
+	-- and otherwise of the gun in hand, once nothing is under way.
 	local t = (s.movement.tick + 1) * dt
 	local dropPressed = MovementSim.has(input.buttons, PlayerSim.Buttons.Drop) and not s.spike.dropHeld
-	local act = SpikeSim.step(s.spike, s.movement, s.weapons, input, t, s.movement.tick + 1, PlayerSim.eye(s, cfg), objective or Spike.NONE)
+	local spikeInput = input
+	if AbilitySim.dashing(s.abilities, t) then
+		spikeInput = table.clone(input)
+		spikeInput.buttons = bit32.band(input.buttons, bit32.bnot(SPIKE_KEYS))
+	end
+	local act =
+		SpikeSim.step(s.spike, s.movement, s.weapons, spikeInput, t, s.movement.tick + 1, PlayerSim.eye(s, cfg), objective or Spike.NONE)
 	local moveInput = input
 	if PlayerSim.rooted(s) then
 		moveInput = table.clone(input)
 		moveInput.buttons = SpikeSim.movementButtons(s.spike, input.buttons)
 	end
-	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt)
+	local motion, casts = AbilitySim.step(s.abilities, input, t, dt, s.movement.tick + 1, s.movement.position, PlayerSim.rooted(s), cfg)
+	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
 	local tick = s.movement.tick
 	-- A defuse has the weapon put away.
 	if s.spike.channel == SpikeSim.DEFUSING then
-		return nil, nil, act, nil
+		return nil, nil, act, nil, casts
+	end
+	-- Nothing fires in a dash, which takes the zoom off and stops a burst
+	-- (ours).
+	if motion.dash then
+		s.weapons.scoped = 0
+		s.weapons.burstLeft = 0
+		return nil, nil, act, nil, casts
 	end
 	local dropped: WeaponSim.Dropped? = nil
 	if dropPressed and act == nil and s.spike.channel == SpikeSim.NONE then
@@ -168,7 +189,7 @@ function PlayerSim.step(
 	end
 	local ctx = PlayerSim.accuracyContext(s, input.buttons, cfg, dt)
 	local shots, swing = WeaponSim.step(s.weapons, input, tick * dt, dt, PlayerSim.eye(s, cfg), tick, ctx)
-	return shots, swing, act, dropped
+	return shots, swing, act, dropped, casts
 end
 
 -- Hit slow, applied by the server between ticks. Speed is clamped at once and

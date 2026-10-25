@@ -94,6 +94,15 @@ Built one system at a time:
     and average combat score (damage, kills worth more with more enemies alive, multikills), your
     side's credits and guns, and the other side's credits as the round started -
     [research and design](docs/research/16-scoreboard.md)
+17. **The ability kit**: four abilities on C, Q, E and X, with an ability bar between health and
+    ammo. Basic abilities are bought a charge at a time in the buy phase and kept through a death
+    into the next round; the signature has a free charge every round; the ultimate fills with a
+    point for each kill, death, plant and defuse. Everyone plays Jett for now, and two of hers
+    work: Updraft throws you straight up about 4 m, and Tailwind readies a gust that, after a
+    second's windup, dashes you about 7 m the way you're moving, and comes back with two kills.
+    Casts are predicted on your screen and decided by the server, and others see and hear them
+    where you're drawn. Her Cloudburst and Blade Storm are in the kit but not playable yet -
+    [research and design](docs/research/17-abilities.md)
 
 ## Running it
 
@@ -111,12 +120,15 @@ Built one system at a time:
 5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
-Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
+Controls: WASD, Shift walk, Ctrl crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent), Tab held the scoreboard (the spike
-rounds). The spike rounds charge credits; the course and the arena are free.
+rounds), Q Updraft and E Tailwind (E readies the gust, and E again within its window dashes; C
+and X, Cloudburst and Blade Storm, aren't playable yet). The spike rounds charge credits; the
+course and the arena are free. On the course a spent charge comes back 1.5 s after it's done, and
+in the arena every life starts with every charge.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -142,7 +154,8 @@ Scripted playtests (Studio only): a tool that can press keys but can't move the 
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
 `VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
 `VFTestButtons` holds input flags on top of the real ones (128 fire or slash, 256 right click or
-stab, 512 reload, 1024 the spike's 4 held, 2048 G), `VFTestGive` set to a weapon id gives that
+stab, 512 reload, 1024 the spike's 4 held, 2048 G, and the ability keys: 4096 C, 8192 Q, 16384 E
+and 32768 X), `VFTestGive` set to a weapon id gives that
 weapon as 5-9 would (`spike` hands over the course's spike), `VFTestBuy` set
 to an id buys it as the menu would (`-` and the id sells it back), `VFTestMenu` set to true or
 false opens or closes the menu, `VFTestSlot` set to 1, 2, 3 or 4 draws that slot,
@@ -159,7 +172,9 @@ In the spike rounds each player's credits are their `VFCredits` attribute, and e
 in a row `Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in
 Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's
 record is in their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds` and
-`VFStartCredits` in the spike rounds, and `VFAlive` and `VFLoadout` in either.
+`VFStartCredits` in the spike rounds, and `VFAlive` and `VFLoadout` in either. Each player's ability kit is
+their `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points),
+with what's under way after it, and `VFTestBuy` set to `updraft` buys a charge.
 
 ## Tests
 
@@ -171,8 +186,10 @@ way, reload parts), the settings (crosshair codes and the pixels they draw, sens
 cm/360), the spike's rules (sites, the defuse's reach, its beeps and its blast), the spike
 rounds' rules and map, the economy (what each round pays, kills, the plant, the cap, what a
 purchase costs and the shield a survivor keeps), guns on the ground (G's drop, what the dead
-drop, walking over one and the one in view) and the match's record (the combat score, kills,
-deaths, assists and the average) are pure Luau and run outside Roblox:
+drop, walking over one and the one in view), the match's record (the combat score, kills,
+deaths, assists and the average) and the ability kit (charges through rounds, halves, kills and
+deaths, buying them, Updraft's height and Tailwind's dash, and the kit on the wire) are pure Luau
+and run outside Roblox:
 
 ```
 luau tests/run.luau

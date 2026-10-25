@@ -18,6 +18,10 @@
 -- A request that comes while a new life is on its way (the arena respawns
 -- everyone as a buy phase opens, and Roblox takes a moment to load each
 -- character) is held and made as soon as that life starts.
+--
+-- Abilities (system 17) are bought a charge at a time into the kit
+-- (AbilityServer), and a charge bought this buy phase sells back for its
+-- price.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,6 +33,7 @@ local Remotes = require(Shared.Net.Remotes)
 
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local CombatServer = require(script.Parent.CombatServer)
+local AbilityServer = require(script.Parent.AbilityServer)
 
 local ShopServer = {}
 
@@ -57,6 +62,7 @@ local function publish(player: Player)
 	local s = stateOf(player)
 	player:SetAttribute(Shop.BOUGHT_ATTRIBUTE, table.concat(Shop.boughtList(s), ","))
 	player:SetAttribute(Shop.BEFORE_ATTRIBUTE, table.concat(Shop.beforeList(s), ","))
+	player:SetAttribute(Shop.CHARGES_ATTRIBUTE, table.concat(Shop.chargeList(s), ","))
 end
 
 local function charge(player: Player, amount: number): boolean
@@ -105,12 +111,33 @@ local function keepWorn(player: Player, s: Shop.State, item: Shop.Item)
 	end
 end
 
+-- A charge of an ability bought, if the kit has room and they can pay, or
+-- one bought this buy phase sold back.
+local function handleCharge(player: Player, s: Shop.State, action: string, item: Shop.Item)
+	if action == "buy" then
+		if AbilityServer.canBuy(player, item.id) and charge(player, Shop.cost(s, item)) then
+			AbilityServer.buy(player, item.id)
+			Shop.buyCharge(s, item)
+		end
+	elseif action == "sell" then
+		local refund = Shop.refund(s, item)
+		if refund > 0 and AbilityServer.sell(player, item.id) then
+			Shop.sellCharge(s, item)
+			charge(player, -refund)
+		end
+	end
+end
+
 -- Makes one request, if buying is open and they can pay; publish after.
 local function handle(player: Player, action: string, id: string)
 	if not isOpen(player) then
 		return
 	end
 	local item = Shop.item(id)
+	if item and item.kind == "ability" then
+		handleCharge(player, stateOf(player), action, item)
+		return
+	end
 	local current = if item then holding(player, item) else nil
 	if not item or current == nil then
 		return
