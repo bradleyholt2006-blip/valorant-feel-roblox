@@ -247,6 +247,11 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 	return false, posErr
 end
 
+-- A weapon asked for (the debug give, the buy menu) is drawn once the server
+-- has put it in its slot, so a request it refuses doesn't act as a slot key.
+local awaitedWeapon: { slot: number, id: string, expires: number }? = nil
+local AWAIT_WEAPON_TIME = 2 -- seconds
+
 local function onAck(payload: buffer)
 	local s = sim
 	if not s or typeof(payload) ~= "buffer" or not PlayerController.alive then
@@ -262,6 +267,15 @@ local function onAck(payload: buffer)
 	end
 	stats.lastAckSeq = ackSeq
 	PlayerController.serverSim = serverSim
+	local awaited = awaitedWeapon
+	if awaited then
+		if serverSim.weapons.loadout[awaited.slot] == awaited.id then
+			PlayerController.desiredSlot = awaited.slot
+			awaitedWeapon = nil
+		elseif os.clock() > awaited.expires then
+			awaitedWeapon = nil
+		end
+	end
 	local sent = sentAt[ackSeq]
 	if sent then
 		stats.rtt = os.clock() - sent
@@ -459,12 +473,24 @@ function PlayerController.requestTuning(key: string, value: number?)
 	remotes.Tuning:FireServer(key, value)
 end
 
--- Debug weapon give (Studio / place owner only); equips it too.
+-- Draws the weapon `id` from `slot` once the server has put it there. A
+-- slot that holds it already changes nothing, so nothing is drawn.
+function PlayerController.drawWhenGiven(slot: number, id: string)
+	local s = sim
+	if s and s.weapons.loadout[slot] == id then
+		awaitedWeapon = nil
+		return
+	end
+	awaitedWeapon = { slot = slot, id = id, expires = os.clock() + AWAIT_WEAPON_TIME }
+end
+
+-- Debug weapon give (Studio / place owner only, and anyone in the arena's
+-- buy phase); drawn once the server has given it.
 function PlayerController.requestWeapon(id: string)
 	local def = WeaponConfig.Defs[id]
 	if def then
 		remotes.Loadout:FireServer(def.slot, id)
-		PlayerController.desiredSlot = def.slot
+		PlayerController.drawWhenGiven(def.slot, id)
 	end
 end
 

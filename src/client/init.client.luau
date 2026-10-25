@@ -12,6 +12,7 @@ local ClientShots = require(script.Combat.ClientShots)
 local WeaponEffects = require(script.Combat.WeaponEffects)
 local CombatHud = require(script.Combat.CombatHud)
 local ArenaHud = require(script.ArenaHud)
+local BuyMenu = require(script.BuyMenu)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
 local DebugHud = require(script.Debug.DebugHud)
@@ -40,6 +41,8 @@ WeaponEffects.start()
 CombatHud.start()
 -- The arena's score and round banners, and P to turn it on or off.
 ArenaHud.start()
+-- B: every gun and shield, in the arena's buy phase and any time on the course.
+BuyMenu.start()
 -- Footsteps, landings, gunshots, reloads, draws and hit sounds, with
 -- Roblox's own character sounds switched off.
 DefaultSounds.start()
@@ -70,8 +73,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 -- Debug weapon give (Studio / place owner only, and anyone in the arena's buy
--- phase) until there is a buy menu. The weapon goes into its slot with full
--- ammo and is drawn.
+-- phase), quicker than the buy menu for the guns tested most. The weapon goes
+-- into its slot with full ammo and is drawn.
 local giveKeys: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.Four] = "vandal",
 	[Enum.KeyCode.Five] = "phantom",

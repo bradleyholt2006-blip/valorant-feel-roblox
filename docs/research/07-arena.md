@@ -2,8 +2,8 @@
 
 This covers somewhere to play rounds against a friend: a whitebox of Skirmish A, the smallest of
 the three layouts of the reference's Skirmish mode (the mode its 2v2 queue plays), with
-Skirmish's rules for sides, rounds and the score. Skirmish B and C, a buy menu, and anything to
-do with the spike are separate work.
+Skirmish's rules for sides, rounds and the score. Skirmish B and C and anything to do with the
+spike are separate work; the buy menu came with system 9 ([09-arsenal](09-arsenal.md)).
 
 As before, everything comes from Riot's patch notes, the community wiki and articles about the
 mode, plus one image: the three Skirmish minimaps, credited to Riot, in Sheep Esports' article on
@@ -123,12 +123,13 @@ The rules live in `src/shared/Arena/ArenaConfig.luau` and the map in
 | --- | --- | --- |
 | To win the match | 10 rounds | Confirmed |
 | Round timer | None | Confirmed |
-| Economy | None: anyone can pick any weapon during the buy phase, with 4 to 8 until there's a buy menu | Confirmed (no economy, full weapon selection) |
+| Economy | None: anyone can buy any gun or shield during the buy phase, from the buy menu (B), and nothing is charged | Confirmed (no economy, full weapon selection) |
 | Your weapons between rounds | Kept until you pick others | Confirmed ("Set and forget your weapon") |
+| Your weapons in a new match | The starting kit again: Vandal, Classic, knife and Heavy Armor | Estimate |
 | Abilities | None (the project has none yet) | Confirmed |
 | Winning a round | The other side has nobody left alive | Community |
 | Teammates | Bullets pass through them | Community |
-| Armour | Full health and Heavy Armor (50 shields) at every spawn, as on the course | Community |
+| Armour | Full health and a full shield at every spawn: Heavy Armor (50), as on the course, unless you've bought another | Community (Heavy Armor every round); estimate (keeping one you bought) |
 | Buy phase | 15 s in round 1, 3 s after | Community |
 | What holds you in | A barrier across your room's opening during the buy phase, which stops players and bullets | Estimate |
 | Next round | 3 s after the round's last kill, with everyone respawned, dead or alive | Estimate |
@@ -162,7 +163,7 @@ What the numbers give (from `luau tests/run.luau`):
  Heartbeat, after the frame's snapshot ──► Arena.step ──► ArenaRules.step ──► who to spawn
  PlayerSimServer
    spawnPicker      a new life starts in its side's room, facing the hall
-   loadoutRule      4 to 8 work in the buy phase, and while waiting
+   loadoutRule      buying (the menu, and 4 to 8) is open in the buy phase, and while waiting
    deathListeners   a death ──► ArenaRules.died ──► is the round over?
  on every change ──► the arena model's attributes (Phase, Round, Score1, Score2, ...) ──► ArenaHud
                  ──► the barriers: up in the buy phase, gone otherwise
@@ -272,7 +273,7 @@ that:
   join it, keeping the score unless the match was over. Someone leaving who was the last one
   alive on their side loses the round for it.
 - **While waiting** there's nobody to play against, so the arena behaves like the course: the
-  barriers are down, you can pick any weapon, and you're back 3 s after dying.
+  barriers are down, you can buy anything, and you're back 3 s after dying.
 - **The HUD.** The top bar shows your side's score in the ally colour on the left and the other
   side's in the enemy colour on the right, with the round between them, like the reference's top
   bar. A banner says what's happening: waiting, the buy phase's countdown, the round won or lost,
@@ -288,8 +289,9 @@ that:
 - **A barrier changes late on clients.** The server raises and drops the barriers, and each client
   sees the change a moment later. Pushing on a barrier as it drops can give a small correction,
   because your prediction still has it up for that moment.
-- **No buy menu.** Picking a weapon is still the debug keys 4 to 8, now open to everyone in the
-  arena during the buy phase.
+- **The buy menu.** B opens it during the buy phase and while waiting, for everyone in the arena;
+  the debug keys 4 to 8 work at the same times. A new match puts everyone back on the starting
+  kit ([09-arsenal](09-arsenal.md)).
 
 ### Building B and C
 
@@ -305,7 +307,7 @@ sightline between the rooms) apply to them unchanged.
 | `src/shared/Arena/ArenaConfig.luau` | The rules' numbers, with status and source, and the names the server and clients share |
 | `src/shared/Arena/ArenaRules.luau` | Sides, phases, rounds and the score, as plain state |
 | `src/shared/Arena/ArenaLayout.luau` | The plan as measured, its heights, and every part, room and spawn spot in metres |
-| `src/server/Arena.luau` | Builds the arena, turns it on and off, the teams, spawns, the barriers, and the phase and score for clients |
+| `src/server/Arena.luau` | Builds the arena, turns it on and off, the teams, spawns, the starting kit for each match, the barriers, and the phase and score for clients |
 | `src/client/ArenaHud.luau` | The top bar, the banner, and P |
 | `src/server/PlayerSimServer.luau` | Hooks for where a life starts and which way it faces, who can change weapons, and deaths; each life's first input |
 | `src/client/PlayerController.luau` | Starts a new life's inputs where the server says, ignores acks from other lives, and faces the spawn's way |

@@ -23,6 +23,9 @@ CameraController.kickYaw = 0
 -- zoomed, so the crosshair moves across the scene at the same speed (estimate
 -- of the reference's default scoped sensitivity).
 CameraController.zoom = 1
+-- While set (the buy menu is open), the mouse moves a cursor instead of the
+-- view.
+CameraController.cursorFree = false
 
 local MAX_PITCH = math.rad(89)
 
@@ -53,7 +56,7 @@ end
 CameraController.countsX = 0
 
 function CameraController.updateLook()
-	if UserInputService:GetFocusedTextBox() then
+	if UserInputService:GetFocusedTextBox() or CameraController.cursorFree then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 		UserInputService.MouseIconEnabled = true
 		return

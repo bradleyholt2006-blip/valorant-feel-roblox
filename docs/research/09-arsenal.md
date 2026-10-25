@@ -216,8 +216,8 @@ files or network traffic.
 
 ## 4. Confirmed vs estimated, as implemented
 
-This part covers the guns. The shields and the buy menu come next, and are added here when they
-do. Every value lives in `src/shared/Weapons/WeaponConfig.luau` with its status and source.
+Every value lives in `src/shared/Weapons/WeaponConfig.luau` with its status and source. The guns
+first:
 
 | Parameter | Value | Status |
 | --- | --- | --- |
@@ -256,6 +256,35 @@ do. Every value lives in `src/shared/Weapons/WeaponConfig.luau` with its status 
 | The knife | 6.75 m/s and a 0.6 s draw; it doesn't attack yet | Community |
 | The Bucky's right click | Not built yet: it does nothing | |
 
+The shields:
+
+| Parameter | Value | Status |
+| --- | --- | --- |
+| Light Armor and Heavy Armor | 400 credits for 25 and 1000 for 50 | Community |
+| How they take a hit | 66% of it while they last, and health the rest | Community |
+| The Regen Shield | 650 credits for 25, taking every point of a hit while it lasts, refilling from a pool of 50 | Confirmed (Patch 9.10) |
+| When it refills | 3 s after the last hit | Community (the 3 s); estimate (counting from the last hit, not from when it ran out) |
+| How fast | 12.5 a second, so 25 in 2 s | Estimate |
+| What ends a refill | A hit, the pool running out, or the shield being full | Estimate |
+| What a new life wears | The shield worn in the last one, full, and the Regen Shield's pool full again | Estimate (with nothing to pay, a new life buys it back) |
+| What everyone starts in | Heavy Armor, as Skirmish does, on the course too | Community |
+| A new match in the arena | Everyone back on the starting kit: Vandal, Classic, knife and Heavy Armor | Estimate (the reference starts a match with the Classic and credits to spend) |
+
+The buy menu:
+
+| Parameter | Value | Status |
+| --- | --- | --- |
+| Opening it | B, while buying is open | Community |
+| When buying is open | In the arena, the buy phase and while waiting for an opponent; on the course, any time | Community (the buy phase); ours (waiting, and the course, like the reference's practice range) |
+| Buying | A click: a gun goes into its slot with full ammo and is drawn, a shield goes on full | Community |
+| Buying the shield you wear | A fresh one, if it's damaged | Community for the Regen Shield ("buying it again refills it"); estimate for the others |
+| Selling | A right click, on what was bought this buy phase, puts back what its slot held when the phase began | Community |
+| A buy phase on the course | Each life | Estimate |
+| Prices | Shown and not charged: Skirmish has no economy | Confirmed (Patch 12.03) |
+| What it shows | The guns in four columns by group and the shields in a fifth, each with its price and a stand-in picture; a white edge on what you have and a teal one on what you can sell back; the numbers of the one under the cursor in a panel to the right | Estimate (the reference's layout isn't published) |
+| While it's open | The mouse moves a cursor, its buttons are the menu's, and you can still move | Estimate |
+| The HUD's health and shield | Rounded up, so 86.4 reads 87 and a player left with 0.4 reads 1 | Estimate |
+
 What the simulation produces (from `luau tests/run.luau`; a shotgun's shots to kill count every
 pellet hitting):
 
@@ -285,6 +314,36 @@ pellet hitting):
 | Zoomed burst | Rounds 1/13.33 s apart | Bursts a second | Second burst held starts at |
 | --- | --- | --- | --- |
 | Bulldog | to the tick | 2.105 | bullet 4 |
+
+Shots to kill at 10 m from full health, head / body, by shield (a shotgun's with every pellet
+hitting). Light Armor and the Regen Shield
+are both 25, and come out the same because, from full health, health and shield together always
+drop by exactly the hit (the tests check every gun, shield, region and range: 960 cases). A
+Classic body shot on Light Armor leaves 91.16 health and 7.84 shield, the check in section 3.
+
+| Gun | No shield | Light Armor, Regen Shield | Heavy Armor |
+| --- | --- | --- | --- |
+| Classic | 2 / 4 | 2 / 5 | 2 / 6 |
+| Shorty | 1 / 2 | 1 / 2 | 1 / 2 |
+| Frenzy | 2 / 4 | 2 / 5 | 2 / 6 |
+| Ghost | 1 / 4 | 2 / 5 | 2 / 5 |
+| Bandit | 1 / 3 | 1 / 4 | 1 / 4 |
+| Sheriff | 1 / 2 | 1 / 3 | 1 / 3 |
+| Stinger | 2 / 4 | 2 / 5 | 3 / 6 |
+| Spectre | 2 / 4 | 2 / 5 | 2 / 6 |
+| Bucky, Judge | 1 / 1 | 1 / 1 | 1 / 1 |
+| Bulldog | 1 / 3 | 2 / 4 | 2 / 5 |
+| Guardian | 1 / 2 | 1 / 2 | 1 / 3 |
+| Phantom, Vandal | 1 / 3 | 1 / 4 | 1 / 4 |
+| Warden | 1 / 2 | 1 / 3 | 1 / 3 |
+| Marshal | 1 / 1 | 1 / 2 | 1 / 2 |
+| Outlaw | 1 / 1 | 1 / 1 | 1 / 2 |
+| Operator | 1 / 1 | 1 / 1 | 1 / 1 |
+| Ares | 2 / 4 | 2 / 5 | 2 / 5 |
+| Odin | 2 / 3 | 2 / 4 | 2 / 4 |
+
+With health already down, a fresh shield doesn't add its whole value: Heavy Armor bought at 10
+health still lets 13.6 of a Vandal body shot through, which kills.
 
 ## 5. Design
 
@@ -334,6 +393,43 @@ pellet hitting):
 - **Snipers kick the view.** Their bullets don't climb, but each shot jumps the view up and lets
   it settle, which is what makes a bolt-action read as one.
 
+```
+ buying, on B
+
+   BuyMenu ── Buy: "buy" or "sell", an id ──► ShopServer: is buying open? alive, and in the arena its rules say so
+                                              Shop: what each slot held when the buy phase began
+                                              ├─► a gun: into its slot, full ammo ──► the ack ──► drawn (drawWhenGiven)
+                                              └─► a shield: on, full ──► a "shield" combat event ──► the HUD
+                                              VFShield, VFBought ──► the menu's edges and the sell hint
+```
+
+- **A shield takes its share.** While it lasts, a shield takes its share of every hit
+  (`absorb`: 66% for the armours, all of it for the Regen Shield) and health the rest; once it's
+  gone, health takes everything. Only health running out kills. From full health, health and
+  shield fall by exactly each hit, so the shots to kill are the ones their sum gives, and none of
+  system 2's numbers move.
+- **The Regen Shield refills on the server.** `Health.step` runs for every entity each server
+  frame: 3 s after the last hit it refills at 12.5 a second from its pool. Clients hear about it
+  through "shield" combat events, at most ten a second while it refills and one as it stops, so
+  the HUD's number climbs smoothly without flooding the remote.
+- **What you wear stays.** The kind of shield belongs to the player, not to a life: each new life
+  puts it back on full, with a full pool. A new match in the arena puts everyone back on the
+  starting kit.
+- **Buying is plain state.** `Shop` keeps, for each slot bought into this buy phase, what it held
+  when the phase began. Selling puts that back, and buying back what a slot began with leaves
+  nothing to sell. `ShopServer` checks that buying is open and applies the result: a gun with full
+  ammo, drawn if its slot is in hand, or a shield on full. Each life is a new buy phase.
+- **The menu shows the server's word.** The guns you have come from the predicted loadout, which
+  the server's acks correct; the shield worn and what can be sold come from two player
+  attributes the server sets, `VFShield` and `VFBought`. A gun you buy is drawn only once an ack
+  shows it in its slot (`PlayerController.drawWhenGiven`), so a refused purchase changes nothing.
+  The debug keys 4 to 8 take the same path now, which stops them switching slots when the server
+  says no.
+- **The mouse belongs to the menu while it's open.** The camera stops reading it and shows the
+  cursor, and its buttons are masked out of the simulation's input (`InputSampler.blockMouse`), so
+  a click on a tile never fires. The keys still work, so you can walk about in spawn while
+  choosing, and the menu closes itself when buying closes.
+
 ### Roblox differences that matter
 
 - **ShotFx is unreliable.** It goes out on an unreliable remote, which drops anything over about
@@ -341,6 +437,12 @@ pellet hitting):
 - **Every pellet is a trace.** A Judge held down is 42 traces a second through the walls on the
   server for one player. Roblox raycasts are cheap enough for that, and a trace stops after the
   most pieces it may count (system 5).
+- **A cursor needs the mouse unlocked.** Under `MouseBehavior.LockCenter` there's no cursor and
+  GUI buttons get no hover, so the camera hands the mouse back (`Default`) while the menu is open
+  and locks it again when it closes.
+- **The shield is pushed, not polled.** Like damage, the shield's value reaches clients only in
+  combat events, so the Regen Shield's refill has to be sent as it happens; ten events a second
+  for each refilling player is small next to the snapshots.
 
 ## 6. Implementation map
 
@@ -359,6 +461,17 @@ pellet hitting):
 | `src/client/Debug/WeaponLab.luau`, `SprayLab.luau` | The mode, bursts, spin-up and reload steps (below) |
 | `src/client/Debug/TestAim.luau`, `src/client/InputSampler.luau` | `VFTestButtons` and `VFTestGive` for scripted playtests |
 | `tests/arsenal.luau` | Offline tests: every gun's numbers, pellets, bursts, spin-up, reloads, the Classic's right click, acks resumed mid-burst, mid-spin and mid-reload |
+| `src/shared/Combat/Health.luau` | Health and a shield: each hit split by the shield's share, the Regen Shield's refill, a new life |
+| `src/shared/Weapons/Shop.luau` | The buy menu's rules: what's on sale and where it goes, buying, selling back what was bought this buy phase |
+| `src/server/ShopServer.luau` | The Buy remote: whether buying is open, a purchase or a sale applied, the `VFShield` and `VFBought` attributes |
+| `src/server/CombatServer.luau` | `step`: the Regen Shield's refill, sent as "shield" events; `setShield` |
+| `src/server/PlayerSimServer.luau`, `src/server/Arena.luau` | `give`, `holding`; `resetKit`, which a new match uses for the starting kit |
+| `src/client/BuyMenu.luau` | The menu: its tiles, the numbers panel, buying and selling |
+| `src/client/Combat/WeaponLooks.luau` | Every gun's stand-in shape and colours, for the viewmodel and the menu's pictures |
+| `src/client/Combat/CombatHud.luau` | The shield's name under its number, and the Regen Shield's pool |
+| `src/client/PlayerController.luau` | `drawWhenGiven`: a gun is drawn once the server has put it in its slot |
+| `src/client/CameraController.luau`, `src/client/InputSampler.luau` | `cursorFree` and `blockMouse` while the menu is open |
+| `tests/shop.luau` | Offline tests: the shields' numbers, splits, refill and new lives, shots to kill through every shield, the menu's rules |
 
 ## 7. Debug tools
 
@@ -368,6 +481,12 @@ pellet hitting):
 | F2 (spray lab) | Says which curve the shot read: hip, zoomed or the right click's |
 | `VFTestGive` (Studio) | Set it on the local player to a weapon id (`odin`, `bucky` ...): it's given and drawn as 4 to 8 would, and the attribute clears itself |
 | `VFTestButtons` (Studio) | PlayerSim button flags held on top of real input while it's set: 128 fire, 256 right click, 512 reload, 32 crouch. Holds the trigger without a mouse button |
+| B | The buy menu, while buying is open |
+| `VFTestBuy` (Studio) | Set it on the local player to an id (`odin`, `light` ...) to buy it, or to `-` and the id (`-odin`) to sell it back, as the menu's clicks would; it clears itself |
+| `VFTestMenu` (Studio) | `true` opens the menu and `false` closes it, as B would; it clears itself |
+| F3 (HUD) | The shield's name under its number, and the Regen Shield's pool left |
+
+The Hit Reg Lab's network buffering moved from B to U to make room for the menu.
 
 ## 8. Refinement loop
 
@@ -383,7 +502,12 @@ pellet hitting):
 6. Spray each new gun at a wall with the spray lab and fit its climb and drift, as in
    [03-spread-recoil](03-spread-recoil.md).
 7. Measure the Warden's spread, movement errors and zoomed speed.
-8. Re-run `luau tests/run.luau` and update the tables in section 4.
+8. With a friend, take one Classic body shot in Light Armor from full health: about 91 health and
+   8 shield (91.16 and 7.84) means 66% is right. In Heavy Armor a Vandal body shot should leave
+   about 86 and 24 (86.4 and 23.6).
+9. Have your Regen Shield shot away, then time from the last hit to the refill starting, and to
+   the shield being full: `Shields.regen.delay` and `rate`.
+10. Re-run `luau tests/run.luau` and update the tables in section 4.
 
 ## Known gaps to check in Studio
 
@@ -399,4 +523,10 @@ session can confirm:
 - With two players, the other one sees a Bucky's 15 tracers, and none of a suppressed gun's when
   on the other side in the arena.
 - Each gun's shot sounds like its own.
+- B opens the menu only while buying is open, it fits the screen at any size, and while it's open
+  the view stays still, a click never fires and the movement keys still work.
+- Hovering a tile shows its numbers; a click buys and draws it; a right click sells back what was
+  bought this buy phase, and nothing else.
+- The HUD shows Light Armor's split and the Regen Shield refilling as the tests have them.
+- A new match in the arena puts everyone back on the starting kit.
 

@@ -1,12 +1,25 @@
 --!strict
--- Health + shields. Shields take damage first, then health (the reference's
--- armour behaves as extra hit points; see docs/research/02-weapon-firing.md).
+-- Health and a shield (systems 2 and 9). While the shield lasts it takes its
+-- share of every hit (Light and Heavy Armor about two thirds, the Regen
+-- Shield all of it) and health takes the rest; once it's gone, health takes
+-- everything. A hit that doesn't kill takes exactly its damage off the two
+-- together, and from full health the shield always runs out first, so the
+-- shots it takes to kill are the ones their sum gives: only what the HUD
+-- shows depends on the split. A Regen Shield also refills itself from a pool
+-- of its own once it hasn't been hit for a while
+-- (docs/research/09-arsenal.md).
+
+local WeaponConfig = require("../Weapons/WeaponConfig")
 
 export type State = {
 	health: number,
 	shield: number,
 	maxHealth: number,
+	kind: string, -- the shield worn: a WeaponConfig.Shields id, or "" for none
 	maxShield: number,
+	absorb: number, -- the share of each hit the shield takes while it lasts
+	pool: number, -- a Regen Shield's points still to refill from
+	lastHit: number, -- when it was last hit (a Regen Shield waits from then)
 	alive: boolean,
 }
 
@@ -19,29 +32,91 @@ export type DamageResult = {
 
 local Health = {}
 
-function Health.new(maxHealth: number, shield: number): State
-	return { health = maxHealth, shield = shield, maxHealth = maxHealth, maxShield = shield, alive = true }
+-- Below this, health is gone: a split hit works in fractions, and a kill
+-- must not miss by a rounding error.
+local EPS = 1e-6
+
+-- Puts on a fresh shield of this kind ("" for none): full, with a full pool.
+-- It stays the kind worn through Health.reset, for the next life.
+function Health.setShield(s: State, kind: string)
+	local def = WeaponConfig.Shields[kind]
+	local regen = def and def.regen
+	s.kind = if def then kind else ""
+	s.maxShield = if def then def.points.value else 0
+	s.shield = s.maxShield
+	s.absorb = if def then def.absorb.value else 1
+	s.pool = if regen then regen.pool.value else 0
 end
 
-function Health.apply(s: State, amount: number): DamageResult
+function Health.new(maxHealth: number, kind: string?): State
+	local s: State = {
+		health = maxHealth,
+		shield = 0,
+		maxHealth = maxHealth,
+		kind = "",
+		maxShield = 0,
+		absorb = 1,
+		pool = 0,
+		lastHit = -math.huge,
+		alive = true,
+	}
+	Health.setShield(s, kind or "")
+	return s
+end
+
+-- A hit of `amount` at time `now` (the time only matters to a Regen Shield).
+function Health.apply(s: State, amount: number, now: number?): DamageResult
 	if not s.alive or amount <= 0 then
 		return { damage = 0, shieldDamage = 0, healthDamage = 0, killed = false }
 	end
-	local toShield = math.min(s.shield, amount)
+	if now then
+		s.lastHit = now
+	end
+	local toShield = math.min(s.shield, amount * s.absorb)
 	s.shield -= toShield
+	if s.shield < EPS then
+		s.shield = 0
+	end
 	local toHealth = math.min(s.health, amount - toShield)
 	s.health -= toHealth
-	local killed = s.health <= 0
+	local killed = s.health < EPS
 	if killed then
+		s.health = 0
 		s.alive = false
 	end
 	return { damage = toShield + toHealth, shieldDamage = toShield, healthDamage = toHealth, killed = killed }
 end
 
+-- A Regen Shield's refill over the `dt` seconds up to `now`: `rate` points a
+-- second from the pool once it hasn't been hit for its delay, until it's
+-- full or the pool is empty. Returns whether the shield changed.
+function Health.step(s: State, now: number, dt: number): boolean
+	local def = WeaponConfig.Shields[s.kind]
+	local regen = def and def.regen
+	if not regen or not s.alive or s.shield >= s.maxShield or s.pool <= 0 or now - s.lastHit < regen.delay.value then
+		return false
+	end
+	local add = math.min(regen.rate.value * dt, s.maxShield - s.shield, s.pool)
+	if add <= 0 then
+		return false
+	end
+	s.shield += add
+	s.pool -= add
+	if s.shield > s.maxShield - EPS then
+		s.shield = s.maxShield
+	end
+	if s.pool < EPS then
+		s.pool = 0
+	end
+	return true
+end
+
+-- A new life: full health and a fresh shield of the kind worn.
 function Health.reset(s: State)
 	s.health = s.maxHealth
-	s.shield = s.maxShield
 	s.alive = true
+	s.lastHit = -math.huge
+	Health.setShield(s, s.kind)
 end
 
 return Health

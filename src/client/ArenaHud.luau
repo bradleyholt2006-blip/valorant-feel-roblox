@@ -115,10 +115,10 @@ function ArenaHud.start()
 		local left = if typeof(endsAt) == "number" then math.max(endsAt - Workspace:GetServerTimeNow(), 0) else 0
 		if phase == "waiting" then
 			title = "WAITING FOR AN OPPONENT"
-			sub = "Anyone who joins the server plays for the other side   4-8 pick a gun"
+			sub = "Anyone who joins the server plays for the other side   B buy menu"
 		elseif phase == "buy" then
 			title = string.format("BUY PHASE  %d", math.ceil(left))
-			sub = "4-8 pick a gun"
+			sub = "B buy menu"
 		elseif phase == "roundOver" then
 			local won = arena:GetAttribute("RoundWinner") == side
 			title = if won then "ROUND WON" else "ROUND LOST"

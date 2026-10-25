@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
+local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -107,11 +108,19 @@ function CombatHud.start()
 		TextYAlignment = Enum.TextYAlignment.Center,
 	})
 	local shieldText = Ui.label(vitals, {
-		Size = UDim2.new(0, 80, 1, 0),
-		Position = UDim2.fromOffset(84, 0),
+		Size = UDim2.new(0, 80, 0, 22),
+		Position = UDim2.fromOffset(84, 8),
 		TextSize = 18,
 		TextColor3 = Ui.NEUTRAL,
 		TextYAlignment = Enum.TextYAlignment.Center,
+	})
+	-- The shield's kind, and a Regen Shield's pool left.
+	local shieldKind = Ui.label(vitals, {
+		Size = UDim2.new(0, 84, 0, 14),
+		Position = UDim2.fromOffset(84, 31),
+		TextSize = 10,
+		Font = Enum.Font.GothamBold,
+		TextColor3 = Ui.DIM,
 	})
 
 	local ammoBox = Ui.frame(gui, {
@@ -242,8 +251,13 @@ function CombatHud.start()
 
 		local hp = RemoteEntities.healthOf(PlayerController.entityId)
 		-- Whole points, rounded up: a player on 0.4 is still alive.
-		healthText.Text = tostring(math.ceil(hp.health - 1e-9))
-		shieldText.Text = if hp.shield > 0 then string.format("+%d", math.ceil(hp.shield - 1e-9)) else ""
+		healthText.Text = tostring(RemoteEntities.points(hp.health))
+		shieldText.Text = if hp.shield > 0 then string.format("+%d", RemoteEntities.points(hp.shield)) else ""
+		-- The shield's name while it lasts, and the Regen Shield's while it can refill.
+		local kind = WeaponConfig.Shields[hp.armor]
+		local regen = kind and kind.regen ~= nil
+		local worn = kind and (hp.shield > 0 or (regen and hp.pool > 0))
+		shieldKind.Text = if not kind or not worn then "" elseif regen then string.format("REGEN  %d LEFT", RemoteEntities.points(hp.pool)) else kind.name:upper()
 		dead.Visible = not alive and sim ~= nil
 
 		local zoom = 1

@@ -19,6 +19,7 @@ local definitions: { [string]: string } = {
 	ShotFx = "UnreliableRemoteEvent", -- server -> others, tracers for someone else's shot
 	Combat = "RemoteEvent", -- server -> all, damage / death / respawn events
 	Loadout = "RemoteEvent", -- client -> server, debug weapon give (Studio / owner only; anyone in the arena's buy phase)
+	Buy = "RemoteEvent", -- client -> server, buy or sell an item from the buy menu
 	Arena = "RemoteEvent", -- client -> server, turn the arena on or off (Studio / owner only)
 }
 
@@ -31,6 +32,7 @@ export type Remotes = {
 	ShotFx: UnreliableRemoteEvent,
 	Combat: RemoteEvent,
 	Loadout: RemoteEvent,
+	Buy: RemoteEvent,
 	Arena: RemoteEvent,
 }
 

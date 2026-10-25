@@ -2,9 +2,10 @@
 -- Server entry point. Order inside each Heartbeat matters: dummies advance,
 -- then player inputs run (their shots rewind targets through the snapshots
 -- sent so far), then the frame's snapshot goes out and joins that history.
--- All three work to the same server time, the one the snapshot carries. The
--- arena's rounds move on last, so a round that ends in this frame's shots
--- respawns its players after the frame's snapshot.
+-- All three work to the same server time, the one the snapshot carries.
+-- Regen Shields refill after the shots. The arena's rounds move on last, so
+-- a round that ends in this frame's shots respawns its players after the
+-- frame's snapshot.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,11 +20,13 @@ local PlayerSimServer = require(script.PlayerSimServer)
 local CombatServer = require(script.CombatServer)
 local Dummies = require(script.Dummies)
 local Replication = require(script.Replication)
+local ShopServer = require(script.ShopServer)
 
 TestRange.buildIfMissing()
 Arena.buildIfMissing()
 Tuning.start()
 PlayerSimServer.start(CombatServer.onVolley)
+ShopServer.start()
 Dummies.start()
 Arena.start()
 table.insert(Replication.listeners, CombatServer.record)
@@ -32,6 +35,7 @@ RunService.Heartbeat:Connect(function(dt)
 	local now = Workspace:GetServerTimeNow()
 	Dummies.step(now)
 	PlayerSimServer.step(dt, now)
+	CombatServer.step(now, dt)
 	Replication.step(now)
 	Arena.step(now)
 end)

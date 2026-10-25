@@ -26,7 +26,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 2. Install Rojo 7.x and its Studio plugin, run `rojo serve` in this repository and connect from
    the plugin.
 3. Open the Output window (View tab, Output).
-4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 12
+4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 13
    need one and then two. Section 11 needs headphones.
 
 | Key | What it does |
@@ -46,14 +46,18 @@ Fill in the results block at the end of this page and reply with it, plus:
 | P | The arena on and off |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout) |
+| B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting) |
 | 4 to 8 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting) |
+| U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
 
-Any other gun comes from an attribute until there's a buy menu: with the game running, select
-your player under Players in the Explorer, add a string attribute `VFTestGive` and set it to the
-gun's id (`classic`, `shorty`, `frenzy`, `ghost`, `bandit`, `sheriff`, `stinger`, `spectre`,
-`bucky`, `judge`, `bulldog`, `guardian`, `phantom`, `vandal`, `warden`, `marshal`, `outlaw`,
-`operator`, `ares` or `odin`). You get it as 4 to 8 would give it, and the attribute clears
-itself, ready for the next one.
+Every gun is in the buy menu. A gun can also come from an attribute, which is how scripted checks
+do it: with the game running, select your player under Players in the Explorer, add a string
+attribute `VFTestGive` and set it to the gun's id (`classic`, `shorty`, `frenzy`, `ghost`,
+`bandit`, `sheriff`, `stinger`, `spectre`, `bucky`, `judge`, `bulldog`, `guardian`, `phantom`,
+`vandal`, `warden`, `marshal`, `outlaw`, `operator`, `ares` or `odin`). You get it as 4 to 8 would
+give it, and the attribute clears itself, ready for the next one. `VFTestBuy` does the same as a
+click in the buy menu, for a gun or a shield (`light`, `regen`, `heavy`), and sells it back with
+a `-` in front (`-odin`); `VFTestMenu` set to true or false opens or closes the menu.
 
 Where things are, from the spawn, looking down the target lane:
 
@@ -387,7 +391,7 @@ see it once you're in it. Keep the HUD on.
   in the place pokes into the arena, and you can't jump out of it. **Send:** a screenshot from your
   room's opening, and whether the hall feels too big, about right or too small for a 1v1.
 - **A3 Waiting.** While you're alone there's no barrier: you can walk out of your room straight
-  away, and 4 to 8 give you any weapon.
+  away, B opens the buy menu, and 4 to 8 give you any weapon.
 - **A4 Off and on.** Press P: the Output window shows `[VF] Arena off`, you're back at the course's
   spawn, the score bar and banner are gone, and the dummies still have red outlines. Press P again
   and you're back in the NORTH room, facing the hall. Then hold W and press P twice more, so each
@@ -401,9 +405,10 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   and both screens show `ROUND 1` and a banner counting down from `BUY PHASE 15`. In the server
   window's Explorer, Teams holds North and South, with one player on each.
 - **A6 The buy phase.** During the countdown, each room has a see-through orange or teal barrier
-  across its open side. You can't walk through it, and a shot at it stops on it. 4 to 8 change
-  weapons. At 0 the barrier disappears, you can walk out, and 4 to 8 no longer change your weapons
-  until the next buy phase.
+  across its open side. You can't walk through it, and a shot at it stops on it. B opens the buy
+  menu and 4 to 8 change weapons. At 0 the barrier disappears, you can walk out, the menu closes
+  if it was open, and until the next buy phase B does nothing and 4 to 8 change nothing, not even
+  the weapon in your hands.
 - **A7 Seeing each other.** Each player sees the other with the red enemy outline, never through
   walls. Standing anywhere in your own room, you can't see into the other one.
 - **A8 A round.** Player 1 kills player 2. Player 1's screen shows `ROUND WON` in blue and player
@@ -413,7 +418,9 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   the weapon they had.
 - **A9 First to 10.** Play on until a side has 10 (one player can stand in the open while the other
   shoots). The winner's screen shows `VICTORY` and the loser's `DEFEAT`, each with the final score
-  under it, and about 6 s later round 1 of a new match starts at 0-0 with the 15 s buy phase.
+  under it, and about 6 s later round 1 of a new match starts at 0-0 with the 15 s buy phase. Both
+  players are back on the starting kit: a Vandal, a Classic and Heavy Armor, whatever they bought
+  before.
 - **A10 Leaving.** Close player 2's window. Player 1's banner goes back to
   `WAITING FOR AN OPPONENT`, the barrier goes if it was up, and the score stays.
 - **A11 Off again.** Press P in window 1. Player 1 is back on the course, on no team, and Teams is
@@ -522,6 +529,50 @@ Then two players, as in section 9, with the arena on (P in window 1).
   takes the Spectre or the Ghost: player 1, on the other side, sees the holes but no tracers and
   hears a quieter shot. **Send:** a screenshot of player 1's screen just after a Bucky shot.
 
+## 13. Shields and the buy menu
+
+From [09-arsenal.md](research/09-arsenal.md). One player on the course with the HUD on (F3), then
+two.
+
+- **B1 Opening it.** Press B. The menu fills the middle of the screen, with `BUY` and
+  `THE COURSE: EVERYTHING'S FREE` along its top, four columns of guns (Sidearms; SMGs and
+  Shotguns; Rifles; Snipers and Machine guns), the three shields in a fifth, and a panel on the
+  right. The mouse moves a cursor and the view stays still; a click on the menu doesn't fire; WASD
+  still moves you. B again closes it, and the mouse turns the view again. In a small window the
+  whole menu shrinks to fit. **Send:** a screenshot with the menu open.
+- **B2 The tiles.** Each has its name, its price in gold (the Classic's `FREE`), and a small side-on
+  picture in the gun's colours. The Vandal, the Classic and Heavy Armor have a white edge: the
+  Vandal's tile says `IN HAND` and the other two `OWNED`.
+- **B3 Its numbers.** Point at the Odin: the panel reads `ODIN` and 3200, `Machine gun,
+  automatic`, `Fire rate 12 rising to 15.6 a second`, `Zoomed 1.15x, 15.6 a second`, then its run
+  speed, draw, reload, `Magazine 100, 200 in reserve`, `Walls High`, and its damage by range. The
+  Bucky's table is headed `A pellet (of 15)`, and the Regen Shield says it takes every point of a
+  hit and refills from a pool of 50, 3 s after you were last hit.
+- **B4 Buying.** Click the Phantom: you're holding it, 30 / 60, and its tile has a teal edge and
+  `IN HAND`, with `Bought this buy phase: right-click to sell it back` in the panel when you point
+  at it. Click the Sheriff: it goes in your sidearm slot and is drawn.
+- **B5 Selling back.** Right-click the Phantom: you're holding a Vandal again with a full magazine,
+  and the Phantom's edge goes. Right-clicking the Vandal does nothing, since you didn't buy it.
+- **B6 Shields.** Buy Light Armor: the HUD's shield reads `+25` with `LIGHT ARMOR` under it. The
+  Regen Shield: `+25` and `REGEN  50 LEFT`. Heavy Armor: `+50` and `HEAVY ARMOR`.
+
+Then two players, as in section 9, on the course.
+
+- **B7 Armour.** Both start in Heavy Armor. Player 2 hits player 1 once in the body with the
+  Vandal: player 1's HUD reads `87` and `+24` (86.4 and 23.6, rounded up), and the fourth body
+  shot kills. Player 1 comes back in Heavy Armor at full health and buys Light Armor. Player 2
+  hits them once in the body with the Classic, from under 30 m: `92` and `+8` (91.16 and 7.84).
+- **B8 The Regen Shield.** Player 2 kills player 1, who comes back in Light Armor at full health.
+  In their menu Light Armor's edge is white, not teal: a new life is a new buy phase, so it can't
+  be sold back. They buy the Regen Shield. One Classic body shot: `99` and no shield, since the
+  shield took 25 of the 26. About 3 s later it climbs back to `+25` over about 2 s and reads
+  `REGEN  25 LEFT`. After another hit it refills once more, to `REGEN  0 LEFT`, and after the one
+  after that it stays empty and its name goes. **Send:** how long after the hit the refill
+  started, and how long it took.
+- **B9 The arena.** Press P in window 1. Each player is on the starting kit, whatever they bought
+  on the course. The menu reads `SKIRMISH: EVERYTHING'S FREE` with the buy phase's countdown, and
+  closes itself when the countdown ends (A6 has the rest).
+
 ## Results
 
 ```
@@ -552,6 +603,8 @@ N10 steps behind the middle block sound duller: yes / no
 G1 guns missing or looking or sounding like another: ___
 G2 Bucky at 10 m, the number: ___
 G4 Odin held, fire rate: ___ rps
+B7 Light Armor after a Classic body shot: health ___, shield ___
+B8 Regen Shield: refill started ___ s after the hit, took ___ s
 Didn't look right (IDs and what you saw):
 ```
 
@@ -598,6 +651,14 @@ Didn't look right (IDs and what you saw):
 | 08 | Your own steps don't cover anyone else's | N10 |
 | 08 | The buy phase is silent from the other side | N9 |
 | 09 | Every gun can be given, draws in its own shape and colour, and fires as the weapon lab says | G1, G3, G4, G5, G7 |
+| 09 | A shotgun draws a tracer and a hole for each pellet and shows one hit marker and one number | G2 |
+| 09 | A Bucky or a Marshal reloads a round at a time, with a sound for each, and a shot stops it | G6 |
+| 09 | The other player sees a Bucky's 15 tracers, and none of a suppressed gun's from the other side | G8 |
+| 09 | Each gun's shot sounds like its own | G1 |
+| 09 | B opens the menu only while buying is open, it fits the screen, and while it's open the view stays still, a click never fires and the keys still move you | B1, A6, B9 |
+| 09 | Hover shows the numbers, a click buys and draws, a right click sells back only this buy phase's purchases | B3, B4, B5 |
+| 09 | The HUD shows Light Armor's split and the Regen Shield refilling as the tests have them | B6, B7, B8 |
+| 09 | A new match in the arena puts everyone back on the starting kit | A9, B9 |
 | 09 | A shotgun draws each pellet but shows one hit marker and number | G2 |
 | 09 | A round-at-a-time reload, with a sound for each round, stopped by a shot | G6 |
 | 09 | Others see a Bucky's tracers, and no suppressed tracers from the other side | G8 |

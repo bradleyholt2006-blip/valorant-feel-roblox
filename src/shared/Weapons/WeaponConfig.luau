@@ -1249,16 +1249,68 @@ WeaponConfig.Arsenal = {
 
 WeaponConfig.DefaultLoadout = { "vandal", "classic", "knife" }
 
--- Player survivability (shields add to health and absorb damage first).
+-- Player survivability: health, and a shield on top (WeaponConfig.Shields).
 WeaponConfig.Health = {
 	maxHealth = p(100, "community", "Standard agent health"),
-	heavyShield = p(50, "community", "Heavy Shields: 50"),
-	lightShield = p(25, "community", "Light Shields: 25"),
 	-- Hit slow ("tagging"). Riot's netcode blog confirms hits briefly slow the
 	-- victim and Patch 3.0 gives the amount; the duration is ours.
 	tagSpeedMultiplier = p(0.275, "confirmed", P30 .. ": 'Bullet tagging changed from 75% slow >>> 72.5% slow'"),
 	tagDuration = p(0.15, "estimate", "Not published; measure from footage of a tagged player"),
 }
+
+-- Shields (system 9, Combat/Health). While a shield lasts it takes its share
+-- of every hit (`absorb`) and the rest goes to health. A shield with `regen`
+-- refills itself from a pool of its own, `rate` points a second, once it
+-- hasn't been hit for `delay` seconds.
+export type RegenDef = { pool: Param, delay: Param, rate: Param }
+export type ShieldDef = { id: string, name: string, price: Param, points: Param, absorb: Param, regen: RegenDef? }
+
+local ARMOR_SOURCES = "Sportskeeda's armor guide, Digital Trends and Dot Esports"
+local ARMOR_ABSORB = p(
+	0.66,
+	"community",
+	"Sportskeeda: 'shields offer 66% of damage mitigation'; Beebom: 'the other armors absorb 66% of incoming damage'. Patch 9.10 gives the Regen Shield's 100% as what sets it apart"
+)
+
+WeaponConfig.Shields = {
+	light = {
+		id = "light",
+		name = "Light Armor",
+		price = p(400, "community", ARMOR_SOURCES .. ": 400 credits"),
+		points = p(25, "community", ARMOR_SOURCES .. ": 25"),
+		absorb = ARMOR_ABSORB,
+	},
+	regen = {
+		id = "regen",
+		name = "Regen Shield",
+		price = p(650, "confirmed", P910 .. ": 650 credits"),
+		points = p(25, "confirmed", P910 .. ": 'Damage Absorption: 25 HP'"),
+		absorb = p(1, "confirmed", P910 .. ": 'Absorbs 100% of incoming damage taken before damage to health occurs'"),
+		regen = {
+			pool = p(50, "confirmed", P910 .. ": 'Regeneration Pool: 50 HP'"),
+			delay = p(
+				3,
+				"community",
+				"Beebom: '3 seconds after your active armor depletes'; talkesport: 'if the player is out of combat for three seconds'. Counting from the last hit is ours"
+			),
+			rate = p(12.5, "estimate", P910 .. " says only 'after a brief delay, the shield regenerates'; 25 in 2 s is ours. Time a refill (09-arsenal.md section 3)"),
+		},
+	},
+	heavy = {
+		id = "heavy",
+		name = "Heavy Armor",
+		price = p(1000, "community", ARMOR_SOURCES .. ": 1000 credits"),
+		points = p(50, "community", ARMOR_SOURCES .. ": 50"),
+		absorb = ARMOR_ABSORB,
+	},
+} :: { [string]: ShieldDef }
+
+-- The buy menu's order, cheapest first.
+WeaponConfig.ShieldIds = { "light", "regen", "heavy" }
+
+-- What everyone wears until they pick another: Skirmish starts every round in
+-- Heavy Armor (community, docs/research/07-arena.md), and so does the course.
+WeaponConfig.DefaultShield = "heavy"
 
 WeaponConfig.MaxRange = 250 -- metres; bullets are hitscan
 

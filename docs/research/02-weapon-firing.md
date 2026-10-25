@@ -29,7 +29,8 @@ Weapons in this pass: Vandal and Phantom (rifles), Operator (sniper), Classic an
 - Right-click zooms: rifles go to 1.25x and fire a little slower; the Operator has a 2.5x and a 5x
   scope and moves slower while scoped.
 - Damage depends on where the bullet lands (head, body, legs) and, for most weapons, how far the
-  target is. Agents have 100 health plus shields (25 light, 50 heavy) that absorb damage first.
+  target is. Agents have 100 health plus a shield (25 light, 50 heavy) that takes most of each
+  hit while it lasts.
 - Getting hit slows you down for a moment ("tagging").
 - The server decides every hit. A player who has just been killed can't land shots afterwards.
 
@@ -116,7 +117,7 @@ the wiki's numbers; the rows below are as they stand now.
 | Reserve ammo | Vandal 50 and Phantom 60 (Patch 6.11); Operator 10, Classic 36, Sheriff 24 | Confirmed (Vandal, Phantom); community |
 | Knife draw time | 0.6 s | Community |
 | Tagging | 72.5% slow (confirmed) for 0.15 s (estimate) | Mixed |
-| Health and shields | 100 + 50 heavy (25 light) | Community |
+| Health and shields | 100 + 50 heavy (25 light); a shield takes 66% of each hit while it lasts and health the rest (the Regen Shield all of it); see [09-arsenal](09-arsenal.md) | Community |
 | Hitboxes (standing, width x height x depth) | head 0.24 x 0.26 x 0.24 m centred at 1.62 m, body 0.44 x 0.64 x 0.28 m, legs 0.34 x 0.85 x 0.26 m; crouched versions blend in with the crouch | Estimate |
 
 What the simulation produces (from `luau tests/run.luau`):
@@ -169,9 +170,9 @@ between the two neighbouring tick counts. The remainder carries over, so the ave
   hitboxes; ours don't animate yet.
 - **The server decides.** `CombatServer` traces the level with a Roblox raycast (characters
   excluded), then tests target hitboxes in front of the first wall, applies damage by region and
-  range, shields first, tags the victim and pushes events: the verdict to the shooter, damage and
-  kills to everyone, tracers to the others. A dead shooter's queued shots are rejected, like the
-  reference.
+  range, split between shield and health, tags the victim and pushes events: the verdict to the
+  shooter, damage and kills to everyone, tracers to the others. A dead shooter's queued shots are
+  rejected, like the reference.
 - **Tagging** is applied by the server between ticks: the victim's speed is clamped at once and
   capped for the tag duration. The victim's client finds out from the next ack and reconciles.
 - **The client guesses only for looks.** Tracers and impact marks use the client's own trace
@@ -207,7 +208,7 @@ Roblox differences from the reference that matter here:
 | `src/shared/PlayerSim.luau` | Movement + weapons + tag slow as one deterministic step |
 | `src/shared/Combat/Hitboxes.luau` | Head/body/legs boxes from a pose; ray vs oriented box |
 | `src/shared/Combat/ShotResolver.luau` | Nearest target hit in front of the level |
-| `src/shared/Combat/Health.luau` | Health and shields |
+| `src/shared/Combat/Health.luau` | Health and a shield, which takes its share of each hit ([09-arsenal](09-arsenal.md)) |
 | `src/shared/Net/PlayerCodec.luau` | Inputs (19 bytes per tick), acks with the full state, snapshots (22 bytes per entity) |
 | `src/server/PlayerSimServer.luau` | Authority: input queue, token bucket, acks, debug loadout |
 | `src/server/CombatServer.luau` | Shot resolution against rewound targets (system 4), damage, tagging, events |

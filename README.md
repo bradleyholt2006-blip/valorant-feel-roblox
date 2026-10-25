@@ -41,7 +41,9 @@ Built one system at a time:
 9. **The arsenal**: all 20 guns and the knife, with every way they fire: semi and automatic, the
    Stinger's and the Bulldog's bursts zoomed, the Classic's three-bullet right click, shotgun
    pellets that land as one hit, shell-by-shell reloads, the Outlaw's double tap, the Odin's rising
-   fire rate, every zoom and scope, and suppressed guns whose tracers only their own side sees -
+   fire rate, every zoom and scope, and suppressed guns whose tracers only their own side sees;
+   Light Armor, Heavy Armor and the Regen Shield, each taking its share of a hit; and a buy menu
+   on B with every gun and shield, its numbers on hover, click to buy and right-click to sell back -
    [research and design](docs/research/09-arsenal.md)
 
 ## Running it
@@ -59,18 +61,20 @@ Built one system at a time:
    system's Studio checks in order, with what each lab should read.
 
 Controls: WASD, Shift walk, Ctrl/C crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
-R reload, 1/2/3 primary / secondary / knife.
+R reload, 1/2/3 primary / secondary / knife, B buy menu (on the course at any time; in the arena
+during the buy phase and while waiting for an opponent). Nothing costs anything yet.
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
-Arena: P turns it on and off (Studio or place owner only). In the arena, the debug keys 4-8
-(below) give anyone a weapon during the buy phase, and while waiting for an opponent.
+Arena: P turns it on and off (Studio or place owner only). In the arena, the buy menu and the
+debug keys 4-8 (below) work for anyone during the buy phase, and while waiting for an opponent;
+a new match puts everyone back on the starting kit (Vandal, Classic, knife, Heavy Armor).
 Debug: F2 weapon lab, then spray lab, hit reg lab and sound lab on further presses, F3 HUD (with the next
 shot's cone on the crosshair and the last jump measured; G with the HUD on shows the server
 ghost), F4 counter-strafe lab (Z zeroes its cm/360 counter, Backspace clears its stops), F6 record
 CSV, F10 hitbox overlay, Backspace clear impact marks, counters and the spray plot, 4-8 give
 Vandal / Phantom / Operator / Sheriff / Classic (Studio or place owner only). F7 and F8 are left
 alone because Studio takes them for Start and Run.
-In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, B Network Buffering,
+In the hit reg lab: `[` / `]` simulated latency, J jitter, L packet loss, U Network Buffering,
 K rewind cap 140 / 200 / 0 ms (0 is no lag compensation); its motion line measures how evenly the
 player or dummy nearest the crosshair moves.
 In the sound lab: `[` / `]` footstep radius (this client only), Y practice dummies' footsteps
@@ -79,8 +83,9 @@ Scripted playtests (Studio only): a tool that can press keys but can't move the 
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
 `VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)).
 `VFTestButtons` holds input flags on top of the real ones (128 fire, 256 right click, 512 reload),
-and `VFTestGive` set to a weapon id gives that weapon, which is also how to get the guns 4-8
-don't cover until there's a buy menu.
+`VFTestGive` set to a weapon id gives that weapon as 4-8 would, `VFTestBuy` set to an id buys
+it as the menu would (`-` and the id sells it back), and `VFTestMenu` set to true or false opens
+or closes the menu. Each of the last three clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still
 read.
 
