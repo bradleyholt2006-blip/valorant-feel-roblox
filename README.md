@@ -318,6 +318,16 @@ Built one system at a time:
     going, and half a second later he's there, heard within 12.5 m, his gun back 0.7 s after. Two
     charges at 100 credits, none free (in Team Deathmatch one comes back 33 s after it's spent) -
     [research and design](docs/research/42-shrouded-step.md)
+43. **Omen's From the Shadows**: once its seven points are full, X puts Omen's map in hand, ready
+    in 0.5 s: the big map of wherever he plays, the course's drawn from its parts, with a cursor on
+    it that the mouse moves instead of the view, violet where he'd stand and red where he wouldn't.
+    Mouse 1 starts a 1.5 s windup, heard by everyone, through which he's rooted, though he can look
+    round; then he's a Shade there for 2.5 s, rooted again, his world nearly grey and dark past a
+    few metres that grow as his time runs out, and others see him dark and see-through. Then he
+    forms there, his gun drawn again. X while he's a Shade, or an enemy's hit on it, sends him back
+    to where he cast it, unhurt, the points spent all the same. Its arrival is heard within 22.5 m,
+    and an enemy's minimap goes dark until it's over -
+    [research and design](docs/research/43-from-the-shadows.md)
 
 ## Running it
 
@@ -405,6 +415,7 @@ draws that slot (5 is Blade Storm's knives), `VFTestSettingsMenu` set to true or
 closes the settings menu, `VFTestSetting` set to `key=value` (`sensitivity=0.8`, `scoped=0.5`,
 `dpi=1600`, `crosshair=0;P;c;5` or `mapRotate=0`) enters that setting as its box or button in the
 menu would, `VFTestMap` set to true or false opens or closes the big map as holding Caps Lock does,
+`VFTestMapPoint` set to a place, in metres, puts From the Shadows' cursor on the map nearest it,
 `VFTestTake` set to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as
 Tab does or lets it go, `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would,
 `VFTestPlayMenu` set to true or false opens or closes the Play menu, `VFTestPlay` set to a mode's
@@ -463,11 +474,16 @@ touched them), and their nearsight their `VFNearsight` (when it began, when it s
 when it's gone, in server time); `Workspace.VFParanoia` holds each orb in flight, the dark round the
 camera and each wisp. Where a player's last Shrouded Step takes them is their `VFLastStep` attribute
 (the floor, in metres), and `Workspace.VFStep` holds its targeter, and others' windups, their going,
-the floor they're going to and their arrival. The
+the floor they're going to and their arrival. Where a player's last From the Shadows takes them is
+their `VFLastShadow` attribute (the floor, in metres), and PlayerGui's `VFShadow` carries whether
+its map's up (`Map`), its cursor (`Cursor`, in metres), whether fire would take them there
+(`Placeable`), their Shade's grey (`Grey`), how far they see as one (`Sight`, in metres) and how
+dark an enemy's has made their minimap (`Dark`). The
 minimap's ScreenGui, `VFMinimap`, carries what it
 shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`),
 whether the spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big map's open
-(`Big`) and how covered it is by a nearsight's dark (`Dark`, 0 to 1).
+(`Big`) and how covered it is by a nearsight's dark (`Dark`, 0 to 1), or by an enemy's From the
+Shadows.
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -517,9 +533,10 @@ and the wire), her Resurrection (its points, the orb in hand and its tries, wher
 aim along them, the return's times and hold, who can be brought back, and the wire), Omen's Dark
 Cover (his kit, the orb in hand and its mark, where its smoke goes, its flight, the smoke and its
 warning, and the wire), his Paranoia (the orb in hand and its send, its flight, whom it touches
-and who's warned, the nearsight, how far the nearsighted see and how the deafened hear) and his
-Shrouded Step (its charges, its mark in hand, the step, where it takes him, and the wire) are pure
-Luau and run outside Roblox:
+and who's warned, the nearsight, how far the nearsighted see and how the deafened hear), his
+Shrouded Step (its charges, its mark in hand, the step, where it takes him, and the wire) and his
+From the Shadows (its map in hand, the teleport, being sent back, where it takes him, the course's
+map, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

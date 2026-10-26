@@ -20,7 +20,8 @@
 -- Inner Fire, works. Sage is the third (system 36), with her Healing Orb,
 -- her Slow Orb (system 37), her Barrier Orb (system 38) and her
 -- Resurrection (system 39). Omen is the fourth (system 40), with his Dark
--- Cover, his Paranoia (system 41) and his Shrouded Step (system 42).
+-- Cover, his Paranoia (system 41), his Shrouded Step (system 42) and his
+-- From the Shadows (system 43).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -195,6 +196,8 @@ local OMEN = "VALORANT Wiki, Omen"
 local COVER = "VALORANT Wiki, Dark Cover"
 local PARANOIA = "VALORANT Wiki, Paranoia"
 local STEP = "VALORANT Wiki, Shrouded Step"
+local P049 = "Patch 0.49"
+local SHADOWS = "VALORANT Wiki, From the Shadows"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -323,8 +326,8 @@ AbilityConfig.Defs = {
 		description = "X readies it. Fire on a fallen ally's body brings them back where they lie, with full health and no shield.",
 	},
 	-- Omen's (system 40): his kit as the VALORANT Wiki lists it. His Dark
-	-- Cover, his Paranoia (system 41) and his Shrouded Step (system 42) can
-	-- be played.
+	-- Cover, his Paranoia (system 41), his Shrouded Step (system 42) and his
+	-- From the Shadows (system 43) can be played.
 	shroudedstep = {
 		id = "shroudedstep",
 		name = "Shrouded Step",
@@ -364,7 +367,8 @@ AbilityConfig.Defs = {
 		slot = AbilityConfig.X,
 		kind = "ultimate",
 		points = p(7, "community", OMEN .. ": From the Shadows, 7 points"),
-		description = "X brings up the map. Fire on a place in it teleports you there, unless an enemy destroys your shade first.",
+		weapon = "shadowmap",
+		description = "X brings up the map. Fire on a place in it sends you there as a Shade, which an enemy's shot or X again sends back before you form.",
 	},
 } :: { [string]: AbilityDef }
 
@@ -959,11 +963,53 @@ AbilityConfig.ShroudedStep = {
 	grace = p(1, "estimate", "Ours, as Run it Back's: so moves held back can't keep him out of play for long"),
 }
 
+-- Omen's From the Shadows (system 43): X, once its points are full, puts
+-- its map in hand (WeaponConfig's shadowmap, in the fifth slot): the whole
+-- map, with a cursor on it the mouse moves, and X again puts it away. Fire
+-- with the cursor on a place he'd stand (ShadowSim) spends the points and
+-- starts its windup, through which he's rooted where he stands, though he
+-- can look round; as it ends he's there as a Shade, rooted there, until
+-- its time's up and he's there for good, his gun drawn again. X while he's
+-- a Shade, or an enemy's hit on it, sends him back where he cast it, the
+-- points spent all the same (Patch 1.0: 'Omen still loses all of his ult
+-- points if he cancels'). From the cast, the enemies' minimaps are covered
+-- for its time. Riot gives the points spent and how far his arrival's
+-- heard; the wiki the times and the rest (43-from-the-shadows.md, section
+-- 2).
+AbilityConfig.FromTheShadows = {
+	-- From the fire until he's a Shade, then a Shade this long.
+	windup = p(1.5, "community", SHADOWS .. ": '1.5-second windup' (game files)"),
+	shade = p(2.5, "community", SHADOWS .. ": '2.5-second arrival at target location' (game files)"),
+	-- How far his arrival's heard.
+	heard = p(
+		22.5,
+		"confirmed",
+		P049
+			.. ": 'The attenuation radius of the arrival sound on Omen's From the Shadows has been reduced to 2250', read as centimetres ("
+			.. SHADOWS
+			.. ": 22.5 m)"
+	),
+	-- How high over the ground a floor can put him, and how far under it
+	-- one's looked for: onto the maps' high crates (2.0 m), but not onto a
+	-- wall (5 m) or the arena's block (3.0 m).
+	top = p(2.5, "estimate", "Ours, metres: the maps have no ceiling over their walls to keep him off them"),
+	depth = p(2, "estimate", "Ours, metres: the maps' ground is level"),
+	-- How far round a place with no room for him there's looked for some.
+	nudge = p(0.7, "estimate", "Ours, metres: about twice his width"),
+	-- How far he sees as a Shade's time ends, from nothing as it starts.
+	sight = p(
+		10,
+		"estimate",
+		"Ours, metres: " .. SHADOWS .. " has it grow, 'the rate of restoration getting quicker towards the end', with no number"
+	),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
 -- for the Barrier Orb, after its wall's raised, for the Resurrection,
--- after it's cast, and for Shrouded Step, after it's fired: its windup,
--- his time gone and the draw).
+-- after it's cast, for Shrouded Step, after it's fired: its windup, his
+-- time gone and the draw, and for From the Shadows, after it's fired: its
+-- windup and his time as a Shade, when the gun's drawn again).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -984,6 +1030,9 @@ function AbilityConfig.unequip(id: string): number
 	elseif id == "shroudedstep" then
 		local SS = AbilityConfig.ShroudedStep
 		return SS.windup.value + SS.away.value + SS.unequip.value
+	elseif id == "fromtheshadows" then
+		local FS = AbilityConfig.FromTheShadows
+		return FS.windup.value + FS.shade.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

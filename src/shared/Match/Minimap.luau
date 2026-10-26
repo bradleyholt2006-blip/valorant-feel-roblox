@@ -12,7 +12,9 @@
 -- site's letter, and the names of the places, for the big map (Riot: Show
 -- Map Region Names "only affects the megamap", the UI Settings FAQ). The
 -- arena's maps (ArenaLayout) and the spike maps (SpikeMaps) are both drawn
--- from their plans, so a map's minimap is always the map.
+-- from their plans, so a map's minimap is always the map. The course has
+-- no minimap, but Omen's From the Shadows (system 43) shows a map of it
+-- all the same, from what its parts say (Minimap.planOf).
 --
 -- A view is how a box on the screen shows the plan: the point at its
 -- centre, how far the map is turned (clockwise, radians) and how many
@@ -54,8 +56,8 @@ export type Shape = {
 export type Label = { text: string, at: vector, kind: "site" | "region" }
 
 export type Plan = {
-	key: string, -- "arena:A", "spike:quarry"
-	family: "arena" | "spike",
+	key: string, -- "arena:A", "spike:quarry", "course"
+	family: "arena" | "spike" | "course",
 	shapes: { Shape },
 	labels: { Label },
 	-- The floor's extent in the place, metres.
@@ -291,6 +293,48 @@ function Minimap.planFor(mode: any, map: any): Plan?
 	return plan
 end
 
+-- How far a shape turned by its yaw reaches from its middle across the
+-- floor, along x and along z.
+local function spans(s: Shape): (number, number)
+	local c, sn = math.abs(math.cos(s.yaw)), math.abs(math.sin(s.yaw))
+	return (c * s.size.x + sn * s.size.z) / 2, (sn * s.size.x + c * s.size.z) / 2
+end
+
+-- The plan of a place drawn from `shapes` (its floors, walls and cover,
+-- metres in the place), keyed `key`: the course's, for From the Shadows'
+-- map (system 43), with no spawns, sites or names. Its extent is its
+-- floors'. Nil with no floor.
+function Minimap.planOf(key: string, shapes: { Shape }): Plan?
+	local x0, z0, x1, z1 = math.huge, math.huge, -math.huge, -math.huge
+	for _, s in shapes do
+		if s.kind == "floor" then
+			local hx, hz = spans(s)
+			x0, x1 = math.min(x0, s.center.x - hx), math.max(x1, s.center.x + hx)
+			z0, z1 = math.min(z0, s.center.z - hz), math.max(z1, s.center.z + hz)
+		end
+	end
+	if x0 > x1 then
+		return nil
+	end
+	return { key = key, family = "course", shapes = shapes, labels = {}, x0 = x0, z0 = z0, x1 = x1, z1 = z1 }
+end
+
+-- Whether a point (metres; its y unused) is on a plan's map: over its
+-- floor's extent, or the margin round it that a whole map's view shows.
+-- From the Shadows' cursor stays there, and the server takes no place
+-- outside it (system 43).
+function Minimap.holds(plan: Plan, point: vector): boolean
+	local m = Minimap.Params.margin.value
+	return point.x >= plan.x0 - m and point.x <= plan.x1 + m and point.z >= plan.z0 - m and point.z <= plan.z1 + m
+end
+
+-- The point on a plan's map nearest `point` (metres), on the floor: where
+-- From the Shadows' cursor is held as it's pushed off the map.
+function Minimap.held(plan: Plan, point: vector): vector
+	local m = Minimap.Params.margin.value
+	return vector.create(math.clamp(point.x, plan.x0 - m, plan.x1 + m), 0, math.clamp(point.z, plan.z0 - m, plan.z1 + m))
+end
+
 -- The middle of a plan's floor, and the longer side of it with the margin
 -- round it, in metres.
 function Minimap.middle(plan: Plan): vector
@@ -367,6 +411,15 @@ function Minimap.toView(view: View, point: vector): (number, number)
 	local dx, dz = (point.x - view.centre.x) * view.scale, (point.z - view.centre.z) * view.scale
 	local c, sn = math.cos(view.turn), math.sin(view.turn)
 	return dx * c - dz * sn, dx * sn + dz * c
+end
+
+-- The point on the floor `x`, `y` pixels right and down from a view's
+-- middle shows: toView the other way, for From the Shadows' cursor
+-- (system 43).
+function Minimap.fromView(view: View, x: number, y: number): vector
+	local c, sn = math.cos(view.turn), math.sin(view.turn)
+	local dx, dz = x * c + y * sn, y * c - x * sn
+	return vector.create(view.centre.x + dx / view.scale, 0, view.centre.z + dz / view.scale)
 end
 
 -- Which way someone looking along `yaw` faces in a view: radians clockwise

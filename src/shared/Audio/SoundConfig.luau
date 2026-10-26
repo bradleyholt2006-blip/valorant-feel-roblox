@@ -155,6 +155,13 @@ SoundConfig.Curves = {
 		"community",
 		"VALORANT Wiki, Shrouded Step: arrival audio cue radius 12.5 m (game files); the shape within is ours"
 	),
+	-- Omen arriving as a Shade by From the Shadows (system 43), forming
+	-- there, or sent back: heard out to 22.5 m.
+	shade = curve(
+		{ { 0, 1 }, { 3, 1 }, { 15, 0.6 }, { 21, 0.3 }, { 22.5, 0 } },
+		"confirmed",
+		"Patch 0.49: 'The attenuation radius of the arrival sound on Omen's From the Shadows has been reduced to 2250', read as centimetres (the VALORANT Wiki: 22.5 m); the shape within is ours"
+	),
 }
 
 -- Walls -------------------------------------------------------------------------
@@ -557,6 +564,26 @@ SoundConfig.Sounds = {
 	stepArrive = sound(0.8, 0.03, 3, {
 		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
 	}, 0.7),
+	-- From the Shadows (system 43): its map in hand the thick whoosh, lowest
+	-- of all; fired, the heavy whoosh slowed right down, heard across the
+	-- map; his Shade arriving, the spike's defuse tone slowed further than
+	-- Shrouded Step's; forming there, the same tone faster; and sent back,
+	-- the thin swish slowed, as the Shade's torn away.
+	shadowEquip = sound(0.45, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.5),
+	shadowGo = sound(0.9, 0.03, 3, {
+		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.483, 0.11),
+	}, 0.35),
+	shadowArrive = sound(0.8, 0.03, 3, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 0.28),
+	shadowForm = sound(0.8, 0.03, 3, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 0.55),
+	shadowBreak = sound(0.8, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 0.45),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
@@ -565,10 +592,12 @@ SoundConfig.Sounds = {
 -- Healing Orb's starting, a Slow Orb's burst, a run or a jump through its
 -- field, Sage's wall rising, fortifying and a piece of it breaking, a body
 -- she brings back rising and bursting out, Omen's orb sent, its smoke
--- forming and warning that it's going, his Paranoia sent, and his
--- Shrouded Step fired and his arrival, which is heard only as far as the
--- arrival curve says), heard as the ability curve says (systems 17 to 19,
--- 30 to 33 and 36 to 42). Blade
+-- forming and warning that it's going, his Paranoia sent, his Shrouded
+-- Step fired and his arrival, which is heard only as far as the arrival
+-- curve says, and his From the Shadows fired, heard across the map, and
+-- his Shade arriving, forming and sent back, heard only as far as the
+-- shade curve says), heard as the ability curve says (systems 17 to 19, 30
+-- to 33 and 36 to 43). Blade
 -- Storm's knives drawn again sound as their draw does, and so does an
 -- ability put in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
@@ -606,12 +635,22 @@ SoundConfig.Abilities = {
 	paranoia = "paranoiaSend",
 	step = "stepGo",
 	arrive = "stepArrive",
+	shadows = "shadowGo",
+	shade = "shadowArrive",
+	form = "shadowForm",
+	home = "shadowBreak",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and
--- the curve (SoundConfig.Curves): Shrouded Step's arrival (system 42).
+-- the curve (SoundConfig.Curves): Shrouded Step's arrival (system 42), and
+-- From the Shadows fired, as far as the spike's blast, and its Shade
+-- arriving, forming and sent back (system 43).
 SoundConfig.CastCurves = {
 	arrive = "arrival",
+	shadows = "blast",
+	shade = "shade",
+	form = "shade",
+	home = "shade",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -749,6 +788,9 @@ SoundConfig.Weapons = {
 	-- Shrouded Step (system 42): the same, its firing and his arrival the
 	-- ability's.
 	stepmark = { draw = "stepEquip", curve = "ability" },
+	-- From the Shadows' map (system 43): the same, its firing, his Shade's
+	-- arrival, its forming and its going back the ability's.
+	shadowmap = { draw = "shadowEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

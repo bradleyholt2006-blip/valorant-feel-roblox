@@ -189,11 +189,11 @@ do
 			and omen.abilities[4] == "fromtheshadows"
 	)
 	check(
-		"Dark Cover, Paranoia (system 41) and Shrouded Step (system 42) can be played; From the Shadows not yet",
+		"Dark Cover, Paranoia (system 41), Shrouded Step (system 42) and From the Shadows (system 43) can be played",
 		AbilitySim.playable("darkcover")
 			and AbilitySim.playable("paranoia")
 			and AbilitySim.playable("shroudedstep")
-			and not AbilitySim.playable("fromtheshadows")
+			and AbilitySim.playable("fromtheshadows")
 	)
 	check("he's fourth on the wire", AbilityConfig.AgentIds[4] == OMEN and AbilityConfig.AgentIndex[OMEN] == 4)
 	check("so he can be picked, after Jett, Phoenix and Sage", AgentSelect.pickable()[4] == OMEN)

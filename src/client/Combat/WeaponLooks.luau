@@ -216,6 +216,16 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- From the Shadows' map (system 43): a slate of shadow over the open
+	-- hand, a violet mark on it. The big map's up over it all the same.
+	shadowmap = {
+		muzzle = vector.create(0, 0.07, -0.12),
+		pieces = {
+			{ size = vector.create(0.15, 0.012, 0.11), offset = vector.create(0, 0.03, -0.09) }, -- slate
+			{ size = vector.create(0.03, 0.014, 0.03), offset = vector.create(0.02, 0.038, -0.1), accent = true }, -- mark
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -253,6 +263,7 @@ local SHAPE_OF: { [string]: string } = {
 	smokeorb = "smokeorb",
 	blindorb = "blindorb",
 	stepmark = "stepmark",
+	shadowmap = "shadowmap",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -289,6 +300,7 @@ local ACCENT: { [string]: Color3 } = {
 	smokeorb = Color3.fromRGB(110, 70, 170),
 	blindorb = Color3.fromRGB(64, 34, 102),
 	stepmark = Color3.fromRGB(84, 52, 128),
+	shadowmap = Color3.fromRGB(150, 110, 230),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

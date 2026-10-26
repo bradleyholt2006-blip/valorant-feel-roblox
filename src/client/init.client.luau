@@ -41,6 +41,7 @@ local BarrierView = require(script.BarrierView)
 local ReviveView = require(script.ReviveView)
 local ParanoiaView = require(script.ParanoiaView)
 local StepView = require(script.StepView)
+local ShadowView = require(script.ShadowView)
 local MinimapView = require(script.MinimapView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
@@ -131,6 +132,7 @@ BarrierView.start()
 ReviveView.start()
 ParanoiaView.start()
 StepView.start()
+ShadowView.start()
 -- The minimap at the top left (system 34), and the big map while Caps Lock
 -- is held: the map, your side and the enemies it sees, the spike, what's
 -- been thrown, and the sounds you make.

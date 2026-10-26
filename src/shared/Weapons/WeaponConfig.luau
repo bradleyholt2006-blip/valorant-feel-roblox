@@ -805,6 +805,29 @@ local STEP_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a step doesn't kick"
 	adsCamera = STEP_NA,
 })
 
+-- Omen's From the Shadows (system 43): not thrown, but a place picked on
+-- the map (ShadowSim), so no spread or kick moves anything. A try with
+-- nowhere to go leaves it in hand for the next, a try a click, as Shrouded
+-- Step's.
+local SHADOWS = "VALORANT Wiki, From the Shadows"
+local MAPPED = "n/a: ShadowSim finds where he goes from the place picked on the map"
+local SHADOW_NA = p(0, "estimate", MAPPED)
+local shadowExact = accuracy(
+	c({ { 1, 0 } }, "estimate", MAPPED),
+	p(1, "estimate", MAPPED),
+	p(0.1, "estimate", MAPPED),
+	p(1, "estimate", MAPPED),
+	{ crouch = SHADOW_NA, walk = SHADOW_NA, run = SHADOW_NA, air = SHADOW_NA }
+)
+shadowExact.landError = SHADOW_NA
+local SHADOW_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a teleport doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = SHADOW_NA,
+	adsCamera = SHADOW_NA,
+})
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -1863,6 +1886,33 @@ WeaponConfig.Defs = {
 		accuracy = stepExact,
 		recoil = STEP_KICK,
 	},
+	-- Omen's From the Shadows (system 43): put in hand in the fifth slot by
+	-- X once the ultimate's points are full (AbilityConfig.FromTheShadows),
+	-- as the Resurrection's orb is by Sage's X. Fire sends him to the place
+	-- picked on the map; PlayerSim turns that into the ability's cast, so it
+	-- fires no bullet, and keeps it in hand while there's nowhere to go. It
+	-- hurts nobody.
+	shadowmap = {
+		id = "shadowmap",
+		name = "From the Shadows",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought: X puts it in hand once the ultimate's points are full (" .. SHADOWS .. ")"),
+		fireMode = "semi",
+		fireRate = ORB_TRIES,
+		magazine = p(1, "community", SHADOWS .. ": a teleport"),
+		reserve = p(0, "community", "None: another teleport is another ultimate (" .. SHADOWS .. ")"),
+		reloadTime = SHADOW_NA,
+		equipTime = p(0.5, "community", SHADOWS .. ": equip 0.5 s (game files)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it takes him somewhere (" .. SHADOWS .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "fromtheshadows",
+		accuracy = shadowExact,
+		recoil = SHADOW_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -1871,7 +1921,8 @@ WeaponConfig.Defs = {
 -- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
 -- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
 -- (system 38), the Resurrection (system 39), Dark Cover (system 40),
--- Paranoia (system 41) and Shrouded Step (system 42) last.
+-- Paranoia (system 41), Shrouded Step (system 42) and From the Shadows
+-- (system 43) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1906,6 +1957,7 @@ WeaponConfig.Ids = {
 	"smokeorb",
 	"blindorb",
 	"stepmark",
+	"shadowmap",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

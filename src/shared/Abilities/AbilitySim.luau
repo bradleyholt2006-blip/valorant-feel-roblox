@@ -79,7 +79,16 @@
 -- windup he can't move or fire, nor cast anything, though he falls and
 -- slides on as he was; as it ends he's gone ("vanish"), held on the floor
 -- it marked (PlayerSim), and once he's been gone its time he's there
--- ("arrive"), free from that tick.
+-- ("arrive"), free from that tick. His From the Shadows (X, system 43) puts
+-- its map in hand as the Resurrection's orb is, once the ultimate's points
+-- are full, and X again puts it away: fire with its cursor on a place he'd
+-- stand (ShadowSim) spends the points and starts its windup (a "shadows"
+-- cast), with nowhere leaving it in hand. Through the windup he's held as
+-- through Shrouded Step's; as it ends he's a Shade ("shade") on the floor
+-- it marked (PlayerSim), held there until its time's up and he's there for
+-- good ("form"), free from that tick. X while he's a Shade, or the
+-- server's word that an enemy hit it (PlayerSim.home), sends him back
+-- where he cast it ("home"), free from then.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -165,6 +174,12 @@ export type State = {
 	-- none under way, and the floor it takes him to (the feet).
 	stepAt: number,
 	stepTo: vector,
+	-- From the Shadows (system 43): when its windup ends and he's a Shade, 0
+	-- with none under way; the floor it takes him to (the feet), and where
+	-- he stood as he became a Shade, which he's sent back to.
+	shadowAt: number,
+	shadowFrom: vector,
+	shadowTo: vector,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -177,13 +192,16 @@ export type State = {
 -- "barrier" (the Barrier Orb's wall raised), "revive" (the Resurrection
 -- tried on a body), "smoke" (Dark Cover's orb sent), "paranoia"
 -- (Paranoia's orb sent), "step" (Shrouded Step fired), "vanish" (gone as
--- its windup ends) or "arrive" (there), where the player's feet and eye
--- were, and the way it goes (the dash's way, up for a lift, the way they
--- faced for a readied gust and for Run it Back's, the way they looked for
--- the rest). A flare's says which way round it curves, a fireball's
--- whether it was lobbed, a wall's where it goes, a smoke's how far its
--- mark was and where it goes, and a step's, and his going's, where it
--- takes him.
+-- its windup ends), "arrive" (there), "shadows" (From the Shadows fired),
+-- "shade" (a Shade as its windup ends), "form" (there for good) or "home"
+-- (sent back), where the player's feet and eye were (for "home", where
+-- they are back), and the way it goes (the dash's way, up for a lift, the
+-- way they faced for a readied gust and for Run it Back's, the way they
+-- looked for the rest). A flare's says which way round it curves, a
+-- fireball's whether it was lobbed, a wall's where it goes, a smoke's how
+-- far its mark was and where it goes, and a step's, his going's, a
+-- teleport's and a Shade's, where it takes him (a "home", where the Shade
+-- was).
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -198,7 +216,7 @@ export type Cast = {
 	wall: BarrierSim.Placement?, -- a wall's: where it goes
 	reach: number?, -- a smoke's: how far along the crosshair its mark was
 	smoke: vector?, -- and the middle of the floor it goes on (PlayerSim)
-	step: vector?, -- a step's and his going's: the floor it takes him to
+	step: vector?, -- a step's, his going's, a teleport's and a Shade's: the floor it takes him to
 }
 
 local AbilitySim = {}
@@ -207,6 +225,7 @@ local C, E, X = AbilityConfig.C, AbilityConfig.E, AbilityConfig.X
 local J = AbilityConfig.Jett
 local RB = AbilityConfig.RunItBack
 local SS = AbilityConfig.ShroudedStep
+local FS = AbilityConfig.FromTheShadows
 local B = MovementSim.Buttons
 local EPS = 1e-9
 local UP = vector.create(0, 1, 0)
@@ -236,6 +255,7 @@ local PLAYABLE: { [string]: boolean } = {
 	darkcover = true,
 	paranoia = true,
 	shroudedstep = true,
+	fromtheshadows = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -245,9 +265,13 @@ end
 -- Whether an ability is one its key puts in hand, to be thrown or tried
 -- from there (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
 -- Healing Orb, the Slow Orb, the Barrier Orb): a weapon of its own, outside
--- the ultimate, but for the Resurrection's orb (system 39).
+-- the ultimate, but for the Resurrection's orb (system 39) and From the
+-- Shadows' map (system 43).
 local function held(def: AbilityConfig.AbilityDef?): boolean
-	return def ~= nil and def.weapon ~= nil and (def.kind ~= "ultimate" or def.id == "resurrection") and PLAYABLE[def.id] == true
+	return def ~= nil
+		and def.weapon ~= nil
+		and (def.kind ~= "ultimate" or def.id == "resurrection" or def.id == "fromtheshadows")
+		and PLAYABLE[def.id] == true
 end
 
 -- A new kit for `agent` (by default AbilityConfig.DEFAULT_AGENT): the
@@ -286,6 +310,9 @@ function AbilitySim.new(agent: string?): State
 		reach = 0,
 		stepAt = 0,
 		stepTo = ZERO,
+		shadowAt = 0,
+		shadowFrom = ZERO,
+		shadowTo = ZERO,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -342,9 +369,9 @@ function AbilitySim.pointsNeeded(s: State): number
 end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
--- ultimate (Blade Storm, or Run it Back and the return it brings), an
--- ability in hand, a wall being bent, a return from the Resurrection, a
--- step (Shrouded Step); and
+-- ultimate (Blade Storm, Run it Back and the return it brings, or From the
+-- Shadows), an ability in hand, a wall being bent, a return from the
+-- Resurrection, a step (Shrouded Step); and
 -- the Barrier Orb's targeter is across the view again (the VALORANT Wiki
 -- has it across the view when it's first equipped in a round). Nothing
 -- carries into a new life or a new round.
@@ -361,6 +388,7 @@ function AbilitySim.settle(s: State)
 	s.floatUntil, s.heldUntil = 0, 0
 	s.reach = 0
 	s.stepAt, s.stepTo = 0, ZERO
+	s.shadowAt, s.shadowFrom, s.shadowTo = 0, ZERO, ZERO
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -425,10 +453,10 @@ local function ultimatePlayable(s: State): boolean
 	return def ~= nil and AbilitySim.playable(def.id)
 end
 
--- Whether the ultimate's under way: Blade Storm's knives carried, or Run
--- it Back running or bringing him back.
+-- Whether the ultimate's under way: Blade Storm's knives carried, Run it
+-- Back running or bringing him back, or From the Shadows taking him.
 function AbilitySim.ultimateOn(s: State): boolean
-	return s.storm or s.backUntil > 0 or s.returnAt > 0
+	return s.storm or s.backUntil > 0 or s.returnAt > 0 or s.shadowAt > 0
 end
 
 -- Every charge the kit can hold, for the course and Skirmish, where nothing
@@ -459,10 +487,14 @@ function AbilitySim.full(s: State, ultimate: boolean?): boolean
 	return not ultimate or not ultimatePlayable(s) or AbilitySim.ultimateOn(s) or AbilitySim.charged(s)
 end
 
--- Whether anything's under way at `t`: a readied window, a lift, a dash or
--- a step.
+-- Whether anything's under way at `t`: a readied window, a lift, a dash, a
+-- step or a teleport.
 function AbilitySim.busy(s: State, t: number): boolean
-	return t < s.readyUntil - EPS or t < s.liftUntil - EPS or t < s.dashUntil - EPS or AbilitySim.stepping(s, t)
+	return t < s.readyUntil - EPS
+		or t < s.liftUntil - EPS
+		or t < s.dashUntil - EPS
+		or AbilitySim.stepping(s, t)
+		or AbilitySim.shadowing(s, t)
 end
 
 -- Ultimate points, up to what the ultimate needs.
@@ -531,10 +563,12 @@ end
 -- what they need, and what's under way at `t`, as "C0/2 Q1/1 E0/1 X3/8
 -- ready", or "X0/8 storm" in Blade Storm, "back" while Run it Back runs,
 -- "away" while his body's gone and "rise" as he rises at its mark, "step"
--- through Shrouded Step's windup and "shroud" while he's gone, "equip"
+-- through Shrouded Step's windup and "shroud" while he's gone, "shadows"
+-- through From the Shadows' windup and "shade" while he's a Shade, "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
--- Resurrection's orb, Dark Cover's orb, Paranoia's orb), "mark 15.0" with
+-- Resurrection's orb, Dark Cover's orb, Paranoia's orb, Shrouded Step's
+-- mark, From the Shadows' map), "mark 15.0" with
 -- Dark Cover's orb in hand, how far its mark is (metres), "bend" while a
 -- wall is being bent (Blaze), "turn" while the Barrier Orb's targeter is
 -- turned from across the view, "revived" while a life the Resurrection
@@ -560,6 +594,11 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 		table.insert(parts, "step")
 	elseif AbilitySim.shrouded(s, t) then
 		table.insert(parts, "shroud")
+	end
+	if AbilitySim.gathering(s, t) then
+		table.insert(parts, "shadows")
+	elseif AbilitySim.shaded(s, t) then
+		table.insert(parts, "shade")
 	end
 	if s.holding ~= 0 then
 		table.insert(parts, "equip")
@@ -726,6 +765,124 @@ function AbilitySim.stepThrough(s: State, t: number, dt: number, tick: number, f
 	return true, cast
 end
 
+-- Whether From the Shadows is under way at `t` (system 43): its windup, or
+-- his time as a Shade.
+function AbilitySim.shadowing(s: State, t: number): boolean
+	return s.shadowAt > 0 and t < s.shadowAt + FS.shade.value - EPS
+end
+
+-- Whether its windup's under way at `t`: he's rooted where he cast it.
+function AbilitySim.gathering(s: State, t: number): boolean
+	return s.shadowAt > 0 and t < s.shadowAt - EPS
+end
+
+-- Whether he's a Shade at `t`: rooted where it takes him, and sent back by
+-- X or an enemy's hit.
+function AbilitySim.shaded(s: State, t: number): boolean
+	return AbilitySim.shadowing(s, t) and not AbilitySim.gathering(s, t)
+end
+
+-- When he's there for good (0 with none under way).
+function AbilitySim.formsAt(s: State): number
+	return if s.shadowAt > 0 then s.shadowAt + FS.shade.value else 0
+end
+
+-- From the Shadows fired at `t` (system 43): its windup starts, and it
+-- takes him to `to` (the floor, metres).
+function AbilitySim.shadow(s: State, t: number, to: vector)
+	s.shadowAt = t + FS.windup.value
+	s.shadowFrom = ZERO
+	s.shadowTo = to
+end
+
+-- A Shade at `t` sent back where he cast it, from `feet` and `eye` (the
+-- Shade's) as he looks along `look`: From the Shadows over, its points
+-- spent all the same (Patch 1.0), and its "home" cast, which PlayerSim
+-- puts him back with. Nil unless he's a Shade.
+function AbilitySim.home(s: State, t: number, tick: number, feet: vector, eye: vector, look: vector): Cast?
+	if not AbilitySim.shaded(s, t) then
+		return nil
+	end
+	local home = s.shadowFrom
+	s.shadowAt, s.shadowFrom, s.shadowTo = 0, ZERO, ZERO
+	return {
+		slot = AbilitySim.slotOf(s, "fromtheshadows") or X,
+		ability = "fromtheshadows",
+		kind = "home",
+		tick = tick,
+		time = t,
+		position = home,
+		origin = home + (eye - feet),
+		direction = look,
+		step = feet,
+	}
+end
+
+-- From the Shadows' tick at `t` (system 43), before anything else in it but
+-- a return: as its windup ends he's a Shade ("shade", from `feet` and
+-- `eye`, where he's sent back to) on the floor it marked, which PlayerSim
+-- puts him on; X pressed (in `buttons`) while he's a Shade sends him back
+-- (home); and once he's been a Shade its time he's there for good
+-- ("form"), the teleport over and him free from that tick. `look` is the
+-- way he looks. Returns whether he's held this tick, and what started, if
+-- anything.
+function AbilitySim.shadowThrough(
+	s: State,
+	t: number,
+	dt: number,
+	tick: number,
+	feet: vector,
+	eye: vector,
+	look: vector,
+	buttons: number
+): (boolean, Cast?)
+	if s.shadowAt == 0 then
+		return false, nil
+	end
+	-- The kit's keys are watched through it, so X pressed counts, and a key
+	-- held as it ends doesn't cast.
+	local keys = bit32.band(buttons, ALL)
+	local pressed = bit32.band(keys, bit32.bnot(s.held))
+	s.held = keys
+	local slot = AbilitySim.slotOf(s, "fromtheshadows") or X
+	if t >= AbilitySim.formsAt(s) - EPS then
+		s.shadowAt, s.shadowFrom, s.shadowTo = 0, ZERO, ZERO
+		return false,
+			{
+				slot = slot,
+				ability = "fromtheshadows",
+				kind = "form",
+				tick = tick,
+				time = t,
+				position = feet,
+				origin = eye,
+				direction = look,
+			}
+	end
+	if t >= s.shadowAt - EPS and t - dt < s.shadowAt - EPS then
+		s.shadowFrom = feet
+		return true,
+			{
+				slot = slot,
+				ability = "fromtheshadows",
+				kind = "shade",
+				tick = tick,
+				time = t,
+				position = feet,
+				origin = eye,
+				direction = look,
+				step = s.shadowTo,
+			}
+	end
+	if bit32.band(pressed, AbilitySim.BUTTONS[slot]) ~= 0 then
+		local back = AbilitySim.home(s, t, tick, feet, eye, look)
+		if back then
+			return true, back
+		end
+	end
+	return true, nil
+end
+
 -- The way someone facing `yaw` looks along the ground.
 local function facing(yaw: number): vector
 	return vector.create(-math.sin(yaw), 0, -math.cos(yaw))
@@ -791,7 +948,9 @@ end
 -- then, and to the left otherwise, and Hot Hands' fireball is lobbed. The
 -- Slow Orb has no alt fire, nor has Paranoia's orb (system 41), nor the
 -- Barrier Orb, whose wall goes where PlayerSim has placed it, nor Shrouded
--- Step (system 42), whose step PlayerSim starts where it's found.
+-- Step (system 42), whose step PlayerSim starts where it's found, nor From
+-- the Shadows (system 43), whose teleport spends the ultimate's points and
+-- PlayerSim starts where the map's place takes him.
 -- Blaze's wall is sent out from `feet`, and is bent from then until its
 -- run's over, if fire's held that long. The Healing Orb is only tried, on
 -- the ally the crosshair's over or with `alt` on herself: it stays in hand
@@ -816,6 +975,23 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		return try
 	end
 	s.holding = 0
+	if def and def.id == "fromtheshadows" then
+		if not AbilitySim.charged(s) then
+			return nil
+		end
+		s.points = 0
+		local teleport: Cast = {
+			slot = slot,
+			ability = def.id,
+			kind = "shadows",
+			tick = tick,
+			time = t,
+			position = feet,
+			origin = origin,
+			direction = aim,
+		}
+		return teleport
+	end
 	if not def or tried or s.charges[slot] <= 0 then
 		return nil
 	end

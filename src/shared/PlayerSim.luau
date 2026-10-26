@@ -5,15 +5,18 @@
 -- Curveball does its flare (system 30), Hot Hands its fireball (system 31),
 -- Blaze its flame (system 32), the Healing Orb its orb (system 36), the Slow
 -- Orb its own (system 37), the Barrier Orb its own (system 38), the
--- Resurrection its own (system 39), Dark Cover its own (system 40) and
--- Shrouded Step its own (system 42), and whose Run it Back holds the player
--- through his return and puts him back at its mark (system 33), as the
--- Resurrection holds a life it brings back, rising with the body and then
--- falling to the floor (system 39), and Shrouded Step holds him through its
--- windup and his time gone, and puts him where it marked (system 42). A Slow
--- Orb's field slows whoever starts a tick in it (SlowSim), from the fields
--- each step's given, and a Barrier Orb's wall stands in the world everything
--- in the tick goes through (BarrierSim.world), from the walls it's given.
+-- Resurrection its own (system 39), Dark Cover its own (system 40),
+-- Shrouded Step its own (system 42) and From the Shadows its map (system
+-- 43), and whose Run it Back holds the player through his return and puts
+-- him back at its mark (system 33), as the Resurrection holds a life it
+-- brings back, rising with the body and then falling to the floor (system
+-- 39), Shrouded Step holds him through its windup and his time gone, and
+-- puts him where it marked (system 42), and From the Shadows holds him
+-- through its windup and his time as a Shade, which it puts where the map
+-- marked (system 43). A Slow Orb's field slows whoever starts a tick in it
+-- (SlowSim), from the fields each step's given, and a Barrier Orb's wall
+-- stands in the world everything in the tick goes through
+-- (BarrierSim.world), from the walls it's given.
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -35,6 +38,7 @@ local SmokeSim = require("./Abilities/SmokeSim")
 local SlowSim = require("./Abilities/SlowSim")
 local BarrierSim = require("./Abilities/BarrierSim")
 local StepSim = require("./Abilities/StepSim")
+local ShadowSim = require("./Abilities/ShadowSim")
 
 export type State = {
 	movement: MovementSim.State,
@@ -214,6 +218,16 @@ local function held(s: State, input: any, cfg: any, world: any, dt: number, obje
 	return act, if back then { back } else nil
 end
 
+-- Puts him standing still on the floor at `feet`, as a step or a teleport
+-- leaves him (systems 42 and 43), the hit slow gone with where he was.
+local function standAt(s: State, feet: vector)
+	local m = MovementSim.newState(feet)
+	m.tick = s.movement.tick
+	m.grounded = true
+	s.movement = m
+	s.tagUntilTick = 0
+end
+
 -- A tick of Shrouded Step at `t` (system 42), with what started in it, if
 -- anything (AbilitySim.stepThrough): nothing pressed counts but crouch, so
 -- he can't move, fire or cast, and a plant or a defuse under way ends as
@@ -236,15 +250,45 @@ local function stepping(
 	WeaponSim.holster(s.weapons)
 	local kit = s.abilities
 	if step and step.kind == "vanish" then
-		local m = MovementSim.newState(kit.stepTo)
-		m.tick = s.movement.tick
-		m.grounded = true
-		s.movement = m
-		s.tagUntilTick = 0
+		standAt(s, kit.stepTo)
 	end
 	local motion = if AbilitySim.shrouded(kit, t) then HOLD else nil
 	MovementSim.step(s.movement, still, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
 	return act, if step then { step } else nil
+end
+
+-- A tick of From the Shadows at `t` (system 43), with what started in it,
+-- if anything (AbilitySim.shadowThrough): nothing pressed counts but
+-- crouch, so he can't move, fire or cast, and a plant or a defuse under way
+-- ends as if let go of, though he looks round as he likes ('he will still
+-- be able to rotate his body', the VALORANT Wiki); the gun stays away.
+-- Through its windup he comes to rest where he is. As it ends ("shade")
+-- he's standing on the floor it marked, a Shade held there; sent back
+-- ("home"), he's standing where he became one, his gun drawn again.
+local function shadowing(
+	s: State,
+	input: any,
+	cfg: any,
+	world: any,
+	dt: number,
+	objective: Spike.Context?,
+	t: number,
+	shadow: AbilitySim.Cast?
+)
+	local still = table.clone(input)
+	still.buttons = bit32.band(input.buttons, PlayerSim.Buttons.Crouch)
+	local act = SpikeSim.step(s.spike, s.movement, s.weapons, still, t, s.movement.tick + 1, PlayerSim.eye(s, cfg), objective or Spike.NONE)
+	WeaponSim.holster(s.weapons)
+	local kit = s.abilities
+	if shadow and shadow.kind == "shade" then
+		standAt(s, kit.shadowTo)
+	elseif shadow and shadow.kind == "home" then
+		standAt(s, shadow.position)
+		WeaponSim.redraw(s.weapons, t)
+	end
+	local motion = if AbilitySim.shaded(kit, t) then HOLD else nil
+	MovementSim.step(s.movement, still, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
+	return act, if shadow then { shadow } else nil
 end
 
 -- Advance one tick. Returns the bullets fired this tick, if any (one round's:
@@ -294,6 +338,18 @@ function PlayerSim.step(
 		local stepAct, stepCasts = stepping(s, input, cfg, world, dt, objective, t, step)
 		return nil, nil, stepAct, nil, stepCasts
 	end
+	-- So do From the Shadows' windup and his time as a Shade (system 43); he's
+	-- free the tick he's there for good, which it tells of with the tick's
+	-- casts, his gun drawn again at the normal speed (the VALORANT Wiki).
+	local shading, shadow =
+		AbilitySim.shadowThrough(kit, t, dt, s.movement.tick + 1, s.movement.position, PlayerSim.eye(s, cfg), look, input.buttons)
+	if shading then
+		local shadowAct, shadowCasts = shadowing(s, input, cfg, world, dt, objective, t, shadow)
+		return nil, nil, shadowAct, nil, shadowCasts
+	end
+	if shadow then
+		WeaponSim.redraw(s.weapons, t)
+	end
 	local dropPressed = MovementSim.has(input.buttons, PlayerSim.Buttons.Drop) and not s.spike.dropHeld
 	local spikeInput = input
 	if AbilitySim.dashing(s.abilities, t) then
@@ -310,9 +366,12 @@ function PlayerSim.step(
 	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
 	local grounded, crouched = s.movement.grounded, s.movement.crouched
 	local motion, casts = AbilitySim.step(kit, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
-	if step then
+	-- He's there (Shrouded Step), or there for good (From the Shadows): never
+	-- both, as neither starts while the other's under way.
+	local over = step or shadow
+	if over then
 		local list = casts or {}
-		table.insert(list, 1, step)
+		table.insert(list, 1, over)
 		casts = list
 	end
 	-- Standing in a Slow Orb's field as the tick starts, they're slowed
@@ -437,8 +496,11 @@ function PlayerSim.step(
 	-- wall goes where its targeter shows it, turned as the kit has it, and
 	-- with nowhere to go, or in the buy phase, the orb stays in hand (system
 	-- 38). Shrouded Step's starts its windup to where its mark shows, and
-	-- with nowhere to step it stays in hand (system 42). Anything else drawn
-	-- puts it away unthrown.
+	-- with nowhere to step it stays in hand (system 42). From the Shadows'
+	-- starts its windup to where the place picked on the map (the input's
+	-- point) takes him, and with nowhere there, none picked, or in the buy
+	-- phase, its map stays in hand (system 43). Anything else drawn puts it
+	-- away unthrown.
 	if kit.holding ~= 0 then
 		local held = s.weapons.loadout[WeaponSim.ULT]
 		local shot = if shots and held ~= "" and shots[1].weapon == held then shots[1] else nil
@@ -454,9 +516,13 @@ function PlayerSim.step(
 				else nil
 			local stepper = def ~= nil and def.id == "shroudedstep"
 			local to = if stepper then StepSim.place(world, shot.origin, shot.aim, cfg) else nil
+			local shadower = def ~= nil and def.id == "fromtheshadows"
+			local point: vector? = input.point
+			local there = if shadower and open and point then ShadowSim.place(world, point, cfg) else nil
 			local cast = if (raising and not placed)
 					or smoking
 					or (stepper and not to)
+					or (shadower and not there)
 				then nil
 				else AbilitySim.thrown(kit, tick, t, s.movement.position, shot.origin, shot.aim, shot.mode == "alt")
 			if cast then
@@ -464,6 +530,10 @@ function PlayerSim.step(
 				if to then
 					cast.step = to
 					AbilitySim.shroud(kit, t, to)
+				end
+				if there then
+					cast.step = there
+					AbilitySim.shadow(kit, t, there)
 				end
 				local list = casts or {}
 				table.insert(list, cast)
@@ -482,6 +552,20 @@ function PlayerSim.step(
 		end
 	end
 	return shots, swing, act, dropped, casts
+end
+
+-- A Shade sent back where he became one, applied by the server between
+-- ticks as an enemy's hit breaks it (system 43), as X does in his own tick
+-- (AbilitySim.home): he's standing there, his gun drawn again, as of `t`,
+-- his last tick's time, looking along `look`. Returns its "home" cast, or
+-- nil if he isn't a Shade.
+function PlayerSim.home(s: State, cfg: any, t: number, look: vector): AbilitySim.Cast?
+	local back = AbilitySim.home(s.abilities, t, s.movement.tick, s.movement.position, PlayerSim.eye(s, cfg), look)
+	if back then
+		standAt(s, back.position)
+		WeaponSim.redraw(s.weapons, t)
+	end
+	return back
 end
 
 -- What a single Blade Storm knife does with a kill this player made with

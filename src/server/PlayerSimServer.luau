@@ -27,8 +27,12 @@
 -- (system 33) puts him back at its mark in the simulation too, and the
 -- snapshots start over from there; while his body's gone he's out of play
 -- (inPlay), and they leave him out. So does Omen's Shrouded Step (system
--- 42) as he goes, out of play until he's there (StepServer). Sage's Slow
--- Orb (system 37) slows a
+-- 42) as he goes, out of play until he's there (StepServer). His From the
+-- Shadows (system 43) puts him where it takes him as a Shade, and back
+-- where he was if X or an enemy's hit breaks it (the hit between ticks,
+-- ShadowServer, moved), and the snapshots start over from each; the place
+-- on the map a move asks for it to take him is checked first (pointCheck).
+-- Sage's Slow Orb (system 37) slows a
 -- player's ticks in its fields (from SlowServer, PlayerSimServer.fields),
 -- and her Barrier Orb's walls stand in the world their ticks go through
 -- (system 38, from BarrierServer, PlayerSimServer.barriers), both judged
@@ -158,6 +162,11 @@ PlayerSimServer.tickListeners = {} :: { (Player, PlayerCodec.WireInput, { Abilit
 -- The debug give of the spike: the one spike there is, handed over, not a
 -- new one (SpikeServer).
 PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
+-- Whether a place on the map a player's move asks From the Shadows to take
+-- them (system 43, PlayerCodec.WireInput's point, metres) is on the map
+-- they're playing, when something knows (ShadowServer): a move asking for
+-- one that isn't goes as if it asked for none. Without, any is.
+PlayerSimServer.pointCheck = nil :: ((Player, vector) -> boolean)?
 -- How long a new life that's been asked for is waited for. Roblox loads a
 -- character in about a third of a second in Studio (measured); one that
 -- hasn't come by this is taken as not coming.
@@ -226,6 +235,7 @@ local function currentPose(r: Record): PlayerCodec.Pose
 		weapon = if r.sim.spike.channel == SpikeSim.DEFUSING then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 		channel = r.sim.spike.channel,
 		gliding = m.gliding,
+		shade = AbilitySim.shaded(r.sim.abilities, m.tick * DT),
 	}
 end
 
@@ -631,13 +641,18 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		local slows = if fieldsOf then { fields = fieldsOf(), time = judged } else nil
 		local wallsAt = PlayerSimServer.barriers
 		local barriers = if wallsAt then wallsAt(judged) else nil
+		local point, pointCheck = input.point, PlayerSimServer.pointCheck
+		if point and pointCheck and not pointCheck(r.player, point) then
+			input.point = nil
+		end
 		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective, slows, barriers)
-		-- Back at Run it Back's mark (system 33), or gone to where Shrouded
-		-- Step takes him (system 42): the snapshots start over from there,
-		-- so he's never shown, or hit, on the way.
+		-- Back at Run it Back's mark (system 33), gone to where Shrouded
+		-- Step takes him (system 42), or a Shade where From the Shadows takes
+		-- him or back where he was (system 43): the snapshots start over from
+		-- there, so he's never shown, or hit, on the way.
 		if casts then
 			for _, cast in casts do
-				if cast.kind == "rise" or cast.kind == "vanish" then
+				if cast.kind == "rise" or cast.kind == "vanish" or cast.kind == "shade" or cast.kind == "home" then
 					restartPacing(r)
 				end
 			end
@@ -719,6 +734,17 @@ end
 function PlayerSimServer.markDirty(player: Player)
 	local r = records[player]
 	if r then
+		r.ackDirty = true
+	end
+end
+
+-- A player put somewhere else between their ticks (an enemy's hit breaking
+-- Omen's Shade, system 43, sends him back): the snapshots start over from
+-- there, and the owner gets a fresh ack.
+function PlayerSimServer.moved(player: Player)
+	local r = records[player]
+	if r then
+		restartPacing(r)
 		r.ackDirty = true
 	end
 end

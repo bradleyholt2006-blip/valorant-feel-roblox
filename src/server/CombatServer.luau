@@ -48,6 +48,13 @@
 -- hurts or heals them, shots go through, and the snapshots leave them out,
 -- until they're back in it (CombatServer.back).
 --
+-- A hit on Omen's Shade (system 43, CombatServer.absorbs) leaves him
+-- unhurt: an enemy's breaks it, sending him back (ShadowServer). A shot or
+-- a swing goes by whether he was a Shade where the attacker's screen showed
+-- him (the rewound pose), so one at him as he wound up, landing once he's
+-- a Shade, hurts him, and one at the Shade, landing once it's gone, does
+-- nothing.
+--
 -- Sage's walls of ice stand in the level that shots and swings are traced
 -- through, as the attacker's screen showed them (CombatServer.levelAt,
 -- system 38), and stop every bullet. A bullet or a knife that strikes one
@@ -101,6 +108,11 @@ CombatServer.protected = nil :: ((Entities.Entity) -> boolean)?
 -- killListeners: it's taken the hit and is out of play, but there's no kill
 -- and no death.
 CombatServer.spares = nil :: ((Entities.Entity, Entities.Entity?, string, string?) -> boolean)?
+-- Whether a hit leaves an entity unhurt, taken in its place (Omen's Shade,
+-- system 43, ShadowServer), called with it, who hit it, and for a shot or a
+-- swing whether it was a Shade where the attacker's screen showed it (nil
+-- for what isn't aimed: a fire's burn). Nothing's told of a hit it takes.
+CombatServer.absorbs = nil :: ((Entities.Entity, Entities.Entity?, boolean?) -> boolean)?
 -- The level shots and swings are traced through, as the attacker's screen
 -- showed it at `viewTime`: with Sage's walls standing then in it
 -- (BarrierServer, system 38). The level alone without.
@@ -122,7 +134,8 @@ end
 -- room's burn);
 -- `wallbang`, that the bullets went through a wall on the way; `mode`, the
 -- way the weapon fired, for a shot; `untagged`, that it doesn't slow (a
--- fire's burn).
+-- fire's burn); `shade`, for a shot or a swing, whether the victim was a
+-- Shade where the attacker's screen showed them.
 local function damage(
 	attacker: Entities.Entity?,
 	victim: Entities.Entity,
@@ -131,8 +144,13 @@ local function damage(
 	weapon: string,
 	wallbang: boolean?,
 	mode: string?,
-	untagged: boolean?
-)
+	untagged: boolean?,
+	shade: boolean?
+): Health.DamageResult
+	local absorbs = CombatServer.absorbs
+	if absorbs and absorbs(victim, attacker, shade) then
+		return { damage = 0, shieldDamage = 0, healthDamage = 0, killed = false }
+	end
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
 	local spares = CombatServer.spares
 	local spared = result.killed and spares ~= nil and spares(victim, attacker, weapon, mode)
@@ -448,11 +466,25 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 	end
 
 	-- Each target takes the round's damage as one hit.
+	local shades: { [number]: boolean } = {}
+	for _, t in rewound do
+		shades[t.id] = t.pose.shade == true
+	end
 	local results = {}
 	for _, total in Volley.totals(hits) do
 		local victim = Entities.get(total.target)
 		if victim and victim.health.alive then
-			local result = damage(shooter, victim, total.damage, total.region, first.weapon, throughWall[total.target], first.mode)
+			local result = damage(
+				shooter,
+				victim,
+				total.damage,
+				total.region,
+				first.weapon,
+				throughWall[total.target],
+				first.mode,
+				nil,
+				shades[total.target] == true
+			)
 			table.insert(results, { target = total.target, region = total.region, damage = total.damage, pellets = total.pellets, killed = result.killed })
 		end
 	end
@@ -527,8 +559,14 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 	local wallPoint = if wall then swing.origin + swing.direction * wall.distance else nil
 	local victim = if hit then Entities.get(hit.targetId) else nil
 	if hit and victim and victim.health.alive then
+		local shade = false
+		for _, t in rewound do
+			if t.id == hit.targetId then
+				shade = t.pose.shade == true
+			end
+		end
 		-- What the swing did, not the health it took, as for a bullet.
-		local outcome = damage(attacker, victim, result.damage, hit.region, swing.weapon)
+		local outcome = damage(attacker, victim, result.damage, hit.region, swing.weapon, nil, nil, nil, shade)
 		verdict.target = hit.targetId
 		verdict.region = hit.region
 		verdict.point = Units.asVector3(hit.point)
