@@ -1,7 +1,8 @@
 --!strict
 -- Binary packing for player simulation traffic.
 --
---   Input    (client -> server, reliable):   19 bytes per 128 Hz tick
+--   Input    (client -> server, reliable):   19 bytes per 128 Hz tick, 27
+--                                            with a place on the map
 --   Ack      (server -> owner, unreliable):  full PlayerSim state at a seq
 --   Snapshot (server -> all, unreliable):    pose of every entity at a server time
 --
@@ -107,22 +108,46 @@ export type WireInput = {
 	yaw: number,
 	pitch: number,
 	viewTime: number,
+	-- The place picked on the map while From the Shadows' map is in hand
+	-- (system 43): metres across the floor, its y 0. Nil without.
+	point: vector?,
 }
 
 local INPUT_SIZE = 19
+-- A place on the map takes the slot byte's top bit and two floats after.
+local POINT_FLAG = 128
+local POINT_SIZE = 8
+-- Further from the place's middle than any map goes, metres.
+local POINT_MOST = 1e6
 local MAX_INPUTS_PER_PACKET = 256
 PlayerCodec.MAX_INPUTS_PER_PACKET = MAX_INPUTS_PER_PACKET
 
+-- A place on the map as the wire carries it, so the client simulates what
+-- the server will: across the floor, single precision (a vector's
+-- components are), with no height.
+function PlayerCodec.quantizePoint(point: vector): vector
+	return vector.create(point.x, 0, point.z)
+end
+
 function PlayerCodec.encodeInputs(inputs: { WireInput }, first: number, last: number): buffer
-	local c: Cursor = { b = buffer.create((last - first + 1) * INPUT_SIZE), o = 0 }
+	local size = 0
+	for i = first, last do
+		size += INPUT_SIZE + (if inputs[i].point then POINT_SIZE else 0)
+	end
+	local c: Cursor = { b = buffer.create(size), o = 0 }
 	for i = first, last do
 		local input = inputs[i]
+		local point = input.point
 		w32(c, input.seq)
 		w16(c, input.buttons)
-		w8(c, input.slot)
+		w8(c, input.slot + (if point then POINT_FLAG else 0))
 		w16(c, packAngle(input.yaw))
 		wi16(c, packPitch(input.pitch))
 		wf64(c, input.viewTime)
+		if point then
+			wf32(c, point.x)
+			wf32(c, point.z)
+		end
 	end
 	return c.b
 end
@@ -133,22 +158,38 @@ function PlayerCodec.decodeInputs(b: any): { WireInput }?
 		return nil
 	end
 	local len = buffer.len(b)
-	if len == 0 or len % INPUT_SIZE ~= 0 or len > INPUT_SIZE * MAX_INPUTS_PER_PACKET then
+	if len == 0 or len > (INPUT_SIZE + POINT_SIZE) * MAX_INPUTS_PER_PACKET then
 		return nil
 	end
 	local c: Cursor = { b = b, o = 0 }
 	local out = table.create(len // INPUT_SIZE)
 	while c.o < len do
+		if c.o + INPUT_SIZE > len or #out >= MAX_INPUTS_PER_PACKET then
+			return nil
+		end
 		local seq = r32(c)
 		local buttons = r16(c)
-		local slot = r8(c)
+		local slotByte = r8(c)
 		local yaw = unpackAngle(r16(c))
 		local pitch = ri16(c) / 10000
 		local viewTime = rf64(c)
+		local slot = bit32.band(slotByte, POINT_FLAG - 1)
 		if slot < 1 or slot > SLOTS or viewTime ~= viewTime then
 			return nil
 		end
-		table.insert(out, { seq = seq, buttons = buttons, slot = slot, yaw = yaw, pitch = pitch, viewTime = viewTime })
+		local point: vector? = nil
+		if bit32.band(slotByte, POINT_FLAG) ~= 0 then
+			if c.o + POINT_SIZE > len then
+				return nil
+			end
+			local x = rf32(c)
+			local z = rf32(c)
+			if not (math.abs(x) < POINT_MOST and math.abs(z) < POINT_MOST) then
+				return nil
+			end
+			point = vector.create(x, 0, z)
+		end
+		table.insert(out, { seq = seq, buttons = buttons, slot = slot, yaw = yaw, pitch = pitch, viewTime = viewTime, point = point })
 	end
 	return out
 end
@@ -159,7 +200,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 3 + 9 + 8 * 16 + 4 * 6 -- the ability kit
+	+ 1 + 3 + 3 + 9 + 8 * 17 + 4 * 12 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -263,13 +304,13 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.heldUntil)
 	wf64(c, a.reach)
 	wf64(c, a.stepAt)
+	wf64(c, a.shadowAt)
 	-- Exact: a vector's components are single precision.
-	wf32(c, a.mark.x)
-	wf32(c, a.mark.y)
-	wf32(c, a.mark.z)
-	wf32(c, a.stepTo.x)
-	wf32(c, a.stepTo.y)
-	wf32(c, a.stepTo.z)
+	for _, v in { a.mark, a.stepTo, a.shadowFrom, a.shadowTo } do
+		wf32(c, v.x)
+		wf32(c, v.y)
+		wf32(c, v.z)
+	end
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -408,12 +449,17 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local heldUntil = rf64(c)
 	local reach = rf64(c)
 	local stepAt = rf64(c)
-	local mx = rf32(c)
-	local my = rf32(c)
-	local mz = rf32(c)
-	local sx = rf32(c)
-	local sy = rf32(c)
-	local sz = rf32(c)
+	local shadowAt = rf64(c)
+	local function point(): vector
+		local x = rf32(c)
+		local y = rf32(c)
+		local z = rf32(c)
+		return vector.create(x, y, z)
+	end
+	local mark = point()
+	local stepTo = point()
+	local shadowFrom = point()
+	local shadowTo = point()
 	local abilities = {
 		agent = agent,
 		charges = charges,
@@ -434,7 +480,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		steering = steering,
 		steerUntil = steerUntil,
 		backUntil = backUntil,
-		mark = vector.create(mx, my, mz),
+		mark = mark,
 		markYaw = markYaw,
 		markGrounded = bit32.band(markFlags, 1) ~= 0,
 		markCrouched = bit32.band(markFlags, 2) ~= 0,
@@ -446,7 +492,10 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		heldUntil = heldUntil,
 		reach = reach,
 		stepAt = stepAt,
-		stepTo = vector.create(sx, sy, sz),
+		stepTo = stepTo,
+		shadowAt = shadowAt,
+		shadowFrom = shadowFrom,
+		shadowTo = shadowTo,
 	}
 
 	local tagUntilTick = r32(c)
@@ -482,6 +531,9 @@ export type Pose = {
 	channel: number,
 	-- Gliding (Jett's Drift, system 20), for the sound and the look.
 	gliding: boolean,
+	-- A Shade (Omen's From the Shadows, system 43), for the look, and so
+	-- nobody's drawn sliding to where it took him.
+	shade: boolean?,
 }
 
 local SNAP_HEADER = 8 + 2 + 1 -- server time, sequence number, pose count
@@ -523,6 +575,7 @@ function PlayerCodec.quantizePose(pose: Pose): Pose
 		weapon = pose.weapon,
 		channel = pose.channel,
 		gliding = pose.gliding,
+		shade = pose.shade,
 	}
 end
 
@@ -549,6 +602,7 @@ function PlayerCodec.encodeSnapshot(serverTime: number, poses: { Pose }, seq: nu
 				+ (if pose.reloading then 8 else 0)
 				+ 16 * math.clamp(pose.channel, 0, 3)
 				+ (if pose.gliding then 64 else 0)
+				+ (if pose.shade then 128 else 0)
 		)
 		w8(c, pose.weapon)
 	end
@@ -586,6 +640,7 @@ function PlayerCodec.decodeSnapshot(b: buffer): (number, { Pose }, number)
 			weapon = weapon,
 			channel = bit32.extract(flags, 4, 2),
 			gliding = bit32.band(flags, 64) ~= 0,
+			shade = bit32.band(flags, 128) ~= 0,
 		})
 	end
 	return serverTime, poses, seq

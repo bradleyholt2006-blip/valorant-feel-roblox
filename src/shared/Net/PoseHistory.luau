@@ -66,7 +66,14 @@ local function lerpAngle(a: number, b: number, t: number): number
 	return a + d * t
 end
 
+-- Between two snapshots, `t` of the way (0 to 1). Omen becoming a Shade
+-- where From the Shadows took him, or one sent back (system 43), isn't
+-- blended: he's where the earlier one has him until the later one, so he's
+-- never drawn, or hit, on the way.
 local function blend(a: PlayerCodec.Pose, b: PlayerCodec.Pose, t: number): PlayerCodec.Pose
+	if (a.shade or false) ~= (b.shade or false) then
+		return if t < 1 then a else b
+	end
 	return {
 		id = b.id,
 		position = a.position + (b.position - a.position) * t,
@@ -80,6 +87,7 @@ local function blend(a: PlayerCodec.Pose, b: PlayerCodec.Pose, t: number): Playe
 		weapon = b.weapon,
 		channel = b.channel,
 		gliding = b.gliding,
+		shade = b.shade,
 	}
 end
 
