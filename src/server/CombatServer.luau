@@ -27,8 +27,10 @@
 -- for the swing's damage from in front or from behind. Its verdict goes back
 -- to the one swinging with what the server tested, and the others hear it.
 --
--- The spike's blast kills outright, with nobody to credit (kill), and Team
--- Deathmatch's spawn rooms burn whoever they shouldn't have in them (hurt).
+-- The spike's blast kills outright, with nobody to credit (kill), Team
+-- Deathmatch's spawn rooms burn whoever they shouldn't have in them (hurt),
+-- and Hot Hands' fire whoever stands in it, credited to its thrower (burn,
+-- system 31).
 --
 -- Each damage event says whether the bullets went through a wall first, for
 -- the kill feed (system 16), and every hit that took something is told to
@@ -87,7 +89,8 @@ end
 -- `attacker` is nil for damage nobody caused (the spike's blast, a spawn
 -- room's burn);
 -- `wallbang`, that the bullets went through a wall on the way; `mode`, the
--- way the weapon fired, for a shot.
+-- way the weapon fired, for a shot; `untagged`, that it doesn't slow (a
+-- fire's burn).
 local function damage(
 	attacker: Entities.Entity?,
 	victim: Entities.Entity,
@@ -95,7 +98,8 @@ local function damage(
 	region: string,
 	weapon: string,
 	wallbang: boolean?,
-	mode: string?
+	mode: string?,
+	untagged: boolean?
 )
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
 	if result.damage > 0 then
@@ -103,9 +107,9 @@ local function damage(
 			listener(attacker, victim, result.damage)
 		end
 	end
-	-- A hit from nobody (a spawn room's burn) doesn't slow.
+	-- A hit from nobody (a spawn room's burn) doesn't slow, nor does fire.
 	local hp = WeaponConfig.Health
-	if result.damage > 0 and attacker and victim.sim and not result.killed then
+	if result.damage > 0 and attacker and victim.sim and not result.killed and not untagged then
 		PlayerSim.applyTag(victim.sim, Tuning.config(), hp.tagSpeedMultiplier.value, hp.tagDuration.value, DT)
 		if victim.player then
 			PlayerSimServer.markDirty(victim.player)
@@ -147,6 +151,16 @@ end
 function CombatServer.hurt(victim: Entities.Entity, amount: number, weapon: string)
 	if victim.health.alive then
 		damage(nil, victim, amount, "body", weapon)
+	end
+end
+
+-- Burns an entity by `amount`, through its shield as any hit, as `weapon`
+-- (Hot Hands' fire, system 31), credited to `attacker` for the kill feed
+-- and the kit's points. Fire doesn't slow: the reference's tagging is its
+-- bullets' ("Bullet tagging", Patch 3.0).
+function CombatServer.burn(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string)
+	if victim.health.alive then
+		damage(attacker, victim, amount, "body", weapon, nil, nil, true)
 	end
 end
 
@@ -229,11 +243,12 @@ end
 
 -- Players on the same team (the arena's sides) can't shoot each other: the
 -- reference has no friendly fire for guns, and here the bullet passes
--- through them.
+-- through them. Fire burns them less (FireServer).
 local function teammates(a: Entities.Entity, b: Entities.Entity): boolean
 	local pa, pb = a.player, b.player
 	return pa ~= nil and pb ~= nil and not pa.Neutral and not pb.Neutral and (pa.Team :: Team?) ~= nil and pa.Team == pb.Team
 end
+CombatServer.teammates = teammates
 
 -- Positions go as metres in a Vector3 (the wire keeps float32 exactly), so
 -- the client can compare them with its own bit for bit.

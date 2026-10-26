@@ -15,8 +15,8 @@
 -- takes no slot or key of its own: Jett's Drift (system 20). Team Deathmatch
 -- has a kit of its own (system 28): abilities that recharge over time, and
 -- ultimates that cost more, from kills and Ultimate Orbs. Phoenix is the
--- second agent (system 30), his Curveball the first of his abilities that
--- can be played.
+-- second agent (system 30): his Curveball and Hot Hands (system 31) can be
+-- played, and his passive, Inner Fire, works.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -152,9 +152,14 @@ local P501 = "Patch 5.01"
 local P910 = "Patch 9.10"
 local P1100 = "Patch 11.00"
 local P1302 = "Patch 13.02"
+local P050 = "Patch 0.50"
+local P100 = "Patch 1.0"
 local PHOENIX = "VALORANT Wiki, Phoenix"
 local CURVE = "VALORANT Wiki, Curveball"
 local STATUS = "VALORANT Wiki, 'Status Effect'"
+local HOT = "VALORANT Wiki, Hot Hands"
+local PROJECTILE = "VALORANT Wiki, Projectile"
+local INCENDIARY = "VALORANT Wiki, Incendiary"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -195,8 +200,8 @@ AbilityConfig.Defs = {
 		description = "Five throwing knives. Fire throws one, and a kill brings them all back; alt fire throws all that are left.",
 	},
 	-- Phoenix's (system 30): his kit as the VALORANT Wiki lists it since
-	-- Patch 9.10 moved Curveball to E and Hot Hands to Q. Curveball is the
-	-- one that can be played.
+	-- Patch 9.10 moved Curveball to E and Hot Hands to Q. Curveball and Hot
+	-- Hands (system 31) are the ones that can be played.
 	blaze = {
 		id = "blaze",
 		name = "Blaze",
@@ -213,7 +218,8 @@ AbilityConfig.Defs = {
 		kind = "basic",
 		cost = p(200, "confirmed", P910 .. ": Hot Hands 'Changed to a non-signature ability', 'Cost 200 credits'"),
 		charges = p(1, "community", PHOENIX .. ": Hot Hands, 1 use"),
-		description = "A fireball that bursts into a pool of fire where it lands.",
+		weapon = "fireball",
+		description = "Q readies a fireball. Fire throws it, alt fire lobs it; it bursts into fire that burns enemies and heals you.",
 	},
 	curveball = {
 		id = "curveball",
@@ -258,8 +264,7 @@ AbilityConfig.Agents = {
 } :: { [string]: Agent }
 
 -- What each passive does, for agent select (system 29), in our words.
--- Phoenix's Inner Fire heals him in his own fire (Patch 9.10), which isn't
--- here yet.
+-- Phoenix's Inner Fire heals him in his own fire (Patch 9.10, system 31).
 AbilityConfig.Passives = {
 	drift = { name = "Drift", description = "Hold jump while you fall to glide." },
 	innerfire = { name = "Inner Fire", description = "His own fire heals him, where it would burn anyone else." },
@@ -420,5 +425,73 @@ AbilityConfig.Curveball = {
 	),
 	least = p(0.05, "estimate", "Ours: a blind under a tenth of a second is none"),
 }
+
+-- Phoenix's Hot Hands (system 31): Q puts a fireball in hand (WeaponConfig's
+-- fireball, in the fifth slot, as the flare is), and fire throws it, alt
+-- fire lobs it underhand. It flies from the eye under a light gravity, off
+-- walls and ceilings, and bursts where it meets the floor; once its air
+-- time is up it stops and drops straight down, and bursts where it lands
+-- (FireballSim). Its fire spreads from there to its radius, no further than
+-- the walls round it let it, and burns for its duration: enemies standing
+-- in it lose health every moment, allies less, and Phoenix heals instead
+-- (InnerFire). Riot gives the heal and how high the fire reaches; the
+-- wiki the rest (31-hot-hands.md, section 2).
+AbilityConfig.HotHands = {
+	-- From the throw until the gun's back in hand.
+	unequip = p(0.7, "community", HOT .. ": 'Unequip time' 0.7 seconds"),
+	-- Its flight: this fast thrown or lobbed, falling at this share of the
+	-- world's gravity, for its air time at most.
+	speed = p(18, "community", PROJECTILE .. ": Hot Hands a 'Class 2' throw, 'Speed 1800', read as centimetres a second"),
+	lobSpeed = p(6.3, "community", PROJECTILE .. ": underhand throws 'Class 0.7', 'Speed 630', read as centimetres a second"),
+	gravity = p(0.3, "community", PROJECTILE .. ": 'Gravity 0.3' for both, read as a share of the world's"),
+	worldGravity = p(9.8, "estimate", "Ours: Unreal Engine's default, 980 cm/s^2, for that share; no source gives the reference's"),
+	airTime = p(1.5, "community", HOT .. ": 'Maximum air time' 1.5 seconds, then it 'will immediately drop down vertically'"),
+	-- Half the size of the box that flies, for what it meets.
+	size = p(0.1, "estimate", "Ours: a ball about a hand across, as the flare's"),
+	-- What's kept of its speed off a wall, and how level a surface has to be
+	-- for it to burst there (the up of its normal).
+	bounce = p(0.5, "estimate", "Ours; " .. INCENDIARY .. ": a grenade's bounces 'reducing its arc and velocity'"),
+	floor = p(
+		0.7,
+		"estimate",
+		"Ours, about 45 degrees; " .. HOT .. ": it 'detonates as soon as it comes into contact with horizontal terrain'"
+	),
+	-- The fire: this far round, grown to it over the spread, burning for its
+	-- duration from the burst, and gone at once.
+	radius = p(4.5, "community", HOT .. ": 'Radius' 4.5 meters ('not confirmed by game files')"),
+	spread = p(0.75, "community", HOT .. ": a '0.75-second spread time' (estimated there)"),
+	duration = p(4, "community", HOT .. ": 'Duration' 4 seconds"),
+	-- How high over the floor it burns, and how far below it (a slope, a
+	-- step down); and how high over the floor a wall stops it spreading.
+	height = p(
+		1.2,
+		"confirmed",
+		P050 .. ": 'Height required to jump out of all damaging area denial abilities 80 >> 120', read as centimetres"
+	),
+	depth = p(0.5, "estimate", "Ours: down a slope or a step from the burst"),
+	wallHeight = p(0.5, "estimate", "Ours: so a kerb doesn't stop it spreading and a crate does"),
+	-- Health a second it takes from an enemy standing in it, and an ally's
+	-- share of that.
+	burn = p(
+		60,
+		"community",
+		HOT .. ": '1 per tick', '60 per second'; " .. P100 .. ": Blaze's 1 every 0.033 seconds 'half as effective as Hot Hands'"
+	),
+	allyShare = p(1 / 3, "estimate", "Ours: " .. HOT .. ": 'Yes (damage reduced for allies)', with no number"),
+}
+
+-- Phoenix's Inner Fire (system 31), his passive: touching his own fire
+-- heals him instead of burning him. Since Patch 9.10 the first touch of
+-- each fire starts the heal, a point at a time, and it keeps on after he
+-- leaves it. It mends health alone, up to his most.
+AbilityConfig.InnerFire = {
+	heal = p(50, "confirmed", P100 .. ": 'the total healing output of these two abilities is at parity (50 health each)'"),
+	hotHandsEvery = p(0.08, "confirmed", P100 .. ": 'Hot Hands healing: 3 every 0.25s >>> 1 every 0.08s.'"),
+}
+
+-- How long after a throw the gun's back in hand, by the ability thrown.
+function AbilityConfig.unequip(id: string): number
+	return if id == "hothands" then AbilityConfig.HotHands.unequip.value else AbilityConfig.Curveball.unequip.value
+end
 
 return AbilityConfig

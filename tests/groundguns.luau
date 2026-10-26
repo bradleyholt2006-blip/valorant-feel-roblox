@@ -88,11 +88,12 @@ do
 	)
 	check("a sidearm in slot 2", GroundGuns.slotOf("classic") == 2 and GroundGuns.slotOf("sheriff") == 2)
 	check(
-		"the knife, the spike, Blade Storm's knives and Curveball's flare never lie there",
+		"the knife, the spike, Blade Storm's knives, Curveball's flare and Hot Hands' fireball never lie there",
 		GroundGuns.slotOf("knife") == nil
 			and GroundGuns.slotOf("spike") == nil
 			and GroundGuns.slotOf("kunai") == nil
 			and GroundGuns.slotOf("flare") == nil
+			and GroundGuns.slotOf("fireball") == nil
 	)
 	check("nor does anything that isn't a weapon", GroundGuns.slotOf("") == nil and GroundGuns.slotOf("regen") == nil)
 	local everyGun = true

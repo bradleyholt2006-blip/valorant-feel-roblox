@@ -413,13 +413,30 @@ SoundConfig.Sounds = {
 	flarePop = sound(0.7, 0.03, 3, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 1.7),
+	-- Hot Hands (system 31): the fireball lit in hand is the gust again,
+	-- lower than the flare's; its throw the thin swish, slowed; its burst the
+	-- spike blast's crack slowed down to a thump; and its fire the gust
+	-- slowed right down, quiet, again and again while it burns.
+	fireballEquip = sound(0.5, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.15),
+	fireballThrow = sound(0.6, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 0.85),
+	fireBurst = sound(0.6, 0.03, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 0.75),
+	fireCrackle = sound(0.3, 0.1, 4, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.4),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
--- cloud's burst and a flare's pop), heard as the ability curve says
--- (systems 17 to 19, and 30). Blade Storm's knives drawn again sound as
--- their draw does, and so does Curveball's flare put in hand, which only
--- the one drawing it hears.
+-- cloud's burst, a flare's pop, and a fireball's burst and its fire), heard
+-- as the ability curve says (systems 17 to 19, 30 and 31). Blade Storm's
+-- knives drawn again sound as their draw does, and so does an ability put
+-- in hand (Curveball's flare, Hot Hands' fireball), which only the one
+-- drawing it hears.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -429,6 +446,9 @@ SoundConfig.Abilities = {
 	storm = "storm",
 	flare = "flareThrow",
 	pop = "flarePop",
+	fireball = "fireballThrow",
+	fire = "fireBurst",
+	burning = "fireCrackle",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -529,6 +549,9 @@ SoundConfig.Weapons = {
 	-- Curveball's flare (system 30): only its draw; its throw and pop are
 	-- the ability's (SoundConfig.Abilities).
 	flare = { draw = "flareEquip", curve = "ability" },
+	-- Hot Hands' fireball (system 31): the same, its throw, burst and fire
+	-- the ability's.
+	fireball = { draw = "fireballEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

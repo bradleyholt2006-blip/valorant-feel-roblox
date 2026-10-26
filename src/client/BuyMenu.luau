@@ -271,6 +271,12 @@ local function abilityLines(def: AbilityConfig.AbilityDef): { string }
 		local CV = AbilityConfig.Curveball
 		table.insert(lines, row("Pop", string.format("%s s after the throw", num(CV.windup.value))))
 		table.insert(lines, row("Blind", string.format("up to %s s, then %s s clearing", num(CV.maxBlind.value), num(CV.fade.value))))
+	elseif def.id == "hothands" then
+		local HH, IF = AbilityConfig.HotHands, AbilityConfig.InnerFire
+		table.insert(lines, row("Fire", string.format("%s m across, for %s s", num(2 * HH.radius.value), num(HH.duration.value))))
+		table.insert(lines, row("Burn", string.format("%s a second", num(HH.burn.value))))
+		local healTime = IF.heal.value * IF.hotHandsEvery.value
+		table.insert(lines, row("Heals you", string.format("%s over %s s, Inner Fire", num(IF.heal.value), num(healTime))))
 	end
 	local recharge = def.recharge
 	if recharge and recharge.kind == "kills" then

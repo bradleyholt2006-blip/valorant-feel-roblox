@@ -121,6 +121,16 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.045, 0.06, 0.07), offset = vector.create(0, -0.01, -0.03) }, -- hand
 		},
 	},
+	-- Hot Hands' fireball (system 31): a ball of fire held up in the hand, a
+	-- flame on top.
+	fireball = {
+		muzzle = vector.create(0, 0.06, -0.12),
+		pieces = {
+			{ size = vector.create(0.09, 0.09, 0.09), offset = vector.create(0, 0.06, -0.08), accent = true }, -- ball
+			{ size = vector.create(0.05, 0.05, 0.05), offset = vector.create(0, 0.12, -0.08), accent = true }, -- flame
+			{ size = vector.create(0.045, 0.06, 0.07), offset = vector.create(0, -0.01, -0.03) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -149,6 +159,7 @@ local SHAPE_OF: { [string]: string } = {
 	spike = "spike",
 	kunai = "kunai",
 	flare = "flare",
+	fireball = "fireball",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -176,6 +187,7 @@ local ACCENT: { [string]: Color3 } = {
 	spike = Color3.fromRGB(235, 70, 60),
 	kunai = Color3.fromRGB(150, 230, 255),
 	flare = Color3.fromRGB(255, 176, 80),
+	fireball = Color3.fromRGB(255, 110, 30),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

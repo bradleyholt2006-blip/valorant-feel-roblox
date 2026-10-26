@@ -2,7 +2,8 @@
 -- One player's full deterministic simulation: movement + weapons + hit slow,
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
--- Curveball does its flare (system 30).
+-- Curveball does its flare (system 30) and Hot Hands its fireball (system
+-- 31).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -176,8 +177,9 @@ function PlayerSim.step(
 	local motion, casts = AbilitySim.step(s.abilities, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
 	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
 	-- A throw puts the gun away for a moment (system 18). Blade Storm's cast
-	-- puts its knives in hand, and X draws them again (system 19). Curveball's
-	-- E puts its flare in hand (system 30).
+	-- puts its knives in hand, and X draws them again (system 19). An
+	-- ability's key puts what it throws in hand: Curveball's flare (system
+	-- 30), Hot Hands' fireball (system 31).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -238,14 +240,14 @@ function PlayerSim.step(
 		local shot = if shots and held ~= "" and shots[1].weapon == held then shots[1] else nil
 		if shot then
 			shots = nil
-			local curve = if shot.mode == "alt" then 1 else -1
-			local cast = AbilitySim.thrown(s.abilities, tick, t, s.movement.position, shot.origin, shot.aim, curve)
+			local def = AbilitySim.def(s.abilities, s.abilities.holding)
+			local cast = AbilitySim.thrown(s.abilities, tick, t, s.movement.position, shot.origin, shot.aim, shot.mode == "alt")
 			if cast then
 				local list = casts or {}
 				table.insert(list, cast)
 				casts = list
 			end
-			WeaponSim.putAway(s.weapons, t, AbilityConfig.Curveball.unequip.value)
+			WeaponSim.putAway(s.weapons, t, AbilityConfig.unequip(if def then def.id else ""))
 		elseif held == "" or s.weapons.equipped ~= WeaponSim.ULT then
 			s.abilities.holding = 0
 			WeaponSim.putAway(s.weapons, t)
