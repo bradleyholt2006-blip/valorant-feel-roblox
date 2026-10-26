@@ -31,7 +31,8 @@
 --            (Drift, system 20), yours from your ticks and others' on them;
 --            and a run or a jump through a Slow Orb's field, which crunches
 --            (system 37): yours as your ticks are slowed, others' where
---            your screen has them in a field (iced)
+--            your screen has them in a field (iced); and Paranoia's touch
+--            (system 41), on the UI bus, which deafening doesn't muffle
 --
 -- Your steps come from your predicted ticks, others' from their poses as
 -- they are drawn (RemoteEntities), so they line up with where they're
@@ -666,6 +667,12 @@ function GameSounds.playCast(kind: string, at: vector, id: number?, exact: boole
 	GameSounds.playWorld(sound, where, who)
 end
 
+-- Your nearsight starting (Omen's Paranoia, system 41), as the dark closes
+-- in (ParanoiaView).
+function GameSounds.playNearsight()
+	ui(SoundConfig.Deafen.sound)
+end
+
 -- Settings ------------------------------------------------------------------------
 
 -- This client's footstep radius: the footstep curve stretched to it.
@@ -727,6 +734,7 @@ function GameSounds.start()
 	end
 	SoundEngine.prepare(D.sound, "world", C.ability.points)
 	SoundEngine.prepare(D.sound, "self")
+	SoundEngine.prepare(SoundConfig.Deafen.sound, "ui")
 
 	table.insert(PlayerController.tickListeners, onTick)
 	table.insert(PlayerController.spawnListeners, onSpawn)

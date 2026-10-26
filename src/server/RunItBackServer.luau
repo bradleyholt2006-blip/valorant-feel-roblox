@@ -21,8 +21,8 @@
 --   * as it runs out, his body's gone the same, with no hit
 --   * out of play nothing hurts or heals him, shots go through him, the
 --     snapshots leave him out, nothing blinds him and he picks nothing up
---     (PlayerSimServer.inPlay); a blind he had goes (Patch 12.01 fixed a
---     debuff staying)
+--     (PlayerSimServer.inPlay); a blind or a nearsight he had goes (Patch
+--     12.01 fixed a debuff staying)
 --   * as he rises at the mark he's back in play, with full health and the
 --     shield he had as he cast it (Patch 5.01)
 --   * a body that's been gone longer than its time and the grace, on the
@@ -46,6 +46,7 @@ local Entities = require(script.Parent.Entities)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local CombatServer = require(script.Parent.CombatServer)
 local FlareServer = require(script.Parent.FlareServer)
+local ParanoiaServer = require(script.Parent.ParanoiaServer)
 local FogServer = require(script.Parent.FogServer)
 
 local RunItBackServer = {}
@@ -59,10 +60,12 @@ local kept: { [Player]: Health.Kept } = {}
 -- When each player's body went (server time), while it's out of play.
 local goneAt: { [Player]: number } = {}
 
--- A body gone at `now`, and the blind on it with it.
+-- A body gone at `now`, and the blind on it with it, and a nearsight
+-- (Omen's Paranoia, system 41).
 local function gone(player: Player, now: number)
 	goneAt[player] = now
 	FlareServer.clear(player)
+	ParanoiaServer.clear(player)
 end
 
 -- Back in play: full health and the shield it was cast with.

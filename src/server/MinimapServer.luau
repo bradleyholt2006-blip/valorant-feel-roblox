@@ -11,11 +11,14 @@
 -- Everyone in play looks from where the server last had their eye and view
 -- (PlayerSimServer.view) and is seen at the pose the snapshots show
 -- (Entities). Nobody out of play sees or is seen (a Phoenix whose body's
--- gone in Run it Back, system 33), and nobody blinded white by a Curveball
--- (system 30) sees. In the way: the level, but not the spawns' barriers,
--- which are see-through, nor anyone's body; the clouds standing
--- (CloudServer), the walls of fire (BlazeServer) and the walls of ice
--- (BarrierServer, system 38).
+-- gone in Run it Back, system 33), nobody blinded white by a Curveball
+-- (system 30) sees, and nobody nearsighted by Omen's Paranoia (system 41)
+-- sees further than its vision; while it's whole their minimap's covered
+-- (the VALORANT Wiki's Status Effect page: it 'will become obscured';
+-- community), and they're told nothing. In the way: the level, but not the
+-- spawns' barriers, which are see-through, nor anyone's body; the clouds
+-- standing (CloudServer), the walls of fire (BlazeServer) and the walls of
+-- ice (BarrierServer, system 38).
 --
 -- Who each side spots goes to the fog of war too (FogServer, system 35),
 -- so their snapshots carry whoever their minimap shows.
@@ -27,6 +30,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local FlareSim = require(Shared.Abilities.FlareSim)
+local ParanoiaSim = require(Shared.Abilities.ParanoiaSim)
 local Minimap = require(Shared.Match.Minimap)
 local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local Remotes = require(Shared.Net.Remotes)
@@ -80,6 +84,11 @@ local function blinded(player: Player, now: number): boolean
 	return blind ~= nil and FlareSim.whiteAt(blind, now) >= Minimap.Params.blindSees.value
 end
 
+-- A player's nearsight (Omen's Paranoia, system 41), if they have one.
+local function nearsightOf(player: Player): ParanoiaSim.Nearsight?
+	return ParanoiaSim.decode(player:GetAttribute(ParanoiaSim.ATTRIBUTE))
+end
+
 local function tell(player: Player, ids: { number }, spike: boolean)
 	table.sort(ids)
 	local key = table.concat(ids, ",") .. (if spike then ";spike" else "")
@@ -112,7 +121,7 @@ local function look(now: number)
 		end
 		local eye, aim = PlayerSimServer.view(player)
 		if eye and aim and not blinded(player, now) then
-			table.insert(viewers, { side = side, eye = eye, look = aim })
+			table.insert(viewers, { side = side, eye = eye, look = aim, range = ParanoiaSim.range(nearsightOf(player), now) })
 		end
 	end
 	local o: Sight.Occluders = {
@@ -143,6 +152,10 @@ local function look(now: number)
 			if sent[player] ~= nil and sent[player] ~= "" then
 				tell(player, {}, false)
 			end
+			continue
+		end
+		if ParanoiaSim.whole(nearsightOf(player), now) then
+			tell(player, {}, false)
 			continue
 		end
 		local ids = {}

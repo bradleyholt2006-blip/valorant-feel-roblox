@@ -760,6 +760,28 @@ local RESURRECTION = "VALORANT Wiki, Resurrection"
 -- shoot is dropped; it takes the orb's no spread and no kick.
 local DARK_COVER = "VALORANT Wiki, Dark Cover"
 
+-- Omen's Paranoia (system 41): sent along the crosshair and flown by
+-- ParanoiaSim, as the Slow Orb is by SlowSim, so no spread or kick moves it
+-- either. It has no alt fire.
+local PARANOIA = "VALORANT Wiki, Paranoia"
+local BLIND_FLOWN = "n/a: ParanoiaSim flies it from the crosshair"
+local BLIND_NA = p(0, "estimate", BLIND_FLOWN)
+local blindExact = accuracy(
+	c({ { 1, 0 } }, "estimate", BLIND_FLOWN),
+	p(1, "estimate", BLIND_FLOWN),
+	p(0.1, "estimate", BLIND_FLOWN),
+	p(1, "estimate", BLIND_FLOWN),
+	{ crouch = BLIND_NA, walk = BLIND_NA, run = BLIND_NA, air = BLIND_NA }
+)
+blindExact.landError = BLIND_NA
+local BLIND_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a sent orb doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = BLIND_NA,
+	adsCamera = BLIND_NA,
+})
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -1765,6 +1787,33 @@ WeaponConfig.Defs = {
 		accuracy = orbExact,
 		recoil = ORB_KICK,
 	},
+	-- Omen's Paranoia (system 41): put in hand in the fifth slot by Q
+	-- (AbilityConfig.Paranoia), as the Slow Orb is by Sage's Q. Fire sends
+	-- it; PlayerSim turns that into the ability's cast, which ParanoiaSim
+	-- flies, so it fires no bullet. Whoever it touches is nearsighted; the
+	-- orb itself hurts nobody.
+	blindorb = {
+		id = "blindorb",
+		name = "Paranoia",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: Q puts it in hand, the charge of Paranoia (" .. PARANOIA .. ")"),
+		-- Held, it goes as soon as it's in hand (ours, as the flare).
+		fireMode = "auto",
+		fireRate = ONE_THROW,
+		magazine = p(1, "community", PARANOIA .. ": 1 use, an orb"),
+		reserve = p(0, "community", "None: another orb is another charge (" .. PARANOIA .. ": 1 use)"),
+		reloadTime = BLIND_NA,
+		equipTime = p(1.1, "community", PARANOIA .. ": equip 1.1 s (game files)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it nearsights (" .. PARANOIA .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "paranoia",
+		accuracy = blindExact,
+		recoil = BLIND_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -1772,8 +1821,8 @@ WeaponConfig.Defs = {
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
 -- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
 -- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
--- (system 38), the Resurrection (system 39) and Dark Cover (system 40)
--- last.
+-- (system 38), the Resurrection (system 39), Dark Cover (system 40) and
+-- Paranoia (system 41) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1806,6 +1855,7 @@ WeaponConfig.Ids = {
 	"wallorb",
 	"revive",
 	"smokeorb",
+	"blindorb",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

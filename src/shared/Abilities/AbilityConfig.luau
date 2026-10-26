@@ -19,7 +19,8 @@
 -- (system 32) and Run it Back (system 33) can be played, and his passive,
 -- Inner Fire, works. Sage is the third (system 36), with her Healing Orb,
 -- her Slow Orb (system 37), her Barrier Orb (system 38) and her
--- Resurrection (system 39).
+-- Resurrection (system 39). Omen is the fourth (system 40), with his Dark
+-- Cover and his Paranoia (system 41).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -192,6 +193,7 @@ local ESPORTS = "esports.net's Sage guide"
 local P404 = "Patch 4.04"
 local OMEN = "VALORANT Wiki, Omen"
 local COVER = "VALORANT Wiki, Dark Cover"
+local PARANOIA = "VALORANT Wiki, Paranoia"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -320,7 +322,7 @@ AbilityConfig.Defs = {
 		description = "X readies it. Fire on a fallen ally's body brings them back where they lie, with full health and no shield.",
 	},
 	-- Omen's (system 40): his kit as the VALORANT Wiki lists it. His Dark
-	-- Cover can be played.
+	-- Cover and his Paranoia (system 41) can be played.
 	shroudedstep = {
 		id = "shroudedstep",
 		name = "Shrouded Step",
@@ -335,9 +337,10 @@ AbilityConfig.Defs = {
 		name = "Paranoia",
 		slot = AbilityConfig.Q,
 		kind = "basic",
-		cost = p(250, "community", OMEN .. ": Paranoia, 250 credits"),
+		cost = p(250, "confirmed", P512 .. ": 'Paranoia (Q) Cost decreased 300 >>> 250' (" .. OMEN .. ": 250 still)"),
 		charges = p(1, "community", OMEN .. ": Paranoia, 1 use"),
-		description = "Q readies a blinding orb. Fire sends it forward through walls, nearsighting everyone it touches.",
+		weapon = "blindorb",
+		description = "Q readies a shadow orb. Fire sends it forward through walls, nearsighting and deafening everyone it touches.",
 	},
 	darkcover = {
 		id = "darkcover",
@@ -892,6 +895,39 @@ AbilityConfig.DarkCover = {
 	depth = p(50, "estimate", "Ours, metres: below that, nowhere"),
 }
 
+-- Omen's Paranoia (system 41): Q puts the orb in hand (WeaponConfig's
+-- blindorb, in the fifth slot, as the Slow Orb is), and fire sends it. It
+-- appears a little ahead of his eye (Patch 4.04's forward spawn offset)
+-- and flies straight along the crosshair at its speed for its travel,
+-- through walls and anyone in its way (ParanoiaSim). Everyone it touches
+-- on the way, allies too, is nearsighted and deafened: for its time they
+-- see nothing past its vision but darkness, hear little, and their
+-- minimap is covered, and then it clears over its fade. Riot gives the
+-- speed and the travel; the wiki the radius and the times
+-- (41-paranoia.md, section 2).
+AbilityConfig.Paranoia = {
+	-- From the throw until the gun's back in hand.
+	unequip = p(0.7, "community", PARANOIA .. ": unequip 0.7 s (game files)"),
+	-- Its flight: appearing this far ahead of the eye, then flying this
+	-- fast, this far from there.
+	offset = p(
+		4.5,
+		"estimate",
+		"Ours, metres: "
+			.. P404
+			.. ": 'Added forward spawn offset, so players adjacent to Omen are not hit', with no number; its radius and a little"
+	),
+	speed = p(20, "confirmed", P1108 .. ": 'Projectile speed increased from 16 meters per second → 20 meters per second'"),
+	travel = p(25, "confirmed", P1108 .. ": 'Travel distance reduced from 32.5m → 25m', read as from where it appears"),
+	-- How far from its middle it touches someone.
+	radius = p(4.3, "community", PARANOIA .. ": projectile radius 4.3 m (game files)"),
+	-- The nearsight: whole for its duration, seeing no further than its
+	-- vision, then clearing over the fade.
+	duration = p(2, "community", PARANOIA .. ": nearsight duration 2 s (game files)"),
+	vision = p(7.5, "community", PARANOIA .. ": nearsighted vision radius 7.5 m (game files)"),
+	fade = p(0.5, "estimate", "Ours: " .. PARANOIA .. " gives no fade time; the dark clears over a moment"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
 -- for the Barrier Orb, after its wall's raised, and for the Resurrection,
@@ -911,6 +947,8 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.Resurrection.unequip.value
 	elseif id == "darkcover" then
 		return AbilityConfig.DarkCover.unequip.value
+	elseif id == "paranoia" then
+		return AbilityConfig.Paranoia.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

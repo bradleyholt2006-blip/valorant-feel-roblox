@@ -195,6 +195,16 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- Paranoia's orb (system 41): a darker orb the Healing Orb's size, a
+	-- flat band of shadow through it, over the open hand.
+	blindorb = {
+		muzzle = vector.create(0, 0.07, -0.12),
+		pieces = {
+			{ size = vector.create(0.09, 0.09, 0.09), offset = vector.create(0, 0.07, -0.08), accent = true }, -- orb
+			{ size = vector.create(0.16, 0.015, 0.16), offset = vector.create(0, 0.07, -0.08), accent = true }, -- band
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -230,6 +240,7 @@ local SHAPE_OF: { [string]: string } = {
 	wallorb = "wallorb",
 	revive = "revive",
 	smokeorb = "smokeorb",
+	blindorb = "blindorb",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -264,6 +275,7 @@ local ACCENT: { [string]: Color3 } = {
 	wallorb = Color3.fromRGB(185, 230, 250),
 	revive = Color3.fromRGB(90, 230, 210),
 	smokeorb = Color3.fromRGB(110, 70, 170),
+	blindorb = Color3.fromRGB(64, 34, 102),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

@@ -2,8 +2,8 @@
 -- The sums behind the sound (system 8): volume by distance on a curve, the
 -- curve in studs for Roblox's AudioEmitter, the filter for walls in the way
 -- and for distance, how much of the level lies between a sound and the
--- listener, how loud each recording is played, and when a reload's parts
--- sound.
+-- listener, how loud each recording is played, when a reload's parts
+-- sound, and how a deafened player hears (system 41).
 --
 -- Pure (no Roblox APIs), so the offline tests check it.
 
@@ -80,6 +80,19 @@ function SoundMath.occlusion(thickness: number): (number, number)
 	local u = logFraction(math.max(thickness, o.thin.value), o.thin.value, o.thick.value)
 	local gain = o.thinGain.value + (o.thickGain.value - o.thinGain.value) * u
 	return logLerp(o.thinCutoff.value, o.thickCutoff.value, u), gain
+end
+
+-- The World and Self buses' low-pass cutoff (Hz) and volume for someone
+-- `amount` deafened, 0 to 1 (Omen's Paranoia, system 41): open and whole
+-- at none, SoundConfig.Deafen's at all of it, and between, the cutoff by
+-- its log.
+function SoundMath.deafened(amount: number): (number, number)
+	local d = SoundConfig.Deafen
+	local u = math.clamp(amount, 0, 1)
+	if u <= 0 then
+		return SoundConfig.OPEN_CUTOFF, 1
+	end
+	return logLerp(SoundConfig.OPEN_CUTOFF, d.cutoff.value, u), 1 + (d.volume.value - 1) * u
 end
 
 -- The low-pass cutoff (Hz) the air leaves a gunshot at `distance` metres.

@@ -11,10 +11,12 @@
 -- side too, as the reference's blinds 'allies/self' (the VALORANT Wiki's
 -- Curveball page; community). Each is judged from where the server last had
 -- their eye and their view (PlayerSimServer.view), and nobody out of play
--- is (a Phoenix whose body's gone in Run it Back, system 33). A blind is
--- the player's `VFBlind` attribute (FlareSim.BLIND_ATTRIBUTE) until it's
--- gone, and goes with a death or a new life, as do a thrower's flares still
--- in the air as they start a new life, and with that body
+-- is (a Phoenix whose body's gone in Run it Back, system 33), and nor is
+-- anyone nearsighted by Omen's Paranoia (system 41) with the pop further
+-- away than they see (the VALORANT Wiki's Status Effect page; community).
+-- A blind is the player's `VFBlind` attribute (FlareSim.BLIND_ATTRIBUTE)
+-- until it's gone, and goes with a death or a new life, as do a thrower's
+-- flares still in the air as they start a new life, and with that body
 -- (FlareServer.clear). The thrower's last pop is their `VFLastFlare`
 -- attribute (metres), which scripted checks read.
 
@@ -25,6 +27,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local FlareSim = require(Shared.Abilities.FlareSim)
+local ParanoiaSim = require(Shared.Abilities.ParanoiaSim)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local Remotes = require(Shared.Net.Remotes)
@@ -94,6 +97,10 @@ local function popped(p: Pending)
 		end
 		local eye, look = PlayerSimServer.view(player)
 		if not eye or not look or not FlareSim.seen(p.position, eye, world) then
+			continue
+		end
+		local range = ParanoiaSim.range(ParanoiaSim.decode(player:GetAttribute(ParanoiaSim.ATTRIBUTE)), p.at)
+		if range and vector.magnitude(p.position - eye) > range then
 			continue
 		end
 		local strength = FlareSim.strength(p.position, eye, look)
