@@ -20,6 +20,9 @@
 --     and sounds and draws each heal (system 36)
 --   * the Slow Orb: only its throw heard here; SlowView draws the orb in
 --     the air, its burst and its field of ice (system 37)
+--   * the Barrier Orb: only its wall rising heard here, yours as you raise
+--     it and others' as it rises; BarrierView draws its targeter and the
+--     wall, and sounds it fortifying and breaking (system 38)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws

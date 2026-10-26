@@ -173,6 +173,7 @@ local FireServer = require(script.Parent.FireServer)
 local BlazeServer = require(script.Parent.BlazeServer)
 local HealServer = require(script.Parent.HealServer)
 local SlowServer = require(script.Parent.SlowServer)
+local BarrierServer = require(script.Parent.BarrierServer)
 local AbilityServer = require(script.Parent.AbilityServer)
 local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
@@ -736,10 +737,10 @@ local function publish()
 end
 
 -- A round has started since this last looked: the ground cleared of guns,
--- fire (systems 31 and 32) and ice (system 37), every heal over (system
--- 36), and in the spike rounds a new spike in front of the attackers, each
--- kit's round (system 17) and, at the start of each half, everyone back on
--- the starting kit.
+-- fire (systems 31 and 32), ice (system 37) and walls of ice (system 38),
+-- every heal over (system 36), and in the spike rounds a new spike in
+-- front of the attackers, each kit's round (system 17) and, at the start
+-- of each half, everyone back on the starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -754,6 +755,7 @@ local function roundStarted()
 	BlazeServer.clear()
 	HealServer.clear()
 	SlowServer.clear()
+	BarrierServer.clear()
 	if not m then
 		return
 	end
@@ -868,6 +870,7 @@ local function stop()
 	BlazeServer.clear()
 	HealServer.clear()
 	SlowServer.clear()
+	BarrierServer.clear()
 	AbilityServer.economy = false
 	AbilityServer.refill = true
 	AbilityServer.off = false
@@ -915,6 +918,7 @@ local function begin(wanted: Mode, format: string)
 	BlazeServer.clear()
 	HealServer.clear()
 	SlowServer.clear()
+	BarrierServer.clear()
 	-- Deathmatch has no teams: everyone can hurt everyone.
 	if wanted ~= "deathmatch" then
 		for side, info in SIDES do

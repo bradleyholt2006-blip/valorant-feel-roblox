@@ -49,51 +49,15 @@ function FakeWorld:addFloor()
 	return self:addBox(vector.create(-1000, -1, -1000), vector.create(1000, 0, 1000))
 end
 
--- Swept separating-axis test: along each axis the moving box overlaps the
--- obstacle over a time interval; they touch where the last interval starts.
+-- Swept separating-axis test against each box (BoxMath.sweep): the nearest
+-- it touches, with the blind spot of Roblox's Blockcast.
 function FakeWorld:sweep(center: vector, half: vector, delta: vector): (number?, vector?)
 	local best: number? = nil
 	local bestNormal: vector? = nil
 	for _, box in self.boxes do
-		local tEnter, tExit = -math.huge, math.huge
-		local enterAxis: vector? = nil
-		local enterSpeed = 0
-		local gap = -math.huge
-		local miss = false
-		local d = center - box.center
-		for _, axis in box.separating do
-			local reach = BoxMath.aabbReach(half, axis) + BoxMath.reach(box, axis)
-			local s = vector.dot(d, axis)
-			local v = vector.dot(delta, axis)
-			gap = math.max(gap, math.abs(s) - reach)
-			if math.abs(v) < 1e-12 then
-				if math.abs(s) >= reach then
-					miss = true
-					break
-				end
-			else
-				local t1, t2 = (-reach - s) / v, (reach - s) / v
-				if t1 > t2 then
-					t1, t2 = t2, t1
-				end
-				if t1 > tEnter then
-					tEnter, enterAxis, enterSpeed = t1, axis, v
-				end
-				tExit = math.min(tExit, t2)
-				if tEnter > tExit then
-					miss = true
-					break
-				end
-			end
-		end
-		-- The blind spot: a box the sweep starts inside, or within the
-		-- tolerance of, is ignored.
-		if not miss and enterAxis and gap >= self.startTolerance and tEnter >= 0 and tEnter <= 1 then
-			if best == nil or tEnter < best then
-				best = tEnter
-				-- The normal points against the direction of travel on the hit axis.
-				bestNormal = if enterSpeed > 0 then -enterAxis else enterAxis
-			end
+		local t, normal = BoxMath.sweep(center, half, delta, box, box.separating, self.startTolerance)
+		if t and (best == nil or t < best) then
+			best, bestNormal = t, normal
 		end
 	end
 	return best, bestNormal

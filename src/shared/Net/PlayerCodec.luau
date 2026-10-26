@@ -159,7 +159,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 9 + 8 * 10 + 4 * 3 -- the ability kit
+	+ 1 + 3 + 9 + 8 * 12 + 4 * 3 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -243,7 +243,7 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, if a.storm then 1 else 0)
 	w8(c, a.holding)
 	w8(c, a.steering)
-	w8(c, (if a.markGrounded then 1 else 0) + (if a.markCrouched then 2 else 0))
+	w8(c, (if a.markGrounded then 1 else 0) + (if a.markCrouched then 2 else 0) + (if a.turning then 4 else 0))
 	wf64(c, a.readyFrom)
 	wf64(c, a.readyUntil)
 	wf64(c, a.liftUntil)
@@ -254,6 +254,8 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.backUntil)
 	wf64(c, a.returnAt)
 	wf64(c, a.markYaw)
+	wf64(c, a.turn)
+	wf64(c, a.fixed)
 	-- Exact: a vector's components are single precision.
 	wf32(c, a.mark.x)
 	wf32(c, a.mark.y)
@@ -389,6 +391,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local backUntil = rf64(c)
 	local returnAt = rf64(c)
 	local markYaw = rf64(c)
+	local turn = rf64(c)
+	local fixed = rf64(c)
 	local mx = rf32(c)
 	local my = rf32(c)
 	local mz = rf32(c)
@@ -416,6 +420,9 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		markGrounded = bit32.band(markFlags, 1) ~= 0,
 		markCrouched = bit32.band(markFlags, 2) ~= 0,
 		returnAt = returnAt,
+		turn = turn,
+		turning = bit32.band(markFlags, 4) ~= 0,
+		fixed = fixed,
 	}
 
 	local tagUntilTick = r32(c)

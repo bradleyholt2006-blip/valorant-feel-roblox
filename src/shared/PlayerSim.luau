@@ -3,11 +3,13 @@
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
 -- Curveball does its flare (system 30), Hot Hands its fireball (system 31),
--- Blaze its flame (system 32), the Healing Orb its orb (system 36) and the
--- Slow Orb its own (system 37), and whose Run it Back holds the player
--- through his return and puts him back at its mark (system 33). A Slow
--- Orb's field slows whoever starts a tick in it (SlowSim), from the fields
--- each step's given.
+-- Blaze its flame (system 32), the Healing Orb its orb (system 36), the
+-- Slow Orb its own (system 37) and the Barrier Orb its own (system 38), and
+-- whose Run it Back holds the player through his return and puts him back
+-- at its mark (system 33). A Slow Orb's field slows whoever starts a tick
+-- in it (SlowSim), from the fields each step's given, and a Barrier Orb's
+-- wall stands in the world everything in the tick goes through
+-- (BarrierSim.world), from the walls it's given.
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -26,6 +28,7 @@ local SpikeSim = require("./Spike/SpikeSim")
 local AbilitySim = require("./Abilities/AbilitySim")
 local AbilityConfig = require("./Abilities/AbilityConfig")
 local SlowSim = require("./Abilities/SlowSim")
+local BarrierSim = require("./Abilities/BarrierSim")
 
 export type State = {
 	movement: MovementSim.State,
@@ -189,9 +192,10 @@ end
 -- several for a shotgun), the knife swing that started, if one did, what
 -- happened with the spike, if anything, the gun G let go of, if it did
 -- (system 15), and the abilities cast, if any (system 17). `objective` is
--- what this player can do with the spike now (Spike.NONE when nothing), and
+-- what this player can do with the spike now (Spike.NONE when nothing),
 -- `slows` the Slow Orbs' fields in play and the time they're judged at
--- (system 37): none without.
+-- (system 37), and `barriers` the Barrier Orbs' walls and theirs (system
+-- 38): none without.
 function PlayerSim.step(
 	s: State,
 	input: any,
@@ -199,8 +203,13 @@ function PlayerSim.step(
 	world: any,
 	dt: number,
 	objective: Spike.Context?,
-	slows: SlowSim.Slows?
+	slows: SlowSim.Slows?,
+	barriers: BarrierSim.Walls?
 ): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?, WeaponSim.Dropped?, { AbilitySim.Cast }?)
+	-- The walls standing in the world everything this tick goes through.
+	if barriers then
+		world = BarrierSim.world(world, barriers.walls, barriers.time)
+	end
 	-- Run it Back's return goes before anything (system 33): through it the
 	-- player's held. Then the plant and the defuse: the tick they start on,
 	-- they root, and nothing's cast. G lets go of the spike if it's in hand
@@ -318,16 +327,26 @@ function PlayerSim.step(
 	-- ability's cast and no bullet, and the gun's back in hand a moment
 	-- after, or once the wall it sent out is let go (Blaze, system 32). The
 	-- Healing Orb's is a try (system 36), and it stays in hand for the next,
-	-- until the server finds one heals and puts it away. Anything else drawn
-	-- puts it away unthrown.
+	-- until the server finds one heals and puts it away. The Barrier Orb's
+	-- wall goes where its targeter shows it, turned as the kit has it, and
+	-- with nowhere to go, or in the buy phase, the orb stays in hand (system
+	-- 38). Anything else drawn puts it away unthrown.
 	if kit.holding ~= 0 then
 		local held = s.weapons.loadout[WeaponSim.ULT]
 		local shot = if shots and held ~= "" and shots[1].weapon == held then shots[1] else nil
 		if shot then
 			shots = nil
 			local def = AbilitySim.def(kit, kit.holding)
-			local cast = AbilitySim.thrown(kit, tick, t, s.movement.position, shot.origin, shot.aim, shot.mode == "alt")
+			local raising = def ~= nil and def.id == "barrierorb"
+			local open = not (barriers and barriers.closed)
+			local placed = if raising and open
+				then BarrierSim.place(world, shot.origin, shot.aim, BarrierSim.angle(input.yaw, kit.turn))
+				else nil
+			local cast = if raising and not placed
+				then nil
+				else AbilitySim.thrown(kit, tick, t, s.movement.position, shot.origin, shot.aim, shot.mode == "alt")
 			if cast then
+				cast.wall = placed
 				local list = casts or {}
 				table.insert(list, cast)
 				casts = list

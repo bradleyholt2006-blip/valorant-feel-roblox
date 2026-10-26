@@ -9,16 +9,18 @@
 -- A viewer sees a point when it's on their screen, in the reference's view
 -- 103 degrees across at 16:9, and nothing is in the way: the level (what
 -- `blocked` says, which sees through the spawns' barriers), a cloud (Jett's
--- Cloudburst, "a brief vision-blocking cloud", system 18) or a wall of fire
--- (Phoenix's Blaze, "a wall of fire that blocks vision", system 32). A body
--- is seen when any of three points of it is: the middle of its head, its
--- body and its legs (Hitboxes). Nobody else is in the way of anyone: the
--- level, clouds and walls are.
+-- Cloudburst, "a brief vision-blocking cloud", system 18), a wall of fire
+-- (Phoenix's Blaze, "a wall of fire that blocks vision", system 32) or a
+-- wall of ice (Sage's Barrier Orb, system 38, BarrierSim.hides). A body is
+-- seen when any of three points of it is: the middle of its head, its body
+-- and its legs (Hitboxes). Nobody else is in the way of anyone: the level,
+-- clouds and walls are.
 --
 -- No Roblox APIs here: the server passes its level in as `blocked`, so the
 -- offline tests run it on a fake one.
 
 local BlazeSim = require("../Abilities/BlazeSim")
+local BarrierSim = require("../Abilities/BarrierSim")
 local AbilityConfig = require("../Abilities/AbilityConfig")
 local Hitboxes = require("./Hitboxes")
 
@@ -32,11 +34,13 @@ export type Viewer = { side: number, eye: vector, look: vector }
 -- them that count.
 export type Target = { id: number, side: number, points: { vector } }
 export type Cloud = { centre: vector, radius: number }
--- What's in the way at `time`: clouds standing, walls of fire, and the
--- level, as `blocked`, true when something of it is between two points.
+-- What's in the way at `time`: clouds standing, walls of fire, walls of
+-- ice (none without), and the level, as `blocked`, true when something of
+-- it is between two points.
 export type Occluders = {
 	clouds: { Cloud },
 	walls: { BlazeSim.Wall },
+	barriers: { BarrierSim.Wall }?,
 	time: number,
 	blocked: (from: vector, to: vector) -> boolean,
 }
@@ -151,6 +155,10 @@ function Sight.hidden(a: vector, b: vector, o: Occluders): boolean
 		if Sight.wallHides(wall, o.time, a, b) then
 			return true
 		end
+	end
+	local barriers = o.barriers
+	if barriers and BarrierSim.hides(barriers, o.time, a, b) then
+		return true
 	end
 	return o.blocked(a, b)
 end

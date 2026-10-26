@@ -725,6 +725,31 @@ local SLOW_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a thrown orb doesn't
 	adsCamera = SLOW_NA,
 })
 
+-- Sage's Barrier Orb (system 38): not thrown, but raised where its
+-- targeter shows (BarrierSim), so no spread or kick moves the crosshair. A
+-- try with nowhere to raise it leaves it in hand for the next. Its alt
+-- fire turns the targeter (AbilitySim), and fires nothing.
+local BARRIER = "VALORANT Wiki, Barrier Orb"
+local PLACED = "n/a: BarrierSim places its wall from the crosshair"
+local BARRIER_NA = p(0, "estimate", PLACED)
+local barrierExact = accuracy(
+	c({ { 1, 0 } }, "estimate", PLACED),
+	p(1, "estimate", PLACED),
+	p(0.1, "estimate", PLACED),
+	p(1, "estimate", PLACED),
+	{ crouch = BARRIER_NA, walk = BARRIER_NA, run = BARRIER_NA, air = BARRIER_NA }
+)
+barrierExact.landError = BARRIER_NA
+local BARRIER_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a wall raised doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = BARRIER_NA,
+	adsCamera = BARRIER_NA,
+})
+-- A try a click, as the Healing Orb's (ours: no source says).
+local WALL_TRIES = p(10, "estimate", "Ours: ten tries a second while fire's held, until there's somewhere for its wall")
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -1653,13 +1678,43 @@ WeaponConfig.Defs = {
 		accuracy = slowExact,
 		recoil = SLOW_KICK,
 	},
+	-- Sage's Barrier Orb (system 38): put in hand in the fifth slot by C
+	-- (AbilityConfig.BarrierOrb), as the Slow Orb is by Q. Fire raises its
+	-- wall where the targeter shows it; PlayerSim turns that into the
+	-- ability's cast, so it fires no bullet, and keeps it in hand while
+	-- there's nowhere to raise it. The wall stands in the way (BarrierSim);
+	-- the orb itself hurts nobody.
+	wallorb = {
+		id = "wallorb",
+		name = "Barrier Orb",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: C puts it in hand, the charge of the Barrier Orb (" .. BARRIER .. ")"),
+		-- Held, it goes up as soon as it's in hand and there's somewhere for
+		-- it (ours, as the Slow Orb's throw).
+		fireMode = "auto",
+		fireRate = WALL_TRIES,
+		magazine = p(1, "community", BARRIER .. ": 1 use, a wall"),
+		reserve = p(0, "community", "None: another wall is another charge (" .. BARRIER .. ": 1 use)"),
+		reloadTime = BARRIER_NA,
+		equipTime = p(0.8, "community", BARRIER .. ": equip 0.8 s (estimated)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: its wall stands in the way (" .. BARRIER .. "), and the orb itself hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "barrierorb",
+		accuracy = barrierExact,
+		recoil = BARRIER_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
 -- they always were, the rest in alphabetical order after them, the spike
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
 -- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
--- the Healing Orb (system 36) and the Slow Orb (system 37) last.
+-- the Healing Orb (system 36), the Slow Orb (system 37) and the Barrier Orb
+-- (system 38) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1689,6 +1744,7 @@ WeaponConfig.Ids = {
 	"flamewall",
 	"healorb",
 	"iceorb",
+	"wallorb",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

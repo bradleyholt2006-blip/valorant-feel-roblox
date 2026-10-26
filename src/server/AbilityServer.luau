@@ -37,13 +37,14 @@
 -- when the frame on their screen reaches it, but Blade Storm's knives drawn
 -- again and an ability put in hand (Curveball's flare, system 30; Hot
 -- Hands' fireball, system 31; Blaze's flame, system 32), which others see
--- in hand, and the Healing Orb's tries (system 36), which HealServer judges
--- and tells of as one heals: Run it Back's mark and rising to every client,
--- as the mark's drawn for everyone, and any other to those who'd hear it or
--- have the caster in their snapshots (the fog of war, system 35). The
--- caster's own client has predicted it already. Each kit is a player
--- attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary writes it),
--- which scripted checks read.
+-- in hand, the Healing Orb's tries (system 36), which HealServer judges
+-- and tells of as one heals, and the Barrier Orb's wall (system 38), which
+-- BarrierServer tells of as it rises: Run it Back's mark and rising to
+-- every client, as the mark's drawn for everyone, and any other to those
+-- who'd hear it or have the caster in their snapshots (the fog of war,
+-- system 35). The caster's own client has predicted it already. Each kit
+-- is a player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
+-- writes it), which scripted checks read.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -337,7 +338,14 @@ end
 function AbilityServer.start()
 	table.insert(PlayerSimServer.castListeners, function(player: Player, cast: AbilitySim.Cast)
 		local entity = PlayerSimServer.entityOf(player)
-		if not entity or cast.kind == "draw" or cast.kind == "equip" or cast.kind == "heal" or cast.kind == "selfheal" then
+		if
+			not entity
+			or cast.kind == "draw"
+			or cast.kind == "equip"
+			or cast.kind == "heal"
+			or cast.kind == "selfheal"
+			or cast.kind == "barrier"
+		then
 			return
 		end
 		local event: CastEvent = {

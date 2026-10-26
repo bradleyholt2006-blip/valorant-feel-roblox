@@ -36,6 +36,9 @@
 -- Blade Storm's knives (system 19) have no flash and no kick: the hand
 -- snaps forward as each goes, and each leaves a pale streak where it flew,
 -- wider and longer lasting than a bullet's tracer. Others' do too.
+--
+-- A wall of Sage's (system 38) stops every bullet and blade, and leaves no
+-- mark, as it goes in a while: what strikes it chips ice off it instead.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -50,6 +53,7 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local Penetration = require(Shared.Combat.Penetration)
+local BarrierSim = require(Shared.Abilities.BarrierSim)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
@@ -338,6 +342,7 @@ end
 
 local PUFF_COLOR = Color3.fromRGB(235, 235, 228)
 local RICOCHET_COLOR = Color3.fromRGB(255, 150, 60)
+local ICE_COLOR = Color3.fromRGB(200, 240, 255)
 
 local function puff(point: vector, normal: vector, size: number)
 	local p = effectPart("Puff", PUFF_COLOR)
@@ -363,6 +368,10 @@ local function drawWalls(origin: vector, dir: vector, walls: { Penetration.Wall 
 		end
 		i += 1
 		local at = origin + dir * first.entry
+		if BarrierSim.piece(first.key) then
+			spark(at + first.normal * 0.01, ICE_COLOR, 0.04)
+			return
+		end
 		mark(at, first.normal)
 		local exit, exitNormal = last.exit, last.exitNormal
 		if exit and exitNormal then
@@ -417,6 +426,10 @@ local function drawSwing(record: ClientMelee.Record)
 		spark(hit.point, Color3.fromRGB(255, 240, 200), 0.02)
 	elseif wall then
 		local point = swing.origin + swing.direction * wall.distance
+		if BarrierSim.piece(wall.key) then
+			spark(point + wall.normal * 0.01, ICE_COLOR, 0.04)
+			return
+		end
 		cut(point, wall.normal, sweepAcross(swing.direction, swing.combo, wall.normal), if swing.kind == "stab" then STAB_CUT else SLASH_CUT)
 		spark(point + wall.normal * 0.01, RICOCHET_COLOR, 0.02)
 	end
@@ -504,7 +517,7 @@ local function onShotFx(fx: any)
 		local length = vector.magnitude(toMetres - from)
 		if length >= 1e-3 then
 			local dir = (toMetres - from) / length
-			local trace = Penetration.trace(ClientShots.level, from, dir, class, length + 0.01)
+			local trace = Penetration.trace(ClientShots.levelAt(RemoteEntities.renderTime()), from, dir, class, length + 0.01)
 			drawWalls(from, dir, trace.walls, length)
 		end
 	end
@@ -517,6 +530,10 @@ local function onSwingFx(fx: any)
 		return
 	end
 	local point, normal = Units.toMetres(fx.wall), Units.asVector(fx.normal)
+	if fx.ice == true then
+		spark(point + normal * 0.01, ICE_COLOR, 0.04)
+		return
+	end
 	local combo = if typeof(fx.combo) == "number" then fx.combo else 1
 	cut(point, normal, sweepAcross(Units.asVector(fx.direction), combo, normal), if fx.kind == "stab" then STAB_CUT else SLASH_CUT)
 	spark(point + normal * 0.01, RICOCHET_COLOR, 0.02)

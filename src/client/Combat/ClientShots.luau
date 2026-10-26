@@ -19,6 +19,9 @@
 -- sends one verdict per round with each bullet's outcome, and each target's
 -- total for the round (Volley), which is what the hit marker, the damage
 -- number and the hit sounds show.
+--
+-- Sage's walls of ice stand in the level as the screen showed them
+-- (ClientShots.levelAt, system 38), as they do in the server's.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,6 +32,7 @@ local Hitboxes = require(Shared.Combat.Hitboxes)
 local ShotResolver = require(Shared.Combat.ShotResolver)
 local Penetration = require(Shared.Combat.Penetration)
 local RobloxLevel = require(Shared.Combat.RobloxLevel)
+local BarrierSim = require(Shared.Abilities.BarrierSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -164,6 +168,15 @@ ClientShots.stats = newStats()
 
 -- The level as shots see it (also used to draw other players' bullet holes).
 ClientShots.level = RobloxLevel.new()
+-- Sage's walls in play (system 38, BarrierView); none without.
+ClientShots.barriers = nil :: (() -> { BarrierSim.Wall })?
+
+-- The level as a screen showed it at server time `time`: with Sage's walls
+-- standing then in it.
+function ClientShots.levelAt(time: number): Penetration.Level
+	local walls = ClientShots.barriers
+	return if walls then BarrierSim.level(ClientShots.level, walls(), time) else ClientShots.level
+end
 
 -- Same rules as the server's trace: through the level first, then hitboxes.
 -- Also returns the targets near the ray, as tested.
@@ -174,7 +187,7 @@ function ClientShots.trace(
 	ignoreId: number?,
 	class: WeaponConfig.PenetrationClass
 ): (Outcome, { [number]: Tested })
-	local penetration = Penetration.trace(ClientShots.level, origin, dir, class, WeaponConfig.MaxRange)
+	local penetration = Penetration.trace(ClientShots.levelAt(viewTime), origin, dir, class, WeaponConfig.MaxRange)
 	local blockedAt = penetration.stop
 	local targets: { ShotResolver.Target } = {}
 	local tested: { [number]: Tested } = {}

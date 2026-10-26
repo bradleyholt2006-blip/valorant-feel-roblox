@@ -23,9 +23,10 @@
 -- them, and a kill that brings them all back comes in the ack too. Run it
 -- Back's return (system 33) puts the view at its mark at once, turned the
 -- way it was cast, and while it's under way a correction isn't blended. A
--- Slow Orb's field (system 37) slows you here as it does on the server:
--- both judge its fields, as the server told of them (SlowView), at the time
--- each input's frame showed.
+-- Slow Orb's field (system 37) slows you here as it does on the server, and
+-- a Barrier Orb's wall (system 38) stands in your way and lifts you as it
+-- does there: both judge them, as the server told of them (SlowView,
+-- BarrierView), at the time each input's frame showed.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -45,6 +46,7 @@ local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local SlowSim = require(Shared.Abilities.SlowSim)
+local BarrierSim = require(Shared.Abilities.BarrierSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
 local Remotes = require(Shared.Net.Remotes)
@@ -133,6 +135,9 @@ PlayerController.castListeners = {} :: { (AbilitySim.Cast, PlayerCodec.WireInput
 PlayerController.objective = nil :: (() -> Spike.Context)?
 -- The Slow Orbs' fields in play (system 37, SlowView); none without.
 PlayerController.fields = nil :: (() -> { SlowSim.Field })?
+-- The Barrier Orbs' walls in play, judged at a server time, and whether a
+-- wall can go up then (system 38, BarrierView); none without.
+PlayerController.barriers = nil :: ((number) -> BarrierSim.Walls)?
 -- Called when the local player (re)spawns with a fresh simulation.
 PlayerController.spawnListeners = {} :: { (PlayerSim.State) -> () }
 -- Increments on every spawn; shot numbers restart each life.
@@ -185,6 +190,12 @@ local function slows(input: PlayerCodec.WireInput): SlowSim.Slows?
 	return if hook then { fields = hook(), time = input.viewTime } else nil
 end
 
+-- The Barrier Orbs' walls, judged at the time `input`'s frame showed.
+local function barriers(input: PlayerCodec.WireInput): BarrierSim.Walls?
+	local hook = PlayerController.barriers
+	return if hook then hook(input.viewTime) else nil
+end
+
 local function tick()
 	local s = sim :: PlayerSim.State
 	seq += 1
@@ -212,7 +223,8 @@ local function tick()
 	}
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
-	local shots, swing, act, _, casts = PlayerSim.step(s, input, PlayerController.cfg, world, DT, objective(), slows(input))
+	local shots, swing, act, _, casts =
+		PlayerSim.step(s, input, PlayerController.cfg, world, DT, objective(), slows(input), barriers(input))
 	simTime += DT
 	PlayerController.buttons = input.buttons
 	-- Back at Run it Back's mark (system 33): the view's there at once,
@@ -452,7 +464,7 @@ local function onAck(payload: buffer)
 		local corrected = serverSim :: PlayerSim.State
 		local now = objective()
 		for _, input in pending do
-			PlayerSim.step(corrected, input, PlayerController.cfg, world, DT, now, slows(input))
+			PlayerSim.step(corrected, input, PlayerController.cfg, world, DT, now, slows(input), barriers(input))
 			predicted[input.seq] = PlayerSim.copy(corrected)
 		end
 		visualOffset += before - corrected.movement.position
