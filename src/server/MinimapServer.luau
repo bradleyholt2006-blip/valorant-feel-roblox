@@ -16,8 +16,8 @@
 -- which are see-through, nor anyone's body; the clouds standing
 -- (CloudServer) and the walls of fire (BlazeServer).
 --
--- The snapshots still carry every pose to every client; keeping from each
--- what its side can't see (the reference's fog of war) is work of its own.
+-- Who each side spots goes to the fog of war too (FogServer, system 35),
+-- so their snapshots carry whoever their minimap shows.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,6 +36,7 @@ local Units = require(Shared.Units)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local CloudServer = require(script.Parent.CloudServer)
 local BlazeServer = require(script.Parent.BlazeServer)
+local FogServer = require(script.Parent.FogServer)
 
 local MinimapServer = {}
 
@@ -119,6 +120,7 @@ local function look(now: number)
 		blocked = blocked,
 	}
 	local spotted = Sight.spotted(viewers, targets, o)
+	FogServer.spotted(spotted)
 	-- A dropped spike, for the spike rounds' defenders (a side's number;
 	-- on the course anyone defuses, 0, and nobody's told).
 	local defenders = Workspace:GetAttribute(Spike.DEFUSERS)

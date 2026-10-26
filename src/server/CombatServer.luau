@@ -19,7 +19,11 @@
 -- snapshots it came from, the shot's origin, where the level stopped it and
 -- the walls on the way. That is what the debug tools use to draw the
 -- server's boxes and walls next to the client's and to say why the two
--- disagree when they do.
+-- disagree when they do. Of the targets near the ray it lists only those
+-- the shooter has in their snapshots, and any it hit (the fog of war,
+-- system 35): a miss past someone they can't see says nothing of where
+-- they are, and their client couldn't have tested them either. Others
+-- hear the shot as far as it carries, or see it if they have the shooter.
 --
 -- A knife swing comes out of the simulation the same way, on the tick it
 -- starts, and is checked against the same rewound targets (Melee): of those
@@ -48,6 +52,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local FogOfWar = require(Shared.Combat.FogOfWar)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
@@ -66,6 +71,7 @@ local Units = require(Shared.Units)
 local Entities = require(script.Parent.Entities)
 local Tuning = require(script.Parent.Tuning)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
+local FogServer = require(script.Parent.FogServer)
 
 local DT = 1 / MovementConfig.TickRate.value
 
@@ -301,6 +307,12 @@ local function describeTarget(t: LagCompensation.Target): { [string]: any }
 	}
 end
 
+-- Whether a target near a shot or a swing goes in its verdict: one the
+-- attacker has in their snapshots (the fog of war), or the one it hit.
+local function listed(attacker: Entities.Entity, id: number, hitId: number?): boolean
+	return id == hitId or attacker.player == nil or FogServer.shows(attacker.player, id)
+end
+
 -- Every living entity `attacker` can hurt, posed as the attacker's screen
 -- showed them at `viewTime` (as far back as the cap allows).
 local function rewindFor(attacker: Entities.Entity, viewTime: number): (LagCompensation.Rewind, { LagCompensation.Target })
@@ -340,7 +352,11 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 		local blockedAt = trace.stop
 		local hit = ShotResolver.resolve(shot.origin, shot.direction, targets, blockedAt, shooter.id)
 		for _, t in rewound do
-			if not testedIds[t.id] and ShotResolver.nearRay(shot.origin, shot.direction, t.pose, blockedAt) then
+			if
+				not testedIds[t.id]
+				and ShotResolver.nearRay(shot.origin, shot.direction, t.pose, blockedAt)
+				and listed(shooter, t.id, if hit then hit.targetId else nil)
+			then
 				testedIds[t.id] = true
 				table.insert(tested, describeTarget(t))
 			end
@@ -404,10 +420,12 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 			hits = results,
 		})
 	end
-	-- Other clients trace the walls again themselves to draw the holes. A
-	-- suppressed gun's tracers show only to the shooter's own side.
+	-- Other clients trace the walls again themselves to draw the holes:
+	-- those who'd hear it or have the shooter (the fog of war). A suppressed
+	-- gun's tracers show only to the shooter's own side.
+	local reach = FogOfWar.weaponEdge(first.weapon)
 	for _, entity in Entities.all() do
-		if entity.player and entity ~= shooter then
+		if entity.player and entity ~= shooter and FogServer.hears(entity.player, first.origin, reach, shooter.id) then
 			remotes.ShotFx:FireClient(entity.player, {
 				shooter = shooter.id,
 				weapon = first.weapon,
@@ -430,8 +448,9 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 	local rewind, rewound = rewindFor(attacker, viewTime)
 	local result = Melee.resolve(level, swing.origin, swing.direction, attack, LagCompensation.shotTargets(rewound), attacker.id)
 	local tested = {}
+	local hitId = if result.hit then result.hit.targetId else nil
 	for _, t in rewound do
-		if Melee.nearby(swing.origin, attack, t.pose) then
+		if Melee.nearby(swing.origin, attack, t.pose) and listed(attacker, t.id, hitId) then
 			table.insert(tested, describeTarget(t))
 		end
 	end
@@ -474,7 +493,8 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 	if attacker.player then
 		remotes.SwingResult:FireClient(attacker.player, verdict)
 	end
-	-- The others hear it, and see the blade's mark where it struck the level.
+	-- The others hear it, and see the blade's mark where it struck the level:
+	-- those near enough, or who have the one swinging (the fog of war).
 	local fx = {
 		attacker = attacker.id,
 		weapon = swing.weapon,
@@ -486,8 +506,9 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 		wall = if verdict.wall and wallPoint then Units.toStuds(wallPoint) else nil,
 		normal = verdict.normal,
 	}
+	local reach = FogOfWar.weaponEdge(swing.weapon)
 	for _, entity in Entities.all() do
-		if entity.player and entity ~= attacker then
+		if entity.player and entity ~= attacker and FogServer.hears(entity.player, swing.origin, reach, attacker.id) then
 			remotes.SwingFx:FireClient(entity.player, fx)
 		end
 	end

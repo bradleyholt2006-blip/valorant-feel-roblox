@@ -1,9 +1,11 @@
 --!strict
 -- Phoenix's Run it Back on the server (system 33). Its cast, its time and
 -- his return run in his simulation (AbilitySim, PlayerSim), as his client
--- predicts them, and every client hears of each (the Ability remote's
--- "mark", "fizzle" and "rise", from AbilityServer). This does what only the
--- server can:
+-- predicts them, and clients hear of each (the Ability remote's "mark",
+-- "fizzle" and "rise", from AbilityServer: the mark and the rising, every
+-- client, as the mark's drawn for everyone; his body going, those who'd
+-- hear it or have him in their snapshots, the fog of war, system 35). This
+-- does what only the server can:
 --   * as it's cast, keeps the shield he has then, for his return. Where it
 --     was cast is his `VFLastMark` attribute (metres), which scripted checks
 --     read
@@ -13,8 +15,9 @@
 --     Nobody's killed him, so there's no kill and no death, and no points
 --     or kill feed for either (the kill doesn't count: Player Assist's
 --     guide; community), but a single Blade Storm knife that did it brings
---     the knives back all the same (Patch 1.02). Every client hears of his
---     body going ("fizzle", `spared`, which his own client didn't predict)
+--     the knives back all the same (Patch 1.02). Clients hear of his body
+--     going as they would a cast ("fizzle", `spared`, which his own client
+--     didn't predict)
 --   * as it runs out, his body's gone the same, with no hit
 --   * out of play nothing hurts or heals him, shots go through him, the
 --     snapshots leave him out, nothing blinds him and he picks nothing up
@@ -34,6 +37,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local PlayerSim = require(Shared.PlayerSim)
+local FogOfWar = require(Shared.Combat.FogOfWar)
 local Health = require(Shared.Combat.Health)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -42,6 +46,7 @@ local Entities = require(script.Parent.Entities)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local CombatServer = require(script.Parent.CombatServer)
 local FlareServer = require(script.Parent.FlareServer)
+local FogServer = require(script.Parent.FogServer)
 
 local RunItBackServer = {}
 
@@ -88,7 +93,7 @@ local function spares(victim: Entities.Entity, attacker: Entities.Entity?, weapo
 	end
 	local now = Workspace:GetServerTimeNow()
 	gone(player, now)
-	Remotes.get().Ability:FireAllClients({
+	local event = {
 		entity = victim.id,
 		ability = "runitback",
 		kind = "fizzle",
@@ -96,7 +101,12 @@ local function spares(victim: Entities.Entity, attacker: Entities.Entity?, weapo
 		position = Units.toStuds(sim.movement.position),
 		direction = Units.asVector3(vector.create(-math.sin(kit.markYaw), 0, -math.cos(kit.markYaw))),
 		spared = true,
-	})
+	}
+	for _, other in Players:GetPlayers() do
+		if FogServer.hears(other, sim.movement.position, FogOfWar.Edges.cast, victim.id) then
+			Remotes.get().Ability:FireClient(other, event)
+		end
+	end
 	return true
 end
 
