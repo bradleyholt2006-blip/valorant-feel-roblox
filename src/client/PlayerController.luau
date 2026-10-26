@@ -20,7 +20,9 @@
 -- the tick you press it, and the server's changes to the kit between ticks
 -- (charges bought, points for kills) come back in the ack like a loadout.
 -- Blade Storm's knives ride in slot 5 (system 19): their cast and X draw
--- them, and a kill that brings them all back comes in the ack too.
+-- them, and a kill that brings them all back comes in the ack too. Run it
+-- Back's return (system 33) puts the view at its mark at once, turned the
+-- way it was cast, and while it's under way a correction isn't blended.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -201,6 +203,18 @@ local function tick()
 	local shots, swing, act, _, casts = PlayerSim.step(s, input, PlayerController.cfg, world, DT, objective())
 	simTime += DT
 	PlayerController.buttons = input.buttons
+	-- Back at Run it Back's mark (system 33): the view's there at once,
+	-- turned the way he faced as he cast it.
+	if casts then
+		for _, cast in casts do
+			if cast.kind == "rise" then
+				prevPosition = s.movement.position
+				visualOffset = vector.create(0, 0, 0)
+				CameraController.yaw = s.abilities.markYaw
+				CameraController.pitch = 0
+			end
+		end
+	end
 
 	table.insert(pending, input)
 	table.insert(unsent, input)
@@ -348,6 +362,12 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or ga.holding ~= sa.holding
 		or ga.steering ~= sa.steering
 		or ga.steerUntil ~= sa.steerUntil
+		or ga.backUntil ~= sa.backUntil
+		or ga.returnAt ~= sa.returnAt
+		or ga.mark ~= sa.mark
+		or ga.markYaw ~= sa.markYaw
+		or ga.markGrounded ~= sa.markGrounded
+		or ga.markCrouched ~= sa.markCrouched
 	then
 		return true, posErr
 	end
@@ -425,6 +445,12 @@ local function onAck(payload: buffer)
 		end
 		visualOffset += before - corrected.movement.position
 		prevPosition += corrected.movement.position - before
+		-- Held through Run it Back's return (system 33), he's where the
+		-- server has him at once, the blend left out.
+		if AbilitySim.returning(corrected.abilities, corrected.movement.tick * DT) then
+			visualOffset = vector.create(0, 0, 0)
+			prevPosition = corrected.movement.position
+		end
 		sim = corrected
 		PlayerController.sim = corrected
 	end

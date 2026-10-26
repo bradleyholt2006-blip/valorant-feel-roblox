@@ -219,6 +219,12 @@ Built one system at a time:
     through it, enemies standing in it burn 30 a second and allies a third of that, and Phoenix
     heals in it instead, 50 over 8 s (Inner Fire). One charge at 150 credits, with none free -
     [research and design](docs/research/32-blaze.md)
+33. **Run it Back**, Phoenix's ultimate: X, once its 7 points are full, marks where you stand, and
+    for the next 10 s a hit that would kill you doesn't. Your body goes instead, and 1 s later you
+    rise at the mark, held there 1.4 s more, facing the way you did as you cast it, with full
+    health, the shield you had then and your guns reloaded. If nothing kills you, its 10 s running
+    out brings you back the same way. While your body's gone nothing hurts you and shots go through,
+    and a hit it spared counts for nobody - [research and design](docs/research/33-run-it-back.md)
 
 ## Running it
 
@@ -259,12 +265,12 @@ that are left; with a gun drawn, X draws the knives again). Space held in the ai
 Drift). As Phoenix, E readies Curveball's flare: mouse 1 throws it curving left, mouse 2 curving
 right, and E again puts it away; Q readies Hot Hands' fireball: mouse 1 throws it, mouse 2 lobs it,
 and Q again puts it away; C readies Blaze's flame: mouse 1 sends its wall, held it bends the wall
-towards your crosshair, and C again puts it away. The spike rounds charge credits; the course and
-the arena are free.
+towards your crosshair, and C again puts it away; X marks where you stand for Run it Back. The
+spike rounds charge credits; the course and the arena are free.
 On the course a spent charge comes back 1.5 s after it's done, and the ultimate's points are full at
-every life and fill again 1.5 s after Blade Storm ends; in the arena every life starts with every
-charge, in Team Deathmatch spent charges come back over time, and gun game and deathmatch have no
-abilities.
+every life and fill again 1.5 s after Blade Storm ends or Run it Back brings you back; in the arena
+every life starts with every charge, in Team Deathmatch spent charges come back over time, and gun
+game and deathmatch have no abilities.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -331,7 +337,7 @@ line while both sides are full. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
 what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide, `equip`
 while Curveball's flare, Hot Hands' fireball or Blaze's flame is in hand, `bend` while a Blaze
-wall is bent), and
+wall is bent, `back` while Run it Back runs, and `away` and `rise` through its return), and
 `VFTestBuy` set to `updraft` buys a charge. A player's agent is their `VFAgent` attribute, what
 they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
 `open` or `locked`, unset where nobody picks), and while their window's open, when it closes
@@ -343,7 +349,9 @@ time); `Workspace.VFFlares` holds each flare in the air and each pop as parts. W
 last Hot Hands burst is their `VFLastFire` attribute (the floor under it, in metres), and
 `Workspace.VFFires` holds each fireball in the air, each burst and each fire as parts. The far end
 of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Workspace.VFWalls`
-holds each wall's run on its way and each wall as models. Workspace's
+holds each wall's run on its way and each wall as models. Where a player last cast Run it Back is
+their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each mark as a model, its
+`Entity` attribute whose it is. Workspace's
 `VFPlayMenu` is whether players start in the Play menu (always on a
 live server; in Studio, tick it in the place before you press Play), and `VFModeCounts` how many
 are in servers playing each mode (`skirmish=6,gungame=0,...`). A player's `VFPlaying` is true once
@@ -374,9 +382,10 @@ agent select (where each player picks, the window, locking in, the time running 
 once or with the next life, and what's sold back), Curveball (Phoenix's kit, the flare in hand, its
 throw and flight, the blind, and the kit on the wire), Hot Hands (the fireball in hand, its
 flight off walls and ceilings to the floor, its fire and who stands in it, the burn, Inner Fire's
-heal, and the wire) and Blaze (the flame in hand, sending and bending the wall, its run up boxes,
+heal, and the wire), Blaze (the flame in hand, sending and bending the wall, its run up boxes,
 through walls and down ledges, the wall and who stands in it, the burn, Inner Fire's heal, and the
-wire) are pure Luau and run outside Roblox:
+wire) and Run it Back (the cast and its activation, running out, the return and the rise, a hit it
+spares, a plant under way, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

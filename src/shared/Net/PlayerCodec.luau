@@ -159,7 +159,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 8 + 8 * 7 -- the ability kit
+	+ 1 + 3 + 9 + 8 * 10 + 4 * 3 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -242,6 +242,7 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, if a.storm then 1 else 0)
 	w8(c, a.holding)
 	w8(c, a.steering)
+	w8(c, (if a.markGrounded then 1 else 0) + (if a.markCrouched then 2 else 0))
 	wf64(c, a.readyFrom)
 	wf64(c, a.readyUntil)
 	wf64(c, a.liftUntil)
@@ -249,6 +250,13 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.dashX)
 	wf64(c, a.dashZ)
 	wf64(c, a.steerUntil)
+	wf64(c, a.backUntil)
+	wf64(c, a.returnAt)
+	wf64(c, a.markYaw)
+	-- Exact: a vector's components are single precision.
+	wf32(c, a.mark.x)
+	wf32(c, a.mark.y)
+	wf32(c, a.mark.z)
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -368,6 +376,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local storm = r8(c) ~= 0
 	local holding = r8(c)
 	local steering = r8(c)
+	local markFlags = r8(c)
 	local readyFrom = rf64(c)
 	local readyUntil = rf64(c)
 	local liftUntil = rf64(c)
@@ -375,6 +384,12 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local dashX = rf64(c)
 	local dashZ = rf64(c)
 	local steerUntil = rf64(c)
+	local backUntil = rf64(c)
+	local returnAt = rf64(c)
+	local markYaw = rf64(c)
+	local mx = rf32(c)
+	local my = rf32(c)
+	local mz = rf32(c)
 	local abilities = {
 		agent = agent,
 		charges = charges,
@@ -393,6 +408,12 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		holding = holding,
 		steering = steering,
 		steerUntil = steerUntil,
+		backUntil = backUntil,
+		mark = vector.create(mx, my, mz),
+		markYaw = markYaw,
+		markGrounded = bit32.band(markFlags, 1) ~= 0,
+		markCrouched = bit32.band(markFlags, 2) ~= 0,
+		returnAt = returnAt,
 	}
 
 	local tagUntilTick = r32(c)

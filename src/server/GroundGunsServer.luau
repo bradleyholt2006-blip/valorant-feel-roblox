@@ -173,7 +173,7 @@ end
 local function onTake(player: Player, id: any)
 	local gun = if typeof(id) == "number" then state.guns[id] else nil
 	local sim = PlayerSimServer.getSim(player)
-	if not gun or not sim or not PlayerSimServer.isAlive(player) or sim.spike.channel ~= SpikeSim.NONE then
+	if not gun or not sim or not PlayerSimServer.inPlay(player) or sim.spike.channel ~= SpikeSim.NONE then
 		return
 	end
 	local slot = GroundGuns.slotOf(gun.weapon)
@@ -203,11 +203,11 @@ local function onTake(player: Player, id: any)
 	sync()
 end
 
--- Walking over a gun picks it up when its slot is empty.
+-- Walking over a gun picks it up when its slot is empty, for anyone in play.
 local function walkOver()
 	for _, player in Players:GetPlayers() do
 		local sim = PlayerSimServer.getSim(player)
-		if not sim or not PlayerSimServer.isAlive(player) then
+		if not sim or not PlayerSimServer.inPlay(player) then
 			stepOff[player] = nil
 			continue
 		end

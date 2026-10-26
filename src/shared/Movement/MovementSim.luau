@@ -16,8 +16,9 @@
 -- it stops you far sooner. In the air it borrows from Counter-Strike
 -- instead: its air acceleration, so air strafing works as it does there, but
 -- held to running speed, which is what Valorant players report. Abilities
--- change a tick through Motion: Jett's Updraft and Tailwind (system 17) and
--- her Drift, a glide while jump is held in a fall (system 20).
+-- change a tick through Motion: Jett's Updraft and Tailwind (system 17), her
+-- Drift, a glide while jump is held in a fall (system 20), and Phoenix's Run
+-- it Back, which holds him where he is (system 33).
 
 export type World = {
 	-- Sweep an axis-aligned box (center, halfExtents) along delta. Returns the
@@ -93,8 +94,11 @@ local Buttons = {
 --     jump is held). A fall that would pass it this tick stops there, and
 --     one already faster slows to it at `brake` (m/s each second). Rising
 --     isn't slowed
+--   * hold: held where they are this tick, with no speed and no fall
+--     (Phoenix's Run it Back, system 33: his body gone, then rising at its
+--     mark)
 export type Glide = { speed: number, brake: number }
-export type Motion = { dash: vector?, lift: number?, cap: number?, glide: Glide? }
+export type Motion = { dash: vector?, lift: number?, cap: number?, glide: Glide?, hold: boolean? }
 
 -- Unreal's constants: a braking player under 10 cm/s stops dead, and a speed
 -- counts as over the limit only beyond 1% (of its square) to absorb rounding.
@@ -471,6 +475,11 @@ end
 -- to it, if anything. Mutates and returns s.
 function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: number, world: World, dt: number, motion: Motion?): State
 	s.tick += 1
+	if motion and motion.hold then
+		s.velocity = ZERO
+		s.gliding = false
+		return s
+	end
 	local buttons = input.buttons
 
 	updateCrouch(s, world, buttons, dt, cfg)

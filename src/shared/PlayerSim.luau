@@ -3,7 +3,8 @@
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
 -- Curveball does its flare (system 30), Hot Hands its fireball (system 31)
--- and Blaze its flame (system 32).
+-- and Blaze its flame (system 32), and whose Run it Back holds the player
+-- through his return and puts him back at its mark (system 33).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -143,6 +144,43 @@ end
 -- Buttons that start a plant or a defuse, which a dash doesn't.
 local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire)
 
+local HOLD: MovementSim.Motion = { hold = true }
+
+-- A tick of Run it Back's return at `t` (system 33), with what started in
+-- it, if anything (AbilitySim.comeBack): nothing pressed counts, so a plant
+-- or a defuse under way ends as if let go of (Patches 1.04 and 1.05 fixed
+-- one carrying on), nothing moves him, and what's in the fifth slot goes
+-- with his body. Back at the mark ("rise") he stands as he did as he cast
+-- it, his guns reloaded (Patch 1.0) and the one in hand drawn again, ready
+-- as he's risen (Patch 5.07). The way he faces is the input's: the client
+-- turns him back to the mark's as he rises.
+local function held(s: State, input: any, cfg: any, world: any, dt: number, objective: Spike.Context?, t: number, back: AbilitySim.Cast?)
+	local still = table.clone(input)
+	still.buttons = 0
+	local act = SpikeSim.step(s.spike, s.movement, s.weapons, still, t, s.movement.tick + 1, PlayerSim.eye(s, cfg), objective or Spike.NONE)
+	local kit, w = s.abilities, s.weapons
+	if w.loadout[WeaponSim.ULT] ~= "" and w.loadout[WeaponSim.ULT] ~= AbilitySim.carried(kit) then
+		WeaponSim.putAway(w, t)
+	end
+	WeaponSim.holster(w)
+	if back and back.kind == "rise" then
+		local m = MovementSim.newState(kit.mark)
+		m.tick = s.movement.tick
+		m.grounded = kit.markGrounded
+		m.crouched = kit.markCrouched
+		m.crouchAlpha = if kit.markCrouched then 1 else 0
+		s.movement = m
+		s.tagUntilTick = 0
+		for slot = 1, 2 do
+			WeaponSim.reloadNow(w, slot)
+		end
+		WeaponSim.redraw(w, t)
+		w.equipEndTime = math.max(w.equipEndTime, AbilitySim.risen(kit))
+	end
+	MovementSim.step(s.movement, still, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, HOLD)
+	return act, if back then { back } else nil
+end
+
 -- Advance one tick. Returns the bullets fired this tick, if any (one round's:
 -- several for a shotgun), the knife swing that started, if one did, what
 -- happened with the spike, if anything, the gun G let go of, if it did
@@ -156,10 +194,18 @@ function PlayerSim.step(
 	dt: number,
 	objective: Spike.Context?
 ): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?, WeaponSim.Dropped?, { AbilitySim.Cast }?)
-	-- The plant and the defuse go first: the tick they start on, they root,
-	-- and nothing's cast. G lets go of the spike if it's in hand (SpikeSim),
-	-- and otherwise of the gun in hand, once nothing is under way.
+	-- Run it Back's return goes before anything (system 33): through it the
+	-- player's held. Then the plant and the defuse: the tick they start on,
+	-- they root, and nothing's cast. G lets go of the spike if it's in hand
+	-- (SpikeSim), and otherwise of the gun in hand, once nothing is under
+	-- way.
 	local t = (s.movement.tick + 1) * dt
+	local kit = s.abilities
+	local holding, back = AbilitySim.comeBack(kit, t, dt, s.movement.tick + 1, s.movement.position, PlayerSim.eye(s, cfg))
+	if holding then
+		local heldAct, heldCasts = held(s, input, cfg, world, dt, objective, t, back)
+		return nil, nil, heldAct, nil, heldCasts
+	end
 	local dropPressed = MovementSim.has(input.buttons, PlayerSim.Buttons.Drop) and not s.spike.dropHeld
 	local spikeInput = input
 	if AbilitySim.dashing(s.abilities, t) then
@@ -174,12 +220,15 @@ function PlayerSim.step(
 		moveInput.buttons = SpikeSim.movementButtons(s.spike, input.buttons)
 	end
 	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
-	local motion, casts = AbilitySim.step(s.abilities, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
+	local grounded, crouched = s.movement.grounded, s.movement.crouched
+	local motion, casts = AbilitySim.step(kit, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
 	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
 	-- A throw puts the gun away for a moment (system 18). Blade Storm's cast
 	-- puts its knives in hand, and X draws them again (system 19). An
 	-- ability's key puts what it throws in hand: Curveball's flare (system
-	-- 30), Hot Hands' fireball (system 31), Blaze's flame (system 32).
+	-- 30), Hot Hands' fireball (system 31), Blaze's flame (system 32). Run
+	-- it Back's cast puts away what's in the fifth slot, and the gun through
+	-- its activation, and its mark keeps how he stood (system 33).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -196,12 +245,17 @@ function PlayerSim.step(
 				if weapon then
 					WeaponSim.arm(s.weapons, weapon, t, WeaponConfig.get(weapon).equipTime.value, input.slot)
 				end
+			elseif cast.kind == "mark" then
+				kit.markGrounded, kit.markCrouched = grounded, crouched
+				if s.weapons.loadout[WeaponSim.ULT] ~= "" then
+					WeaponSim.putAway(s.weapons, t)
+				end
+				WeaponSim.stow(s.weapons, t, AbilityConfig.RunItBack.activation.value)
 			end
 		end
 	end
 	-- A plant or a defuse puts an ability in hand away, and lets go of a
 	-- wall being bent.
-	local kit = s.abilities
 	if PlayerSim.rooted(s) then
 		kit.holding = 0
 		kit.steering, kit.steerUntil = 0, 0
@@ -277,16 +331,26 @@ function PlayerSim.step(
 	return shots, swing, act, dropped, casts
 end
 
--- A kill this player made with `weapon`, fired in `mode` (a shot's, nil for
--- a swing), applied by the server between ticks: the kit's point, or the
--- mode's `points`, and the signature's count (AbilitySim.killed), and for a
--- single Blade Storm knife all the knives back (system 19); its burst's
--- kills bring none back (Patch 3.06).
-function PlayerSim.killedWith(s: State, weapon: string, mode: string?, points: number?)
-	AbilitySim.killed(s.abilities, points)
+-- What a single Blade Storm knife does with a kill this player made with
+-- `weapon`, fired in `mode` (a shot's, nil for a swing), applied by the
+-- server between ticks: all the knives back (system 19), as they come back
+-- for a Phoenix it would have killed in his Run it Back, though nobody's
+-- killed him (Patch 1.02: it 'now refreshes when used to kill Phoenix
+-- during Run It Back', system 33). Its burst's kills bring none back
+-- (Patch 3.06).
+function PlayerSim.knivesBack(s: State, weapon: string, mode: string?)
 	if mode == "hip" and weapon ~= "" and s.weapons.loadout[WeaponSim.ULT] == weapon then
 		WeaponSim.refill(s.weapons, WeaponSim.ULT)
 	end
+end
+
+-- A kill this player made with `weapon`, fired in `mode`, applied by the
+-- server between ticks: the kit's point, or the mode's `points`, and the
+-- signature's count (AbilitySim.killed), and a Blade Storm knife's all
+-- back (knivesBack).
+function PlayerSim.killedWith(s: State, weapon: string, mode: string?, points: number?)
+	AbilitySim.killed(s.abilities, points)
+	PlayerSim.knivesBack(s, weapon, mode)
 end
 
 -- Hit slow, applied by the server between ticks. Speed is clamped at once and

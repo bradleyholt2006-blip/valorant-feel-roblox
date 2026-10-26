@@ -37,6 +37,12 @@
 -- damageListeners, for the match's record. Every kill is told to
 -- killListeners, for the ability kit's points (system 17), with what made it
 -- (a single Blade Storm knife brings them all back, system 19).
+--
+-- A hit that would kill someone can spare them instead (Phoenix's Run it
+-- Back, system 33, CombatServer.spares): they've taken it and are out of
+-- play, with no health, but nobody's killed them. Out of play, nothing
+-- hurts or heals them, shots go through, and the snapshots leave them out,
+-- until they're back in it (CombatServer.back).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -77,6 +83,11 @@ CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity, string,
 -- Whether an entity can't be hurt now (gun game's spawn protection, system
 -- 23): shots and swings go through it, as through a teammate.
 CombatServer.protected = nil :: ((Entities.Entity) -> boolean)?
+-- Whether a hit that would kill an entity spares it (Phoenix's Run it Back,
+-- system 33), called with it, who hit it, and the weapon and mode as for
+-- killListeners: it's taken the hit and is out of play, but there's no kill
+-- and no death.
+CombatServer.spares = nil :: ((Entities.Entity, Entities.Entity?, string, string?) -> boolean)?
 
 local level = RobloxLevel.new()
 local history = LagCompensation.new()
@@ -102,14 +113,20 @@ local function damage(
 	untagged: boolean?
 )
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
+	local spares = CombatServer.spares
+	local spared = result.killed and spares ~= nil and spares(victim, attacker, weapon, mode)
+	if spared then
+		result.killed = false
+	end
 	if result.damage > 0 then
 		for _, listener in CombatServer.damageListeners do
 			listener(attacker, victim, result.damage)
 		end
 	end
-	-- A hit from nobody (a spawn room's burn) doesn't slow, nor does fire.
+	-- A hit from nobody (a spawn room's burn) doesn't slow, nor does fire,
+	-- nor one that spared its victim.
 	local hp = WeaponConfig.Health
-	if result.damage > 0 and attacker and victim.sim and not result.killed and not untagged then
+	if result.damage > 0 and attacker and victim.sim and not result.killed and not untagged and not spared then
 		PlayerSim.applyTag(victim.sim, Tuning.config(), hp.tagSpeedMultiplier.value, hp.tagDuration.value, DT)
 		if victim.player then
 			PlayerSimServer.markDirty(victim.player)
@@ -214,6 +231,26 @@ end
 function CombatServer.mend(entity: Entities.Entity, health: number, shield: number)
 	if not Health.mend(entity.health, health, shield) then
 		return
+	end
+	local event = Entities.vitals(entity)
+	event.kind = "shield"
+	Remotes.get().Combat:FireAllClients(event)
+end
+
+-- Takes a living entity out of play as it is, with no hit (Phoenix's Run it
+-- Back running out, system 33): nothing hurts or heals it, and shots go
+-- through it, until it's back.
+function CombatServer.withdraw(entity: Entities.Entity)
+	entity.health.alive = false
+end
+
+-- An entity out of play back in it (Run it Back's return): full health, and
+-- the shield of the kind worn as `kept` describes, or a fresh one without;
+-- and tells clients.
+function CombatServer.back(entity: Entities.Entity, kept: Health.Kept?)
+	Health.reset(entity.health)
+	if kept then
+		Health.restore(entity.health, kept)
 	end
 	local event = Entities.vitals(entity)
 	event.kind = "shield"

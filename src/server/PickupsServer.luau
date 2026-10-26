@@ -235,12 +235,12 @@ local function sync(t: TeamDeathmatchRules.State)
 	end
 end
 
--- Whoever alive runs over an orb takes it: a Recovery Orb's buff starts on
--- them (the rules), and an Ultimate Orb's points are theirs.
+-- Whoever alive and in play runs over an orb takes it: a Recovery Orb's
+-- buff starts on them (the rules), and an Ultimate Orb's points are theirs.
 local function pickUps(t: TeamDeathmatchRules.State, time: number, origin: vector)
 	for id, member in t.members do
 		local player = if member.alive then Players:GetPlayerByUserId(id) else nil
-		local sim = if player and PlayerSimServer.isAlive(player) then PlayerSimServer.getSim(player) else nil
+		local sim = if player and PlayerSimServer.inPlay(player) then PlayerSimServer.getSim(player) else nil
 		if player and sim and TeamDeathmatchRules.pickUp(t, id, sim.movement.position - origin, time) == "ultimate" then
 			AbilityServer.addPoints(player, AbilityConfig.TeamDeathmatch.orb.value)
 		end

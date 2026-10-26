@@ -29,8 +29,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
-   three, section 33 one and then three, section 34 one and then two, and sections 35 and 36 one,
-   then two, then three for their last check.
+   three, section 33 one and then three, section 34 one and then two, sections 35 and 36 one,
+   then two, then three for their last check, and section 37 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -52,7 +52,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
 | Click a map | During the vote for the next map, after a match in the arena or the spike rounds: votes for it, or moves your vote to it |
 | C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes. As Phoenix, E readies Curveball's flare: the left button throws it curving left, the right curving right, and E again puts it away; Q readies Hot Hands' fireball: the left button throws it, the right lobs it, and Q again puts it away; and C readies Blaze's flame: the left button sends its wall, held it bends the wall towards the crosshair, and C again puts it away |
-| X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
+| X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again. As Phoenix, Run it Back: it marks where you stand, and dying, or its 10 s running out, brings you back there |
 | Space | Jump; held in the air, Jett's glide (Drift) slows the fall until you land or let go |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
@@ -1806,12 +1806,12 @@ white ends and when it's gone, in server time, and it's unset once your screen i
 spent charge comes back 1.5 s after it's done. The numbers below are for throws from the spawn,
 facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 
-- **CB1 Phoenix.** In agent select, PHOENIX's card reads DUELIST. Its kit: X RUN IT BACK `NOT YET`
-  and dimmed; C BLAZE (system 32), Q HOT HANDS (system 31) and E CURVEBALL, lit, each with its
-  line; and last `INNER FIRE   PASSIVE`, lit, with `His own fire heals him, where it would burn
-  anyone else.` Click PICK PHOENIX: the button reads `PLAYING PHOENIX`, and `VFAgent` reads
-  `phoenix`. Close it with T. The ability bar has RUN IT BACK dimmed, BLAZE and HOT HANDS each with
-  its pip lit and CURVEBALL with both its pips lit, and `VFKit` reads `C1/1 Q1/1 E2/2 X0/7`.
+- **CB1 Phoenix.** In agent select, PHOENIX's card reads DUELIST. Its kit: C BLAZE (system 32),
+  Q HOT HANDS (system 31), E CURVEBALL and X RUN IT BACK (system 33), lit, each with its line; and
+  last `INNER FIRE   PASSIVE`, lit, with `His own fire heals him, where it would burn anyone else.`
+  Click PICK PHOENIX: the button reads `PLAYING PHOENIX`, and `VFAgent` reads `phoenix`. Close it
+  with T. The ability bar has BLAZE and HOT HANDS each with its pip lit, CURVEBALL with both its
+  pips lit and RUN IT BACK with its seven lit gold, and `VFKit` reads `C1/1 Q1/1 E2/2 X7/7`.
   **Send:** a screenshot of Phoenix's card.
 - **CB2 In hand.** Press E: a quick, quiet whoosh, the Vandal goes, and a small orange orb comes up
   in your hand. E's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
@@ -1892,9 +1892,9 @@ spawn, facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Va
 
 - **HH1 His kit.** In agent select (T), PHOENIX's card has Q HOT HANDS lit, with `Q readies a
   fireball. Fire throws it, alt fire lobs it; it bursts into fire that burns enemies and heals
-  you.`, and `INNER FIRE   PASSIVE` lit, with no `NOT YET`. X RUN IT BACK is still `NOT YET` and
-  dimmed (C BLAZE is section 36's). On the ability bar HOT HANDS is lit with its one pip, and
-  `VFKit` reads `C1/1 Q1/1 E2/2 X0/7`.
+  you.`, and `INNER FIRE   PASSIVE` lit, with no `NOT YET` (C BLAZE is section 36's, and X RUN IT
+  BACK section 37's). On the ability bar HOT HANDS is lit with its one pip, and `VFKit` reads
+  `C1/1 Q1/1 E2/2 X7/7`.
 - **HH2 In hand.** Press Q: a soft whoosh, the Vandal goes, and a ball of fire with a flame on top
   comes up in your hand. Q's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
   `Hot Hands   [Q]`, with no ammo; Q's pip stays lit; and `VFKit` ends in `equip`. You run at the
@@ -2000,8 +2000,8 @@ The numbers below are for walls sent from the spawn, facing down the target lane
 
 - **BZ1 His kit.** In agent select (T), PHOENIX's card has C BLAZE lit, with `C readies a wall of
   fire. Fire sends it along the floor, held fire bends it; it blocks sight, burns enemies and heals
-  you.` X RUN IT BACK is still `NOT YET` and dimmed. On the ability bar BLAZE is lit with its one
-  pip, and `VFKit` reads `C1/1 Q1/1 E2/2 X0/7`.
+  you.` (X RUN IT BACK is section 37's.) On the ability bar BLAZE is lit with its one pip, and
+  `VFKit` reads `C1/1 Q1/1 E2/2 X7/7`.
 - **BZ2 In hand.** Press C: a deep whoosh, the Vandal goes, and a tongue of orange fire comes up
   over your open hand. C's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
   `Blaze   [C]`, with no ammo; C's pip stays lit; and `VFKit` ends in `equip`. You run at the
@@ -2092,6 +2092,71 @@ PHOENIX in window 1 (T). Everyone on the course is everyone else's enemy.
   After the buy phase, that teammate stands about 10 m in front of player 1, and player 1 sends it
   at them as in BZ9: their health falls about 10 a second, a third as fast as player 2's did in BZ9,
   and their screen's edge glows the same.
+
+## 37. Run it Back
+
+From [33-run-it-back.md](research/33-run-it-back.md). One player on the course, then two. Play as
+Phoenix, as in section 34. Without keys or a mouse button, `VFTestButtons` 32768 presses X, 16384 E,
+1 W and 128 the left button: set it and clear it again each time, or keep 1 set to walk. As it's
+cast, your `VFLastMark` attribute is where, your feet, in metres. `Workspace.VFRunItBack` holds a
+`Mark` model for each mark while it's drawn, its `Entity` attribute whose it is. On the course its
+points fill again 1.5 s after you're back. Start each check at the spawn, facing down the target
+lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **RB1 His kit.** In agent select (T), PHOENIX's card has X RUN IT BACK lit, with `Marks where you
+  stand. Die before it's over, or let it run out, and you're back at the mark with full health.`,
+  and nothing on it reads `NOT YET`. On the ability bar RUN IT BACK has its seven pips lit gold,
+  with `7/7` under it, and `VFKit` reads `C1/1 Q1/1 E2/2 X7/7`.
+- **RB2 The cast.** Fire 10 rounds down the lane (`15 / 50` on the HUD). Set `VFTestYaw` to 30 and
+  press X: a low, slow whoosh, the Vandal dips and is back up a second later, and a small flame
+  burns on the floor at your feet in a round orange glow. X's square lights, its pips go dark, and
+  under it the seconds left count down from `10.0`. `VFKit` reads `C1/1 Q1/1 E2/2 X0/7 back`,
+  `VFLastMark` about `(0.00, 0.00, 0.00)`, and `Workspace.VFRunItBack` holds one `Mark`. Through
+  that first second the left button fires nothing and E does nothing; after it, E brings the flare
+  up as ever, and E again puts it away. X again does nothing. Then set `VFTestYaw` to 0, walk down
+  the lane past the 10 m stripe (W, about 2 s), and turn round (`VFTestYaw` 180): the flame burns on
+  at the spawn. **Send:** a screenshot of the mark.
+- **RB3 Running out.** Wait where you are. 10 s after the cast, with a heavy whoosh, your screen
+  turns to orange flame, and W, Space and the left button do nothing; X's note reads `BACK`, and
+  `VFKit` ends in `away`. Clear `VFTestYaw` (playing yourself, turn away with the mouse instead). A
+  second later, with a deep crack, you're back at the spawn, facing 30 degrees left of the lane as
+  you did when you cast it, level, and the mark's flame is gone; `VFKit` ends in `rise`. The flame
+  on your screen clears over 1.4 s, and through it you still can't move or fire. Then you can, the
+  Vandal in hand, and the HUD reads `25 / 40`: reloaded from its reserve. 1.5 s later X's pips fill
+  again, gold (`X7/7`).
+- **RB4 The spike's blast.** Buy Light Armor in place of your Heavy Armor (B, or `VFTestBuy`
+  `light`): the HUD's shield reads `+25`, with `LIGHT ARMOR` under it. Pick up the spike, plant it
+  in site A as in D4, and walk back to the spawn. When the HUD's spike line (F3) reads about
+  `6.0 s left`, press X. As it goes off and the blast reaches you, you don't die: there's no
+  `ELIMINATED` and no line of yours in the kill feed, your health reads `0`, and your screen turns
+  to flame at once, `VFKit` ending in `away`. A second later you're back where you cast it, with
+  `100` and `+25` (`LIGHT ARMOR`): full health and the shield you had as you cast it. **Send:** the
+  HUD's health after.
+- **RB5 A plant under way.** Wait for X's pips to fill. Pick up the spike, walk into site A's front
+  half, and press X. When X's note reads about `3.0`, hold 4 to plant (`VFTestButtons` 1024). As it
+  runs out your body goes, and the plant's bar goes with it; let go of 4 then. Nothing's planted
+  (`VFSpike` stays `carried`), and you rise at the mark with the spike still yours.
+- **RB6 The sounds.** Open the Sound Lab (F2 four times), wait for X's pips to fill, and press X,
+  standing still: it logs `markLit` as `yours` as it's cast, `fizzle` as `yours` as it runs out 10 s
+  later, and `markRise` as `yours` a second after that.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+PHOENIX in window 1 (T). Everyone on the course is everyone else's enemy.
+
+- **RB7 Seen by another.** In window 2, stand on the 10 m stripe facing the spawn (`VFTestYaw` 180).
+  In window 1, at the spawn, press X, then walk 5 m to the left (A). Window 2 hears the low whoosh
+  from player 1 and sees the small flame burn where they cast it. In window 2, shoot player 1 dead
+  with the Vandal: a headshot (`VFTestAimEntity` 4294967295, player 1's id, and `VFTestAimRegion`
+  `head`, then a click). Neither kill feed has a line. In window 2, player 1's blocks go in a burst
+  of flame and embers, with a heavy whoosh; in window 1, the screen turns to flame at once with the
+  same whoosh, and X reads `BACK`. Click again in window 2 within the second: nothing's hit. A
+  second later, with a deep crack, a column of flame stands at the mark, player 1 inside it,
+  thinning away over 1.4 s, and player 1's label reads `100 + 50` again. Shoot player 1 in it: the
+  hit counts, and the headshot kills them, `Player2   Vandal   Player1` in both kill feeds, and
+  player 1 respawns as ever. **Send:** a screenshot of the column from window 2.
+- **RB8 Its sounds from another.** Open the Sound Lab in window 2, and in window 1 press X again
+  (once its pips have filled) and stand still: window 2 logs `markLit` from player 1, `fizzle` from
+  player 1 10 s later, and `markRise` from player 1 a second after that.
 
 ## Results
 
@@ -2252,6 +2317,14 @@ BZ10 player 1 seen through the wall: yes / no (what showed)
 BZ11 healed from 30 to ___; after stepping out, to ___
 BZ12 every tile inside the menu: yes / no; Blaze bought and sold back: 800 > ___ > ___
 BZ13 the teammate lost ___ a second (or not tried)
+RB1 anything on Phoenix's card or the bar that read differently: ___
+RB2 VFLastMark: ___; the Vandal fired or E worked in the first second: yes / no
+RB3 seconds from the cast to the flame: ___; back facing 30 degrees left: yes / no; ammo after: ___
+RB4 died or a line of yours in the kill feed: yes / no; health and shield after: ___
+RB5 VFSpike after the plant was cut off: ___
+RB6 the Sound Lab's three lines: ___
+RB7 the burst seen: yes / no; the second click hit: yes / no; the kill in the column counted: ___
+RB8 window 2's three lines: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2454,3 +2527,8 @@ Didn't look right (IDs and what you saw):
 | 32 | The wall: rising from your feet and spreading to the far end in half a second, 4 m tall, gone 8 s later; nothing seen through it, and the screen flame from inside it; a dummy standing in it burns and dies, `Blaze` in the kill feed | BZ3, BZ9, BZ10 |
 | 32 | Inner Fire: Phoenix hurt, then standing in his own wall, heals 50 over 8 s and takes no damage | BZ3, BZ11 |
 | 32 | A second player: the send heard, the run and the wall seen, the wall burning them as an enemy, a third as fast on Phoenix's side, and the orange glow at their screen's edge | BZ9, BZ10, BZ13 |
+| 33 | Run it Back lit on Phoenix's card and the bar, with no `NOT YET` | RB1, CB1 |
+| 33 | X with its points full: the mark's flame at your feet, the gun away for 1 s, nothing else cast in it, and X counting down from 10 on the bar | RB2 |
+| 33 | Run out: the screen flame at once, held, then back at the mark facing the way you cast it, held 1.4 s more as the flame clears, your guns full and the gun in hand as you can move; X `BACK` on the bar through it | RB3, RB5 |
+| 33 | The spike blast in it: no death, no kill feed, and back at the mark with full health and the shield you had | RB4 |
+| 33 | A second player: the mark's flame seen, the burst as the body goes, the column at the mark, the sounds heard; shots through where the body was; a kill in the rise is a kill | RB7, RB8 |

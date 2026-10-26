@@ -15,8 +15,9 @@
 -- takes no slot or key of its own: Jett's Drift (system 20). Team Deathmatch
 -- has a kit of its own (system 28): abilities that recharge over time, and
 -- ultimates that cost more, from kills and Ultimate Orbs. Phoenix is the
--- second agent (system 30): his Curveball, Hot Hands (system 31) and Blaze
--- (system 32) can be played, and his passive, Inner Fire, works.
+-- second agent (system 30): his Curveball, Hot Hands (system 31), Blaze
+-- (system 32) and Run it Back (system 33) can be played, and his passive,
+-- Inner Fire, works.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -164,6 +165,7 @@ local INCENDIARY = "VALORANT Wiki, Incendiary"
 local BLAZE = "VALORANT Wiki, Blaze"
 local TIDE = "VALORANT Wiki, High Tide"
 local SCREEN = "VALORANT Wiki, Toxic Screen"
+local RUN = "VALORANT Wiki, Run it Back"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -204,9 +206,9 @@ AbilityConfig.Defs = {
 		description = "Five throwing knives. Fire throws one, and a kill brings them all back; alt fire throws all that are left.",
 	},
 	-- Phoenix's (system 30): his kit as the VALORANT Wiki lists it since
-	-- Patch 9.10 moved Curveball to E and Hot Hands to Q. Curveball, Hot
-	-- Hands (system 31) and Blaze (system 32) are the ones that can be
-	-- played.
+	-- Patch 9.10 moved Curveball to E and Hot Hands to Q. All of it can be
+	-- played: Curveball, Hot Hands (system 31), Blaze (system 32) and Run it
+	-- Back (system 33).
 	blaze = {
 		id = "blaze",
 		name = "Blaze",
@@ -542,6 +544,30 @@ AbilityConfig.InnerFire = {
 	heal = p(50, "confirmed", P100 .. ": 'the total healing output of these two abilities is at parity (50 health each)'"),
 	hotHandsEvery = p(0.08, "confirmed", P100 .. ": 'Hot Hands healing: 3 every 0.25s >>> 1 every 0.08s.'"),
 	blazeEvery = p(0.16, "confirmed", P100 .. ": 'Blaze healing: 3 every 0.25s >>> 1 every 0.16 seconds'"),
+}
+
+-- Phoenix's Run it Back (system 33), his ultimate: X with the points full
+-- spends them and marks where he stands, and the way he faces, at once. Its
+-- activation puts his gun away, and nothing else is cast meanwhile. For its
+-- duration from the cast, a hit that would kill him doesn't: his body's
+-- gone at once, out of play, as it is when it runs out. Once his body's
+-- been gone its time he's back at the mark, rising there, in play but held,
+-- and then free, with full health and the shield he had as he cast it,
+-- every gun reloaded and the one in hand drawn (Patches 1.0, 5.01 and
+-- 5.07), facing the way he did. The wiki gives the times, from the game's
+-- files (33-run-it-back.md, section 2).
+AbilityConfig.RunItBack = {
+	-- From the cast until it runs out, its activation first.
+	duration = p(10, "community", RUN .. ": 'Duration' '10 seconds (Includes 1-second activation animation)'"),
+	activation = p(1, "community", RUN .. ": the duration's '1-second activation animation'"),
+	-- His return: his body gone this long, then rising at the mark this
+	-- long, his gun in hand ready as it ends.
+	away = p(1, "community", RUN .. ": 'Revive duration' 'Total 2.4 seconds', a '1-second dissipate'"),
+	rise = p(1.4, "community", RUN .. ": and a '1.4-second respawn'"),
+	-- How much longer than his body's time, on the server's clock, it stays
+	-- out of play when his moves haven't brought him back (they've stopped
+	-- coming): then it's back in play where it is.
+	grace = p(1, "estimate", "Ours: so moves held back can't keep him out of play for long"),
 }
 
 -- How long after a throw the gun's back in hand, by the ability thrown (and
