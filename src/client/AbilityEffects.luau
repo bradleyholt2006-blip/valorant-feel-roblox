@@ -16,6 +16,8 @@
 --   * Run it Back: only heard here, as it's cast, as his body goes and as
 --     he rises at the mark; RunItBackView draws its mark, his body going
 --     and his rising (system 33)
+--   * the Healing Orb: neither here; HealView marks the ally it would heal,
+--     and sounds and draws each heal (system 36)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -205,6 +207,8 @@ local function onCast(event: any)
 	end
 	if event.kind == "flight" then
 		return -- a throw on its way: CloudView's, FlareView's, FireView's or BlazeView's
+	elseif event.kind == "healing" then
+		return -- a heal: HealView's
 	end
 	table.insert(due, {
 		kind = event.kind,

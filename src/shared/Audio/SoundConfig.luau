@@ -454,15 +454,25 @@ SoundConfig.Sounds = {
 	markRise = sound(0.7, 0.03, 3, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 0.4),
+	-- The Healing Orb (system 36): the orb lit in hand is the gust again,
+	-- higher than the flare's; its heal, the kill's bell slowed to a soft,
+	-- low chime.
+	orbEquip = sound(0.45, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.7),
+	healChime = sound(0.6, 0.02, 3, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 0.6),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
 -- cloud's burst, a flare's pop, a fireball's burst and its fire, Blaze's
--- wall rising, and a Phoenix's body going in Run it Back), heard as the
--- ability curve says (systems 17 to 19 and 30 to 33). Blade Storm's knives
--- drawn again sound as their draw does, and so does an ability put in hand
--- (Curveball's flare, Hot Hands' fireball, Blaze's flame), which only the
--- one drawing it hears.
+-- wall rising, a Phoenix's body going in Run it Back, and a heal of the
+-- Healing Orb's starting), heard as the ability curve says (systems 17 to
+-- 19, 30 to 33 and 36). Blade Storm's knives drawn again sound as their
+-- draw does, and so does an ability put in hand (Curveball's flare, Hot
+-- Hands' fireball, Blaze's flame, the Healing Orb), which only the one
+-- drawing it hears. The orb's tries make no sound: only a heal does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -480,6 +490,7 @@ SoundConfig.Abilities = {
 	mark = "markLit",
 	fizzle = "fizzle",
 	rise = "markRise",
+	healing = "healChime",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -586,6 +597,8 @@ SoundConfig.Weapons = {
 	-- Blaze's flame (system 32): the same, the wall sent out and rising the
 	-- ability's.
 	flamewall = { draw = "wallEquip", curve = "ability" },
+	-- The Healing Orb (system 36): the same, its heal the ability's.
+	healorb = { draw = "orbEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

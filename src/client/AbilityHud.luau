@@ -6,16 +6,17 @@
 -- left to dash, and an ability under way lights its slot: Blade Storm's
 -- while its knives last (system 19), its note the knives left, and an
 -- ability's while it's in hand (Curveball's flare, system 30; Hot Hands'
--- fireball, system 31; Blaze's flame, system 32), its note EQUIP until it
--- can be thrown, and Blaze's while its wall's being bent; Run it Back's
--- while it runs, its note the seconds left, and through his return, BACK
--- (system 33). What can't be played yet is dimmed. It reads the local player's predicted kit
--- (PlayerController.sim), so a cast shows on the tick it's pressed. A kit
--- of no agent's, as deathmatch's (system 26), has no bar. Where abilities
--- recharge over time (Team Deathmatch, system 28), a slot short of a charge
--- counts down the seconds to its next, as the server has them
--- (AbilityConfig.RECHARGE_ATTRIBUTE); and an ultimate that needs more than
--- ten points has ten pips, each a tenth of them.
+-- fireball, system 31; Blaze's flame, system 32; the Healing Orb, system
+-- 36), its note EQUIP until it can be thrown, and Blaze's while its wall's
+-- being bent; Run it Back's while it runs, its note the seconds left, and
+-- through his return, BACK (system 33). What can't be played yet is dimmed.
+-- It reads the local player's predicted kit (PlayerController.sim), so a
+-- cast shows on the tick it's pressed. A kit of no agent's, as deathmatch's
+-- (system 26), has no bar. Where abilities recharge over time (Team
+-- Deathmatch, system 28, and the Healing Orb's cooldown, system 36), a slot
+-- short of a charge counts down the seconds to its next, as the server has
+-- them (AbilityConfig.RECHARGE_ATTRIBUTE); and an ultimate that needs more
+-- than ten points has ten pips, each a tenth of them.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

@@ -141,6 +141,15 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- The Healing Orb (system 36): a green orb, larger than the flare's,
+	-- floating over the open hand.
+	healorb = {
+		muzzle = vector.create(0, 0.07, -0.12),
+		pieces = {
+			{ size = vector.create(0.09, 0.09, 0.09), offset = vector.create(0, 0.07, -0.08), accent = true }, -- orb
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -171,6 +180,7 @@ local SHAPE_OF: { [string]: string } = {
 	flare = "flare",
 	fireball = "fireball",
 	flamewall = "flamewall",
+	healorb = "healorb",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -200,6 +210,7 @@ local ACCENT: { [string]: Color3 } = {
 	flare = Color3.fromRGB(255, 176, 80),
 	fireball = Color3.fromRGB(255, 110, 30),
 	flamewall = Color3.fromRGB(255, 90, 20),
+	healorb = Color3.fromRGB(110, 235, 150),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

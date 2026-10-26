@@ -32,8 +32,8 @@ export type CurveParam = { points: Curve, status: Status, source: string }
 -- "ultimate" is an ultimate's weapon (system 19: Jett's Blade Storm knives),
 -- in the fifth slot while the ultimate lasts, and never sold either.
 -- "ability" is an ability's (system 30: Phoenix's Curveball flare; system
--- 31: his Hot Hands fireball; system 32: his Blaze flame), in the fifth slot
--- while it's in hand, and never sold.
+-- 31: his Hot Hands fireball; system 32: his Blaze flame; system 36: Sage's
+-- Healing Orb), in the fifth slot while it's in hand, and never sold.
 export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike" | "ultimate" | "ability"
 
 export type AccuracyDef = {
@@ -153,9 +153,10 @@ export type WeaponDef = {
 	-- bought, dropped or reloaded (WeaponSim.arm).
 	ultimate: boolean?,
 	-- An ability's weapon (system 30: Curveball's flare; system 31: Hot Hands'
-	-- fireball; system 32: Blaze's flame): the AbilityConfig id whose cast
-	-- puts it in hand in the fifth slot. Like an ultimate's, never bought,
-	-- dropped or reloaded, and gone once it's out of hand.
+	-- fireball; system 32: Blaze's flame; system 36: the Healing Orb): the
+	-- AbilityConfig id whose cast puts it in hand in the fifth slot. Like an
+	-- ultimate's, never bought, dropped or reloaded, and gone once it's out
+	-- of hand.
 	ability: string?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
@@ -668,6 +669,38 @@ local FLAME_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a wall sent out doe
 	camera = WALL_NA,
 	adsCamera = WALL_NA,
 })
+
+-- Sage's Healing Orb (system 36): not thrown, but tried on the ally under
+-- the crosshair, or with alt fire on herself, so no spread or kick moves
+-- the crosshair. A try that heals nobody leaves it in hand for the next.
+local ORB = "VALORANT Wiki, Healing Orb"
+local TRIED = "n/a: the server looks along the crosshair for the ally it's over"
+local ORB_NA = p(0, "estimate", TRIED)
+local orbExact = accuracy(
+	c({ { 1, 0 } }, "estimate", TRIED),
+	p(1, "estimate", TRIED),
+	p(0.1, "estimate", TRIED),
+	p(1, "estimate", TRIED),
+	{ crouch = ORB_NA, walk = ORB_NA, run = ORB_NA, air = ORB_NA }
+)
+orbExact.landError = ORB_NA
+local ORB_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a heal doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = ORB_NA,
+	adsCamera = ORB_NA,
+})
+-- A try a click, as quickly as clicks come (ours: no source says).
+local ORB_TRIES = p(10, "estimate", "Ours: a try a click, ten a second at most")
+local orbSelf: AltDef = {
+	fireMode = "semi",
+	fireRate = ORB_TRIES,
+	pellets = p(1, "community", ORB .. ": 'ALT FIRE while Sage is damaged to activate a self Heal-Over-Time'"),
+	ammo = p(1, "community", ORB .. ": 1 use"),
+	accuracy = orbExact,
+	recoil = ORB_KICK,
+}
 
 WeaponConfig.Defs = {
 	classic = {
@@ -1542,13 +1575,41 @@ WeaponConfig.Defs = {
 		accuracy = flameExact,
 		recoil = FLAME_KICK,
 	},
+	-- Sage's Healing Orb (system 36): put in hand in the fifth slot by E
+	-- (AbilityConfig.HealingOrb), as the flare is by Phoenix's E. Fire tries
+	-- it on the ally under the crosshair and alt fire on herself; PlayerSim
+	-- turns each try into the ability's cast, so it fires no bullet, and
+	-- keeps it in hand, a try at a time, until the server finds one heals
+	-- (HealServer) and puts it away.
+	healorb = {
+		id = "healorb",
+		name = "Healing Orb",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought: E puts it in hand, the free charge of the Healing Orb (" .. ORB .. ")"),
+		fireMode = "semi",
+		fireRate = ORB_TRIES,
+		magazine = p(1, "community", ORB .. ": 1 use, a heal"),
+		reserve = p(0, "community", "None: another heal is another charge (" .. ORB .. ": 1 use)"),
+		reloadTime = ORB_NA,
+		equipTime = p(0.5, "community", ORB .. ": 'Equip' 0.5 seconds"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it heals (" .. ORB .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "healingorb",
+		alt = orbSelf,
+		accuracy = orbExact,
+		recoil = ORB_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
 -- they always were, the rest in alphabetical order after them, the spike
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
--- (system 30), Hot Hands' fireball (system 31) and Blaze's flame (system
--- 32) last.
+-- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32)
+-- and the Healing Orb (system 36) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1576,6 +1637,7 @@ WeaponConfig.Ids = {
 	"flare",
 	"fireball",
 	"flamewall",
+	"healorb",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

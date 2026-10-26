@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-four
+Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-six
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about six hours. Doing it in parts is fine; keep the order.
@@ -31,7 +31,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
    three, section 33 one and then three, section 34 one and then two, sections 35 and 36 one,
    then two, then three for their last check, section 37 one and then two, section 38 one, then
-   two, then three, and section 39 two and then three.
+   two, then three, section 39 two and then three, and section 40 one, then two, then three.
 
 | Key | What it does |
 | --- | --- |
@@ -2338,6 +2338,96 @@ Then three players: stop the game, start a Local Server with 3 players and press
   they are (`Pulse_4294967294` and `Pulse_4294967293`), behind walls or not; `Player2` and `Player3`
   are in window 1's `VFPlayers` for a moment, then only whoever player 1 sees or hears.
 
+## 40. Sage's Healing Orb
+
+From [36-healing-orb.md](research/36-healing-orb.md). One player on the course, then two on the
+course, then three in Skirmish, the spike rounds and Team Deathmatch. Play as Sage: press T, click
+SAGE's card and PICK SAGE (or set `VFTestAgents` to true, `VFTestAgent` to `sage`, then
+`VFTestAgent` to `lock`). Without keys or a mouse button, `VFTestButtons` 16384 presses E, 128 the
+left button and 256 the right: set it and clear it again each time. `VFTestAimEntity` set to a
+player's entity id, with `VFTestAimRegion` set to `body`, holds your crosshair on the middle of
+their body, and clearing it lets go: the ids are 4294967295 for player 1, 4294967294 for player 2
+and 4294967293 for player 3. Your `VFLastHeal` attribute is the name of the player you last
+healed. On the course a spent charge comes back 1.5 s after it's spent. Start each check with the
+Vandal in hand.
+
+- **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX and SAGE, and SAGE's reads
+  SENTINEL. Click it: her kit, C BARRIER ORB, Q SLOW ORB and X RESURRECTION dimmed, each with
+  `NOT YET` and its line, and E HEALING ORB lit, with `E readies a healing orb. Fire heals the hurt
+  ally in your crosshair, alt fire heals you, 100 health over 5 s.`; nothing under them, as she has
+  no passive. Click PICK SAGE: the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`. Close it
+  with T. On the ability bar BARRIER ORB, SLOW ORB and RESURRECTION are dimmed with their pips dark,
+  HEALING ORB has its one pip lit, and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. **Send:** a screenshot
+  of Sage's card.
+- **HO2 In hand.** Press E: a quick whoosh, the Vandal goes, and a small green ball comes up over
+  your hand. E's square lights, with `EQUIP` under it for 0.5 s; the HUD reads `Healing Orb   [E]`,
+  with no ammo; E's pip stays lit; and `VFKit` ends in `equip`. You run at the knife's speed,
+  6.75 m/s on the HUD panel (F3).
+- **HO3 Nobody to heal.** With the orb up, click the left button: nothing happens and nothing's
+  heard, the orb stays in hand, E's pip stays lit, and `VFKit` still ends in `equip`. The right
+  button: the same, as you're not hurt. Look at Dummy 1, the static dummy 10 m down the target lane,
+  and click: the same, as it's on nobody's side.
+- **HO4 Put away.** E again: the orb goes and the Vandal comes back with its own draw, and `VFKit`
+  reads `C0/1 Q0/2 E1/1 X0/7`, nothing spent. E, then 1: the same.
+- **HO5 The sounds.** Open the Sound Lab (F2 four times) and press E: it logs `orbEquip` as `yours`
+  as the orb comes up, and clicks with it log nothing. Press 1, and F2 to close the lab.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+SAGE in window 1 (T). Everyone on the course is everyone else's enemy, so there the orb heals nobody
+but its holder. Player 2 stands about 5 m from player 1, where each sees the other.
+
+- **HO6 Healing yourself.** In window 2, shoot player 1 three times in the body with the Vandal
+  (`VFTestAimEntity` 4294967295, then three clicks): window 1's HUD reads 30 health and no shield.
+  In window 1, open the Sound Lab, press E and, once `EQUIP` has gone, the right button: a soft
+  bell, logged as `healChime`, `yours`; the orb goes, and the Vandal's back in hand 0.7 s after the
+  click. Your screen's edge glows green, pulsing, and your health climbs about 20 a second, from 30
+  to 100 in 3.5 s, and stops there; the shield stays empty. The glow goes 5 s after the bell.
+  `VFLastHeal` reads `Player1`. E's pip goes dark, with `45` under it, and lights again 1.5 s later,
+  as the course fills it. In window 2, the bell is heard from player 1, and player 1's blocks glow
+  green, pulsing, for the same 5 s. **Send:** a screenshot of window 1's green edge.
+- **HO7 A hit pauses it.** In window 2, shoot player 1 twice in the body with the Vandal: 20 health.
+  Draw the Classic in window 2 (2). In window 1, heal yourself again (E, then the right button), and
+  about a second after the bell, as window 1 reads about 40, shoot player 1 once in the body with
+  the Classic: 26 off. Window 1's health holds for a second after the hit, then climbs again about
+  20 a second, and stops at 94: all 100 given, the hit's 26 off. The green edge stays through the
+  pause, and goes about 6 s after the bell.
+- **HO8 Not an enemy.** In window 1, shoot player 2 twice in the body with the Vandal
+  (`VFTestAimEntity` 4294967294): window 2 reads 70 health and no shield. Wait for E's pip to light,
+  press E and keep the crosshair on player 2: no green box and no + on them. Click: nothing happens,
+  the orb stays in hand, and window 2 still reads 70. Clear `VFTestAimEntity` in both windows.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1. As round 1's buy phase starts, agent select
+comes up by itself: pick SAGE and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+
+- **HO9 The mark.** Once the round is live, player 3 walks about 5 m out in front of player 1 and
+  stands in the open. In window 1, press E and aim at player 3 (`VFTestAimEntity` 4294967293): no
+  mark, as player 3 isn't hurt, and a click does nothing. Player 2 comes out to where they can see
+  player 3 and shoots them three times in the body with the Vandal: window 3 reads 30 health and no
+  shield, and window 1 at once draws a green box round each of player 3's head, body and legs, and a
+  green + over their head. Clear `VFTestAimEntity` in window 1 and turn away from player 3: the
+  mark goes. Aim at player 3 again: it's back. **Send:** a screenshot of the mark.
+- **HO10 Not behind cover.** Player 3 steps behind cover taller than they are, out of player 1's
+  sight, with window 1 still aimed at them: no mark through it. Click: nothing, and the orb stays in
+  hand.
+- **HO11 Healing an ally.** Player 3 steps back out into player 1's sight, and the mark's back.
+  Click the left button in window 1: a soft bell from player 1 in windows 1 and 3, the orb goes, and
+  the Vandal's back 0.7 s after the click. Player 3's health climbs about 20 a second, from 30 to
+  100 in 3.5 s, and stops there, with no shield. Window 3's screen edge glows green for 5 s, and in
+  window 1 player 3's blocks glow green, pulsing, for those 5 s. `VFLastHeal` reads `Player3`. Under
+  E on window 1's bar, `45` counts down, and while the round's on, E's pip lights again as it
+  reaches 0. **Send:** window 3's health a second after the bell.
+- **HO12 The spike rounds.** Press P twice in window 1 (gun game, then the spike rounds), and as
+  round 1's buy phase starts, pick SAGE and LOCK IN in window 1. E's pip is lit, its charge free,
+  and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. B: Barrier Orb (`C`, 300) and Slow Orb (`Q`, 200) are
+  under the shields, dimmed, each tagged `NOT YET`; pointing at one shows `Not playable yet: it
+  comes with a later system`, and a click buys nothing.
+- **HO13 Team Deathmatch.** Press M in window 1, click the TEAM DEATHMATCH card and PLAY TEAM
+  DEATHMATCH. As the match starts, agent select comes up by itself: pick SAGE and LOCK IN in
+  window 1. Run `VFMatchSkip` once to end the pre-game. Someone on the other side (Tab) shoots
+  player 1 twice in the body with the Classic, and player 1 heals themselves as in HO6: E's pip goes
+  dark with `22` under it, not 45, counting down, and lights again at 0.
+
 ## Results
 
 ```
@@ -2527,6 +2617,17 @@ FW9 Player2 in window 1's VFPlayers while player 3 looked at them: yes / no
 FW10 window 1's VFPlayers matched window 3's: yes / no
 FW11 Player2 in window 1's VFPlayers across the map: yes / no; the shots heard: yes / no
 FW12 the pulse showed everyone behind walls: yes / no
+HO1 anything on Sage's card or the bar that read differently: ___
+HO2 EQUIP for about ___ s; speed with the orb: ___ m/s
+HO3 a click with nobody to heal did anything: yes / no (what)
+HO6 health after the heal: ___; the green edge lasted ___ s; VFLastHeal: ___
+HO7 health after the heal with the Classic's hit: ___
+HO8 player 2 marked or healed: yes / no
+HO9 the mark with player 3 at full health: yes / no; once hurt: yes / no
+HO10 marked or healed behind cover: yes / no
+HO11 player 3's health after: ___; VFLastHeal: ___; the countdown from: ___
+HO12 both tiles NOT YET: yes / no
+HO13 the countdown in Team Deathmatch from: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2751,3 +2852,10 @@ Didn't look right (IDs and what you saw):
 | 35 | Deathmatch's pulse showing everyone as you're back | FW12 |
 | 35 | `VFFogOff` sending everyone; the cost in `VFFogLines` and `VFFogMs` | FW2, FW7 |
 | 35 | A character's root staying where they spawned on the server, nothing else changed | FW6 |
+| 36 | Sage's card in agent select, the Healing Orb alone lit, and her kit on the bar and in the buy menu | HO1, HO12 |
+| 36 | E puts the orb in hand in 0.5 s, `EQUIP` on the bar; a try with nobody to heal leaves it there; E again or a number key puts it away | HO2, HO3, HO4 |
+| 36 | Alt fire with Sage hurt: the chime, the orb away, the gun back 0.7 s later, 20 health a second for 5 s up to the most, no shield, and the green edge | HO5, HO6 |
+| 36 | A hit while healed pausing the heal, which still gives 100 in all | HO7 |
+| 36 | An enemy not healed, nor marked | HO8 |
+| 36 | A third player: the hurt ally marked under the crosshair, not behind cover or on full health; a heal on them, their glow and their green edge; `VFLastHeal`; the 45 s countdown | HO9, HO10, HO11 |
+| 36 | Team Deathmatch's 22 s | HO13 |

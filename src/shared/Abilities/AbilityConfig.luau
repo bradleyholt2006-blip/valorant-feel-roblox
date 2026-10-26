@@ -17,7 +17,7 @@
 -- ultimates that cost more, from kills and Ultimate Orbs. Phoenix is the
 -- second agent (system 30): his Curveball, Hot Hands (system 31), Blaze
 -- (system 32) and Run it Back (system 33) can be played, and his passive,
--- Inner Fire, works.
+-- Inner Fire, works. Sage is the third (system 36), with her Healing Orb.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -123,6 +123,7 @@ AbilityConfig.TeamDeathmatch = {
 	ultimate = {
 		bladestorm = p(60, "community", TDM_WIKI .. "'s ultimate costs: Jett's Blade Storm, 60 points"),
 		runitback = p(70, "community", TDM_WIKI .. "'s ultimate costs: Phoenix's Run it Back, 70 points"),
+		resurrection = p(50, "community", TDM_WIKI .. "'s ultimate costs: Sage's Resurrection, 50 points"),
 	},
 	cooldowns = {
 		cloudburst = p(29, "community", TDM_WIKI .. "'s cooldowns: Jett's Cloudburst, 29 s"),
@@ -131,6 +132,9 @@ AbilityConfig.TeamDeathmatch = {
 		blaze = p(48, "community", TDM_WIKI .. "'s cooldowns: Phoenix's Blaze, 48 s"),
 		hothands = p(54, "community", TDM_WIKI .. "'s cooldowns: Phoenix's Hot Hands, 54 s"),
 		curveball = p(44, "community", TDM_WIKI .. "'s cooldowns: Phoenix's Curveball, 44 s"),
+		barrierorb = p(94, "community", TDM_WIKI .. "'s cooldowns: Sage's Barrier Orb, 94 s"),
+		sloworb = p(51, "community", TDM_WIKI .. "'s cooldowns: Sage's Slow Orb, 51 s"),
+		healingorb = p(22, "community", TDM_WIKI .. "'s cooldowns: Sage's Healing Orb, 22 s"),
 	},
 	signatureStart = p(1, "community", TDM_WIKI .. ": 'Most agents start the match with one full charge of their signature ability'"),
 	headStart = p(
@@ -166,6 +170,9 @@ local BLAZE = "VALORANT Wiki, Blaze"
 local TIDE = "VALORANT Wiki, High Tide"
 local SCREEN = "VALORANT Wiki, Toxic Screen"
 local RUN = "VALORANT Wiki, Run it Back"
+local P1300 = "Patch 13.00"
+local SAGE = "VALORANT Wiki, Sage"
+local ORB = "VALORANT Wiki, Healing Orb"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -250,10 +257,50 @@ AbilityConfig.Defs = {
 		points = p(7, "confirmed", P1302 .. ": 'Ultimate points increased from 6 to 7.'"),
 		description = "Marks where you stand. Die before it's over, or let it run out, and you're back at the mark with full health.",
 	},
+	-- Sage's (system 36): her kit as the VALORANT Wiki lists it. Her Healing
+	-- Orb can be played.
+	barrierorb = {
+		id = "barrierorb",
+		name = "Barrier Orb",
+		slot = AbilityConfig.C,
+		kind = "basic",
+		cost = p(300, "community", SAGE .. ": Barrier Orb, 300 credits"),
+		charges = p(1, "community", SAGE .. ": Barrier Orb, 1 use"),
+		description = "Raises a wall of ice where you aim, which blocks the way until it's broken or melts.",
+	},
+	sloworb = {
+		id = "sloworb",
+		name = "Slow Orb",
+		slot = AbilityConfig.Q,
+		kind = "basic",
+		cost = p(200, "community", SAGE .. ": Slow Orb, 200 credits"),
+		charges = p(2, "community", SAGE .. ": Slow Orb, 2 uses"),
+		description = "Throws an orb that bursts into a field of ice, slowing everyone in it.",
+	},
+	healingorb = {
+		id = "healingorb",
+		name = "Healing Orb",
+		slot = AbilityConfig.E,
+		kind = "signature",
+		charges = p(1, "community", SAGE .. ": Healing Orb, 1 use, free"),
+		free = 1,
+		recharge = { kind = "cooldown", seconds = p(45, "confirmed", P100 .. ": 'Healing Orb cooldown increased 35 >>> 45 seconds'") },
+		weapon = "healorb",
+		description = "E readies a healing orb. Fire heals the hurt ally in your crosshair, alt fire heals you, 100 health over 5 s.",
+	},
+	resurrection = {
+		id = "resurrection",
+		name = "Resurrection",
+		slot = AbilityConfig.X,
+		kind = "ultimate",
+		points = p(7, "confirmed", P910 .. ": Resurrection 'Ult Cost 8 >>> 7'"),
+		description = "Brings a fallen ally you can see back to life, with full health.",
+	},
 } :: { [string]: AbilityDef }
 
 -- The roles are Riot's: 'Duelist', on playvalorant.com's pages for Jett and
--- for Phoenix.
+-- for Phoenix, and Sage's in Patch 1.01: 'As a Sentinel, Sage is supposed
+-- to be most effective when defending territory that she already controls.'
 AbilityConfig.Agents = {
 	jett = {
 		id = "jett",
@@ -268,6 +315,12 @@ AbilityConfig.Agents = {
 		role = "Duelist",
 		abilities = { "blaze", "hothands", "curveball", "runitback" },
 		passive = "innerfire",
+	},
+	sage = {
+		id = "sage",
+		name = "Sage",
+		role = "Sentinel",
+		abilities = { "barrierorb", "sloworb", "healingorb", "resurrection" },
 	},
 } :: { [string]: Agent }
 
@@ -287,8 +340,8 @@ AbilityConfig.NO_AGENT = ""
 
 -- The agents' ids by index, and each id's index, for the wire (0 for no
 -- agent's kit).
-AbilityConfig.AgentIds = { "jett", "phoenix" }
-AbilityConfig.AgentIndex = { jett = 1, phoenix = 2 } :: { [string]: number }
+AbilityConfig.AgentIds = { "jett", "phoenix", "sage" }
+AbilityConfig.AgentIndex = { jett = 1, phoenix = 2, sage = 3 } :: { [string]: number }
 
 -- The ability an agent has in a slot, if any.
 function AbilityConfig.abilityOf(agent: string, slot: number): AbilityDef?
@@ -570,13 +623,46 @@ AbilityConfig.RunItBack = {
 	grace = p(1, "estimate", "Ours: so moves held back can't keep him out of play for long"),
 }
 
+-- Sage's Healing Orb (system 36): E puts the orb in hand (WeaponConfig's
+-- healorb, in the fifth slot, as the flare is). Fire with the crosshair over
+-- a hurt ally heals them, and alt fire heals her, if she's hurt; a try that
+-- finds nobody to heal leaves it in hand. The server judges each try from
+-- what her screen showed (HealServer), and as one takes, spends the charge
+-- and puts the orb away. The heal gives health alone, a little at a time up
+-- to the most, over its duration, and stops for a moment each time they're
+-- hurt. Riot gives the heals, their time and the cooldown, the wiki the
+-- rest it gives; how near the crosshair has to be is ours (36-healing-orb.md,
+-- section 2).
+AbilityConfig.HealingOrb = {
+	-- From the heal until the gun's back in hand.
+	unequip = p(0.7, "community", ORB .. ": 'Unequip' 0.7 seconds"),
+	-- The health each heal gives in all, over its duration.
+	allyHeal = p(100, "confirmed", P512 .. ": 'Ally heal total amount increased 60HP>>> 100HP'"),
+	selfHeal = p(100, "confirmed", P1300 .. ": 'Self Heal-Over-Time has increased from 50 to 100.'"),
+	duration = p(
+		5,
+		"confirmed",
+		P910 .. ": the self heal's 'Heal time matched to ally heal at around 5 seconds' (" .. ORB .. ": 'Duration' 5 seconds)"
+	),
+	-- How long a heal stops for each time its target's hurt, its time
+	-- stopping with it, so it still gives all it has.
+	pause = p(1, "estimate", "Ours: " .. ORB .. ": 'The healing effect is briefly paused if the target takes damage', with no number"),
+	-- How far off a body the crosshair can be and still be over it, and how
+	-- far away an ally can be.
+	width = p(0.4, "estimate", "Ours, metres: the body's half width (Hitboxes, 0.22 m) and a little more, so it needn't be on it exactly"),
+	reach = p(60, "estimate", "Ours, metres: about a map's longest sightline; " .. ORB .. ": an ally 'must be in Sage's line of sight'"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
--- for Blaze, after its run's let go).
+-- for Blaze, after its run's let go, and for the Healing Orb, after its
+-- heal).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
 	elseif id == "blaze" then
 		return AbilityConfig.Blaze.unequip.value
+	elseif id == "healingorb" then
+		return AbilityConfig.HealingOrb.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

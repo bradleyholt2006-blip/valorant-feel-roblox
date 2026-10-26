@@ -273,6 +273,14 @@ function RemoteEntities.nameOf(id: number): string
 	return if player then player.Name else tostring(id)
 end
 
+-- The model an entity's drawn as, while it's drawn (Sage's Healing Orb
+-- marks the ally it would heal, and glows on whoever it's healing, system
+-- 36).
+function RemoteEntities.modelOf(id: number): Model?
+	local visual = visuals[id]
+	return if visual and visual.model.Parent then visual.model else nil
+end
+
 -- How evenly an entity has moved on screen over the last second, or nil
 -- until it has been drawn for a few frames.
 function RemoteEntities.motion(id: number): MotionMeter.Reading?

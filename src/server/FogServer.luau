@@ -78,7 +78,8 @@ local inPlayBySide: { [number]: { FogOfWar.Who } } = {}
 local earsBySide: { [number]: { vector } } = {}
 
 -- Whether the level is in the way from `a` to `b` (metres): what bodies go
--- through is, and the barriers aren't.
+-- through is, and the barriers aren't. Sage's Healing Orb looks for an
+-- ally in sight past it too (system 36).
 local function blocked(a: vector, b: vector): boolean
 	local from = Units.toStuds(a)
 	local along = Units.toStuds(b) - from
@@ -94,6 +95,7 @@ local function blocked(a: vector, b: vector): boolean
 	end
 	return true
 end
+FogServer.blocked = blocked
 
 -- Every entity the snapshots show, where they show it, with its side and
 -- velocity.
