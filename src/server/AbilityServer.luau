@@ -32,10 +32,11 @@
 --     the kit starting over as the mode starts one, or with their next life
 -- Each cast is told to every client (the Ability remote) for its sound and
 -- look, when the frame on their screen reaches it, but Blade Storm's knives
--- drawn again and Curveball's flare put in hand (system 30), which others see
--- in hand. The caster's own client has predicted it already. Each kit is a
--- player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
--- writes it), which scripted checks read.
+-- drawn again and an ability put in hand (Curveball's flare, system 30; Hot
+-- Hands' fireball, system 31), which others see in hand. The caster's own
+-- client has predicted it already. Each kit is a player attribute
+-- (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary writes it), which
+-- scripted checks read.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

@@ -236,8 +236,9 @@ function CombatHud.start()
 			local w = sim.weapons
 			local def = PlayerSim.def(sim)
 			local slot = w.equipped
-			-- An ability's weapon (Curveball's flare, system 30) has its key, and
-			-- its charges are the ability bar's.
+			-- An ability's weapon (Curveball's flare, system 30; Hot Hands'
+			-- fireball, system 31) has its key, and its charges are the ability
+			-- bar's.
 			local ability = if def.ability then AbilityConfig.Defs[def.ability] else nil
 			ammoText.Text = if def.fireMode == "none" or ability
 				then ""

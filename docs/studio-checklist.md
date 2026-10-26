@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty
+Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-one
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes a little over five hours. Doing it in parts is fine; keep the order.
@@ -29,7 +29,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 4. Press Play (F5). Sections 1 to 8 need one player, section 9 needs two, and sections 10 to 14
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
-   three, section 33 one and then three, and section 34 one and then two.
+   three, section 33 one and then three, section 34 one and then two, and section 35 one, then two,
+   then three for its last check.
 
 | Key | What it does |
 | --- | --- |
@@ -50,7 +51,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
 | Click a map | During the vote for the next map, after a match in the arena or the spike rounds: votes for it, or moves your vote to it |
-| C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes. As Phoenix, E readies Curveball's flare: the left button throws it curving left, the right curving right, and E again puts it away |
+| C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes. As Phoenix, E readies Curveball's flare: the left button throws it curving left, the right curving right, and E again puts it away; and Q readies Hot Hands' fireball: the left button throws it, the right lobs it, and Q again puts it away |
 | X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again |
 | Space | Jump; held in the air, Jett's glide (Drift) slows the fall until you land or let go |
 | Backspace | Clear impact marks, the shot log, the lab counters, the spray plot, and the Counter-Strafe Lab's stops and the Sound Lab's log while they're open |
@@ -1805,13 +1806,13 @@ white ends and when it's gone, in server time, and it's unset once your screen i
 spent charge comes back 1.5 s after it's done. The numbers below are for throws from the spawn,
 facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 
-- **CB1 Phoenix.** In agent select, PHOENIX's card reads DUELIST. Its kit: C BLAZE, Q HOT HANDS
-  and X RUN IT BACK, each `NOT YET` and dimmed; E CURVEBALL, lit, with its line; and last
-  `INNER FIRE   PASSIVE   NOT YET`, dimmed, with `His own fire heals him, where it would burn
+- **CB1 Phoenix.** In agent select, PHOENIX's card reads DUELIST. Its kit: C BLAZE and X RUN IT
+  BACK, each `NOT YET` and dimmed; Q HOT HANDS (system 31) and E CURVEBALL, lit, each with its
+  line; and last `INNER FIRE   PASSIVE`, lit, with `His own fire heals him, where it would burn
   anyone else.` Click PICK PHOENIX: the button reads `PLAYING PHOENIX`, and `VFAgent` reads
-  `phoenix`. Close it with T. The ability bar has BLAZE, HOT HANDS and RUN IT BACK dimmed, and
-  CURVEBALL with both its pips lit, and `VFKit` reads `C0/1 Q0/1 E2/2 X0/7`. **Send:** a
-  screenshot of Phoenix's card.
+  `phoenix`. Close it with T. The ability bar has BLAZE and RUN IT BACK dimmed, HOT HANDS with its
+  pip lit and CURVEBALL with both its pips lit, and `VFKit` reads `C0/1 Q1/1 E2/2 X0/7`.
+  **Send:** a screenshot of Phoenix's card.
 - **CB2 In hand.** Press E: a quick, quiet whoosh, the Vandal goes, and a small orange orb comes up
   in your hand. E's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
   `Curveball   [E]`, with no ammo; both of E's pips stay lit; and `VFKit` ends in `equip`. You
@@ -1867,13 +1868,113 @@ window 1.
   out a second later. **Send:** a screenshot of the glow in front of player 2's face.
 - **CB12 The spike rounds.** Press P twice more in window 1 (gun game, then the spike rounds), and
   as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: under the shields,
-  Blaze (`C`, 150) and Hot Hands (`Q`, 200), dimmed, and Curveball (`E`, 250) with one of its two
-  pips lit, the round's free charge, and every tile inside the menu. Pointing at Curveball shows
+  Blaze (`C`, 150), dimmed, Hot Hands (`Q`, 200), lit (section 35 has more of it), and Curveball
+  (`E`, 250) with one of its two pips lit, the round's free charge, and every tile inside the
+  menu. Pointing at Curveball shows
   `Ability, on E`, its line, and rows for `Charges` (`up to 2`), `A charge` (`250 credits`), `Pop`
   (`0.6 s after the throw`), `Blind` (`up to 1.5 s, then 1 s clearing`) and `A charge back`
   (`every 2 kills`). Click it: the credits go from 800 to 550, both its pips light and it shows
-  `FULL`, and `VFKit` reads `E2/2`; right-click it: back to 800. A click on Blaze or Hot Hands
-  does nothing. **Send:** a screenshot of the menu.
+  `FULL`, and `VFKit` reads `E2/2`; right-click it: back to 800. A click on Blaze does nothing.
+  **Send:** a screenshot of the menu.
+
+## 35. Hot Hands
+
+From [31-hot-hands.md](research/31-hot-hands.md). One player on the course, then two on the course
+and in the spike rounds, and three for the last check, which can be skipped. Play as Phoenix, as in
+section 34. Without keys or a mouse button, `VFTestButtons` 8192 presses Q, 16384 E, 128 the left
+button and 256 the right: set it and clear it again each time. `VFTestYaw` and `VFTestPitch` aim, in
+degrees: positive yaw turns left, and positive pitch looks up. As each fireball bursts, your
+`VFLastFire` attribute is the floor under it, where the server has it, in metres.
+`Workspace.VFFires` holds a glowing `Fireball` ball for each fireball in the air, a `Burst` while
+one flashes, and a `Fire` model for each fire while it burns. On the course a spent charge comes
+back 1.5 s after it's spent. Dummy 3 is the crouching dummy on the 20 m stripe, 2 m to the left, and
+Dummy 7 the one behind the low wall at 21 m on the right. The numbers below are for throws from the
+spawn, facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **HH1 His kit.** In agent select (T), PHOENIX's card has Q HOT HANDS lit, with `Q readies a
+  fireball. Fire throws it, alt fire lobs it; it bursts into fire that burns enemies and heals
+  you.`, and `INNER FIRE   PASSIVE` lit, with no `NOT YET`. C BLAZE and X RUN IT BACK are still
+  `NOT YET` and dimmed. On the ability bar HOT HANDS is lit with its one pip, and `VFKit` reads
+  `C0/1 Q1/1 E2/2 X0/7`.
+- **HH2 In hand.** Press Q: a soft whoosh, the Vandal goes, and a ball of fire with a flame on top
+  comes up in your hand. Q's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
+  `Hot Hands   [Q]`, with no ammo; Q's pip stays lit; and `VFKit` ends in `equip`. You run at the
+  knife's speed, 6.75 m/s on the HUD panel (F3).
+- **HH3 Thrown.** With it drawn, press the left button: a low swish, and a glowing orange ball
+  leaves your eye, falling gently, and a second after the throw bursts with a flash and a deep thump
+  on the floor a little short of the 20 m stripe. Orange fire spreads over the floor from it to 9 m
+  across in 0.75 s, with flames rising on it, its glow and a crackle, and 4 s after the burst it's
+  gone at once. `VFLastFire` reads about `(0.00, 0.00, -18.30)`. The Vandal is back in hand 0.7 s
+  after the throw, and Q's pip goes dark (`Q0/1`) and lights again 1.5 s later. 0.4 s after the
+  burst the fire reaches Dummy 3: its label counts down from `100 + 50`, 60 a second in all, and it
+  dies about 2.5 s later, the kill feed reading `<your name>   HOT HANDS   Dummy 3`. Dummy 2,
+  strafing at 15 m, is at the fire's edge and burns only while it's in it. **Send:** a screenshot of
+  the fire at its full size.
+- **HH4 Lobbed.** Q, then the right button: an underhand lob, slower, bursting about 6.4 m ahead a
+  second after the throw. `VFLastFire` reads about `(0.00, 0.00, -6.41)`, and the fire stops about
+  2 m short of you.
+- **HH5 Thrown up.** Set `VFTestPitch` to 30, then Q and the left button: it climbs, and 1.5 s after
+  the throw, about 12 m up and 23 m out, it stops going forward and drops straight down, bursting
+  3 s after the throw. `VFLastFire` reads about `(0.00, 0.00, -23.38)`. Again with the right button:
+  it stops about 3 m up and 8 m out, falls, and bursts 2.2 s after the throw, at about
+  `(0.00, 0.00, -8.18)`. Set `VFTestPitch` back to 0.
+- **HH6 At your feet.** Set `VFTestPitch` to -60 and throw with the left button: it bursts at once
+  just in front of you, at about `(0.00, 0.00, -0.87)`, and you stand in its fire for its 4 s. Your
+  health stays at 100 and your shield at 50, your screen's edge doesn't glow, and nothing goes in
+  the kill feed. Set `VFTestPitch` back to 0.
+- **HH7 Against the low wall.** Set `VFTestYaw` to -21 and `VFTestPitch` to 3, and throw with the
+  left button: the fireball flies at the low wall, comes back off its face, and bursts about 2.3 m
+  in front of it, 1.5 s after the throw, at about `(8.78, 0.00, -18.52)`. Its fire stops at the
+  wall's face and doesn't go behind it, and Dummy 7, behind the wall 3.6 m from the burst, well
+  inside the fire's 4.5 m, doesn't burn. Set both back to 0. **Send:** a screenshot of the fire
+  against the wall.
+- **HH8 Put away.** Q, then Q again before throwing: the ball goes and the Vandal comes back with
+  its own draw, nothing is thrown, and `VFKit` reads `Q1/1` with no `equip`. Q, then 1: the same. Q,
+  then E: the flare comes up in its place, with `EQUIP` under E; then Q: the fireball again, in
+  place of the flare. Nothing's spent, `Q1/1` and `E2/2`; press 1 to put it away.
+- **HH9 The sounds.** Open the Sound Lab (F2 four times) and throw as in HH3: it logs
+  `fireballEquip` as `yours` as the fireball comes up, `fireballThrow` as `yours` at the throw,
+  `fireBurst` from `you` about 18.4 m away, and `fireCrackle` from `you` every half second while the
+  fire burns.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+PHOENIX in window 1 (T). Everyone on the course is everyone else's enemy.
+
+- **HH10 Others' fireballs, and the burn.** In window 2, walk about 6 m down the target lane from
+  the spawn and stand still. In window 1, at the spawn with the view level, lob it: Q, then the
+  right button. Window 2 hears the swish from player 1, sees the ball come from them and burst at
+  player 2's feet with a thump, and the fire spread round them. Window 2's screen's edge glows
+  orange, and its health and shield fall together, 60 a second in all. Jump in it: the burn and the
+  glow go on, as no jump clears it. Stand still, and player 2 dies about 2.5 s after the burst; both
+  kill feeds read `Player1   HOT HANDS   Player2`. Once player 2 is back, do it again and walk out
+  of the fire: the burn and the glow stop as they leave it. Then player 2 stands in the middle of
+  the 0.35 m step, the middle of the three behind the spawn on the left. In window 1, at the spawn,
+  set `VFTestYaw` to 120 and `VFTestPitch` to -10 and throw with the left button: it bursts about
+  3.6 m short of the step's middle, at about `(-6.26, 0.00, 3.62)`, and its fire burns player 2 on
+  the step, too low to stop it. The fire is drawn flat at the burst's height, so it runs out of
+  sight under the step (one of the known gaps). Set both back to 0. **Send:** a screenshot of
+  window 2's glowing edge.
+- **HH11 Inner Fire.** In window 2, shoot player 1 three times in the body with the Vandal:
+  window 1's HUD reads 30 health and no shield. In window 1, throw at your feet (`VFTestPitch` -60,
+  the left button) and stay in the fire: your health climbs about 12 a second, from 30 to 80 over
+  the 4 s after the burst, and stops there, 50 in all. Player 2 shoots once more (40 health); throw
+  at your feet again, and step out of the fire a second after the burst: the heal goes on to 90 all
+  the same. Once more (50 health), staying in the fire: the heal stops at 100, and the shield stays
+  empty. Set `VFTestPitch` back to 0.
+- **HH12 The spike rounds.** Press P three times in window 1 (Skirmish, gun game, then the spike
+  rounds), and as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: between Blaze
+  (`C`, 150), still dimmed, and Curveball, Hot Hands (`Q`, 200) is lit now, with its one pip dark,
+  as no charge of it comes free. Pointing at it shows `Ability, on Q`, its line, and rows for
+  `Charges` (`up to 1`), `A charge` (`200 credits`), `Fire` (`9 m across, for 4 s`), `Burn`
+  (`60 a second`) and `Heals you` (`50 over 4 s, Inner Fire`). Click it: the credits go from 800 to
+  600, its pip lights and it shows `FULL`, and `VFKit` reads `Q1/1`; right-click it: back to 800 and
+  `Q0/1`. A click on Blaze does nothing. **Send:** a screenshot of the menu.
+- **HH13 Allies.** This one needs three players, and can be skipped. Stop the game, start a Local
+  Server with 3 players, and press P three times in window 1 for the spike rounds. In round 1's buy
+  phase, pick PHOENIX and LOCK IN in window 1, and buy Hot Hands. Tab shows who's on player 1's
+  side. After the buy phase, that teammate stands about 6 m in front of player 1, and player 1 lobs
+  at their feet as in HH10: their health falls about 20 a second, a third as fast as player 2's did
+  in HH10, and their screen's edge glows the same.
 
 ## Results
 
@@ -2010,6 +2111,18 @@ CB9 window 2 saw it and was blinded: yes / no; window 1 too: yes / no
 CB10 round the corner, window 2 blinded: yes / no; window 1 blinded: yes / no
 CB11 the glow in front of the face, then behind the head: yes / no
 CB12 every tile inside the menu: yes / no; Curveball bought and sold back: 800 > ___ > ___
+HH1 anything on Phoenix's card or the bar that read differently: ___
+HH3 VFLastFire: ___; the fire out ___ s after the burst; the Vandal back ___ s after the throw; Dummy 3: died / lived
+HH4 VFLastFire: ___
+HH5 thrown up, VFLastFire: ___; lobbed: ___
+HH6 VFLastFire: ___; health and shield after its 4 s: ___ + ___
+HH7 VFLastFire: ___; the fire went behind the low wall: yes / no; Dummy 7 burned: yes / no
+HH8 Q again put it away with nothing spent: yes / no; E and Q swapped them in hand: yes / no
+HH9 the Sound Lab's four lines: ___
+HH10 player 2 died ___ s after the burst; a jump got them out: yes / no; burned on the step: yes / no
+HH11 healed from 30 to ___; after stepping out, to ___; from 50, stopped at ___
+HH12 every tile inside the menu: yes / no; Hot Hands bought and sold back: 800 > ___ > ___
+HH13 the teammate lost ___ a second (or not tried)
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2200,3 +2313,9 @@ Didn't look right (IDs and what you saw):
 | 30 | The flare's flight: straight, then round a quarter turn, popping 0.6 s after the throw, about 3.5 m ahead and 4.7 m to the side on the course; stopped where it meets the floor or a wall | CB3, CB4, CB6 |
 | 30 | The blind: white and clearing, longer looking at it and shorter turned away, none behind a wall; the shrinking core | CB3, CB5, CB10 |
 | 30 | A second player: the throw and the pop heard, the flare seen in the air, the blind on whoever sees it, and the glow on a blinded player's face, then behind their head | CB9, CB10, CB11 |
+| 31 | Hot Hands and Inner Fire lit on Phoenix's card, the bar and the buy menu, Hot Hands for sale at 200 | HH1, HH12, CB1, CB12 |
+| 31 | Q draws the fireball in 0.8 s, `EQUIP` on the bar; the left button throws it and the right lobs it, and the gun is back 0.7 s later; Q again, or a number key, puts it away, and E swaps it for the flare | HH2, HH3, HH4, HH8 |
+| 31 | The flight: a level throw bursting about 18 m ahead on the course, a lob about 6.4 m; one into a wall coming back off it; one thrown up dropping straight down once its 1.5 s are up | HH3, HH4, HH5, HH7 |
+| 31 | The fire: spreading to 9 m across over 0.75 s, stopped by a crate but not by a kerb, out after 4 s; a dummy standing in it burns and dies, `HOT HANDS` in the kill feed | HH3, HH7, HH10 |
+| 31 | Inner Fire: Phoenix hurt, then standing in his own fire, heals 50 over 4 s and takes no damage | HH6, HH11 |
+| 31 | A second player: the throw heard and seen, the fire burning them as an enemy, a third as fast on Phoenix's side, and the orange glow at their screen's edge | HH10, HH13 |

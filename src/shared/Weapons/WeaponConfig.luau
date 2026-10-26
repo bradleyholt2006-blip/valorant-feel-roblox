@@ -31,8 +31,9 @@ export type CurveParam = { points: Curve, status: Status, source: string }
 -- "spike" is the spike (system 12), carried in the fourth slot and never sold.
 -- "ultimate" is an ultimate's weapon (system 19: Jett's Blade Storm knives),
 -- in the fifth slot while the ultimate lasts, and never sold either.
--- "ability" is an ability's (system 30: Phoenix's Curveball flare), in the
--- fifth slot while it's in hand, and never sold.
+-- "ability" is an ability's (system 30: Phoenix's Curveball flare; system
+-- 31: his Hot Hands fireball), in the fifth slot while it's in hand, and
+-- never sold.
 export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike" | "ultimate" | "ability"
 
 export type AccuracyDef = {
@@ -151,9 +152,10 @@ export type WeaponDef = {
 	-- An ultimate's weapon (system 19): put in hand by its cast, and never
 	-- bought, dropped or reloaded (WeaponSim.arm).
 	ultimate: boolean?,
-	-- An ability's weapon (system 30: Curveball's flare): the AbilityConfig
-	-- id whose cast puts it in hand in the fifth slot. Like an ultimate's,
-	-- never bought, dropped or reloaded, and gone once it's out of hand.
+	-- An ability's weapon (system 30: Curveball's flare; system 31: Hot Hands'
+	-- fireball): the AbilityConfig id whose cast puts it in hand in the fifth
+	-- slot. Like an ultimate's, never bought, dropped or reloaded, and gone
+	-- once it's out of hand.
 	ability: string?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
@@ -613,6 +615,36 @@ local flareRight: AltDef = {
 	ammo = p(1, "community", CURVE .. ": 2 uses, a flare each"),
 	accuracy = flareExact,
 	recoil = FLARE_KICK,
+}
+
+-- Phoenix's Hot Hands fireball (system 31): thrown along the crosshair and
+-- flown by FireballSim, as the flare is by FlareSim, so no spread or kick
+-- moves it either. Alt fire lobs it.
+local HOT = "VALORANT Wiki, Hot Hands"
+local BALL_FLOWN = "n/a: FireballSim flies it from the crosshair"
+local BALL_NA = p(0, "estimate", BALL_FLOWN)
+local fireballExact = accuracy(
+	c({ { 1, 0 } }, "estimate", BALL_FLOWN),
+	p(1, "estimate", BALL_FLOWN),
+	p(0.1, "estimate", BALL_FLOWN),
+	p(1, "estimate", BALL_FLOWN),
+	{ crouch = BALL_NA, walk = BALL_NA, run = BALL_NA, air = BALL_NA }
+)
+fireballExact.landError = BALL_NA
+local FIREBALL_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a thrown fireball doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = BALL_NA,
+	adsCamera = BALL_NA,
+})
+local fireballLob: AltDef = {
+	fireMode = "auto",
+	fireRate = ONE_THROW,
+	pellets = p(1, "community", HOT .. ": 'ALT FIRE to lob'"),
+	ammo = p(1, "community", HOT .. ": 1 use, a fireball"),
+	accuracy = fireballExact,
+	recoil = FIREBALL_KICK,
 }
 
 WeaponConfig.Defs = {
@@ -1431,12 +1463,41 @@ WeaponConfig.Defs = {
 		accuracy = flareExact,
 		recoil = FLARE_KICK,
 	},
+	-- Phoenix's Hot Hands fireball (system 31): put in hand in the fifth slot
+	-- by Q (AbilityConfig.HotHands), as the flare is by E. Fire throws it and
+	-- alt fire lobs it; PlayerSim turns the throw into the ability's cast,
+	-- which FireballSim flies, so it fires no bullet. Where it bursts, its
+	-- fire burns (FireSim), as this weapon for the kill feed; the ball itself
+	-- hurts nobody.
+	fireball = {
+		id = "fireball",
+		name = "Hot Hands",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought: Q puts it in hand, the charge of Hot Hands (" .. HOT .. ")"),
+		-- Held, it goes as soon as it's in hand (ours, as the flare).
+		fireMode = "auto",
+		fireRate = ONE_THROW,
+		magazine = p(1, "community", HOT .. ": 1 use, a fireball"),
+		reserve = p(0, "community", "None: another throw is another charge (" .. HOT .. ": 1 use)"),
+		reloadTime = BALL_NA,
+		equipTime = p(0.8, "community", HOT .. ": 'Equip' 0.8 seconds"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: its fire burns (" .. HOT .. "), and the ball itself hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "hothands",
+		alt = fireballLob,
+		accuracy = fireballExact,
+		recoil = FIREBALL_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
 -- they always were, the rest in alphabetical order after them, the spike
--- after those, then Blade Storm's knives (system 19), and Curveball's flare
--- (system 30) last.
+-- after those, then Blade Storm's knives (system 19), Curveball's flare
+-- (system 30) and Hot Hands' fireball (system 31) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1462,6 +1523,7 @@ WeaponConfig.Ids = {
 	"spike",
 	"kunai",
 	"flare",
+	"fireball",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

@@ -27,7 +27,11 @@
 -- charge: a weapon of its own in WeaponSim's fifth slot, which PlayerSim
 -- puts there. Fire or alt fire throws it once it's in hand, which spends
 -- the charge (thrown), and E again, or drawing anything else, puts it away
--- unthrown. FlareSim flies it.
+-- unthrown. FlareSim flies it. His Hot Hands (Q, system 31) puts its
+-- fireball in hand the same way, in place of the flare if that's there:
+-- fire throws it and alt fire lobs it, FireballSim flies it and FireSim
+-- burns where it bursts. And his passive, Inner Fire, has that fire heal
+-- him (FireSim too).
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -68,17 +72,20 @@ export type State = {
 	-- The ultimate under way (Blade Storm): its knives are carried.
 	-- PlayerSim ends it when they're gone.
 	storm: boolean,
-	-- The slot whose ability is in hand (Curveball's flare, system 30), 0
-	-- for none. PlayerSim puts it away when the hand goes elsewhere.
+	-- The slot whose ability is in hand (Curveball's flare, system 30, or
+	-- Hot Hands' fireball, system 31), 0 for none. PlayerSim puts it away
+	-- when the hand goes elsewhere.
 	holding: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
 -- "ready", "dash", "throw", "storm" (Blade Storm cast), "draw" (its knives
--- drawn again), "equip" (Curveball's flare put in hand) or "flare" (thrown),
--- where the player's feet and eye were, and the way it goes (the dash's
--- way, up for a lift, the way they faced for a readied gust, the way they
--- looked for the rest). A flare's says which way round it curves.
+-- drawn again), "equip" (an ability put in hand), "flare" (Curveball's
+-- thrown) or "fireball" (Hot Hands' thrown), where the player's feet and
+-- eye were, and the way it goes (the dash's way, up for a lift, the way
+-- they faced for a readied gust, the way they looked for the rest). A
+-- flare's says which way round it curves, and a fireball's whether it was
+-- lobbed.
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -89,6 +96,7 @@ export type Cast = {
 	origin: vector,
 	direction: vector,
 	curve: number?, -- a flare's: -1 round to the left, 1 to the right
+	lob: boolean?, -- a fireball's: thrown underhand, by alt fire
 }
 
 local AbilitySim = {}
@@ -112,10 +120,19 @@ local PLAYABLE: { [string]: boolean } = {
 	bladestorm = true,
 	drift = true,
 	curveball = true,
+	hothands = true,
+	innerfire = true,
 }
 
 function AbilitySim.playable(id: string): boolean
 	return PLAYABLE[id] == true
+end
+
+-- Whether an ability is one its key puts in hand, to be thrown from there
+-- (Curveball's flare, Hot Hands' fireball): a weapon of its own, outside
+-- the ultimate.
+local function held(def: AbilityConfig.AbilityDef?): boolean
+	return def ~= nil and def.weapon ~= nil and def.kind ~= "ultimate" and PLAYABLE[def.id] == true
 end
 
 -- A new kit for `agent` (by default AbilityConfig.DEFAULT_AGENT): the
@@ -340,8 +357,9 @@ end
 -- The kit in a few characters, for the server to tell clients (scripted
 -- checks read it): each slot's charges and most, the ultimate's points and
 -- what they need, and what's under way at `t`, as "C0/2 Q1/1 E0/1 X3/8
--- ready", or "X0/8 storm" in Blade Storm, "equip" with Curveball's flare in
--- hand, and "glide" while `gliding` (the movement's, for Drift).
+-- ready", or "X0/8 storm" in Blade Storm, "equip" with an ability in hand
+-- (Curveball's flare, Hot Hands' fireball), and "glide" while `gliding`
+-- (the movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -391,11 +409,12 @@ function AbilitySim.carried(s: State): string
 	return if def and def.weapon then def.weapon else ""
 end
 
--- The ability in hand thrown (Curveball's flare, which WeaponSim fires as
--- PlayerSim has it): its charge spent, and its cast, from `origin` (the eye)
--- the way `aim` points, round the way `curve` says (-1 left, 1 right). Nil
+-- The ability in hand thrown (WeaponSim fires it as PlayerSim has it): its
+-- charge spent, and its cast, from `origin` (the eye) the way `aim` points.
+-- `alt` says alt fire threw it: Curveball's flare goes round to the right
+-- then, and to the left otherwise, and Hot Hands' fireball is lobbed. Nil
 -- with nothing in hand to throw.
-function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, origin: vector, aim: vector, curve: number): Cast?
+function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, origin: vector, aim: vector, alt: boolean): Cast?
 	local slot = s.holding
 	s.holding = 0
 	local def = if slot ~= 0 then AbilitySim.def(s, slot) else nil
@@ -403,7 +422,7 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		return nil
 	end
 	s.charges[slot] -= 1
-	return {
+	local cast: Cast = {
 		slot = slot,
 		ability = def.id,
 		kind = "flare",
@@ -412,8 +431,14 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		position = feet,
 		origin = origin,
 		direction = aim,
-		curve = if curve < 0 then -1 else 1,
 	}
+	if def.id == "hothands" then
+		cast.kind = "fireball"
+		cast.lob = alt
+	else
+		cast.curve = if alt then 1 else -1
+	end
+	return cast
 end
 
 -- The ticks something lasting `duration` from a tick runs for, that tick
@@ -555,11 +580,12 @@ function AbilitySim.step(
 					origin = eye,
 					direction = aim,
 				})
-			elseif id == "curveball" and s.holding == slot then
-				-- E again: the flare goes away unthrown (PlayerSim).
+			elseif held(def) and s.holding == slot then
+				-- Its key again: what's in hand goes away unthrown (PlayerSim).
 				s.holding = 0
-			elseif id == "curveball" and s.holding == 0 and not s.storm and s.charges[slot] > 0 then
-				-- The flare in hand (PlayerSim); its charge goes as it's thrown.
+			elseif held(def) and not s.storm and s.charges[slot] > 0 then
+				-- In hand (PlayerSim), in place of any other ability there; its
+				-- charge goes as it's thrown.
 				s.holding = slot
 				local aim = Accuracy.aim(input.yaw, input.pitch)
 				started({
