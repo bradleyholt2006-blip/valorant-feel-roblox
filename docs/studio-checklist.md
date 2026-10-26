@@ -2686,8 +2686,8 @@ the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
   Vandal's back 1 s later; X's pips go dark (`X0/7`) and light again 1.5 s after the chime. 2 s
   after the chime, a sharp crack, logged as `reviveBurst`: the shell bursts in chips of crystal that
   fall and fade, the body and its disc are gone, and Dummy 1 stands where it stood, dropping the 0.5
-  m to the floor. The kill feed reads your name, `Resurrection` in teal, then `Dummy 1 (static)`.
-  Press F2 to close the Sound Lab. **Send:** a screenshot of the shell as it rises.
+  m to the floor. The kill feed reads your name, `Resurrection` in teal, then `Dummy 1`, as it names
+  dummies. Press F2 to close the Sound Lab. **Send:** a screenshot of the shell as it rises.
 - **RE7 No shield.** Set `VFTestPitch` to -3 and fire single shots at Dummy 1: the third fells it,
   where the fourth did in RE3, as it came back with no shield. 2 s later it stands again, its shield
   back.
