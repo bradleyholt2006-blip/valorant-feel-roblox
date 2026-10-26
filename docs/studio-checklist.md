@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-two
+Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-four
 research docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about five and a half hours. Doing it in parts is fine; keep the order.
+It takes about six hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -30,7 +30,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
    three, section 33 one and then three, section 34 one and then two, sections 35 and 36 one,
-   then two, then three for their last check, and section 37 one and then two.
+   then two, then three for their last check, section 37 one and then two, and section 38 one,
+   then two, then three.
 
 | Key | What it does |
 | --- | --- |
@@ -58,7 +59,8 @@ Fill in the results block at the end of this page and reply with it, plus:
 | 1 / 2 / 3 | Vandal / Classic / knife (the starting loadout); with the knife, the left button slashes and the right stabs |
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
 | B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game; in deathmatch any time, guns alone; in Team Deathmatch the loadout menu instead, before the match or in your spawn room) |
-| O | The settings menu: your sensitivity and crosshair |
+| O | The settings menu: your sensitivity, crosshair and the minimap's settings |
+| Caps Lock | Held: the big map, in a match (the minimap at the top left is only in a match) |
 | T | Agent select: a card for each agent, its kit, your side's picks and LOCK IN (on the course and while waiting any time, and in a match, where it counts down your window; not in gun game, either deathmatch or between matches) |
 | 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game or Team Deathmatch; in deathmatch any time) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
@@ -81,9 +83,11 @@ X; an ability casts as its key goes down, so set the attribute and clear it agai
 A boolean attribute `VFTestTake` set to true presses F for you, and clears itself, and
 `VFTestBoard` set to true or false holds the scoreboard open as Tab does or lets it go.
 `VFTestSettingsMenu` set to true or false opens or closes the settings menu, and a string
-attribute `VFTestSetting` enters a setting as its box in the menu would: `sensitivity=0.8`,
-`scoped=0.5`, `dpi=1600` or `crosshair=` and a code. A number attribute `VFTestVote` set to 1, 2
-or 3 votes for that card in the vote for the next map, as a click on it would. In Team
+attribute `VFTestSetting` enters a setting as its box or button in the menu would:
+`sensitivity=0.8`, `scoped=0.5`, `dpi=1600`, `crosshair=` and a code, or a map setting, as
+`mapRotate=0`. `VFTestMap` set to true or false opens or closes the big map as holding Caps Lock
+does. A number attribute `VFTestVote` set to 1, 2 or 3 votes for that card in the vote for the next
+map, as a click on it would. In Team
 Deathmatch, `VFTestLoadouts` set to true or false opens or closes the loadout menu, and a string
 attribute `VFTestPick` set to `2,3` picks the second stage's third loadout, as a click on it would.
 `VFTestAgents` set to true or false opens or closes agent select as T does, and a string attribute
@@ -2158,6 +2162,111 @@ PHOENIX in window 1 (T). Everyone on the course is everyone else's enemy.
   (once its pips have filled) and stand still: window 2 logs `markLit` from player 1, `fizzle` from
   player 1 10 s later, and `markRise` from player 1 a second after that.
 
+## 38. The minimap
+
+From [34-minimap.md](research/34-minimap.md). One player in Skirmish, then two, then three, through
+Skirmish, the spike rounds and deathmatch. The minimap is only in a match: the course has none. It's
+the `VFMinimap` ScreenGui in your player's PlayerGui, and its attributes say what it shows: `Plan`
+(the map drawn, as `arena:A`), `Seen` (the entity ids of the enemies on it), `Spike` (whether the
+spike's on it), `Turn` (how far the map's turned, in degrees) and `Big` (whether the big map's
+open). Under its `Box`, `Icons` holds each icon by name: `Self`, `Ally_<id>`, `Enemy_<id>`,
+`Seen_<id>` (where one was last seen), `Pulse_<id>`, `Dead_<id>`, `Spike` and `Ring`. In a Local
+Server, player 1's id is 4294967295, player 2's 4294967294 and player 3's 4294967293. Without Caps
+Lock, `VFTestMap` set to true opens the big map and false closes it; without the menu,
+`VFTestSetting` enters a map setting, as `mapRotate=0`.
+
+Press Play (F5), with one player.
+
+- **MP1 None on the course.** At the start there's nothing at the top left but the F3 panel, and
+  `VFMinimap` has no `Plan`.
+- **MP2 The arena.** Press P (Skirmish): you wait for an opponent, and the barriers are down. At the
+  top left, 12 px in from the corner, is a dark square about a quarter of the window's height
+  across, with the hall on it from above: its floor grey, its walls pale, the cover lighter where
+  it's tall, your spawn's floor tinted blue and the other's red. The F3 panel now sits under it.
+  `Plan` reads `arena:A`, as the arena's `Map` does. Your arrow, pale yellow with a dark edge,
+  points straight up, with a faint white cone spreading up from it, stopped by the walls. Turn
+  (`VFTestYaw` 90, then 180): the map turns round the box's middle and your arrow keeps pointing up;
+  `Turn` reads about 90, then about 180, and nothing of the map shows outside the box as it turns.
+  Walk round the hall: your arrow moves over the map as you do. **Send:** a screenshot of the
+  minimap.
+- **MP3 Fixed.** Press O: under MAP, Rotate has ROTATE lit, and Fixed orientation BY SIDE. Click
+  FIXED: the map stops turning, your spawn at the bottom of the box (`Turn` 180 on side 1, 0 on side
+  2), and as you turn your arrow turns instead. Click SAME WAY: `Turn` reads 0, side 1's room at the
+  top. Click BY SIDE, then ROTATE again.
+- **MP4 Centred, size, zoom and cones.** Click Keep me centred ON: your arrow sits in the box's
+  middle and the map moves under it as you walk; OFF again. In Minimap size, type `1.2` and press
+  Enter: the box is a fifth bigger, and the F3 panel moves down with it. Type `5`: it reads `1.2`.
+  Type `0.8`: smaller. Put back `1`. In Minimap zoom, type `1.4`: the map's bigger in the box, and
+  you're kept in its middle though Keep me centred is off; `0.6`: the whole hall small in the middle
+  of the box. Put back `0.9`. Vision cones OFF: your cone goes; ON again. Close the menu.
+- **MP5 The big map.** Hold Caps Lock (or set `VFTestMap` to true): a big square over the middle of
+  the screen, about 0.82 of the window's height across, the whole hall on it the same way round as a
+  fixed minimap, your spawn at the bottom, with your arrow and cone; `Big` reads true. The arena's
+  places have no names. Let go (or set `VFTestMap` to false): it's gone, and `Big` reads false. Open
+  O and click in the crosshair code box: Caps Lock there opens nothing. Close the menu.
+- **MP6 The white circle.** Run a few steps (W, or `VFTestButtons` 1): a white ring round your
+  arrow, as far as your steps are heard, 20 m round you, so wider than the hall, fading as you stop.
+  Walk (Shift and W): none. Fire a few rounds into the floor: none for the shots. Press R: a smaller
+  one for the reload, 15 m round you. Press Q (Updraft): one 30 m round you as it lifts you. Open
+  the Sound Lab (F2 four times), press `[` five times (the footstep radius, down from 20 m to 10 m),
+  and run: the ring's half as wide. Press `]` five times and close the lab.
+- **MP7 A cloud in the cone.** Face down the hall, towards the other room, and throw Cloudburst
+  along it (C). Where it bursts, a pale disc edged in blue, and your cone stops at its edge; as the
+  cloud goes, the disc does too, and the cone reaches the far wall again.
+
+Then two players: stop the game, start a Local Server with 2 players, as in section 9, and press P
+in window 1 (Skirmish). Player 1 and player 2 are on opposite sides. As round 1's buy phase starts,
+agent select comes up in both windows: in window 2 click PHOENIX and LOCK IN, and in window 1 lock
+in JETT. The buy phase holds you in your rooms; the checks start as round 1 does.
+
+- **MP8 Seen.** In window 1, look at player 2 (`VFTestAimEntity` 4294967294) with nothing between
+  you: a red dot on window 1's minimap where player 2 is, moving as they move, and `Seen` reads
+  `4294967294`. Turn window 1 away from them (clear `VFTestAimEntity` and set `VFTestYaw` the other
+  way): at once the dot fades, with a `?` on it, where player 2 was last seen, and stays there as
+  player 2 moves, gone after 3 s (`Seen_4294967294`); `Seen` is empty. Window 2's minimap shows
+  player 1 only while player 2 looks at them. **Send:** a screenshot of the `?`.
+- **MP9 In the way.** Player 2 crouches behind tall cover, or goes round a corner, where player 1
+  can't see them, and window 1 looks their way: no dot. Player 2 stands in the open, and window 1
+  throws Cloudburst so it bursts between them: while it stands there's no dot, though window 1 looks
+  at player 2, and window 1's cone stops at the cloud; as it goes, the dot's back. Then player 2
+  sends Blaze (C, then the left button) across between them: while the wall stands, no dot again,
+  window 1's cone stops at it, and the wall's on both minimaps, edged red in window 1 and blue in
+  window 2. In the next buy phase, window 1 looks out of the room through its barrier: the cone
+  carries on through it into the hall.
+- **MP10 Blinded.** Window 1 looks at player 2, and player 2 throws Curveball (E, then the left
+  button) so it pops in front of player 1: as window 1's screen turns white, player 2's dot goes
+  from window 1's minimap and their `?` shows; once the white has cleared to under half, the dot's
+  back.
+- **MP11 A kill.** Player 1 kills player 2 in sight: the dot goes, and there's no `?` where they
+  fell.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1.
+
+- **MP12 An ally.** In round 1, window 1's minimap has player 3's arrow in blue, pointing the way
+  they look, with a faint blue cone of their own. In window 1's settings, set Minimap zoom to `1.4`,
+  and send player 3 to the far end of the hall: their arrow sits on the minimap's edge, the way to
+  them, and comes off it as they come back. Put the zoom back to `0.9`. Player 3 looks at player 2
+  while player 1 looks away: player 2's dot is on window 1's minimap too. Then player 2 kills
+  player 1: a red X where player 1 fell, on window 1's minimap and window 3's (`Dead_4294967295`),
+  there until the next round; and as window 1 watches player 3 (as in F2), its minimap is
+  player 3's, their arrow and cone as `Self`.
+- **MP13 The spike.** Press P twice in window 1 (gun game, then the spike rounds). In window 1,
+  attacking, the map's drawn with its two sites lettered A and B in their amber plant areas, and the
+  spike's orange diamond in front of you (`Spike` true); as you turn, the letters stay upright.
+  Window 2, defending, has no diamond (`Spike` false). Player 1 picks up the spike: in windows 1 and
+  3 a small orange mark sits on player 1's arrow, and the diamond's gone; window 2 shows nothing of
+  it. Player 1 drops it (G) where player 2 can't see it: window 2's `Spike` stays false. Player 2
+  looks at it: the diamond shows in window 2 (`Spike` true), and goes as they look away. Player 1
+  plants it at A: everyone's minimap has the diamond on A. Hold Caps Lock in window 2: the big map,
+  the defenders' spawn at the bottom, with the places' names on it, as `A Lobby`. Set Region names
+  to IN BUY PHASE: the names show on the big map only through the next buy phase; NEVER: none;
+  ALWAYS again.
+- **MP14 Deathmatch's pulse.** Press M in window 1, click the DEATHMATCH card and PLAY DEATHMATCH.
+  Everyone's on a side of their own: no blue arrows on anyone's minimap, and neither spawn floor
+  tinted. Player 2 kills player 1: as player 1 comes back 1.5 s later, players 2 and 3 show on
+  window 1's minimap as faint red dots where they were (`Pulse_4294967294` and `Pulse_4294967293`),
+  fading out over 3 s.
 ## Results
 
 ```
@@ -2325,6 +2434,19 @@ RB5 VFSpike after the plant was cut off: ___
 RB6 the Sound Lab's three lines: ___
 RB7 the burst seen: yes / no; the second click hit: yes / no; the kill in the column counted: ___
 RB8 window 2's three lines: ___
+MP2 the map drawn as the hall is: yes / no (what differs); any of it outside the box as it turned: yes / no
+MP3 FIXED and BY SIDE, Turn: ___; SAME WAY, Turn: ___
+MP4 size 5 read back as ___; zoom 1.4 kept you in the middle: yes / no
+MP5 the big map ___ px across; Caps Lock in the code box opened it: yes / no
+MP6 a ring for: running ___, walking ___, firing ___, reloading ___, Updraft ___
+MP7 the cone stopped at the cloud: yes / no
+MP8 the `?` gone after ___ s
+MP9 a dot behind cover: yes / no; behind the cloud: yes / no
+MP10 the dot gone while white: yes / no; back after ___ s
+MP11 a `?` where player 2 fell: yes / no
+MP12 player 3 held on the edge: yes / no; player 2 shown by player 3's sight: yes / no; the X: yes / no
+MP13 the defenders' Spike: before ___, looking at it ___, looking away ___, planted ___
+MP14 the pulse lasted ___ s
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2532,3 +2654,10 @@ Didn't look right (IDs and what you saw):
 | 33 | Run out: the screen flame at once, held, then back at the mark facing the way you cast it, held 1.4 s more as the flame clears, your guns full and the gun in hand as you can move; X `BACK` on the bar through it | RB3, RB5 |
 | 33 | The spike blast in it: no death, no kill feed, and back at the mark with full health and the shield you had | RB4 |
 | 33 | A second player: the mark's flame seen, the burst as the body goes, the column at the mark, the sounds heard; shots through where the body was; a kill in the rise is a kill | RB7, RB8 |
+| 34 | The minimap at the top left in the arena and the spike rounds, gone on the course; the map drawn as it's built, your spawn tinted, the F3 panel under it | MP1, MP2, MP13 |
+| 34 | Rotate turning the map as you turn, the words upright, the art cut to the box; Fixed, Based on Side, Keep Player Centered, Size and Zoom from the settings menu | MP2, MP3, MP4 |
+| 34 | The big map on Caps Lock held, with the places' names by the setting | MP5, MP13 |
+| 34 | Your cone cut by the level, a cloud and a wall of fire, and the barriers seen through | MP2, MP7, MP9 |
+| 34 | The white circle as you run, reload and use an ability, and none as you walk or fire | MP6 |
+| 34 | A second player: shown while you see them, gone behind a wall, a cloud or a wall of fire, and not while you're blinded; the last-seen mark; the spike's rules; deathmatch's pulse | MP8, MP9, MP10, MP11, MP13, MP14 |
+| 34 | A third: an ally's arrow and cone, held on the edge, and the X where they fall | MP12 |

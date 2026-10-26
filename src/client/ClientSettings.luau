@@ -1,8 +1,8 @@
 --!strict
 -- The local player's settings (system 11): the sensitivity the camera turns
--- by and the crosshair code CrosshairView draws. The settings menu changes
--- them; each change applies at once and goes to the server to keep
--- (SettingsServer).
+-- by, the crosshair code CrosshairView draws and how the minimap shows the
+-- map (MinimapView, system 34). The settings menu changes them; each change
+-- applies at once and goes to the server to keep (SettingsServer).
 --
 -- The server sets PlayerSettings.ATTRIBUTE once, with what it kept from last
 -- time. Until then, and when nothing was kept, these are the defaults. A
@@ -53,8 +53,10 @@ function ClientSettings.set(s: PlayerSettings.Settings)
 	end
 end
 
--- Changes one setting, as the menu's boxes and TestAim's VFTestSetting do.
--- Returns false when the value isn't one.
+-- Changes one setting, as the menu's boxes and buttons and TestAim's
+-- VFTestSetting do: a number, a switch ("1" or "0", "on" or "off") or one
+-- of Show Map Region Names' choices for the minimap's (system 34). Returns
+-- false when the value isn't one.
 function ClientSettings.setOne(key: string, value: string): boolean
 	local s = PlayerSettings.copy(ClientSettings.current)
 	if key == "crosshair" then
@@ -63,18 +65,23 @@ function ClientSettings.setOne(key: string, value: string): boolean
 			return false
 		end
 		s.crosshair = text
-	elseif key == "sensitivity" or key == "scoped" or key == "dpi" then
+	elseif key == "sensitivity" or key == "scoped" or key == "dpi" or key == "mapSize" or key == "mapZoom" then
 		local n = tonumber(value)
 		if n == nil or n ~= n then
 			return false
 		end
-		if key == "sensitivity" then
-			s.sensitivity = n
-		elseif key == "scoped" then
-			s.scoped = n
-		else
-			s.dpi = n
+		(s :: any)[key] = n
+	elseif key == "mapRotate" or key == "mapBySide" or key == "mapCentred" or key == "mapCones" then
+		local on = PlayerSettings.switchOf(value)
+		if on == nil then
+			return false
 		end
+		(s :: any)[key] = on
+	elseif key == "mapNames" then
+		if not table.find(PlayerSettings.MAP_NAMES, value) then
+			return false
+		end
+		s.mapNames = value
 	else
 		return false
 	end

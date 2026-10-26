@@ -4,6 +4,9 @@
 -- theirs over. Type the sensitivity and the scoped multiplier from the
 -- reference's settings, and paste a crosshair code exported there (the
 -- arrow next to Crosshair Profile). The DPI is only for the cm/360 shown.
+-- And the minimap's (system 34), the reference's Map settings: Rotate or
+-- Fixed, a fixed map's orientation, Keep Player Centered, Minimap Size and
+-- Zoom, Vision Cones, and Show Map Region Names for the big map.
 --
 -- Each change applies at once and is kept for next time (ClientSettings,
 -- SettingsServer). The code box always holds the crosshair in use, so it can
@@ -33,15 +36,18 @@ SettingsMenu.open = false
 -- Set up by SettingsMenu.start.
 SettingsMenu.setOpen = function(_open: boolean) end
 -- Uses a crosshair code as the code box does, or sets "sensitivity",
--- "scoped" or "dpi" as their boxes do; the menu says what happened. For
--- TestAim's VFTestSetting.
+-- "scoped", "dpi", "mapSize" or "mapZoom" as their boxes do, or one of the
+-- map's choices as its buttons do ("mapRotate=0", "mapNames=buy"); the menu
+-- says what happened. For TestAim's VFTestSetting.
 SettingsMenu.enter = function(_key: string, _text: string) end
 
-local WIDTH, HEIGHT = 640, 560
+local WIDTH, HEIGHT = 640, 724
 local MARGIN = 20
 local LABEL_W = 170
 local BOX_W = 110
 local ROW_H = 30
+local MAP_LABEL_W = 128 -- the map's rows are two to a line
+local MAP_COLUMN = 300
 
 local BOX = Color3.fromRGB(28, 30, 38)
 local GOLD = Color3.fromRGB(230, 200, 120)
@@ -278,6 +284,68 @@ function SettingsMenu.start()
 		Position = UDim2.fromOffset(MARGIN, 494),
 		Size = UDim2.fromOffset(WIDTH - 2 * MARGIN, 16),
 	})
+
+	-- Map ------------------------------------------------------------------------
+	-- Each choice a row of buttons, the one in use lit; switches are "1" and
+	-- "0" (PlayerSettings.switchOf).
+	header(root, "MAP", 520)
+	local function mapLabel(name: string, x: number, y: number)
+		Ui.label(root, {
+			Text = name,
+			TextSize = 14,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			Position = UDim2.fromOffset(x, y),
+			Size = UDim2.fromOffset(MAP_LABEL_W, ROW_H),
+		})
+	end
+	local choices: { { key: string, values: { string }, buttons: { TextButton } } } = {}
+	local function choice(key: string, name: string, x: number, y: number, w: number, options: { { string } })
+		mapLabel(name, x, y)
+		local entry = { key = key, values = {}, buttons = {} }
+		for i, option in options do
+			local b = button(root, option[2], x + MAP_LABEL_W + (i - 1) * (w + 4), y + 1, w)
+			b.Name = key .. "_" .. option[1]
+			b.TextSize = 11
+			table.insert(entry.values, option[1])
+			table.insert(entry.buttons, b)
+		end
+		table.insert(choices, entry)
+	end
+	local left, right = MARGIN, MARGIN + MAP_COLUMN
+	choice("mapRotate", "Rotate", left, 542, 76, { { "1", "ROTATE" }, { "0", "FIXED" } })
+	choice("mapBySide", "Fixed orientation", right, 542, 76, { { "0", "SAME WAY" }, { "1", "BY SIDE" } })
+	choice("mapCentred", "Keep me centred", left, 578, 76, { { "1", "ON" }, { "0", "OFF" } })
+	choice("mapCones", "Vision cones", right, 578, 76, { { "1", "ON" }, { "0", "OFF" } })
+	local sizes = {
+		{ key = "mapSize", name = "Minimap size", hint = "0.8 to 1.2" },
+		{ key = "mapZoom", name = "Minimap zoom", hint = "0.6 to 1.4" },
+	}
+	for i, field in sizes do
+		local x = if i == 1 then left else right
+		mapLabel(field.name, x, 614)
+		boxes[field.key] = textBox(root, {
+			Name = field.key,
+			Position = UDim2.fromOffset(x + MAP_LABEL_W, 614),
+			Size = UDim2.fromOffset(76, ROW_H),
+		})
+		Ui.label(root, {
+			Text = field.hint,
+			TextSize = 12,
+			TextColor3 = Ui.DIM,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			Position = UDim2.fromOffset(x + MAP_LABEL_W + 84, 614),
+			Size = UDim2.fromOffset(MAP_COLUMN - MAP_LABEL_W - 84, ROW_H),
+		})
+	end
+	choice("mapNames", "Region names", left, 650, 88, { { "always", "ALWAYS" }, { "buy", "IN BUY PHASE" }, { "never", "NEVER" } })
+	Ui.label(root, {
+		Text = "on the big map (hold Caps Lock)",
+		TextSize = 12,
+		TextColor3 = Ui.DIM,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		Position = UDim2.fromOffset(left + MAP_LABEL_W + 3 * 92 + 4, 650),
+		Size = UDim2.fromOffset(WIDTH - 2 * MARGIN - MAP_LABEL_W - 3 * 92 - 4, ROW_H),
+	})
 	local status = Ui.label(root, {
 		Name = "Status",
 		TextSize = 13,
@@ -293,10 +361,16 @@ function SettingsMenu.start()
 		local s = ClientSettings.current
 		for key, box in boxes do
 			if not box:IsFocused() then
-				box.Text = if key == "dpi"
-					then tostring(s.dpi)
-					elseif key == "scoped" then Crosshair.number(s.scoped)
-					else Crosshair.number(s.sensitivity)
+				box.Text = if key == "dpi" then tostring(s.dpi) else Crosshair.number((s :: any)[key])
+			end
+		end
+		for _, entry in choices do
+			local value = (s :: any)[entry.key]
+			local current = if typeof(value) == "boolean" then (if value then "1" else "0") else tostring(value)
+			for i, b in entry.buttons do
+				local on = entry.values[i] == current
+				b.BackgroundColor3 = if on then GOLD else Color3.fromRGB(48, 52, 64)
+				b.TextColor3 = if on then Ui.PANEL else Ui.TEXT
 			end
 		end
 		if not codeBox:IsFocused() then
@@ -352,6 +426,13 @@ function SettingsMenu.start()
 		box.FocusLost:Connect(function()
 			enter(key, box.Text)
 		end)
+	end
+	for _, entry in choices do
+		for i, b in entry.buttons do
+			b.MouseButton1Click:Connect(function()
+				enter(entry.key, entry.values[i])
+			end)
+		end
 	end
 	codeBox.FocusLost:Connect(function(enterPressed)
 		if enterPressed then

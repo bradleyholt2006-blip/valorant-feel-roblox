@@ -14,9 +14,16 @@
 -- The DPI is the mouse's, which the game can't read; it's only there to
 -- turn the sensitivity into cm/360 for the menu.
 --
+-- The minimap's settings (system 34) are the reference's (Settings, General,
+-- Map; thespike.gg and setup.gg, community): Rotate or Fixed, a Fixed map's
+-- orientation Based on Side or Always the Same, Keep Player Centered, the
+-- Minimap Size and Zoom, Minimap Vision Cones, and Show Map Region Names on
+-- the big map: Always, Only in Buy Phase or Never (the UI Settings FAQ).
+--
 -- Settings travel as text, "key=value" lines, in the VFSettings attribute
 -- and the data store; keys this doesn't know are ignored, so older servers
--- read newer settings.
+-- read newer settings, and settings kept before a key was known take its
+-- default.
 
 local Crosshair = require("./Crosshair")
 
@@ -25,6 +32,14 @@ export type Settings = {
 	scoped: number,
 	dpi: number,
 	crosshair: string, -- a crosshair code, tidied by Crosshair.normalize
+	-- The minimap (system 34).
+	mapRotate: boolean, -- Rotate (true) or Fixed
+	mapBySide: boolean, -- a Fixed map's orientation: Based on Side (true) or Always the Same
+	mapCentred: boolean, -- Keep Player Centered
+	mapSize: number,
+	mapZoom: number,
+	mapCones: boolean, -- Minimap Vision Cones
+	mapNames: string, -- Show Map Region Names: "always", "buy" (Only in Buy Phase) or "never"
 }
 
 local PlayerSettings = {}
@@ -37,21 +52,35 @@ PlayerSettings.ATTRIBUTE = "VFSettings"
 PlayerSettings.STATUS_ATTRIBUTE = "VFSettingsStatus"
 PlayerSettings.MAX_TEXT = 1200
 
+-- The minimap's are ours, from what guides set (thespike.gg, setup.gg,
+-- 1v9.gg): none publishes the reference's own.
 PlayerSettings.DEFAULTS = table.freeze({
 	sensitivity = 0.4, -- ours: a common setting at 800 DPI
 	scoped = 1,
 	dpi = 800,
 	crosshair = Crosshair.DEFAULT,
+	mapRotate = true,
+	mapBySide = true,
+	mapCentred = false,
+	mapSize = 1,
+	mapZoom = 0.9,
+	mapCones = true,
+	mapNames = "always",
 })
 
 PlayerSettings.LIMITS = table.freeze({
 	sensitivity = { 0.001, 10 },
 	scoped = { 0.01, 5 },
 	dpi = { 0, 32000 },
+	mapSize = { 0.8, 1.2 },
+	mapZoom = { 0.6, 1.4 },
 })
 
+-- Show Map Region Names' choices, in the menu's order.
+PlayerSettings.MAP_NAMES = table.freeze({ "always", "buy", "never" })
+
 function PlayerSettings.copy(s: Settings): Settings
-	return { sensitivity = s.sensitivity, scoped = s.scoped, dpi = s.dpi, crosshair = s.crosshair }
+	return table.clone(s)
 end
 
 local function clampNumber(value: any, limits: { number }, default: number): number
@@ -60,6 +89,27 @@ local function clampNumber(value: any, limits: { number }, default: number): num
 		return default
 	end
 	return math.clamp(n, limits[1], limits[2])
+end
+
+-- A switch from anything: true or false, or as text "1", "on", "true",
+-- "0", "off", "false"; nil for anything else.
+function PlayerSettings.switchOf(value: any): boolean?
+	if type(value) == "boolean" then
+		return value
+	elseif value == "1" or value == "on" or value == "true" then
+		return true
+	elseif value == "0" or value == "off" or value == "false" then
+		return false
+	end
+	return nil
+end
+
+local function switch(value: any, default: boolean): boolean
+	local on = PlayerSettings.switchOf(value)
+	if on == nil then
+		return default
+	end
+	return on
 end
 
 -- Settings from anything: missing or broken values take the default, numbers
@@ -78,7 +128,18 @@ function PlayerSettings.sanitize(raw: any): Settings
 		scoped = clampNumber(t.scoped, L.scoped, D.scoped),
 		dpi = math.floor(clampNumber(t.dpi, L.dpi, D.dpi) + 0.5),
 		crosshair = crosshair,
+		mapRotate = switch(t.mapRotate, D.mapRotate),
+		mapBySide = switch(t.mapBySide, D.mapBySide),
+		mapCentred = switch(t.mapCentred, D.mapCentred),
+		mapSize = clampNumber(t.mapSize, L.mapSize, D.mapSize),
+		mapZoom = clampNumber(t.mapZoom, L.mapZoom, D.mapZoom),
+		mapCones = switch(t.mapCones, D.mapCones),
+		mapNames = if table.find(PlayerSettings.MAP_NAMES, t.mapNames) then t.mapNames else D.mapNames,
 	}
+end
+
+local function bit(on: boolean): string
+	return if on then "1" else "0"
 end
 
 function PlayerSettings.toText(s: Settings): string
@@ -87,6 +148,13 @@ function PlayerSettings.toText(s: Settings): string
 		"scoped=" .. Crosshair.number(s.scoped),
 		"dpi=" .. tostring(s.dpi),
 		"crosshair=" .. s.crosshair,
+		"mapRotate=" .. bit(s.mapRotate),
+		"mapBySide=" .. bit(s.mapBySide),
+		"mapCentred=" .. bit(s.mapCentred),
+		"mapSize=" .. Crosshair.number(s.mapSize),
+		"mapZoom=" .. Crosshair.number(s.mapZoom),
+		"mapCones=" .. bit(s.mapCones),
+		"mapNames=" .. s.mapNames,
 	}, "\n")
 end
 
@@ -104,7 +172,12 @@ function PlayerSettings.fromText(text: any): Settings
 end
 
 function PlayerSettings.equal(a: Settings, b: Settings): boolean
-	return a.sensitivity == b.sensitivity and a.scoped == b.scoped and a.dpi == b.dpi and a.crosshair == b.crosshair
+	for key in PlayerSettings.DEFAULTS do
+		if (a :: any)[key] ~= (b :: any)[key] then
+			return false
+		end
+	end
+	return true
 end
 
 -- Sensitivity ------------------------------------------------------------------

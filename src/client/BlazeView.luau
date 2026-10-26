@@ -492,6 +492,21 @@ local function stepOwnLoose(frameDt: number)
 	end
 end
 
+-- The walls standing, for the minimap (system 34): each one's path as far
+-- as the fire has spread, and its caster.
+function BlazeView.standing(): { { points: { vector }, entity: number } }
+	local render = RemoteEntities.renderTime()
+	local clock = os.clock()
+	local out = {}
+	for _, s in walls do
+		local t = if s.own then clock else render
+		if BlazeSim.standing(s.wall, t) then
+			table.insert(out, { points = BlazeSim.spreadPath(s.wall, t), entity = s.entity })
+		end
+	end
+	return out
+end
+
 function BlazeView.start()
 	-- From inside a wall, the screen is flame (under the HUD).
 	local gui = Ui.screen("VFBlaze", 1, Enum.ScreenInsets.None)

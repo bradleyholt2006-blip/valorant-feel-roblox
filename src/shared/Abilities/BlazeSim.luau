@@ -227,6 +227,30 @@ function BlazeSim.standing(wall: Wall, t: number): boolean
 	return t >= wall.start - EPS and t < BlazeSim.ends(wall) - EPS
 end
 
+-- Its path as far as the fire has spread at `t`: from his end, the points
+-- it has passed, and where it has got to on the stretch it's on (the
+-- minimap draws it, system 34). Only his end as it rises; nothing before.
+function BlazeSim.spreadPath(wall: Wall, t: number): { vector }
+	if t < wall.start - EPS then
+		return {}
+	end
+	local reach = BlazeSim.reachAt(wall, t)
+	local out = { wall.points[1] }
+	for i = 2, #wall.points do
+		local from, to = wall.along[i - 1], wall.along[i]
+		if reach >= to - EPS then
+			table.insert(out, wall.points[i])
+		else
+			if reach > from + EPS then
+				local a, b = wall.points[i - 1], wall.points[i]
+				table.insert(out, a + (b - a) * ((reach - from) / (to - from)))
+			end
+			break
+		end
+	end
+	return out
+end
+
 -- Along segment i (from point i - 1 to point i) as far as the fire has
 -- spread, `reach`: the share of it to the closest place to `point`, level,
 -- and how far that is, squared. Nil if the fire hasn't reached it.

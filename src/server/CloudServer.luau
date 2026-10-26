@@ -9,13 +9,16 @@
 -- Each is timed from the throw in server time, plus how long it has flown.
 -- A throw whose thrower dies or leaves flies straight on by itself, on the
 -- server's clock. The thrower's last cloud is their `VFLastCloud`
--- attribute (metres), which scripted checks read.
+-- attribute (metres), which scripted checks read. Each cloud is kept while
+-- it stands, as nobody sees through it (CloudServer.standing, for the
+-- minimap's spotting, system 34).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local CloudSim = require(Shared.Abilities.CloudSim)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local RobloxWorld = require(Shared.Movement.RobloxWorld)
@@ -43,6 +46,8 @@ local throwers: { [Player]: Thrower } = {}
 local loose: { { p: CloudSim.Projectile, info: Info, player: Player? } } = {}
 local carry = 0 -- server seconds the loose throws haven't flown yet
 local lastNow: number? = nil
+-- The clouds burst: where, and when (server time).
+local clouds: { { centre: vector, at: number } } = {}
 
 local function tell(kind: string, owner: number, id: number, at: number, position: vector, direction: vector)
 	Remotes.get().Ability:FireAllClients({
@@ -63,6 +68,7 @@ end
 local function burst(player: Player?, owner: number, id: number, position: vector, age: number, info: Info?)
 	local thrownAt = if info then info.thrownAt else Workspace:GetServerTimeNow() - age
 	tell("cloud", owner, id, thrownAt + age, position, vector.create(0, 1, 0))
+	table.insert(clouds, { centre = position, at = thrownAt + age })
 	if player and player.Parent then
 		player:SetAttribute(CloudServer.LAST_CLOUD_ATTRIBUTE, Units.asVector3(position))
 	end
@@ -157,6 +163,27 @@ function CloudServer.step(now: number)
 			end
 		end
 	end
+end
+
+-- The clouds standing at `now` (server time): each one's centre and its
+-- radius then (CloudSim.radiusAt). Those gone are forgotten.
+function CloudServer.standing(now: number): { { centre: vector, radius: number } }
+	local out = {}
+	local i = 1
+	while i <= #clouds do
+		local c = clouds[i]
+		local age = now - c.at
+		if age >= AbilityConfig.Cloudburst.duration.value then
+			table.remove(clouds, i)
+		else
+			local radius = CloudSim.radiusAt(age)
+			if radius > 0 then
+				table.insert(out, { centre = c.centre, radius = radius })
+			end
+			i += 1
+		end
+	end
+	return out
 end
 
 function CloudServer.start()

@@ -16,6 +16,8 @@
 --   * whether the look (Visuals) is on, and the enemy outline colour
 --   * the spike: where it is, the time left once planted, a saved half, and
 --     how far your plant or defuse has got
+-- The stats panel sits under the minimap while it's shown (MinimapView,
+-- system 34), which has the top left corner, as the reference's does.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,6 +39,7 @@ local Units = require(Shared.Units)
 local Ui = require(script.Parent.Ui)
 local CameraController = require(script.Parent.Parent.CameraController)
 local CrosshairView = require(script.Parent.Parent.CrosshairView)
+local MinimapView = require(script.Parent.Parent.MinimapView)
 local ClientSpike = require(script.Parent.Parent.ClientSpike)
 local NetSim = require(script.Parent.Parent.NetSim)
 local Visuals = require(script.Parent.Parent.Visuals)
@@ -210,6 +213,8 @@ function DebugHud.start(controller: any)
 	local fps = 60
 	RunService.RenderStepped:Connect(function(dt)
 		fps += (1 / math.max(dt, 1e-4) - fps) * 0.05
+		local under = MinimapView.bottom()
+		panel.Position = UDim2.fromOffset(12, if under > 0 then under + 8 else 12)
 		local s = lastState
 		local info = lastInfo
 		if not s or not info then

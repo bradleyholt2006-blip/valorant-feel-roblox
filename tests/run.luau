@@ -42,5 +42,6 @@ require("./curveball")
 require("./hothands")
 require("./blaze")
 require("./runitback")
+require("./minimap")
 
 H.finish()

@@ -50,7 +50,7 @@ local MOVE = 0.25 -- metres: the server's burst this far from ours moves our clo
 local STALE = 1 -- seconds a throw is drawn past the last word on it
 local LIVE = 0.1 -- seconds without a predicted tick before your throws fly on by themselves
 
-type Cloud = { centre: vector, start: number, core: Part, edge: Part }
+type Cloud = { centre: vector, start: number, entity: number, core: Part, edge: Part }
 type Frame = { at: number, position: vector }
 type Flight = { frames: { Frame }, orb: Part, burstAt: number? }
 
@@ -99,8 +99,8 @@ local function orb(): Part
 end
 
 -- A cloud named `key` at `centre` (metres), burst at `start` on the render
--- clock (RemoteEntities.renderTime).
-local function makeCloud(key: string, centre: vector, start: number)
+-- clock (RemoteEntities.renderTime), thrown by `entity`.
+local function makeCloud(key: string, centre: vector, start: number, entity: number)
 	if clouds[key] then
 		return
 	end
@@ -109,7 +109,7 @@ local function makeCloud(key: string, centre: vector, start: number)
 	core:SetAttribute("Centre", Units.asVector3(centre))
 	local edge = ball(SMOKE, 1, Enum.Material.SmoothPlastic)
 	edge.Name = "CloudEdge"
-	clouds[key] = { centre = centre, start = start, core = core, edge = edge }
+	clouds[key] = { centre = centre, start = start, entity = entity, core = core, edge = edge }
 end
 
 local function removeCloud(key: string)
@@ -134,7 +134,7 @@ local function flightOf(key: string): Flight
 end
 
 local function formOwn(id: number, centre: vector)
-	makeCloud("own:" .. id, centre, RemoteEntities.renderTime())
+	makeCloud("own:" .. id, centre, RemoteEntities.renderTime(), PlayerController.entityId)
 	GameSounds.playWorld(SoundConfig.Abilities.cloud, centre, "you")
 end
 
@@ -193,7 +193,7 @@ local function onEvent(event: any)
 	if event.kind == "flight" then
 		table.insert(flightOf(key).frames, { at = event.at, position = position })
 	elseif event.kind == "cloud" then
-		makeCloud(key, position, event.at)
+		makeCloud(key, position, event.at, event.entity)
 		local f = flights[key]
 		if f then
 			f.burstAt = event.at
@@ -247,6 +247,19 @@ local function stepOwnLoose(frameDt: number)
 			end
 		end
 	end
+end
+
+-- The clouds standing at `now` on the render clock, for the minimap
+-- (system 34): each one's centre and radius then, and its thrower.
+function CloudView.standing(now: number): { { centre: vector, radius: number, entity: number } }
+	local out = {}
+	for _, c in clouds do
+		local r = CloudSim.radiusAt(now - c.start)
+		if r > 0 then
+			table.insert(out, { centre = c.centre, radius = r, entity = c.entity })
+		end
+	end
+	return out
 end
 
 function CloudView.start()

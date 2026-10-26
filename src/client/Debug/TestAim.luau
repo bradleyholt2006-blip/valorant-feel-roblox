@@ -40,9 +40,10 @@
 --                  false lets it go; then clears itself
 --   VFTestSettingsMenu  true opens the settings menu, false closes it; then
 --                  clears itself
---   VFTestSetting  "key=value": enters a setting as its box in the settings
---                  menu does ("sensitivity=0.35", "scoped=0.8", "dpi=1600",
---                  "crosshair=0;P;c;5;h;0"), then clears itself
+--   VFTestSetting  "key=value": enters a setting as its box or button in the
+--                  settings menu does ("sensitivity=0.35", "scoped=0.8",
+--                  "dpi=1600", "crosshair=0;P;c;5;h;0", "mapRotate=0"), then
+--                  clears itself
 --   VFTestVote     1 to 3: votes for that map in the vote for the next map,
 --                  as a click on its card does (system 22), then clears
 --                  itself
@@ -62,6 +63,8 @@
 --   VFTestAgent    an agent's id ("jett"): selects it as a click on its
 --                  card does, or "lock" locks in as the button does; then
 --                  clears itself
+--   VFTestMap      true opens the big map as holding Caps Lock does
+--                  (system 34), false closes it; then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -84,6 +87,7 @@ local InputSampler = require(script.Parent.Parent.InputSampler)
 local LoadoutMenu = require(script.Parent.Parent.LoadoutMenu)
 local AgentMenu = require(script.Parent.Parent.AgentMenu)
 local PlayMenu = require(script.Parent.Parent.PlayMenu)
+local MinimapView = require(script.Parent.Parent.MinimapView)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
 local TestAim = {}
@@ -215,6 +219,11 @@ function TestAim.start(controller: any)
 			else
 				AgentMenu.select(agent)
 			end
+		end
+		local map = player:GetAttribute("VFTestMap")
+		if typeof(map) == "boolean" then
+			player:SetAttribute("VFTestMap", nil)
+			MinimapView.setBig(map)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

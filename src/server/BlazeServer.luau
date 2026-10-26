@@ -13,8 +13,10 @@
 -- (FireServer.light): it burns as Blaze (BlazeSim.WEAPON) at its own rate,
 -- and heals its caster at its own pace (Inner Fire), and the caster's
 -- `VFLastWall` attribute (BlazeSim.LAST_ATTRIBUTE) is its far end, in
--- metres, which scripted checks read. Runs go with a new round, as fires
--- do (Arena).
+-- metres, which scripted checks read. Each wall is kept while it stands,
+-- as nobody sees through it (BlazeServer.standing, for the minimap's
+-- spotting, system 34). Runs and walls go with a new round, as fires do
+-- (Arena).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -49,6 +51,8 @@ local casters: { [Player]: Caster } = {}
 local loose: { { run: BlazeSim.Run, sentAt: number, player: Player } } = {}
 local carry = 0 -- server seconds the loose runs haven't run yet
 local lastNow: number? = nil
+-- The walls risen, until they fall.
+local walls: { BlazeSim.Wall } = {}
 
 local function keyframe(run: BlazeSim.Run, sentAt: number)
 	Remotes.get().Ability:FireAllClients({
@@ -69,6 +73,7 @@ local function rise(player: Player, run: BlazeSim.Run, sentAt: number)
 	if not wall then
 		return
 	end
+	table.insert(walls, wall)
 	local points = {}
 	for _, point in wall.points do
 		table.insert(points, Units.asVector3(point))
@@ -191,11 +196,27 @@ function BlazeServer.step(now: number)
 	end
 end
 
--- Every run gone (a new round): its wall never rises.
+-- Every run gone (a new round): its wall never rises. And every wall.
 function BlazeServer.clear()
 	table.clear(casters)
 	table.clear(loose)
+	table.clear(walls)
 	carry = 0
+end
+
+-- The walls at `now` (server time) that have risen or will, until they
+-- fall: BlazeSim.standing says which stand then. Those fallen are
+-- forgotten.
+function BlazeServer.standing(now: number): { BlazeSim.Wall }
+	local i = 1
+	while i <= #walls do
+		if now >= BlazeSim.ends(walls[i]) then
+			table.remove(walls, i)
+		else
+			i += 1
+		end
+	end
+	return walls
 end
 
 function BlazeServer.start()
