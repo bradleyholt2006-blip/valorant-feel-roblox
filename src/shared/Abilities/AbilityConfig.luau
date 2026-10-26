@@ -368,7 +368,7 @@ AbilityConfig.Defs = {
 		kind = "ultimate",
 		points = p(7, "community", OMEN .. ": From the Shadows, 7 points"),
 		weapon = "shadowmap",
-		description = "X brings up the map. Fire on a place in it sends you there as a shade, which an enemy's shot or X again sends back before you form.",
+		description = "X brings up the map. Fire on a place in it sends you there as a Shade, which an enemy's shot or X again sends back before you form.",
 	},
 } :: { [string]: AbilityDef }
 

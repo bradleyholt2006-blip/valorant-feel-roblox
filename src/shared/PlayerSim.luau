@@ -340,8 +340,7 @@ function PlayerSim.step(
 	end
 	-- So do From the Shadows' windup and his time as a Shade (system 43); he's
 	-- free the tick he's there for good, which it tells of with the tick's
-	-- casts, his gun drawn again ('Weapon reequip speed: Normal', the
-	-- VALORANT Wiki).
+	-- casts, his gun drawn again at the normal speed (the VALORANT Wiki).
 	local shading, shadow =
 		AbilitySim.shadowThrough(kit, t, dt, s.movement.tick + 1, s.movement.position, PlayerSim.eye(s, cfg), look, input.buttons)
 	if shading then
