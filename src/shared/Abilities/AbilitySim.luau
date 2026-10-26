@@ -64,6 +64,14 @@
 -- way, until they burst out, then falling to the floor, until they've
 -- control back. Nothing they press does anything meanwhile.
 --
+-- Omen's Dark Cover (E, system 40) puts its orb in hand the same way, with
+-- a mark along the crosshair (SmokeSim) its reach away, which the kit
+-- keeps: PlayerSim starts it where the crosshair meets the level as it
+-- comes into hand, then held fire sends it further and held alt fire
+-- brings it closer (Patch 1.0). Fire throws nothing; E again sends the orb
+-- (a "smoke" cast), and PlayerSim spends its charge and puts it away if
+-- there's a floor under the mark for its smoke, or leaves it in hand.
+--
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
 -- for kills, deaths, plants and defuses, and a signature charge back for
@@ -74,6 +82,7 @@
 -- No Roblox APIs here.
 
 local AbilityConfig = require("./AbilityConfig")
+local SmokeSim = require("./SmokeSim")
 local BarrierSim = require("./BarrierSim")
 local MovementSim = require("../Movement/MovementSim")
 local Accuracy = require("../Weapons/Accuracy")
@@ -135,6 +144,9 @@ export type State = {
 	-- them as the life starts.
 	floatUntil: number,
 	heldUntil: number,
+	-- Dark Cover's mark (system 40): how far along the crosshair it is
+	-- (metres), while its orb's in hand.
+	reach: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -144,12 +156,14 @@ export type State = {
 -- "mark" (Run it Back cast), "fizzle" (his body gone as it runs out),
 -- "rise" (back at its mark), "heal" (the Healing Orb tried on an ally),
 -- "selfheal" (tried on herself), "slow" (the Slow Orb thrown),
--- "barrier" (the Barrier Orb's wall raised) or "revive" (the Resurrection
--- tried on a body), where the player's feet and eye were, and
+-- "barrier" (the Barrier Orb's wall raised), "revive" (the Resurrection
+-- tried on a body) or "smoke" (Dark Cover's orb sent), where the player's
+-- feet and eye were, and
 -- the way it goes (the dash's way, up for a lift, the way they faced for a
 -- readied gust and for Run it Back's, the way they looked for the rest). A
 -- flare's says which way round it curves, a fireball's whether it was
--- lobbed, and a wall's where it goes.
+-- lobbed, a wall's where it goes, and a smoke's how far its mark was and
+-- where it goes.
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -162,6 +176,8 @@ export type Cast = {
 	curve: number?, -- a flare's: -1 round to the left, 1 to the right
 	lob: boolean?, -- a fireball's: thrown underhand, by alt fire
 	wall: BarrierSim.Placement?, -- a wall's: where it goes
+	reach: number?, -- a smoke's: how far along the crosshair its mark was
+	smoke: vector?, -- and the middle of the floor it goes on (PlayerSim)
 }
 
 local AbilitySim = {}
@@ -195,6 +211,7 @@ local PLAYABLE: { [string]: boolean } = {
 	sloworb = true,
 	barrierorb = true,
 	resurrection = true,
+	darkcover = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -241,6 +258,7 @@ function AbilitySim.new(agent: string?): State
 		fixed = 0,
 		floatUntil = 0,
 		heldUntil = 0,
+		reach = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -306,6 +324,7 @@ function AbilitySim.settle(s: State)
 	s.mark, s.markYaw, s.markGrounded, s.markCrouched = ZERO, 0, false, false
 	s.turn, s.turning, s.fixed = 0, false, 0
 	s.floatUntil, s.heldUntil = 0, 0
+	s.reach = 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -468,10 +487,11 @@ end
 -- "away" while his body's gone and "rise" as he rises at its mark, "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
--- Resurrection's orb), "bend" while a wall is being bent (Blaze), "turn"
--- while the Barrier Orb's targeter is turned from across the view,
--- "revived" while a life the Resurrection brought back is held, and
--- "glide" while `gliding` (the movement's, for Drift).
+-- Resurrection's orb, Dark Cover's orb), "mark 15.0" with Dark Cover's orb
+-- in hand, how far its mark is (metres), "bend" while a wall is being bent
+-- (Blaze), "turn" while the Barrier Orb's targeter is turned from across
+-- the view, "revived" while a life the Resurrection brought back is held,
+-- and "glide" while `gliding` (the movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -490,6 +510,10 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	end
 	if s.holding ~= 0 then
 		table.insert(parts, "equip")
+		local def = AbilitySim.def(s, s.holding)
+		if def and def.id == "darkcover" then
+			table.insert(parts, string.format("mark %.1f", s.reach))
+		end
 	end
 	if s.steering ~= 0 then
 		table.insert(parts, "bend")
@@ -881,6 +905,22 @@ function AbilitySim.step(
 				-- wall for .8 seconds').
 				s.turn = BarrierSim.toggled(s.turn)
 				s.fixed = input.yaw + s.turn
+			elseif held(def) and s.holding == slot and id == "darkcover" then
+				-- Dark Cover's key again sends its orb to its mark ('throw
+				-- smoke with the ABILITY KEY', Patch 1.0), if PlayerSim finds
+				-- a floor there.
+				local aim = Accuracy.aim(input.yaw, input.pitch)
+				started({
+					slot = slot,
+					ability = id,
+					kind = "smoke",
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = aim,
+					reach = s.reach,
+				})
 			elseif held(def) and s.holding == slot then
 				-- Its key again: what's in hand goes away unthrown (PlayerSim).
 				s.holding = 0
@@ -919,6 +959,15 @@ function AbilitySim.step(
 		s.turn = BarrierSim.wrap(s.fixed - input.yaw)
 	else
 		s.turning = false
+	end
+
+	-- Dark Cover in hand (system 40): held fire sends its mark further and
+	-- held alt fire brings it closer.
+	if inHand and inHand.id == "darkcover" then
+		local further = MovementSim.has(buttons, B.Fire)
+		if further ~= MovementSim.has(buttons, B.AltFire) then
+			s.reach = SmokeSim.moved(s.reach, further, dt)
+		end
 	end
 
 	if AbilitySim.dashing(s, t) then

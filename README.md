@@ -282,6 +282,20 @@ Built one system at a time:
     rounds it brings back allies; on the course, practice dummies, which stay down while it's in
     hand. The gun's back 1 s after the cast -
     [research and design](docs/research/39-resurrection.md)
+40. **Omen's Dark Cover**: Omen joins Jett, Phoenix and Sage in agent select, a Controller with his
+    whole kit on the bar, and his Dark Cover is the first of it played. E puts his shadow orb in
+    hand, ready in 0.6 s, with a small violet mark along the crosshair where it meets the level,
+    15 m out at most, and a faint ball on the floor under it where the smoke would be, both seen
+    through walls. Mouse 1 held sends the mark further, up to 80 m, and mouse 2 held brings it
+    closer, down to 2 m; with no floor under it the mark turns red. E again sends the orb there,
+    unseen and through walls at 64 m/s, and it bursts into a dome of dark smoke 4.1 m round on the
+    floor under the mark, growing over 1 s. A mark inside a wall is brought back out of it, and over
+    a floor too steep to stand on the smoke falls through to one it can. Nobody's spotted through it
+    on the minimap, nor healed or brought back through it, and from inside it the screen is dark. It
+    stands 15 s, flickers with a low tone for its last 1.5 s and goes at once, and only Omen's side
+    hears the orb sent. Two charges, one free each round and the second 150 credits; a spent one
+    comes back 40 s after (65 s in Team Deathmatch), and the gun's back 0.7 s after a send -
+    [research and design](docs/research/40-dark-cover.md)
 
 ## Running it
 
@@ -419,7 +433,9 @@ their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each ma
 `Entity` attribute whose it is. Whom a player last healed with the Healing Orb is their `VFLastHeal`
 attribute (the healed player's name). Where a player's last Slow Orb burst is their `VFLastSlow`
 attribute (the floor under it, in metres), whether their last tick was slowed their `VFSlowed`,
-and `Workspace.VFSlows` holds each orb in the air, each burst and each field of ice. The
+and `Workspace.VFSlows` holds each orb in the air, each burst and each field of ice. Where a
+player's last Dark Cover smoke went is their `VFLastSmoke` attribute (the floor under its mark, in
+metres), and `Workspace.VFClouds` holds each smoke and, with its orb in hand, its mark. The
 minimap's ScreenGui, `VFMinimap`, carries what it
 shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`),
 whether the spike is (`Spike`), how far it's turned (`Turn`, degrees) and whether the big map's
@@ -469,9 +485,10 @@ and its pauses, and the wire), her Slow Orb (its charges, the orb in hand, its f
 field, the slow on the ground, in the air, on a jump and on a dash, judged as a screen showed it,
 and the wire), her Barrier Orb (its charge, the orb in hand and its targeter's turns, where its wall
 goes, the wall rising, standing and breaking, what it does to steps, shots and sight, its health,
-and the wire) and her Resurrection (its points, the orb in hand and its tries, where bodies lie and
-the aim along them, the return's times and hold, who can be brought back, and the wire) are pure
-Luau and run outside Roblox:
+and the wire), her Resurrection (its points, the orb in hand and its tries, where bodies lie and the
+aim along them, the return's times and hold, who can be brought back, and the wire) and Omen's Dark
+Cover (his kit, the orb in hand and its mark, where its smoke goes, its flight, the smoke and its
+warning, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

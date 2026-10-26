@@ -16,8 +16,23 @@
 -- cloud a `Cloud` ball with its edge: the cloud's `Centre` attribute is
 -- where it is (metres), and `Moved` is set on one of yours that the
 -- server's word moved.
+-- Omen's Dark Cover (system 40) is drawn here too:
+--   * With its orb in hand, its mark: a small glowing ball along your
+--     crosshair, its reach away (the kit's, as your simulation has it), and
+--     the ball its smoke would be on the floor under it (SmokeSim), both
+--     seen through walls; the mark red, and no ball, with nowhere for it
+--   * Every smoke comes from the server (the Ability remote's "darkcover":
+--     where, and when it forms), yours too: a ball of dark smoke, solid,
+--     growing as it forms; from inside one, the screen is dark smoke. Its
+--     last 1.5 s it flickers lighter, with a low tone, and then it's gone
+--     at once. Others' form with the sound AbilityEffects plays; yours with
+--     this view's
+-- In VFClouds a smoke is a `Smoke` ball with its `SmokeEdge`, and the mark
+-- a `SmokeMark` part with its `Mark` and `Ghost` adornments.
+-- Every cloud and smoke goes when the server says every fire's out (a new
+-- round, "out").
 -- Nothing here is in anyone's way: shots, moves and throws go through
--- clouds, as their parts can't be hit.
+-- clouds and smokes, as their parts can't be hit.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -30,7 +45,9 @@ local MovementConfig = require(Shared.Movement.MovementConfig)
 local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local Remotes = require(Shared.Net.Remotes)
 local SoundConfig = require(Shared.Audio.SoundConfig)
+local SmokeSim = require(Shared.Abilities.SmokeSim)
 local Units = require(Shared.Units)
+local WeaponSim = require(Shared.Weapons.WeaponSim)
 
 local NetSim = require(script.Parent.NetSim)
 local PlayerController = require(script.Parent.PlayerController)
@@ -41,6 +58,12 @@ local Ui = require(script.Parent.Debug.Ui)
 local CloudView = {}
 
 local CB = AbilityConfig.Cloudburst
+local DC = AbilityConfig.DarkCover
+local DARK = Color3.fromRGB(34, 26, 52) -- Dark Cover's smoke
+local MARKED = Color3.fromRGB(160, 120, 240) -- its mark, and the smoke it would be
+local REFUSED = Color3.fromRGB(230, 70, 70) -- its mark with nowhere for it
+local MARK = 0.15 -- metres across: the mark
+local FLICKER = 6 -- times a second a smoke flickers as it warns it's going
 local DT = 1 / MovementConfig.TickRate.value
 local SMOKE = Color3.fromRGB(196, 214, 228)
 local GLOW = Color3.fromRGB(150, 230, 255)
@@ -50,7 +73,16 @@ local MOVE = 0.25 -- metres: the server's burst this far from ours moves our clo
 local STALE = 1 -- seconds a throw is drawn past the last word on it
 local LIVE = 0.1 -- seconds without a predicted tick before your throws fly on by themselves
 
-type Cloud = { centre: vector, start: number, entity: number, core: Part, edge: Part }
+type Cloud = {
+	centre: vector,
+	start: number,
+	entity: number,
+	core: Part,
+	edge: Part,
+	smoke: boolean, -- Dark Cover's smoke, not Cloudburst's cloud
+	formed: boolean, -- heard forming (yours)
+	warned: boolean, -- heard warning that it's going
+}
 type Frame = { at: number, position: vector }
 type Flight = { frames: { Frame }, orb: Part, burstAt: number? }
 
@@ -62,6 +94,8 @@ local flights: { [string]: Flight } = {}
 local lastLive = 0
 local loose = 0 -- seconds your throws haven't flown since your ticks stopped
 local folder: Folder? = nil
+type Marker = { part: Part, mark: SphereHandleAdornment, ghost: SphereHandleAdornment }
+local marker: Marker? = nil
 
 local function holder(): Folder
 	local f = folder
@@ -99,17 +133,28 @@ local function orb(): Part
 end
 
 -- A cloud named `key` at `centre` (metres), burst at `start` on the render
--- clock (RemoteEntities.renderTime), thrown by `entity`.
-local function makeCloud(key: string, centre: vector, start: number, entity: number)
+-- clock (RemoteEntities.renderTime), thrown by `entity`; or with `smoke`,
+-- Dark Cover's smoke, formed then.
+local function makeCloud(key: string, centre: vector, start: number, entity: number, smoke: boolean?)
 	if clouds[key] then
 		return
 	end
-	local core = ball(SMOKE, 0, Enum.Material.SmoothPlastic)
-	core.Name = "Cloud"
+	local colour = if smoke then DARK else SMOKE
+	local core = ball(colour, 1, Enum.Material.SmoothPlastic)
+	core.Name = if smoke then "Smoke" else "Cloud"
 	core:SetAttribute("Centre", Units.asVector3(centre))
-	local edge = ball(SMOKE, 1, Enum.Material.SmoothPlastic)
-	edge.Name = "CloudEdge"
-	clouds[key] = { centre = centre, start = start, entity = entity, core = core, edge = edge }
+	local edge = ball(colour, 1, Enum.Material.SmoothPlastic)
+	edge.Name = if smoke then "SmokeEdge" else "CloudEdge"
+	clouds[key] = {
+		centre = centre,
+		start = start,
+		entity = entity,
+		core = core,
+		edge = edge,
+		smoke = smoke == true,
+		formed = false,
+		warned = false,
+	}
 end
 
 local function removeCloud(key: string)
@@ -173,7 +218,25 @@ local function onOwnBurst(id: number, centre: vector)
 end
 
 local function onEvent(event: any)
-	if typeof(event) ~= "table" or event.ability ~= "cloudburst" then
+	if typeof(event) ~= "table" then
+		return
+	end
+	if event.kind == "out" then
+		for key in clouds do
+			removeCloud(key)
+		end
+		return
+	end
+	if event.ability == "darkcover" and event.kind == "darkcover" then
+		if typeof(event.entity) == "number" and typeof(event.id) == "number" and typeof(event.at) == "number" then
+			if typeof(event.position) == "Vector3" then
+				local key = "smoke:" .. event.entity .. ":" .. event.id
+				makeCloud(key, Units.toMetres(event.position), event.at, event.entity, true)
+			end
+		end
+		return
+	end
+	if event.ability ~= "cloudburst" then
 		return
 	end
 	if typeof(event.entity) ~= "number" or typeof(event.id) ~= "number" or typeof(event.at) ~= "number" then
@@ -249,12 +312,76 @@ local function stepOwnLoose(frameDt: number)
 	end
 end
 
--- The clouds standing at `now` on the render clock, for the minimap
--- (system 34): each one's centre and radius then, and its thrower.
+-- How wide a cloud or smoke is `age` seconds after it formed.
+local function radiusOf(c: Cloud, age: number): number
+	return if c.smoke then SmokeSim.radiusAt(age) else CloudSim.radiusAt(age)
+end
+
+-- Dark Cover's mark, and the smoke it would be, seen through walls.
+local function makeMarker(): Marker
+	local part = Instance.new("Part")
+	part.Name = "SmokeMark"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Transparency = 1
+	part.Size = Vector3.one * 0.05
+	part.Parent = holder()
+	local function adornment(name: string, radius: number, transparency: number): SphereHandleAdornment
+		local a = Instance.new("SphereHandleAdornment")
+		a.Name = name
+		a.Adornee = part
+		a.AlwaysOnTop = true
+		a.ZIndex = 1
+		a.Radius = radius * Units.STUDS_PER_METRE
+		a.Transparency = transparency
+		a.Visible = false
+		a.Parent = part
+		return a
+	end
+	return { part = part, mark = adornment("Mark", MARK / 2, 0.1), ghost = adornment("Ghost", DC.radius.value, 0.8) }
+end
+
+-- With Dark Cover's orb in hand, its mark and where its smoke would be.
+local function markFrame()
+	local had = marker
+	local m: Marker = if had and had.part.Parent then had else makeMarker()
+	marker = m
+	local s = PlayerController.sim
+	local w = if s then s.weapons else nil
+	local kit = if s then s.abilities else nil
+	local camera = Workspace.CurrentCamera
+	if
+		not (s and w and kit and camera and PlayerController.alive)
+		or w.equipped ~= WeaponSim.ULT
+		or w.loadout[WeaponSim.ULT] ~= "smokeorb"
+		or kit.holding == 0
+	then
+		m.mark.Visible = false
+		m.ghost.Visible = false
+		return
+	end
+	local eye = Units.toMetres(camera.CFrame.Position)
+	local aim = Units.asVector(camera.CFrame.LookVector)
+	local at = SmokeSim.mark(eye, aim, kit.reach)
+	local centre = SmokeSim.place(world, eye, aim, kit.reach)
+	local base = centre or at
+	m.part.CFrame = CFrame.new(Units.toStuds(base))
+	m.mark.CFrame = CFrame.new(Units.toStuds(at - base))
+	m.mark.Color3 = if centre then MARKED else REFUSED
+	m.mark.Visible = true
+	m.ghost.Color3 = MARKED
+	m.ghost.Visible = centre ~= nil
+end
+
+-- The clouds and smokes standing at `now` on the render clock, for the
+-- minimap (system 34) and sight: each one's centre and radius then, and
+-- its thrower.
 function CloudView.standing(now: number): { { centre: vector, radius: number, entity: number } }
 	local out = {}
 	for _, c in clouds do
-		local r = CloudSim.radiusAt(now - c.start)
+		local r = radiusOf(c, now - c.start)
 		if r > 0 then
 			table.insert(out, { centre = c.centre, radius = r, entity = c.entity })
 		end
@@ -312,15 +439,37 @@ function CloudView.start()
 
 		local camera = Workspace.CurrentCamera
 		local eye = if camera then Units.toMetres(camera.CFrame.Position) else nil
-		local inside = false
+		local inside: Color3? = nil
 		for key, c in clouds do
 			local age = now - c.start
-			if age >= CB.duration.value then
+			if age >= (if c.smoke then DC.duration.value else CB.duration.value) then
 				removeCloud(key)
 				continue
 			end
-			local r = CloudSim.radiusAt(age)
-			local thick = CloudSim.thicknessAt(age)
+			local r = radiusOf(c, age)
+			local thick = if c.smoke then 1 else CloudSim.thicknessAt(age)
+			if c.smoke and age >= 0 then
+				-- Dark Cover's: yours heard forming, and everyone's warning that
+				-- it's going, flickering until it's gone.
+				if not c.formed then
+					c.formed = true
+					if c.entity == PlayerController.entityId then
+						GameSounds.playCast("darkcover", c.centre, c.entity)
+					end
+				end
+				-- It flickers lighter, never thinner: nobody sees through it
+				-- until it's gone.
+				local glow = 0
+				if SmokeSim.warning(age) then
+					if not c.warned then
+						c.warned = true
+						GameSounds.playCast("fading", c.centre, c.entity)
+					end
+					local since = age - (DC.duration.value - DC.warn.value)
+					glow = 0.5 - 0.5 * math.cos(since * FLICKER * 2 * math.pi)
+				end
+				c.core.Color = DARK:Lerp(MARKED, 0.3 * glow)
+			end
 			local across = math.max(2 * r * Units.STUDS_PER_METRE, 0.05)
 			local where = CFrame.new(Units.toStuds(c.centre))
 			c.core.Size = Vector3.one * across
@@ -329,11 +478,16 @@ function CloudView.start()
 			c.edge.Size = Vector3.one * across * EDGE
 			c.edge.CFrame = where
 			c.edge.Transparency = if r > 0 then 1 - 0.45 * thick else 1
-			if eye and CloudSim.inside(c.centre, age, eye) then
-				inside = true
+			if eye and r > 0 then
+				local within = if c.smoke then vector.magnitude(eye - c.centre) < r else CloudSim.inside(c.centre, age, eye)
+				if within then
+					inside = if c.smoke then DARK else (inside or SMOKE)
+				end
 			end
 		end
-		screen.Visible = inside
+		screen.Visible = inside ~= nil
+		screen.BackgroundColor3 = inside or SMOKE
+		markFrame()
 	end)
 end
 

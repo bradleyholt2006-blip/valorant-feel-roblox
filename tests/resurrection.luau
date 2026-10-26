@@ -153,10 +153,7 @@ do
 			and ORB.ability == "resurrection"
 	)
 	check("it can be played", AbilitySim.playable("resurrection"))
-	check(
-		"the orb is last on the wire",
-		WeaponConfig.Ids[#WeaponConfig.Ids] == "revive" and WeaponConfig.IndexOf.revive == #WeaponConfig.Ids
-	)
+	check("the orb is 30th on the wire", WeaponConfig.Ids[30] == "revive" and WeaponConfig.IndexOf.revive == 30)
 	check("a click a try, ten a second at most, and no bullet's damage", ORB.fireMode == "semi" and ORB.fireRate.value == 10)
 end
 

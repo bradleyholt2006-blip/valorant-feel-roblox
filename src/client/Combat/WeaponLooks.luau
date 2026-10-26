@@ -184,6 +184,17 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- Dark Cover's orb (system 40): a violet orb the Healing Orb's size, two
+	-- wisps of shadow trailing up behind it, over the open hand.
+	smokeorb = {
+		muzzle = vector.create(0, 0.07, -0.12),
+		pieces = {
+			{ size = vector.create(0.09, 0.09, 0.09), offset = vector.create(0, 0.07, -0.08), accent = true }, -- orb
+			{ size = vector.create(0.03, 0.07, 0.03), offset = vector.create(-0.03, 0.12, -0.04), accent = true }, -- wisp
+			{ size = vector.create(0.03, 0.05, 0.03), offset = vector.create(0.03, 0.11, -0.03), accent = true }, -- wisp
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -218,6 +229,7 @@ local SHAPE_OF: { [string]: string } = {
 	iceorb = "iceorb",
 	wallorb = "wallorb",
 	revive = "revive",
+	smokeorb = "smokeorb",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -251,6 +263,7 @@ local ACCENT: { [string]: Color3 } = {
 	iceorb = Color3.fromRGB(140, 220, 240),
 	wallorb = Color3.fromRGB(185, 230, 250),
 	revive = Color3.fromRGB(90, 230, 210),
+	smokeorb = Color3.fromRGB(110, 70, 170),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

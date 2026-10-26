@@ -755,6 +755,10 @@ local WALL_TRIES = p(10, "estimate", "Ours: ten tries a second while fire's held
 -- standing one, so it takes the orb's no spread, no kick and try a click. A
 -- try over nobody leaves it in hand for the next.
 local RESURRECTION = "VALORANT Wiki, Resurrection"
+-- Omen's Dark Cover (system 40): neither fired nor tried. Fire and alt
+-- fire move its mark (AbilitySim) and E again sends it, so what fire would
+-- shoot is dropped; it takes the orb's no spread and no kick.
+local DARK_COVER = "VALORANT Wiki, Dark Cover"
 
 WeaponConfig.Defs = {
 	classic = {
@@ -1740,6 +1744,27 @@ WeaponConfig.Defs = {
 		accuracy = orbExact,
 		recoil = ORB_KICK,
 	},
+	smokeorb = {
+		id = "smokeorb",
+		name = "Dark Cover",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: its charges are bought as an ability's (" .. DARK_COVER .. ")"),
+		fireMode = "semi",
+		fireRate = ORB_TRIES,
+		magazine = p(1, "community", DARK_COVER .. ": a shadow orb"),
+		reserve = p(0, "community", "None: another smoke is another charge (" .. DARK_COVER .. ")"),
+		reloadTime = ORB_NA,
+		equipTime = p(0.6, "community", DARK_COVER .. ": equip time 0.6 s (its estimate)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it smokes (" .. DARK_COVER .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "darkcover",
+		accuracy = orbExact,
+		recoil = ORB_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -1747,7 +1772,8 @@ WeaponConfig.Defs = {
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
 -- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
 -- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
--- (system 38) and the Resurrection (system 39) last.
+-- (system 38), the Resurrection (system 39) and Dark Cover (system 40)
+-- last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1779,6 +1805,7 @@ WeaponConfig.Ids = {
 	"iceorb",
 	"wallorb",
 	"revive",
+	"smokeorb",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

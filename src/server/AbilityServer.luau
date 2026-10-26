@@ -40,9 +40,12 @@
 -- in hand, the Healing Orb's tries (system 36), which HealServer judges
 -- and tells of as one heals, and the Barrier Orb's wall (system 38), which
 -- BarrierServer tells of as it rises: Run it Back's mark and rising to
--- every client, as the mark's drawn for everyone, and any other to those
--- who'd hear it or have the caster in their snapshots (the fog of war,
--- system 35). The caster's own client has predicted it already. Each kit
+-- every client, as the mark's drawn for everyone, Dark Cover's orb sent
+-- (system 40) to the caster's side alone (Patch 11.00: 'Dark Cover no
+-- longer plays audio in third person within 12.5 meters for opponents.
+-- This audio will still play for Allies.'), and any other to those who'd
+-- hear it or have the caster in their snapshots (the fog of war, system
+-- 35). The caster's own client has predicted it already. Each kit
 -- is a player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
 -- writes it), which scripted checks read.
 
@@ -53,6 +56,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local FogOfWar = require(Shared.Combat.FogOfWar)
 local PlayerSim = require(Shared.PlayerSim)
 local Remotes = require(Shared.Net.Remotes)
@@ -359,6 +363,15 @@ function AbilityServer.start()
 		local remote = Remotes.get().Ability
 		if EVERYONE[cast.kind] then
 			remote:FireAllClients(event)
+			return
+		end
+		if cast.kind == "smoke" then
+			local side = player:GetAttribute(ArenaConfig.SIDE)
+			for _, other in Players:GetPlayers() do
+				if other == player or (side ~= nil and other:GetAttribute(ArenaConfig.SIDE) == side) then
+					remote:FireClient(other, event)
+				end
+			end
 			return
 		end
 		for _, other in Players:GetPlayers() do

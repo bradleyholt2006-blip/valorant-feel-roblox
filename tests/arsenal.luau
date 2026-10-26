@@ -105,8 +105,8 @@ do
 	local ids = WeaponConfig.Ids
 	check(
 		"wire ids: the first six as they always were, then the rest, the spike, Blade Storm's knives, Curveball's flare, Hot Hands' fireball,"
-			.. " Blaze's flame, the Healing Orb, the Slow Orb, the Barrier Orb, then the Resurrection's orb",
-		#ids == 30
+			.. " Blaze's flame, the Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb, then Dark Cover's",
+		#ids == 31
 			and ids[1] == "classic"
 			and ids[2] == "knife"
 			and ids[3] == "operator"
@@ -122,6 +122,7 @@ do
 			and ids[28] == "iceorb"
 			and ids[29] == "wallorb"
 			and ids[30] == "revive"
+			and ids[31] == "smokeorb"
 	)
 	local quiet = {}
 	for _, id in ids do

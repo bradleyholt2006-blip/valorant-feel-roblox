@@ -3,16 +3,15 @@
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
 -- Curveball does its flare (system 30), Hot Hands its fireball (system 31),
--- Blaze its flame (system 32), the Healing Orb its orb (system 36), the
--- Slow Orb its own (system 37), the Barrier Orb its own (system 38) and
--- the Resurrection its own (system 39), and whose Run it Back holds the
--- player through his return and puts him back at its mark (system 33), as
--- the Resurrection holds a life it brings back, rising with the body and
--- then falling to the floor (system 39). A Slow Orb's field slows whoever
--- starts a tick
--- in it (SlowSim), from the fields each step's given, and a Barrier Orb's
--- wall stands in the world everything in the tick goes through
--- (BarrierSim.world), from the walls it's given.
+-- Blaze its flame (system 32), the Healing Orb its orb (system 36), the Slow
+-- Orb its own (system 37), the Barrier Orb its own (system 38), the
+-- Resurrection its own (system 39) and Dark Cover its own (system 40), and
+-- whose Run it Back holds the player through his return and puts him back at
+-- its mark (system 33), as the Resurrection holds a life it brings back,
+-- rising with the body and then falling to the floor (system 39). A Slow
+-- Orb's field slows whoever starts a tick in it (SlowSim), from the fields
+-- each step's given, and a Barrier Orb's wall stands in the world everything
+-- in the tick goes through (BarrierSim.world), from the walls it's given.
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -30,6 +29,7 @@ local Spike = require("./Spike/Spike")
 local SpikeSim = require("./Spike/SpikeSim")
 local AbilitySim = require("./Abilities/AbilitySim")
 local AbilityConfig = require("./Abilities/AbilityConfig")
+local SmokeSim = require("./Abilities/SmokeSim")
 local SlowSim = require("./Abilities/SlowSim")
 local BarrierSim = require("./Abilities/BarrierSim")
 
@@ -272,6 +272,29 @@ function PlayerSim.step(
 		motion.slow = SlowSim.SLOW
 	end
 	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
+	-- Dark Cover's orb sent (system 40): once it's ready in hand, to the
+	-- floor under its mark, where its smoke goes, spending its charge and
+	-- putting it away; with no floor there, or before it's ready, nothing's
+	-- sent and it stays in hand.
+	if casts then
+		local sent = {}
+		for _, cast in casts do
+			if cast.kind ~= "smoke" then
+				table.insert(sent, cast)
+				continue
+			end
+			local w = s.weapons
+			local ready = w.equipped == WeaponSim.ULT and t >= w.equipEndTime - 1e-9 and kit.charges[cast.slot] > 0
+			local centre = if ready then SmokeSim.place(world, cast.origin, cast.direction, cast.reach or 0) else nil
+			if centre then
+				cast.smoke = centre
+				AbilitySim.used(kit, cast.slot)
+				WeaponSim.putAway(w, t, AbilityConfig.unequip(cast.ability))
+				table.insert(sent, cast)
+			end
+		end
+		casts = if #sent > 0 then sent else nil
+	end
 	-- A throw puts the gun away for a moment (system 18). Blade Storm's cast
 	-- puts its knives in hand, and X draws them again (system 19). An
 	-- ability's key puts what it throws in hand: Curveball's flare (system
@@ -293,6 +316,10 @@ function PlayerSim.step(
 				local weapon = AbilityConfig.Defs[cast.ability].weapon
 				if weapon then
 					WeaponSim.arm(s.weapons, weapon, t, WeaponConfig.get(weapon).equipTime.value, input.slot)
+				end
+				-- Dark Cover's mark starts where the crosshair meets the level.
+				if cast.ability == "darkcover" then
+					kit.reach = SmokeSim.start(world, cast.origin, cast.direction)
 				end
 			elseif cast.kind == "mark" then
 				kit.markGrounded, kit.markCrouched = grounded, crouched
@@ -368,11 +395,13 @@ function PlayerSim.step(
 			shots = nil
 			local def = AbilitySim.def(kit, kit.holding)
 			local raising = def ~= nil and def.id == "barrierorb"
+			-- Dark Cover's fire moves its mark (AbilitySim) and sends nothing.
+			local smoking = def ~= nil and def.id == "darkcover"
 			local open = not (barriers and barriers.closed)
 			local placed = if raising and open
 				then BarrierSim.place(world, shot.origin, shot.aim, BarrierSim.angle(input.yaw, kit.turn))
 				else nil
-			local cast = if raising and not placed
+			local cast = if (raising and not placed) or smoking
 				then nil
 				else AbilitySim.thrown(kit, tick, t, s.movement.position, shot.origin, shot.aim, shot.mode == "alt")
 			if cast then
