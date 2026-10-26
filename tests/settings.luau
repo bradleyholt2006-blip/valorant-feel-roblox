@@ -236,9 +236,10 @@ do
 	local d = PlayerSettings.sanitize(nil)
 	check("defaults: 0.4, scoped 1, 800 DPI, the default crosshair", d.sensitivity == 0.4 and d.scoped == 1 and d.dpi == 800 and d.crosshair == Crosshair.DEFAULT)
 
-	local s: PlayerSettings.Settings = { sensitivity = 0.314, scoped = 0.85, dpi = 1600, crosshair = "0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0" }
+	local s = PlayerSettings.copy(PlayerSettings.DEFAULTS)
+	s.sensitivity, s.scoped, s.dpi, s.crosshair = 0.314, 0.85, 1600, "0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0"
 	local text = PlayerSettings.toText(s)
-	check("as text: key=value lines", text == "sensitivity=0.314\nscoped=0.85\ndpi=1600\ncrosshair=0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0")
+	check("as text: key=value lines", text == "sensitivity=0.314\nscoped=0.85\ndpi=1600\ncrosshair=0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0\nmapRotate=1\nmapBySide=1\nmapCentred=0\nmapSize=1\nmapZoom=0.9\nmapCones=1\nmapNames=always")
 	check("and back", PlayerSettings.equal(PlayerSettings.fromText(text), s))
 
 	local wild = PlayerSettings.sanitize({ sensitivity = -1, scoped = 0 / 0, dpi = 1e9, crosshair = "garbage" })

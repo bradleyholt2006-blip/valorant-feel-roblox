@@ -433,6 +433,22 @@ local function frame(s: Shown, age: number, clock: number): boolean
 	return true
 end
 
+-- The fires burning, for the minimap (system 34): each one's centre, how
+-- far it has spread, and its thrower.
+function FireView.burning(): { { centre: vector, radius: number, entity: number } }
+	local render = RemoteEntities.renderTime()
+	local clock = os.clock()
+	local out = {}
+	for _, s in shown do
+		local pool = s.pool
+		local t = if s.own then clock else render
+		if pool and FireSim.burning(pool, t) then
+			table.insert(out, { centre = pool.centre, radius = FireSim.radiusAt(pool, t), entity = s.entity })
+		end
+	end
+	return out
+end
+
 function FireView.start()
 	-- The burning glow: a stroke round a frame set in from the screen's
 	-- edges, drawn out over them, as the dash's flash is (AbilityEffects).

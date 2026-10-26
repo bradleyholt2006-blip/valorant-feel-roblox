@@ -35,6 +35,7 @@ local FlareView = require(script.FlareView)
 local FireView = require(script.FireView)
 local BlazeView = require(script.BlazeView)
 local RunItBackView = require(script.RunItBackView)
+local MinimapView = require(script.MinimapView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
@@ -115,6 +116,10 @@ BlindView.start()
 FireView.start()
 BlazeView.start()
 RunItBackView.start()
+-- The minimap at the top left (system 34), and the big map while Caps Lock
+-- is held: the map, your side and the enemies it sees, the spike, what's
+-- been thrown, and the sounds you make.
+MinimapView.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

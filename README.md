@@ -225,6 +225,14 @@ Built one system at a time:
     health, the shield you had then and your guns reloaded. If nothing kills you, its 10 s running
     out brings you back the same way. While your body's gone nothing hurts you and shots go through,
     and a hit it spared counts for nobody - [research and design](docs/research/33-run-it-back.md)
+34. **The minimap**, at the top left: the map from above, drawn from the level's own plan, with you,
+    your side and the way each of you looks, the enemies your side sees, the spike, the clouds,
+    walls of fire and fires that are out, and a white circle as far as the sounds you make are
+    heard. The server works out who each side sees twenty times a second, through the level, the
+    clouds and the walls of fire, and nobody blinded white sees anyone; an enemy it stops seeing
+    leaves a faded mark where they were for 3 s. Caps Lock held opens the big map, with the
+    places' names, and the settings menu has the reference's map settings -
+    [research and design](docs/research/34-minimap.md)
 
 ## Running it
 
@@ -257,7 +265,7 @@ Team Deathmatch B is the loadout menu, before the match or in your spawn room), 
 held the scoreboard (the arena and the spike rounds), mouse 1 and 2, while you're down in either,
 the next or the last teammate to watch,
 a click on a map card, during the vote after a match, your vote for the next map,
-M the Play menu (a click picks a mode's card, and PLAY plays it),
+M the Play menu (a click picks a mode's card, and PLAY plays it), Caps Lock held the big map,
 T agent select (a click selects an agent's card, and LOCK IN locks it in),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
@@ -271,8 +279,10 @@ On the course a spent charge comes back 1.5 s after it's done, and the ultimate'
 every life and fill again 1.5 s after Blade Storm ends or Run it Back brings you back; in the arena
 every life starts with every charge, in Team Deathmatch spent charges come back over time, and gun
 game and deathmatch have no abilities.
-O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
-crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
+O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows), a
+crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair) and
+the minimap's: Rotate or Fixed, the same way round or by side, kept centred, its size and zoom,
+the vision cones, and when the big map names its places.
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; N cycles the enemy outline colour.
 Arena: P moves on through the arena, gun game, the spike rounds, Swiftplay and off (Studio or
@@ -305,16 +315,17 @@ spike), `VFTestBuy` set to an id buys it as the menu would (`-` and the id sells
 `VFTestMenu` set to true or false opens or closes the menu, `VFTestSlot` set to 1, 2, 3, 4 or 5
 draws that slot (5 is Blade Storm's knives), `VFTestSettingsMenu` set to true or false opens or
 closes the settings menu, `VFTestSetting` set to `key=value` (`sensitivity=0.8`, `scoped=0.5`,
-`dpi=1600` or `crosshair=0;P;c;5`) enters that setting as its box in the menu would, `VFTestTake`
-set to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as Tab does
-or lets it go, `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would,
+`dpi=1600`, `crosshair=0;P;c;5` or `mapRotate=0`) enters that setting as its box or button in the
+menu would, `VFTestMap` set to true or false opens or closes the big map as holding Caps Lock does,
+`VFTestTake` set to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as
+Tab does or lets it go, `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would,
 `VFTestPlayMenu` set to true or false opens or closes the Play menu, `VFTestPlay` set to a mode's
 key (`skirmish`, `gungame`, `deathmatch`, `teamdeathmatch`, `standard`, `competitive` or
 `swiftplay`) presses PLAY for it, `VFTestLoadouts` set to true or false opens or closes Team
 Deathmatch's loadout menu, `VFTestPick` set to `2,3` picks the second stage's third loadout as a
 click would, `VFTestAgents` set to true or false opens or closes agent select as T does, and
 `VFTestAgent` set to an agent's id (`jett`) selects it as a click on its card would, or set to
-`lock` locks in. Each of the last fifteen clears itself.
+`lock` locks in. Each of the last sixteen clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
 From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame`, `spike`, `deathmatch` or
 `teamdeathmatch`), `VFMatchFormat` (`standard`, `competitive` or `swiftplay`) and `VFArenaOn`
@@ -351,7 +362,10 @@ last Hot Hands burst is their `VFLastFire` attribute (the floor under it, in met
 of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Workspace.VFWalls`
 holds each wall's run on its way and each wall as models. Where a player last cast Run it Back is
 their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each mark as a model, its
-`Entity` attribute whose it is. Workspace's
+`Entity` attribute whose it is. The minimap's ScreenGui, `VFMinimap`, carries what it shows: the
+plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the
+spike is (`Spike`), how far it's turned (`Turn`, degrees) and whether the big map's open (`Big`).
+Workspace's
 `VFPlayMenu` is whether players start in the Play menu (always on a
 live server; in Studio, tick it in the place before you press Play), and `VFModeCounts` how many
 are in servers playing each mode (`skirmish=6,gungame=0,...`). A player's `VFPlaying` is true once
@@ -384,8 +398,10 @@ throw and flight, the blind, and the kit on the wire), Hot Hands (the fireball i
 flight off walls and ceilings to the floor, its fire and who stands in it, the burn, Inner Fire's
 heal, and the wire), Blaze (the flame in hand, sending and bending the wall, its run up boxes,
 through walls and down ledges, the wall and who stands in it, the burn, Inner Fire's heal, and the
-wire) and Run it Back (the cast and its activation, running out, the return and the rise, a hit it
-spares, a plant under way, and the wire) are pure Luau and run outside Roblox:
+wire), Run it Back (the cast and its activation, running out, the return and the rise, a hit it
+spares, a plant under way, and the wire) and the minimap (who sees whom through the level, clouds
+and walls of fire, every map's plan, the views each setting gives, allies held on the edge, the
+spike's and the names' rules, and the cones' rays) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

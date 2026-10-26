@@ -12,9 +12,11 @@
 -- thrown clouds whose thrower is dead fly on, flares pop, blinding whoever
 -- the moves left looking at them, walls of fire whose caster is dead run
 -- on, and fires burn whoever the moves left standing in them.
--- Regen Shields refill after the shots. The arena's rounds move on last, so
--- a round that ends in this frame's shots respawns its players after the
--- frame's snapshot, and agent select after them, as the rounds have it.
+-- Regen Shields refill after the shots, and the minimap's spotting looks
+-- after them, so nobody they killed is seen. The arena's rounds move on
+-- last, so a round that ends in this frame's shots respawns its players
+-- after the frame's snapshot, and agent select after them, as the rounds
+-- have it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -40,6 +42,7 @@ local FlareServer = require(script.FlareServer)
 local FireServer = require(script.FireServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
+local MinimapServer = require(script.MinimapServer)
 local PickupsServer = require(script.PickupsServer)
 local ModeServers = require(script.ModeServers)
 
@@ -55,6 +58,7 @@ FlareServer.start()
 FireServer.start()
 BlazeServer.start()
 RunItBackServer.start()
+MinimapServer.start()
 GroundGunsServer.start()
 PickupsServer.start()
 SettingsServer.start()
@@ -79,6 +83,7 @@ RunService.Heartbeat:Connect(function(dt)
 	FireServer.step(now, dt)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)
+	MinimapServer.step(now)
 	Replication.step(now)
 	Arena.step(now)
 	AgentServer.step(now)
