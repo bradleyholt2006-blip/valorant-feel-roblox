@@ -1756,16 +1756,15 @@ offline tests cover.
 Press Play (F5), with one player.
 
 - **AS1 The course.** Press T: `AGENT SELECT` at the top left, `PICK ANY TIME` in gold at the top
-  right, and under them `Nothing's at stake here: an agent picked is yours at once, as often as
-  you like.` There are two cards, JETT and PHOENIX, each over DUELIST; Jett's is outlined in
-  gold with `YOURS` over the name. Under them is Jett's kit, headed `JETT   DUELIST`:
-  C CLOUDBURST, Q UPDRAFT, E TAILWIND and
-  X BLADE STORM, each with its line, and last `DRIFT   PASSIVE` with
-  `Hold jump while you fall to glide.` On the right, `YOUR TEAM` reads
-  `Nobody else on your side`. The button reads `PLAYING JETT`, dimmed, and `T to close` is at the
-  bottom right. The mouse moves a cursor, a click fires nothing, and WASD still moves you. Your
-  player's `VFAgent` reads `jett` and `VFAgentPick` `free`. T closes it, and the view turns with
-  the mouse again. **Send:** a screenshot of the screen.
+  right, and under them `Nothing's at stake here: an agent picked is yours at once, as often as you
+  like.` There are four cards: JETT and PHOENIX over DUELIST, SAGE over SENTINEL and OMEN over
+  CONTROLLER. Jett's is outlined in gold with `YOURS` over the name. Under them is Jett's kit,
+  headed `JETT   DUELIST`: C CLOUDBURST, Q UPDRAFT, E TAILWIND and X BLADE STORM, each with its
+  line, and last `DRIFT   PASSIVE` with `Hold jump while you fall to glide.` On the right, `YOUR
+  TEAM` reads `Nobody else on your side`. The button reads `PLAYING JETT`, dimmed, and `T to close`
+  is at the bottom right. The mouse moves a cursor, a click fires nothing, and WASD still moves you.
+  Your player's `VFAgent` reads `jett` and `VFAgentPick` `free`. T closes it, and the view turns
+  with the mouse again. **Send:** a screenshot of the screen.
 - **AS2 The other menus.** With B's buy menu open, T does nothing; the same with O's settings
   menu. Close them, and press T: B now does nothing. With the screen up, O opens the settings
   menu over it; close it with O, and the screen is still up, the mouse still moves its cursor, and
@@ -2352,14 +2351,14 @@ and 4294967293 for player 3. Your `VFLastHeal` attribute is the name of the play
 healed. On the course a spent charge comes back 1.5 s after it's spent. Start each check with the
 Vandal in hand.
 
-- **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX and SAGE, and SAGE's reads SENTINEL.
-  Click it: her kit, X RESURRECTION, C BARRIER ORB and Q SLOW ORB lit (sections 43, 42 and 41), and
-  E HEALING ORB lit, with `E readies a healing orb. Fire heals the hurt ally in your crosshair, alt
-  fire heals you, 100 health over 5 s.`; nothing under them, as she has no passive. Click PICK SAGE:
-  the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`. Close it with T. On the ability bar
-  RESURRECTION has its seven pips lit gold, BARRIER ORB has its pip lit, SLOW ORB its two and
-  HEALING ORB its one, and `VFKit` reads `C1/1 Q2/2 E1/1 X7/7`. **Send:** a screenshot of Sage's
-  card.
+- **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX, SAGE and OMEN, and SAGE's reads
+  SENTINEL. Click it: her kit, X RESURRECTION, C BARRIER ORB and Q SLOW ORB lit (sections 43, 42 and
+  41), and E HEALING ORB lit, with `E readies a healing orb. Fire heals the hurt ally in your
+  crosshair, alt fire heals you, 100 health over 5 s.`; nothing under them, as she has no passive.
+  Click PICK SAGE: the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`. Close it with T. On
+  the ability bar RESURRECTION has its seven pips lit gold, BARRIER ORB has its pip lit, SLOW ORB
+  its two and HEALING ORB its one, and `VFKit` reads `C1/1 Q2/2 E1/1 X7/7`. **Send:** a screenshot
+  of Sage's card.
 - **HO2 In hand.** Press E: a quick whoosh, the Vandal goes, and a small green ball comes up over
   your hand. E's square lights, with `EQUIP` under it for 0.5 s; the HUD reads `Healing Orb   [E]`,
   with no ammo; E's pip stays lit; and `VFKit` ends in `equip`. You run at the knife's speed,
@@ -2686,8 +2685,8 @@ the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
   Vandal's back 1 s later; X's pips go dark (`X0/7`) and light again 1.5 s after the chime. 2 s
   after the chime, a sharp crack, logged as `reviveBurst`: the shell bursts in chips of crystal that
   fall and fade, the body and its disc are gone, and Dummy 1 stands where it stood, dropping the 0.5
-  m to the floor. The kill feed reads your name, `Resurrection` in teal, then `Dummy 1 (static)`.
-  Press F2 to close the Sound Lab. **Send:** a screenshot of the shell as it rises.
+  m to the floor. The kill feed reads your name, `Resurrection` in teal, then `Dummy 1`, as it names
+  dummies. Press F2 to close the Sound Lab. **Send:** a screenshot of the shell as it rises.
 - **RE7 No shield.** Set `VFTestPitch` to -3 and fire single shots at Dummy 1: the third fells it,
   where the fourth did in RE3, as it came back with no shield. 2 s later it stands again, its shield
   back.
@@ -2715,6 +2714,91 @@ setting `VFTestGive` to `ultimate` fills the ultimate's points.
   3 moves and shoots again. Shots from player 2 as player 3 falls take health off. Every window's
   kill feed reads `Player1`, `Resurrection` in teal, then `Player3`. As the next round starts, every
   body's gone from all three windows. **Send:** a screenshot of window 2 as the shell rises.
+
+## 44. Omen's Dark Cover
+
+From [40-dark-cover.md](research/40-dark-cover.md). One player on the course, then three in Skirmish
+and the spike rounds. Play as Omen: press T, click OMEN's card and PICK OMEN (or set `VFTestAgents`
+to true, `VFTestAgent` to `omen`, then `VFTestAgent` to `lock`). Without keys or a mouse button,
+`VFTestButtons` 16384 presses E, 128 the left button and 256 the right: set it and clear it again
+each time, and leave 128 or 256 set for as long as the button's held. `VFTestYaw` and `VFTestPitch`
+aim, in degrees: positive yaw turns left, and positive pitch looks up. The F3 panel's `pos` line is
+where you stand, in metres. Your `VFLastSmoke` attribute is the floor your last smoke went on, in
+metres, and `Workspace.VFClouds` holds each smoke, a `Smoke` ball, and with the orb in hand its
+mark, `SmokeMark`. On the course a spent charge comes back 1.5 s after it's spent. Start at the
+spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **DC1 His kit.** In agent select, the cards are JETT, PHOENIX, SAGE and OMEN, and OMEN's reads
+  CONTROLLER. Click it: his kit, with C SHROUDED STEP, Q PARANOIA and X FROM THE SHADOWS dimmed with
+  `NOT YET`, and E DARK COVER lit, with `E readies a shadow orb. Hold fire to send its mark further,
+  alt fire to bring it closer, and E again to smoke there.`; nothing under them, as he has no
+  passive. Click PICK OMEN: the button reads `PLAYING OMEN`, and `VFAgent` reads `omen`. Close it
+  with T. On the ability bar SHROUDED STEP, PARANOIA and FROM THE SHADOWS are dimmed with their pips
+  dark, DARK COVER has its two pips lit, and `VFKit` reads `C0/2 Q0/1 E2/2 X0/7`. **Send:** a
+  screenshot of Omen's card.
+- **DC2 In hand.** Open the Sound Lab (F2 four times), and keep it open to DC6. Press E: a low
+  whoosh, logged as `darkEquip`, `yours`; the Vandal goes, and a violet ball with two wisps comes up
+  over an open hand. E's square lights, with `EQUIP` under it for 0.6 s; the HUD reads
+  `Dark Cover   [E]`, with no ammo; and `VFKit` ends in `equip mark 15.0`. Half way between the 10 m
+  and 20 m stripes, at eye height, is the mark, a small violet ball, and round it a faint violet
+  ball 8.2 m across, its middle on the floor under the mark: both show over anything in front of
+  them, Dummy 1 too. Click the left button: nothing's fired or heard, and the mark's number goes up
+  a little. Press 1: the Vandal's back, the mark's gone, and `VFKit` reads `C0/2 Q0/1 E2/2 X0/7`,
+  nothing spent.
+- **DC3 The mark.** Press E. Set `VFTestButtons` to 128 for about 2 s, then clear it: the mark
+  slides away down the lane, its number climbing about 15 a second, to about 45, with the faint ball
+  under it past the 40 m stripe. Set it to 256 until the mark stops: it comes back to `mark 2.0` and
+  no nearer, the faint ball round your feet. Set it to 384, both held: the mark stays. Clear it.
+- **DC4 Nowhere for it.** Hold the left button until the mark reads 64 or more: as it passes the
+  backstop, the faint ball goes behind it, shown over it, and past 62, where the lane's floor ends,
+  the mark turns red and the faint ball goes. Press E: nothing's sent or heard, the orb stays in
+  hand, and `VFKit` still reads `E2/2`. Hold the right button until the mark reads about 61: violet
+  again, its faint ball on the floor behind the backstop.
+- **DC5 Behind a wall.** Press E: a slow, deep swish, logged as `darkSend`, `yours`; the orb goes
+  and the Vandal's back 0.7 s later, and E has one pip lit (`VFKit` `E1/2`), both again 1.5 s later.
+  `VFLastSmoke` reads about `0, 0, -61`, and `Workspace.VFClouds` has a `Smoke`, out of sight behind
+  the backstop. About 1 s after the swish the Sound Lab logs `darkForm` out of range, 61 m away, and
+  15 s after that the `Smoke` is gone.
+- **DC6 The smoke.** Press E, hold the left button until the mark reads about 20, its faint ball
+  over the 20 m stripe, and press E. About a third of a second after the swish, a deep whoosh,
+  logged as `darkForm`, and a dome of dark violet smoke grows on the floor over the stripe, quickly
+  at first, whole in about 1 s and 8.2 m across, hiding what's behind it, Dummy 4 at 30 m too.
+  13.5 s after the whoosh, a low bell, logged as `darkWarn`, and it flickers lighter, never thinner,
+  until it's gone at once at 15 s. Press F2 to close the Sound Lab. **Send:** a screenshot of the
+  whole dome.
+- **DC7 Inside it.** Press E, hold the right button until the mark reads about 6, and press E. Walk
+  into the smoke: as your eye goes in, the screen goes dark violet, all but the HUD, and as you walk
+  out it clears.
+- **DC8 Too steep to stand on.** Walk over to the ramps, signed `30 deg`, `45 deg` and `50 deg`, to
+  the right of the spawn and behind it. Stand in front of the 50 deg ramp facing up it (`pos` about
+  `10.00 0.00 12.00`, `VFTestYaw` -90, `VFTestPitch` 0) and press E: the mark's on the ramp where
+  the crosshair meets it, and the faint ball's middle on the floor under the ramp, through it. Press
+  E again: the smoke forms there, and `VFLastSmoke`'s middle number reads 0. Do the same in front of
+  the 45 deg ramp (`pos` about `10.00 0.00 9.00`): the smoke forms on its slope, the middle number
+  about 1.5.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1. As round 1's buy phase starts, agent select
+comes up by itself: pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3. Open the
+Sound Lab in windows 1, 2 and 3.
+
+- **DC9 Who hears it.** Once the round is live, players 2 and 3 stand beside player 1, and player 1
+  sends a smoke about 10 m ahead. Windows 1 and 3 log `darkSend`; window 2 doesn't, though player 2
+  stands right there. All three see the smoke form and log `darkForm`, and 13.5 s later `darkWarn`.
+- **DC10 Spotted.** Player 3 stands beside player 1. Player 1 sends another smoke about 10 m ahead,
+  and player 2 walks round behind it, in line with player 1: on window 1's minimap player 2 fades to
+  where they were last seen, and its `Seen` loses `4294967294`. Player 2 steps out to the side:
+  they're back on the minimap. As the next round starts, any smoke standing is gone from all three
+  windows.
+
+Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
+round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+
+- **DC11 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, one of E's pips lit. B: under the shields
+  Dark Cover (`E`, 150) is lit, and Shrouded Step and Paranoia read `NOT YET`. Click Dark Cover: 150
+  credits go, E's second pip lights, and `VFKit` reads `E2/2`; it then reads `FULL`, and a second
+  click buys nothing. Close the menu (B). Once the round's live, send one: `E1/2`, and E counts down
+  from 40 under it, then reads `E2/2` again.
 
 ## Results
 
@@ -2958,6 +3042,17 @@ RE7 shots to fell it after: ___
 RE8 the wall up before the burst: yes / no; VFWall after it: ___
 RE9 the discs' colours in windows 1, 2 and 3: ___
 RE10 window 3's health after the burst: ___; held for about ___ s; player 2's hits in the fall took health: yes / no
+DC1 anything on Omen's card or the bar that read differently: ___
+DC2 EQUIP for about ___ s; the mark about ___ m out; anything the Sound Lab logged differently: ___
+DC3 the mark after about 2 s of the left button: ___; at its nearest: ___
+DC4 red past about ___ m; anything sent: yes / no
+DC5 VFLastSmoke: ___; E's pip back after ___ s
+DC6 the dome formed about ___ s after the swish and was whole ___ s later; the bell at ___ s; gone at ___ s
+DC7 the screen dark inside it: yes / no
+DC8 VFLastSmoke's middle number at the 50 deg ramp: ___; at the 45 deg ramp: ___
+DC9 the windows that logged darkSend: ___; darkForm: ___
+DC10 player 2 dropped from window 1's minimap behind it: yes / no; every smoke gone with the next round: yes / no
+DC11 E's pips as the round began: ___; bought for ___; E back after ___ s
 Didn't look right (IDs and what you saw):
 ```
 
@@ -3208,3 +3303,8 @@ Didn't look right (IDs and what you saw):
 | 39 | Brought back with no shield: fewer shots to fell it again | RE7 |
 | 39 | A wall of ice where it comes back breaking | RE8 |
 | 39 | An ally in Skirmish: the discs' colours, rising with the body out of harm's way, held as they fall and in harm's way then, and every body gone with a new round | RE9, RE10 |
+| 40 | Omen lit in agent select, a Controller, with Dark Cover lit and the rest NOT YET, and `E2/2` on the course | DC1 |
+| 40 | In hand 0.6 s after E, the mark 15 m out, moved by held fire and alt fire within 2 to 80 m, seen through walls, and red with nowhere for it | DC2, DC3, DC4 |
+| 40 | The smoke: sent with E, the gun back 0.7 s after, forming where the mark showed, growing over 1 s, standing 15 s, flickering for its last 1.5 s and gone, and dark from inside | DC5, DC6, DC7 |
+| 40 | A mark behind a wall, and over a ramp too steep to stand on | DC4, DC5, DC8 |
+| 40 | With other players: their spotting stopped at it, the send heard by the sender's side alone, every smoke gone with a new round, and the second charge bought at 150 | DC9, DC10, DC11 |

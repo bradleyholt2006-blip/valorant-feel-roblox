@@ -26,6 +26,9 @@
 --   * the Resurrection: neither here; ReviveView draws the bodies, marks
 --     the one it would bring back, and draws and sounds each return
 --     (system 39)
+--   * Dark Cover: only heard here, as its orb's sent (by the sender's side
+--     alone) and as others' smokes form; CloudView draws its mark and the
+--     smokes, and sounds yours forming and each one's warning (system 40)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws

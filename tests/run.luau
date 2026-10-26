@@ -48,5 +48,6 @@ require("./healingorb")
 require("./sloworb")
 require("./barrierorb")
 require("./resurrection")
+require("./darkcover")
 
 H.finish()

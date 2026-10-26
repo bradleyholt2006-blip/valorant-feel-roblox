@@ -216,7 +216,7 @@ do
 			and AbilitySim.playable("resurrection")
 	)
 	local pickable = AgentSelect.pickable()
-	check("so she can be picked, after Jett and Phoenix", pickable[3] == SAGE and #pickable == 3)
+	check("so she can be picked, after Jett and Phoenix", pickable[3] == SAGE and #pickable >= 3)
 	check("and she's third on the wire", AbilityConfig.AgentIds[3] == SAGE and AbilityConfig.AgentIndex[SAGE] == 3)
 	local TDM = AbilityConfig.TeamDeathmatch
 	check(

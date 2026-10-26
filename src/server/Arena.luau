@@ -175,6 +175,7 @@ local HealServer = require(script.Parent.HealServer)
 local SlowServer = require(script.Parent.SlowServer)
 local BarrierServer = require(script.Parent.BarrierServer)
 local ReviveServer = require(script.Parent.ReviveServer)
+local CloudServer = require(script.Parent.CloudServer)
 local AbilityServer = require(script.Parent.AbilityServer)
 local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
@@ -758,6 +759,7 @@ local function roundStarted()
 	SlowServer.clear()
 	BarrierServer.clear()
 	ReviveServer.clear()
+	CloudServer.clear()
 	if not m then
 		return
 	end
@@ -874,6 +876,7 @@ local function stop()
 	SlowServer.clear()
 	BarrierServer.clear()
 	ReviveServer.clear()
+	CloudServer.clear()
 	AbilityServer.economy = false
 	AbilityServer.refill = true
 	AbilityServer.off = false
@@ -923,6 +926,7 @@ local function begin(wanted: Mode, format: string)
 	SlowServer.clear()
 	BarrierServer.clear()
 	ReviveServer.clear()
+	CloudServer.clear()
 	-- Deathmatch has no teams: everyone can hurt everyone.
 	if wanted ~= "deathmatch" then
 		for side, info in SIDES do

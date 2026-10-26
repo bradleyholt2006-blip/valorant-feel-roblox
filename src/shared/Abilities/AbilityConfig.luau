@@ -126,6 +126,7 @@ AbilityConfig.TeamDeathmatch = {
 		bladestorm = p(60, "community", TDM_WIKI .. "'s ultimate costs: Jett's Blade Storm, 60 points"),
 		runitback = p(70, "community", TDM_WIKI .. "'s ultimate costs: Phoenix's Run it Back, 70 points"),
 		resurrection = p(50, "community", TDM_WIKI .. "'s ultimate costs: Sage's Resurrection, 50 points"),
+		fromtheshadows = p(60, "community", TDM_WIKI .. "'s ultimate costs: Omen's From the Shadows, 60 points"),
 	},
 	cooldowns = {
 		cloudburst = p(29, "community", TDM_WIKI .. "'s cooldowns: Jett's Cloudburst, 29 s"),
@@ -137,6 +138,9 @@ AbilityConfig.TeamDeathmatch = {
 		barrierorb = p(94, "community", TDM_WIKI .. "'s cooldowns: Sage's Barrier Orb, 94 s"),
 		sloworb = p(51, "community", TDM_WIKI .. "'s cooldowns: Sage's Slow Orb, 51 s"),
 		healingorb = p(22, "community", TDM_WIKI .. "'s cooldowns: Sage's Healing Orb, 22 s"),
+		shroudedstep = p(33, "community", TDM_WIKI .. "'s cooldowns: Omen's Shrouded Step, 33 s"),
+		paranoia = p(73, "community", TDM_WIKI .. "'s cooldowns: Omen's Paranoia, 73 s"),
+		darkcover = p(65, "community", TDM_WIKI .. "'s cooldowns: Omen's Dark Cover, 65 s"),
 	},
 	signatureStart = p(1, "community", TDM_WIKI .. ": 'Most agents start the match with one full charge of their signature ability'"),
 	headStart = p(
@@ -185,6 +189,9 @@ local BARRIER = "VALORANT Wiki, Barrier Orb"
 local DIGNITAS = "Dignitas, 'Tips and Tricks Using Sage Effectively'"
 local RES = "VALORANT Wiki, Resurrection"
 local ESPORTS = "esports.net's Sage guide"
+local P404 = "Patch 4.04"
+local OMEN = "VALORANT Wiki, Omen"
+local COVER = "VALORANT Wiki, Dark Cover"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -312,11 +319,54 @@ AbilityConfig.Defs = {
 		weapon = "revive",
 		description = "X readies it. Fire on a fallen ally's body brings them back where they lie, with full health and no shield.",
 	},
+	-- Omen's (system 40): his kit as the VALORANT Wiki lists it. His Dark
+	-- Cover can be played.
+	shroudedstep = {
+		id = "shroudedstep",
+		name = "Shrouded Step",
+		slot = AbilityConfig.C,
+		kind = "basic",
+		cost = p(100, "community", OMEN .. ": Shrouded Step, 100 credits"),
+		charges = p(2, "community", OMEN .. ": Shrouded Step, 2 uses"),
+		description = "C readies a short teleport. Fire steps you through the shadows to where it shows.",
+	},
+	paranoia = {
+		id = "paranoia",
+		name = "Paranoia",
+		slot = AbilityConfig.Q,
+		kind = "basic",
+		cost = p(250, "community", OMEN .. ": Paranoia, 250 credits"),
+		charges = p(1, "community", OMEN .. ": Paranoia, 1 use"),
+		description = "Q readies a blinding orb. Fire sends it forward through walls, nearsighting everyone it touches.",
+	},
+	darkcover = {
+		id = "darkcover",
+		name = "Dark Cover",
+		slot = AbilityConfig.E,
+		kind = "signature",
+		cost = p(150, "confirmed", P404 .. ": Dark Cover 'Cost increased 100 >>> 150'"),
+		charges = p(2, "community", OMEN .. ": Dark Cover, 2 uses"),
+		-- Patch 3.0: 'Granted signature charges reduced 2 >>> 1'.
+		free = 1,
+		recharge = { kind = "cooldown", seconds = p(40, "confirmed", P1108 .. ": Dark Cover 'Cooldown increased from 30s → 40s'") },
+		weapon = "smokeorb",
+		description = "E readies a shadow orb. Hold fire to send its mark further, alt fire to bring it closer, and E again to smoke there.",
+	},
+	fromtheshadows = {
+		id = "fromtheshadows",
+		name = "From the Shadows",
+		slot = AbilityConfig.X,
+		kind = "ultimate",
+		points = p(7, "community", OMEN .. ": From the Shadows, 7 points"),
+		description = "X brings up the map. Fire on a place in it teleports you there, unless an enemy destroys your shade first.",
+	},
 } :: { [string]: AbilityDef }
 
 -- The roles are Riot's: 'Duelist', on playvalorant.com's pages for Jett and
--- for Phoenix, and Sage's in Patch 1.01: 'As a Sentinel, Sage is supposed
--- to be most effective when defending territory that she already controls.'
+-- for Phoenix, Sage's in Patch 1.01: 'As a Sentinel, Sage is supposed to
+-- be most effective when defending territory that she already controls.',
+-- and Omen's in Patch 4.04: 'We want to increase his reliability as a
+-- Controller'.
 AbilityConfig.Agents = {
 	jett = {
 		id = "jett",
@@ -338,6 +388,12 @@ AbilityConfig.Agents = {
 		role = "Sentinel",
 		abilities = { "barrierorb", "sloworb", "healingorb", "resurrection" },
 	},
+	omen = {
+		id = "omen",
+		name = "Omen",
+		role = "Controller",
+		abilities = { "shroudedstep", "paranoia", "darkcover", "fromtheshadows" },
+	},
 } :: { [string]: Agent }
 
 -- What each passive does, for agent select (system 29), in our words.
@@ -356,8 +412,8 @@ AbilityConfig.NO_AGENT = ""
 
 -- The agents' ids by index, and each id's index, for the wire (0 for no
 -- agent's kit).
-AbilityConfig.AgentIds = { "jett", "phoenix", "sage" }
-AbilityConfig.AgentIndex = { jett = 1, phoenix = 2, sage = 3 } :: { [string]: number }
+AbilityConfig.AgentIds = { "jett", "phoenix", "sage", "omen" }
+AbilityConfig.AgentIndex = { jett = 1, phoenix = 2, sage = 3, omen = 4 } :: { [string]: number }
 
 -- The ability an agent has in a slot, if any.
 function AbilityConfig.abilityOf(agent: string, slot: number): AbilityDef?
@@ -803,6 +859,39 @@ AbilityConfig.Resurrection = {
 	height = p(0.5, "estimate", "Ours: " .. RES .. " has the body rise up and them fall down to the ground, with no height"),
 }
 
+-- Omen's Dark Cover (system 40), his signature: E puts a shadow orb in
+-- hand (WeaponConfig's smokeorb, in the fifth slot), with a mark along the
+-- crosshair, through walls, where it would go: held fire sends the mark
+-- further and held alt fire brings it closer (Patch 1.0), and E again sends
+-- the orb there, unseen, through anything in its way, to burst into a ball
+-- of smoke on the floor under the mark. The smoke stands its duration and
+-- goes at once, after a warning. Riot gives the cost, the recharge, the
+-- free charge, the duration and the orb's speed; the wiki the reach, the
+-- radius and the times (40-dark-cover.md, section 2).
+AbilityConfig.DarkCover = {
+	-- From the throw until the gun's back in hand.
+	unequip = p(0.7, "community", COVER .. ": unequip time 0.7 s (game files)"),
+	-- How far along the crosshair the mark can go, and how near.
+	reach = p(80, "community", COVER .. ": max deploy distance 80 m (game files)"),
+	near = p(2, "estimate", "Ours, metres: not published; enough to smoke at your feet"),
+	-- Where the mark starts as the orb comes into hand: where the crosshair
+	-- meets the level, but no further than this.
+	start = p(15, "estimate", "Ours, metres: not published"),
+	-- How fast held fire or alt fire moves the mark (metres a second).
+	push = p(15, "estimate", "Ours: not published; the length of a site in about 2 s"),
+	-- The orb's flight, straight to the smoke (metres a second).
+	speed = p(64, "confirmed", P404 .. ": 'Projectile Speed increased 2800 >>> 6400' (" .. COVER .. ": 64 m/s)"),
+	-- The smoke: its radius, how long it takes to grow to it once the orb
+	-- is there, how long it stands from then, and how long before its end
+	-- it warns that it's going.
+	radius = p(4.1, "community", COVER .. ": radius 4.1 m (game files)"),
+	grow = p(1, "community", COVER .. ": deploy time 1 s (game files), read as the smoke growing"),
+	duration = p(15, "confirmed", P050 .. ": 'Dark Cover smoke duration increased 12 >> 15 seconds'"),
+	warn = p(1.5, "community", COVER .. ": a warning at 13.5 s (v7.08), 1.5 s before it goes"),
+	-- How far below the mark it looks for a floor to stand on.
+	depth = p(50, "estimate", "Ours, metres: below that, nowhere"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
 -- for the Barrier Orb, after its wall's raised, and for the Resurrection,
@@ -820,6 +909,8 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.BarrierOrb.unequip.value
 	elseif id == "resurrection" then
 		return AbilityConfig.Resurrection.unequip.value
+	elseif id == "darkcover" then
+		return AbilityConfig.DarkCover.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end
