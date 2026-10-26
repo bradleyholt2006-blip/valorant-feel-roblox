@@ -1,14 +1,15 @@
 --!strict
 -- Omen's Dark Cover (system 40): its numbers and where they come from, Omen
--- and his kit, the orb in hand (E, its equip, its mark starting where the
--- crosshair meets the level, held fire sending it further and alt fire
--- bringing it closer, fire throwing nothing, E again sending it, its charge
--- spent and the gun back after, nothing sent before it's ready or with
--- nowhere for it), where its smoke goes (on the floor under the mark, where
--- the crosshair meets the floor, on a box's top, a mark inside a wall
--- brought back out of it, on through a floor too steep to stand on, nowhere
--- with no floor), its flight, the smoke growing, standing, warning and gone,
--- and the wire carrying the mark.
+-- and his kit, its charges (a cooldown bringing back only those he's had this
+-- round, never a second he hasn't bought), the orb in hand (E, its equip, its
+-- mark starting where the crosshair meets the level, held fire sending it
+-- further and alt fire bringing it closer, fire throwing nothing, E again
+-- sending it, its charge spent and the gun back after, nothing sent before
+-- it's ready or with nowhere for it), where its smoke goes (on the floor
+-- under the mark, where the crosshair meets the floor, on a box's top, a mark
+-- inside a wall brought back out of it, on through a floor too steep to stand
+-- on, nowhere with no floor), its flight, the smoke growing, standing,
+-- warning and gone, and the wire carrying the mark and what the kit's had.
 
 local MovementConfig = require("../src/shared/Movement/MovementConfig")
 local PlayerSim = require("../src/shared/PlayerSim")
@@ -201,6 +202,41 @@ do
 	check("his kit full: E2/2", string.find(AbilitySim.summary(kit, 0), "E2/2", 1, true) ~= nil)
 end
 
+-- Its charges ---------------------------------------------------------------------------------
+
+do
+	-- The spike rounds: a new match's kit.
+	local kit = AbilitySim.new(OMEN)
+	AbilitySim.reset(kit)
+	check(
+		"a round starts with the free charge, and a cooldown brings back that one alone (Patch 3.0)",
+		kit.charges[E] == 1 and AbilitySim.rechargeTo(kit, E) == 1
+	)
+	kit.charges[E] = 0
+	check("sent, it's the one that comes back, never the second", AbilitySim.rechargeTo(kit, E) == 1)
+	AbilitySim.buy(kit, "darkcover")
+	AbilitySim.buy(kit, "darkcover")
+	check("the second bought, both come back", kit.charges[E] == 2 and AbilitySim.rechargeTo(kit, E) == 2)
+	kit.charges[E] = 1
+	AbilitySim.buy(kit, "darkcover")
+	check("one bought in place of one sent is the same charge, not a third", kit.charges[E] == 2 and AbilitySim.rechargeTo(kit, E) == 2)
+	AbilitySim.sell(kit, "darkcover")
+	check("one sold back doesn't come back", kit.charges[E] == 1 and AbilitySim.rechargeTo(kit, E) == 1)
+	AbilitySim.buy(kit, "darkcover")
+	AbilitySim.newRound(kit)
+	check("both carried into the next round, both come back", kit.charges[E] == 2 and AbilitySim.rechargeTo(kit, E) == 2)
+	kit.charges[E] = 0
+	AbilitySim.newRound(kit)
+	check(
+		"both sent by its end, the next has the free one again, and only it comes back",
+		kit.charges[E] == 1 and AbilitySim.rechargeTo(kit, E) == 1
+	)
+	AbilitySim.fill(kit)
+	check("on the course and in Skirmish, both", AbilitySim.rechargeTo(kit, E) == 2)
+	AbilitySim.empty(kit)
+	check("in gun game, none", AbilitySim.rechargeTo(kit, E) == 0)
+end
+
 -- Where its smoke goes ------------------------------------------------------------------------
 
 do
@@ -332,5 +368,14 @@ do
 	run(p, B.Fire, ticks(0.3))
 	local _, decoded = PlayerCodec.decodeAck(PlayerCodec.encodeAck(9, p.sim))
 	check("the ack carries the mark", decoded.abilities.reach == p.sim.abilities.reach and p.sim.abilities.reach > 15)
+	local kit = p.sim.abilities
+	AbilitySim.reset(kit)
+	AbilitySim.buy(kit, "darkcover")
+	kit.charges[E] = 1
+	local _, bought = PlayerCodec.decodeAck(PlayerCodec.encodeAck(10, p.sim))
+	check(
+		"and what the kit's had this round",
+		bought.abilities.owned[E] == 2 and bought.abilities.charges[E] == 1 and AbilitySim.rechargeTo(bought.abilities, E) == 2
+	)
 end
 return nil

@@ -294,7 +294,8 @@ Built one system at a time:
     on the minimap, nor healed or brought back through it, and from inside it the screen is dark. It
     stands 15 s, flickers with a low tone for its last 1.5 s and goes at once, and only Omen's side
     hears the orb sent. Two charges, one free each round and the second 150 credits; a spent one
-    comes back 40 s after (65 s in Team Deathmatch), and the gun's back 0.7 s after a send -
+    comes back 40 s after, but never one that wasn't bought (65 s in Team Deathmatch), and the gun's
+    back 0.7 s after a send -
     [research and design](docs/research/40-dark-cover.md)
 41. **Omen's Paranoia**: Q puts Omen's other shadow orb in hand, ready in 1.1 s, and mouse 1 sends
     it straight along the crosshair, a see-through ball of shadow 8.6 m across: it appears 4.5 m

@@ -99,6 +99,11 @@ local Accuracy = require("../Weapons/Accuracy")
 export type State = {
 	agent: string, -- an AbilityConfig.Agents id, or AbilityConfig.NO_AGENT for no abilities
 	charges: { number }, -- by slot: C, Q and E (X's is always 0)
+	-- By slot, as charges: how many it's had this round, free and bought,
+	-- which a cooldown brings spent ones back up to (AbilityServer): not
+	-- one that was never bought (Patch 3.0: 'Omen now must buy his second
+	-- smoke').
+	owned: { number },
 	-- Signature charges that came back by recharge this round, which the next
 	-- round takes back (the VALORANT Wiki: they "will not be kept").
 	regained: number,
@@ -251,6 +256,7 @@ function AbilitySim.new(agent: string?): State
 	local s: State = {
 		agent = agent or AbilityConfig.DEFAULT_AGENT,
 		charges = { 0, 0, 0, 0 },
+		owned = { 0, 0, 0, 0 },
 		regained = 0,
 		kills = 0,
 		points = 0,
@@ -318,6 +324,13 @@ function AbilitySim.maxCharges(s: State, slot: number): number
 	return if def and def.charges then def.charges.value else 0
 end
 
+-- How many charges a cooldown brings `slot` back up to: as many as the kit's
+-- had this round, never more than its most, so never one that wasn't
+-- bought (Patch 3.0: 'Omen now must buy his second smoke').
+function AbilitySim.rechargeTo(s: State, slot: number): number
+	return math.min(AbilitySim.maxCharges(s, slot), s.owned[slot])
+end
+
 -- The points the ultimate needs (0 with none): the mode's, if it has its
 -- own, or the ultimate's.
 function AbilitySim.pointsNeeded(s: State): number
@@ -361,6 +374,7 @@ end
 function AbilitySim.empty(s: State)
 	for slot = C, X do
 		s.charges[slot] = 0
+		s.owned[slot] = 0
 	end
 	s.regained = 0
 	s.kills = 0
@@ -369,11 +383,15 @@ function AbilitySim.empty(s: State)
 end
 
 -- Each round: charges that came back by recharge go, and the signature has
--- at least its free charges. Unused charges carry over.
+-- at least its free charges. Unused charges carry over, and they're what
+-- the kit has had this round.
 function AbilitySim.newRound(s: State)
 	local def = AbilitySim.def(s, E)
 	local free = if def and def.free then def.free else 0
 	s.charges[E] = math.max(s.charges[E] - s.regained, free)
+	for slot = C, E do
+		s.owned[slot] = s.charges[slot]
+	end
 	s.regained = 0
 	s.kills = 0
 	AbilitySim.settle(s)
@@ -420,6 +438,7 @@ function AbilitySim.fill(s: State, ultimate: boolean?)
 	for slot = C, E do
 		local def = AbilitySim.def(s, slot)
 		s.charges[slot] = if def and AbilitySim.playable(def.id) then AbilitySim.maxCharges(s, slot) else 0
+		s.owned[slot] = s.charges[slot]
 	end
 	s.regained = 0
 	s.kills = 0
@@ -484,13 +503,15 @@ function AbilitySim.canBuy(s: State, id: string): boolean
 	return slot ~= nil and def ~= nil and def.cost ~= nil and AbilitySim.playable(id) and s.charges[slot] < AbilitySim.maxCharges(s, slot)
 end
 
--- A charge of the ability `id` bought; false if it can't take one.
+-- A charge of the ability `id` bought; false if it can't take one. One
+-- bought in place of one spent and coming back is the same charge.
 function AbilitySim.buy(s: State, id: string): boolean
 	local slot = AbilitySim.slotOf(s, id)
 	if not slot or not AbilitySim.canBuy(s, id) then
 		return false
 	end
 	s.charges[slot] += 1
+	s.owned[slot] = math.max(s.owned[slot], s.charges[slot])
 	return true
 end
 
@@ -501,6 +522,7 @@ function AbilitySim.sell(s: State, id: string): boolean
 		return false
 	end
 	s.charges[slot] -= 1
+	s.owned[slot] = math.max(s.owned[slot] - 1, s.charges[slot])
 	return true
 end
 

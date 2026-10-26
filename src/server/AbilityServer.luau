@@ -197,6 +197,8 @@ local function startOver(player: Player, kit: AbilitySim.State, now: number)
 		local most = AbilitySim.maxCharges(kit, slot)
 		local signature = def ~= nil and def.kind == "signature" and AbilitySim.playable(def.id)
 		kit.charges[slot] = if signature then math.min(rules.signatureStart.value, most) else 0
+		-- Nothing's bought here: every charge comes back.
+		kit.owned[slot] = most
 		local cooldown = cooldownOf(kit, slot)
 		if cooldown and kit.charges[slot] < most then
 			coming[slot] = now + cooldown * (1 - rules.headStart.value)
@@ -247,8 +249,9 @@ function AbilityServer.addPoints(player: Player, amount: number)
 	end)
 end
 
--- A kit's abilities recharging at `now`: each slot short of its most has a
--- charge back once its time's up, and its next on the way.
+-- A kit's abilities recharging at `now`: each slot short of what it's had
+-- this round (AbilitySim.rechargeTo: never a charge that wasn't bought) has
+-- a charge back once its time's up, and its next on the way.
 local function recharge(player: Player, kit: AbilitySim.State, now: number)
 	local coming = due[player]
 	if not coming then
@@ -258,15 +261,15 @@ local function recharge(player: Player, kit: AbilitySim.State, now: number)
 	local changed = false
 	for slot = AbilityConfig.C, AbilityConfig.E do
 		local cooldown = cooldownOf(kit, slot)
-		local most = AbilitySim.maxCharges(kit, slot)
-		if not cooldown or kit.charges[slot] >= most then
+		local upTo = AbilitySim.rechargeTo(kit, slot)
+		if not cooldown or kit.charges[slot] >= upTo then
 			coming[slot] = 0
 		elseif coming[slot] == 0 then
 			coming[slot] = now + cooldown
 		elseif now >= coming[slot] then
 			kit.charges[slot] += 1
 			changed = true
-			coming[slot] = if kit.charges[slot] < most then now + cooldown else 0
+			coming[slot] = if kit.charges[slot] < upTo then now + cooldown else 0
 		end
 	end
 	if changed then

@@ -27,7 +27,7 @@ and how far down a floor is looked for are ours. Nothing in this system is measu
 No source gives where the mark starts as the orb comes into hand, how fast held fire moves it, how
 near it can come, whether anything stops the orb on its way, or whether the cooldown brings back one
 charge or both. Ours are in section 4: where the crosshair meets the level, 15 m out at most; 15 m a
-second; 2 m; nothing stops it; and a charge at a time, up to two.
+second; 2 m; nothing stops it; and a charge at a time, up to as many as he's had that round.
 
 ## 1. Observable behaviour
 
@@ -108,7 +108,7 @@ second; 2 m; nothing stops it; and a charge at a time, up to two.
 | Rule | Ours | Status |
 | --- | --- | --- |
 | His kit | Omen in agent select after Jett, Phoenix and Sage, a Controller, with Shrouded Step, Paranoia, Dark Cover and From the Shadows on his card and the bar. Dark Cover's played; the rest read NOT YET, and aren't sold | Confirmed (Controller: Patch 4.04); community (the kit: the wiki) |
-| Its charges | Two at most: one free each round and the second 150 credits in the spike rounds. A spent one comes back 40 s after, a charge at a time, and in Team Deathmatch 65 s after, starting with one; on the course a spent one's back 1.5 s after | Confirmed (150: Patch 4.04; one free: Patch 3.0; 40 s: Patch 11.08); community (two, 65 s: the wiki); estimate (a charge at a time) |
+| Its charges | Two at most: one free each round and the second 150 credits in the spike rounds. A spent one comes back 40 s after, a charge at a time, up to as many as he's had that round: what it started with and what he's bought, less what he's sold, so never a second he hasn't bought. In Team Deathmatch a spent one comes back 65 s after, starting with one; on the course a spent one's back 1.5 s after | Confirmed (150: Patch 4.04; one free, the second bought: Patch 3.0; 40 s: Patch 11.08); community (two, 65 s: the wiki); estimate (a charge at a time, up to what he's had) |
 | In hand | E puts the orb in the fifth slot, ready 0.6 s later; a number key puts it away, with nothing spent. Fire and alt fire throw nothing and shoot nothing. With it you run at the knife's speed | Community (0.6 s: the wiki's estimate); estimate (the speed) |
 | The mark | Along the crosshair from the eye, through walls. It starts where the crosshair meets the level, 15 m out at most and 2 m at least; held fire sends it 15 m a second further and held alt fire brings it 15 m a second closer, from 2 m to 80 m; both held, it stays. A new life or round forgets it | Confirmed (fire and alt fire, through walls: Patch 1.0); community (80 m: the wiki); estimate (15 m, 15 m a second, 2 m) |
 | Where the smoke goes | On the floor under the mark, looked for straight down, up to 50 m below. A mark inside the level is first brought back along the crosshair, a quarter metre at a time, until it's out; the smoke falls on through a floor too steep to stand on (more than about 45 degrees, as the Barrier Orb's) to the next one below that could hold it. With no floor, nothing's sent, and the orb stays in hand | Community (falling to ground it could stand on: the wiki); estimate (50 m, the steps, 45 degrees, nothing sent) |
@@ -136,6 +136,9 @@ second; 2 m; nothing stops it; and a charge at a time, up to two.
 - **`AbilitySim`** plays Dark Cover as it plays the other orbs: E puts it in hand, and the kit keeps
   how far along the crosshair its mark is (`reach`, on the ack), which held fire or alt fire moves;
   E again is a `smoke` cast carrying the mark. `VFKit` ends in `equip mark 15.0` while it's in hand.
+  The kit also keeps how many charges each slot's had this round (`owned`, on the ack): what the
+  round started with and what's been bought, less what's been sold. `rechargeTo` is what a cooldown
+  brings spent charges back up to.
 - **`PlayerSim`** starts the mark as the orb comes into hand. For each `smoke` cast, once the orb's
   ready, it finds where the smoke goes; with somewhere, it spends the charge, puts the orb away and
   the cast carries where, and with nowhere, the cast's dropped. Fire with the orb in hand fires
@@ -148,6 +151,8 @@ second; 2 m; nothing stops it; and a charge at a time, up to two.
   the clouds while it stands, so the minimap's spotting and the heal's and the return's aim stop at
   it. The sender's `VFLastSmoke` is where it went. `clear` drops every cloud and smoke.
 - **`AbilityServer`** tells of the orb sent (the `smoke` cast) to the sender and their side alone.
+  Its cooldown brings a spent charge back only up to `rechargeTo`, so never a second he hasn't
+  bought; Team Deathmatch's kit, where nothing's bought, has every charge.
 - **`Arena`** clears the clouds and smokes with each round.
 
 ### The client
@@ -174,16 +179,16 @@ second; 2 m; nothing stops it; and a charge at a time, up to two.
 | `src/shared/Abilities/AbilityConfig.luau` | Omen and his kit; `DarkCover`'s numbers, each with its status and source; Team Deathmatch's for his kit; `unequip` |
 | `src/shared/Weapons/WeaponConfig.luau` | `smokeorb`, the orb in hand, and its wire id |
 | `src/shared/Abilities/SmokeSim.luau` | New: the mark, where a smoke goes, the flight and the smoke |
-| `src/shared/Abilities/AbilitySim.luau` | Dark Cover played: its mark kept and moved, and its `smoke` cast |
+| `src/shared/Abilities/AbilitySim.luau` | Dark Cover played: its mark kept and moved, and its `smoke` cast; the charges a slot's had this round, and `rechargeTo` |
 | `src/shared/PlayerSim.luau` | The mark started; a smoke sent, its charge spent and the orb put away, or nothing sent |
-| `src/shared/Net/PlayerCodec.luau` | The mark in the ack |
+| `src/shared/Net/PlayerCodec.luau` | The mark, and the charges the kit's had this round, in the ack |
 | `src/shared/Audio/SoundConfig.luau` | The orb's draw, the send, the smoke forming and its warning |
 | `src/server/CloudServer.luau` | Smokes sent, formed, told of and kept with the clouds; `VFLastSmoke`; `clear` |
-| `src/server/AbilityServer.luau` | The orb sent told of to the sender's side alone |
+| `src/server/AbilityServer.luau` | The orb sent told of to the sender's side alone; a cooldown bringing back only what's been had |
 | `src/server/Arena.luau` | Clouds and smokes cleared with each round |
 | `src/client/CloudView.luau` | The mark, the smokes, their warning, the screen from inside, and the sounds |
 | `src/client/Combat/WeaponLooks.luau`, `src/client/AbilityEffects.luau` | The orb in hand; the sounds of others' sends and smokes |
-| `tests/darkcover.luau` | New: its numbers, Omen and his kit, where its smoke goes, the flight and the smoke, the orb in hand and its mark, the send, and the wire |
+| `tests/darkcover.luau` | New: its numbers, Omen and his kit, its charges and what a cooldown brings back, where its smoke goes, the flight and the smoke, the orb in hand and its mark, the send, and the wire |
 | `tests/arsenal.luau`, `tests/healingorb.luau`, `tests/resurrection.luau` | The weapons' ids and the agents picked |
 
 ## 7. Debug tools
@@ -216,6 +221,7 @@ second; 2 m; nothing stops it; and a charge at a time, up to two.
   standing 15 s, flickering for its last 1.5 s and gone.
 - A mark behind a wall, and over a ramp too steep to stand on.
 - With other players: their spotting stopped at it, the send heard by the sender's side alone,
-  every smoke gone with a new round, and the second charge bought at 150.
+  every smoke gone with a new round, and the second charge bought at 150, never brought back by the
+  cooldown unbought.
 
 Section 44 of the [Studio checklist](../studio-checklist.md) covers these.

@@ -2880,10 +2880,12 @@ Then the spike rounds: press P twice more in window 1 (gun game, then the spike 
 round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
 
 - **PA8 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, Q's pip dark. B: under the shields Paranoia
-  (`Q`, 250), Dark Cover (`E`, 150) and Shrouded Step (`C`, 100) are all lit. Click Paranoia:
-  250 credits go, Q's pip lights, and `VFKit` reads `Q1/1`; it then reads `FULL`, and a second click
+  (`Q`, 250), Dark Cover (`E`, 150) and Shrouded Step (`C`, 100) are all lit. Click Paranoia: 250
+  credits go, Q's pip lights, and `VFKit` reads `Q1/1`; it then reads `FULL`, and a second click
   buys nothing. Close the menu (B). Once the round's live, send one: `Q0/1`, and nothing brings it
-  back that round.
+  back that round. E stays `E1/2`, its second pip dark and no count under it, and 40 s into the
+  round it's still `E1/2`: a smoke that wasn't bought never comes. Send a smoke: `E0/2`, and E
+  counts down from 40 under it, then reads `E1/2` again and stays there.
 
 ## 46. Omen's Shrouded Step
 
@@ -3241,7 +3243,7 @@ PA4 VFLastParanoia: ___
 PA5 dark past about ___ m, ahead and behind; the muffles' Frequency ___ and the faders' Volume ___; all clear after about ___ s
 PA6 window 2 warned: yes / no; windows 1 and 3 warned: yes / no; window 2 dark about ___ s after the send; its Seen while dark: ___; the wisp in windows 1 and 3: yes / no
 PA7 window 2's VFBlind after the first flare: ___; after the second: ___
-PA8 Q's pip as the round began: ___; bought for ___
+PA8 Q's pip as the round began: ___; bought for ___; E 40 s into the round: ___; E once the smoke came back, and 40 s after: ___
 SS1 anything on Omen's card or the bar that read differently: ___
 SS2 EQUIP for about ___ s; the ring about ___ m out, and ___ m at pitch 20; anything the Sound Lab logged differently: ___
 SS3 pos after the step: ___; VFLastStep: ___; dark for about ___ s; the Vandal back after ___ s; C's pip back after ___ s
@@ -3506,7 +3508,7 @@ Didn't look right (IDs and what you saw):
 | 40 | In hand 0.6 s after E, the mark 15 m out, moved by held fire and alt fire within 2 to 80 m, seen through walls, and red with nowhere for it | DC2, DC3, DC4 |
 | 40 | The smoke: sent with E, the gun back 0.7 s after, forming where the mark showed, growing over 1 s, standing 15 s, flickering for its last 1.5 s and gone, and dark from inside | DC5, DC6, DC7 |
 | 40 | A mark behind a wall, and over a ramp too steep to stand on | DC4, DC5, DC8 |
-| 40 | With other players: their spotting stopped at it, the send heard by the sender's side alone, every smoke gone with a new round, and the second charge bought at 150 | DC9, DC10, DC11 |
+| 40 | With other players: their spotting stopped at it, the send heard by the sender's side alone, every smoke gone with a new round, and the second charge bought at 150, never brought back by the cooldown unbought | DC9, DC10, DC11, PA8 |
 | 41 | Paranoia lit on Omen's card and the bar, `Q1/1` on the course, and in hand 1.1 s after Q | PA1, PA2 |
 | 41 | Sent with fire: appearing ahead, flying 25 m down the lane in 1.25 s and gone, the gun back 0.7 s after, and whom it touched in `VFLastParanoia` | PA3 |
 | 41 | Through walls: the dummies behind the wallbang lane's walls touched | PA4 |
