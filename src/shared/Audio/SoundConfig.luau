@@ -442,14 +442,27 @@ SoundConfig.Sounds = {
 	wallRise = sound(0.7, 0.03, 3, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 0.5),
+	-- Run it Back (system 33): its mark lit, the gust slowed right down; his
+	-- body going, the dash's heavy whoosh, slowed further than Blaze's; and
+	-- his rising at the mark, the spike blast's crack, lower than the wall's.
+	markLit = sound(0.6, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.7),
+	fizzle = sound(0.7, 0.03, 3, {
+		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.483, 0.11),
+	}, 0.6),
+	markRise = sound(0.7, 0.03, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 0.4),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
--- cloud's burst, a flare's pop, a fireball's burst and its fire, and
--- Blaze's wall rising), heard as the ability curve says (systems 17 to 19
--- and 30 to 32). Blade Storm's knives drawn again sound as their draw
--- does, and so does an ability put in hand (Curveball's flare, Hot Hands'
--- fireball, Blaze's flame), which only the one drawing it hears.
+-- cloud's burst, a flare's pop, a fireball's burst and its fire, Blaze's
+-- wall rising, and a Phoenix's body going in Run it Back), heard as the
+-- ability curve says (systems 17 to 19 and 30 to 33). Blade Storm's knives
+-- drawn again sound as their draw does, and so does an ability put in hand
+-- (Curveball's flare, Hot Hands' fireball, Blaze's flame), which only the
+-- one drawing it hears.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -464,6 +477,9 @@ SoundConfig.Abilities = {
 	burning = "fireCrackle",
 	flame = "wallSend",
 	wall = "wallRise",
+	mark = "markLit",
+	fizzle = "fizzle",
+	rise = "markRise",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its

@@ -34,7 +34,14 @@
 -- the same way, and fire sends its wall out (thrown): the flame stays in
 -- hand while fire's held, bending the wall, until PlayerSim lets it go
 -- (steering), and BlazeSim runs it and stands the wall where it ends. And
--- his passive, Inner Fire, has their fire heal him (FireSim too).
+-- his passive, Inner Fire, has their fire heal him (FireSim too). His Run
+-- it Back (X, system 33) spends the ultimate's points once they're full and
+-- marks where he stands and the way he faces; its activation puts his gun
+-- away (PlayerSim) and nothing else casts meanwhile. As its time runs out,
+-- or the server spares him a hit that would have killed him while it runs
+-- (fizzle), his body's gone, and once it's been gone its time he's back at
+-- the mark (PlayerSim) and rises there. Through all of his return he's
+-- held: nothing he presses does anything.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -84,16 +91,28 @@ export type State = {
 	-- hand until then, or until fire's let go (PlayerSim).
 	steering: number,
 	steerUntil: number,
+	-- Run it Back (system 33): when it runs out, 0 when it isn't running;
+	-- where it was cast (the feet), the way he faced, and whether he stood
+	-- on the ground and crouched; and when his return started (his body
+	-- gone), 0 for none.
+	backUntil: number,
+	mark: vector,
+	markYaw: number,
+	markGrounded: boolean,
+	markCrouched: boolean,
+	returnAt: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
 -- "ready", "dash", "throw", "storm" (Blade Storm cast), "draw" (its knives
 -- drawn again), "equip" (an ability put in hand), "flare" (Curveball's
--- thrown), "fireball" (Hot Hands' thrown) or "flame" (Blaze's sent out),
--- where the player's feet and eye were, and the way it goes (the dash's
--- way, up for a lift, the way they faced for a readied gust, the way they
--- looked for the rest). A flare's says which way round it curves, and a
--- fireball's whether it was lobbed.
+-- thrown), "fireball" (Hot Hands' thrown), "flame" (Blaze's sent out),
+-- "mark" (Run it Back cast), "fizzle" (his body gone as it runs out) or
+-- "rise" (back at its mark), where the player's feet and eye were, and the
+-- way it goes (the dash's way, up for a lift, the way they faced for a
+-- readied gust and for Run it Back's, the way they looked for the rest). A
+-- flare's says which way round it curves, and a fireball's whether it was
+-- lobbed.
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -111,9 +130,11 @@ local AbilitySim = {}
 
 local C, E, X = AbilityConfig.C, AbilityConfig.E, AbilityConfig.X
 local J = AbilityConfig.Jett
+local RB = AbilityConfig.RunItBack
 local B = MovementSim.Buttons
 local EPS = 1e-9
 local UP = vector.create(0, 1, 0)
+local ZERO = vector.create(0, 0, 0)
 
 -- The input button for each slot's key, and all of them.
 AbilitySim.BUTTONS = { B.AbilityC, B.AbilityQ, B.AbilityE, B.Ultimate }
@@ -130,6 +151,7 @@ local PLAYABLE: { [string]: boolean } = {
 	curveball = true,
 	hothands = true,
 	blaze = true,
+	runitback = true,
 	innerfire = true,
 }
 
@@ -165,6 +187,12 @@ function AbilitySim.new(agent: string?): State
 		holding = 0,
 		steering = 0,
 		steerUntil = 0,
+		backUntil = 0,
+		mark = ZERO,
+		markYaw = 0,
+		markGrounded = false,
+		markCrouched = false,
+		returnAt = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -214,8 +242,9 @@ function AbilitySim.pointsNeeded(s: State): number
 end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
--- ultimate, an ability in hand, a wall being bent. Nothing carries into a
--- new life or a new round.
+-- ultimate (Blade Storm, or Run it Back and the return it brings), an
+-- ability in hand, a wall being bent. Nothing carries into a new life or a
+-- new round.
 function AbilitySim.settle(s: State)
 	s.readyFrom, s.readyUntil = 0, 0
 	s.liftUntil = 0
@@ -223,6 +252,8 @@ function AbilitySim.settle(s: State)
 	s.storm = false
 	s.holding = 0
 	s.steering, s.steerUntil = 0, 0
+	s.backUntil, s.returnAt = 0, 0
+	s.mark, s.markYaw, s.markGrounded, s.markCrouched = ZERO, 0, false, false
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -276,6 +307,12 @@ local function ultimatePlayable(s: State): boolean
 	return def ~= nil and AbilitySim.playable(def.id)
 end
 
+-- Whether the ultimate's under way: Blade Storm's knives carried, or Run
+-- it Back running or bringing him back.
+function AbilitySim.ultimateOn(s: State): boolean
+	return s.storm or s.backUntil > 0 or s.returnAt > 0
+end
+
 -- Every charge the kit can hold, for the course and Skirmish, where nothing
 -- is bought; with `ultimate`, the ultimate's points too (the course), unless
 -- it's under way.
@@ -286,7 +323,7 @@ function AbilitySim.fill(s: State, ultimate: boolean?)
 	end
 	s.regained = 0
 	s.kills = 0
-	if ultimate and ultimatePlayable(s) and not s.storm then
+	if ultimate and ultimatePlayable(s) and not AbilitySim.ultimateOn(s) then
 		s.points = AbilitySim.pointsNeeded(s)
 	end
 end
@@ -300,7 +337,7 @@ function AbilitySim.full(s: State, ultimate: boolean?): boolean
 			return false
 		end
 	end
-	return not ultimate or not ultimatePlayable(s) or s.storm or AbilitySim.charged(s)
+	return not ultimate or not ultimatePlayable(s) or AbilitySim.ultimateOn(s) or AbilitySim.charged(s)
 end
 
 -- Whether anything's under way at `t`: a readied window, a lift or a dash.
@@ -369,10 +406,11 @@ end
 -- The kit in a few characters, for the server to tell clients (scripted
 -- checks read it): each slot's charges and most, the ultimate's points and
 -- what they need, and what's under way at `t`, as "C0/2 Q1/1 E0/1 X3/8
--- ready", or "X0/8 storm" in Blade Storm, "equip" with an ability in hand
--- (Curveball's flare, Hot Hands' fireball, Blaze's flame), "bend" while a
--- wall is being bent (Blaze), and "glide" while `gliding` (the
--- movement's, for Drift).
+-- ready", or "X0/8 storm" in Blade Storm, "back" while Run it Back runs,
+-- "away" while his body's gone and "rise" as he rises at its mark, "equip"
+-- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
+-- flame), "bend" while a wall is being bent (Blaze), and "glide" while
+-- `gliding` (the movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -381,6 +419,13 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	table.insert(parts, string.format("X%d/%d", s.points, AbilitySim.pointsNeeded(s)))
 	if s.storm then
 		table.insert(parts, "storm")
+	end
+	if s.backUntil > 0 then
+		table.insert(parts, "back")
+	elseif AbilitySim.away(s, t) then
+		table.insert(parts, "away")
+	elseif AbilitySim.returning(s, t) then
+		table.insert(parts, "rise")
 	end
 	if s.holding ~= 0 then
 		table.insert(parts, "equip")
@@ -415,6 +460,95 @@ end
 -- Whether a readied window is open at `t`.
 function AbilitySim.ready(s: State, t: number): boolean
 	return s.readyUntil > 0 and t >= s.readyFrom - EPS and t < s.readyUntil - EPS
+end
+
+-- Whether Run it Back's running (system 33): cast, not run out, and no hit
+-- that would have killed him spared yet.
+function AbilitySim.runningBack(s: State): boolean
+	return s.backUntil > 0
+end
+
+-- Whether its activation's under way at `t`: the gun away, and nothing else
+-- cast.
+function AbilitySim.marking(s: State, t: number): boolean
+	return s.backUntil > 0 and t < s.backUntil - RB.duration.value + RB.activation.value - EPS
+end
+
+-- Whether his body's gone at `t`, his return under way.
+function AbilitySim.away(s: State, t: number): boolean
+	return s.returnAt > 0 and t < s.returnAt + RB.away.value - EPS
+end
+
+-- When his return ends, risen at the mark (0 with none under way).
+function AbilitySim.risen(s: State): number
+	return if s.returnAt > 0 then s.returnAt + RB.away.value + RB.rise.value else 0
+end
+
+-- Whether his return's under way at `t`: his body gone, or rising at the
+-- mark. He's held through all of it.
+function AbilitySim.returning(s: State, t: number): boolean
+	return s.returnAt > 0 and t < AbilitySim.risen(s) - EPS
+end
+
+-- His body gone at `t`, a tick's time (system 33): Run it Back's over and
+-- his return starts, as it runs out or as the server spares him a hit that
+-- would have killed him. An ability in hand goes, and a wall being bent
+-- runs straight on.
+function AbilitySim.fizzle(s: State, t: number)
+	s.backUntil = 0
+	s.returnAt = t
+	s.holding = 0
+	s.steering, s.steerUntil = 0, 0
+end
+
+-- The way someone facing `yaw` looks along the ground.
+local function facing(yaw: number): vector
+	return vector.create(-math.sin(yaw), 0, -math.cos(yaw))
+end
+
+-- Run it Back's tick at `t` (system 33), before anything else in it: as
+-- its time runs out his body's gone ("fizzle", from `feet` and `eye`), and
+-- once it's been gone its time he's back at the mark ("rise", which
+-- PlayerSim puts him at); his return's over once he's risen. Returns
+-- whether he's held this tick, his return under way, and what started, if
+-- anything.
+function AbilitySim.comeBack(s: State, t: number, dt: number, tick: number, feet: vector, eye: vector): (boolean, Cast?)
+	local cast: Cast? = nil
+	if s.backUntil > 0 and t >= s.backUntil - EPS then
+		AbilitySim.fizzle(s, t)
+		cast = {
+			slot = X,
+			ability = "runitback",
+			kind = "fizzle",
+			tick = tick,
+			time = t,
+			position = feet,
+			origin = eye,
+			direction = facing(s.markYaw),
+		}
+	end
+	if s.returnAt == 0 then
+		return false, nil
+	end
+	if t >= AbilitySim.risen(s) - EPS then
+		s.returnAt = 0
+		s.mark, s.markYaw, s.markGrounded, s.markCrouched = ZERO, 0, false, false
+		return false, nil
+	end
+	local back = s.returnAt + RB.away.value
+	if t >= back - EPS and t - dt < back - EPS then
+		cast = {
+			slot = X,
+			ability = "runitback",
+			kind = "rise",
+			tick = tick,
+			time = t,
+			position = s.mark,
+			origin = s.mark + (eye - feet),
+			direction = facing(s.markYaw),
+		}
+	end
+	return true, cast
 end
 
 -- The weapon the kit has in WeaponSim's fifth slot now, "" for none:
@@ -496,8 +630,8 @@ end
 -- One tick at time `t`, before movement: casts what's been pressed, from
 -- `feet` and `eye` where the last tick left them. `rooted` says a plant or
 -- a defuse holds the player, and nothing casts then; nor does anything
--- during a dash. Returns what this tick does to movement, and the casts
--- that started, if any.
+-- during a dash or Run it Back's activation. Returns what this tick does to
+-- movement, and the casts that started, if any.
 function AbilitySim.step(
 	s: State,
 	input: any,
@@ -534,7 +668,7 @@ function AbilitySim.step(
 		table.insert(list, cast)
 		casts = list
 	end
-	if pressed ~= 0 and not rooted and not AbilitySim.dashing(s, t) then
+	if pressed ~= 0 and not rooted and not AbilitySim.dashing(s, t) and not AbilitySim.marking(s, t) then
 		for slot = C, X do
 			if bit32.band(pressed, AbilitySim.BUTTONS[slot]) == 0 then
 				continue
@@ -572,8 +706,6 @@ function AbilitySim.step(
 				s.charges[slot] -= 1
 				s.readyFrom = t + J.windup.value
 				s.readyUntil = s.readyFrom + J.window.value
-				local yaw: number = input.yaw
-				local facing = vector.create(-math.sin(yaw), 0, -math.cos(yaw))
 				started({
 					slot = slot,
 					ability = id,
@@ -582,7 +714,7 @@ function AbilitySim.step(
 					time = t,
 					position = feet,
 					origin = eye,
-					direction = facing,
+					direction = facing(input.yaw),
 				})
 			elseif id == "bladestorm" and s.storm then
 				-- The knives drawn again, if they aren't in hand (PlayerSim).
@@ -601,6 +733,26 @@ function AbilitySim.step(
 					position = feet,
 					origin = eye,
 					direction = aim,
+				})
+			elseif id == "runitback" and AbilitySim.charged(s) and not AbilitySim.ultimateOn(s) then
+				-- Marked at once, where he stands and the way he faces, in place
+				-- of an ability in hand, and of a wall being bent, which runs
+				-- straight on. PlayerSim puts the gun away for the activation.
+				s.points = 0
+				s.backUntil = t + RB.duration.value
+				s.mark = feet
+				s.markYaw = input.yaw
+				s.holding = 0
+				s.steering, s.steerUntil = 0, 0
+				started({
+					slot = slot,
+					ability = id,
+					kind = "mark",
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = facing(input.yaw),
 				})
 			elseif held(def) and s.holding == slot then
 				-- Its key again: what's in hand goes away unthrown (PlayerSim).

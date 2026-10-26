@@ -10,10 +10,12 @@
 -- their view and how far away (FlareSim.strength), the thrower and their
 -- side too, as the reference's blinds 'allies/self' (the VALORANT Wiki's
 -- Curveball page; community). Each is judged from where the server last had
--- their eye and their view (PlayerSimServer.view). A blind is the player's
--- `VFBlind` attribute (FlareSim.BLIND_ATTRIBUTE) until it's gone, and goes
--- with a death or a new life, as do a thrower's flares still in the air as
--- they start a new life. The thrower's last pop is their `VFLastFlare`
+-- their eye and their view (PlayerSimServer.view), and nobody out of play
+-- is (a Phoenix whose body's gone in Run it Back, system 33). A blind is
+-- the player's `VFBlind` attribute (FlareSim.BLIND_ATTRIBUTE) until it's
+-- gone, and goes with a death or a new life, as do a thrower's flares still
+-- in the air as they start a new life, and with that body
+-- (FlareServer.clear). The thrower's last pop is their `VFLastFlare`
 -- attribute (metres), which scripted checks read.
 
 local Players = game:GetService("Players")
@@ -81,13 +83,13 @@ local function onCast(player: Player, cast: AbilitySim.Cast)
 	table.insert(pending, { player = player, at = now + FlareSim.popTime(DT), position = pop })
 end
 
--- A flare's pop: everyone alive who can see it, blinded by it.
+-- A flare's pop: everyone alive and in play who can see it, blinded by it.
 local function popped(p: Pending)
 	if p.player.Parent then
 		p.player:SetAttribute(FlareServer.LAST_FLARE_ATTRIBUTE, Units.asVector3(p.position))
 	end
 	for _, player in Players:GetPlayers() do
-		if not PlayerSimServer.isAlive(player) then
+		if not PlayerSimServer.inPlay(player) then
 			continue
 		end
 		local eye, look = PlayerSimServer.view(player)
@@ -101,12 +103,15 @@ local function popped(p: Pending)
 	end
 end
 
--- A player's blind gone, if they have one.
+-- A player's blind gone, if they have one: with a death, a new life, and
+-- a Phoenix's body gone in Run it Back (system 33; Patch 12.01 fixed a
+-- debuff staying on him through it).
 local function clear(player: Player)
 	if blinds[player] then
 		setBlind(player, nil)
 	end
 end
+FlareServer.clear = clear
 
 -- Once a server frame, at server time `now`: the flares due pop, and the
 -- blinds that are over go.

@@ -23,7 +23,10 @@
 --
 -- So does the ability kit (system 17, AbilitySim), which every life keeps
 -- from the last: what's cast goes to castListeners (AbilityServer), and
--- AbilityServer changes the kit between ticks.
+-- AbilityServer changes the kit between ticks. Phoenix's Run it Back
+-- (system 33) puts him back at its mark in the simulation too, and the
+-- snapshots start over from there; while his body's gone he's out of play
+-- (inPlay), and they leave him out.
 --
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
 -- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
@@ -276,7 +279,8 @@ local function onPlayerAdded(player: Player)
 		health = Health.new(hp.maxHealth.value, WeaponConfig.DefaultShield),
 		sim = nil,
 		pose = function(): PlayerCodec.Pose?
-			if not r.root or not r.alive then
+			-- Out of play (Run it Back's body gone, system 33), nowhere.
+			if not r.root or not r.alive or not r.entity.health.alive then
 				return nil
 			end
 			-- Until the first move of this life has run, where it spawned.
@@ -476,6 +480,14 @@ function PlayerSimServer.isAlive(player: Player): boolean
 	return r ~= nil and r.alive and r.root ~= nil
 end
 
+-- Whether a player is alive, playing and in play: not out of it, as a
+-- Phoenix whose body's gone in Run it Back is (system 33), still alive but
+-- nowhere, who sees nothing and picks nothing up.
+function PlayerSimServer.inPlay(player: Player): boolean
+	local r = records[player]
+	return r ~= nil and r.alive and r.root ~= nil and r.entity.health.alive
+end
+
 function PlayerSimServer.entityOf(player: Player): Entities.Entity?
 	local r = records[player]
 	return if r then r.entity else nil
@@ -499,6 +511,15 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		local objectiveFor = PlayerSimServer.objectiveFor
 		local objective = if objectiveFor then objectiveFor(r.player) else nil
 		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective)
+		-- Back at Run it Back's mark (system 33): the snapshots start over
+		-- from there, so he's never shown, or hit, on the way.
+		if casts then
+			for _, cast in casts do
+				if cast.kind == "rise" then
+					restartPacing(r)
+				end
+			end
+		end
 		MovePacer.push(r.pacer, input.seq * DT, currentPose(r))
 		r.ackDirty = true
 		if act then

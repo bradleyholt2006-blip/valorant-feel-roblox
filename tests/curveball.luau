@@ -167,12 +167,12 @@ do
 			and d.blaze.cost.value == 150
 	)
 	check(
-		"Curveball, Hot Hands (system 31) and Blaze (system 32) are the ones of his that can be played, and Inner Fire works",
+		"all of his can be played: Curveball, Hot Hands (system 31), Blaze (system 32) and Run it Back (system 33), and Inner Fire works",
 		AbilitySim.playable("curveball")
 			and AbilitySim.playable("hothands")
 			and AbilitySim.playable("blaze")
 			and AbilitySim.playable("innerfire")
-			and not AbilitySim.playable("runitback")
+			and AbilitySim.playable("runitback")
 			and AbilitySim.playable("drift")
 	)
 	local pickable = AgentSelect.pickable()

@@ -41,5 +41,6 @@ require("./agentselect")
 require("./curveball")
 require("./hothands")
 require("./blaze")
+require("./runitback")
 
 H.finish()

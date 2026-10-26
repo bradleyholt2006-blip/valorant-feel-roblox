@@ -175,7 +175,8 @@ taking 0.75 s; and its "225-240" at 30 a second as the far end of the longest wa
 
 ### Not here yet
 
-- **Run it Back.** It stays dimmed and `NOT YET`.
+- **Run it Back.** It stays dimmed and `NOT YET`. It plays since system 33
+  ([33-run-it-back.md](33-run-it-back.md)).
 - **Altitude.** The reference's line is steered up and down by the crosshair too; ours always runs
   on the floor, so it can't be sent across a gap or up a ledge taller than its hover.
 - **Hover.** At 0.9 m, the run climbs the course's 0.5, 0.7 and 0.85 m jump boxes and its steps, and

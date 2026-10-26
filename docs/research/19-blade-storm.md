@@ -190,7 +190,9 @@ on, which clears it.
 - **Input queueing.** X during a reload or a draw casts at once, as any switch would, rather than
   waiting for it to finish (v4.07's queueing).
 - **The knives in others' hands.** Others are drawn as their hitboxes, holding nothing.
-- **Run It Back.** There's no Phoenix yet.
+- **Run It Back.** There was no Phoenix yet. Run it Back plays since system 33
+  ([33-run-it-back.md](33-run-it-back.md)), and a single knife that would have killed him in it
+  brings them all back, as v1.02 has it.
 - **Drift**, Jett's glide, came next, in system 20 ([20-drift.md](20-drift.md)).
 
 ## 6. Implementation map

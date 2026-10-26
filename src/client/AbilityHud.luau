@@ -7,8 +7,9 @@
 -- while its knives last (system 19), its note the knives left, and an
 -- ability's while it's in hand (Curveball's flare, system 30; Hot Hands'
 -- fireball, system 31; Blaze's flame, system 32), its note EQUIP until it
--- can be thrown, and Blaze's while its wall's being bent. What can't be
--- played yet is dimmed. It reads the local player's predicted kit
+-- can be thrown, and Blaze's while its wall's being bent; Run it Back's
+-- while it runs, its note the seconds left, and through his return, BACK
+-- (system 33). What can't be played yet is dimmed. It reads the local player's predicted kit
 -- (PlayerController.sim), so a cast shows on the tick it's pressed. A kit
 -- of no agent's, as deathmatch's (system 26), has no bar. Where abilities
 -- recharge over time (Team Deathmatch, system 28), a slot short of a charge
@@ -184,6 +185,14 @@ function AbilityHud.start()
 				if kit.storm then
 					lit = true
 					note = string.format("x%d", s.weapons.ammo[WeaponSim.ULT])
+					slot.note.TextColor3 = LIT
+				elseif AbilitySim.runningBack(kit) then
+					lit = true
+					note = string.format("%.1f", math.max(kit.backUntil - t, 0))
+					slot.note.TextColor3 = LIT
+				elseif AbilitySim.returning(kit, t) then
+					lit = true
+					note = "BACK"
 					slot.note.TextColor3 = LIT
 				end
 			else

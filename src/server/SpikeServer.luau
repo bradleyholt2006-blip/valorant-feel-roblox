@@ -322,7 +322,7 @@ local function blast(time: number, from: number)
 	end
 end
 
--- Running over a spike on the ground picks it up.
+-- Running over a spike on the ground picks it up, for anyone in play.
 local function pickUp()
 	local lying = position
 	if state ~= "dropped" or not lying then
@@ -330,7 +330,7 @@ local function pickUp()
 	end
 	for _, player in Players:GetPlayers() do
 		local sim = PlayerSimServer.getSim(player)
-		if not sim or not PlayerSimServer.isAlive(player) then
+		if not sim or not PlayerSimServer.inPlay(player) then
 			continue
 		end
 		local over = Spike.runsOver(sim.movement.position, lying)

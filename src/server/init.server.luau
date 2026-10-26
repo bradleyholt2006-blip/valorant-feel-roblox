@@ -8,6 +8,7 @@
 -- so its blast is in the frame's snapshot; the guns on the ground after the
 -- moves that walked over them.
 -- Ability kits refill on the course after the moves that cast from them,
+-- a Phoenix whose body's been gone too long in Run it Back is back in play,
 -- thrown clouds whose thrower is dead fly on, flares pop, blinding whoever
 -- the moves left looking at them, walls of fire whose caster is dead run
 -- on, and fires burn whoever the moves left standing in them.
@@ -38,6 +39,7 @@ local CloudServer = require(script.CloudServer)
 local FlareServer = require(script.FlareServer)
 local FireServer = require(script.FireServer)
 local BlazeServer = require(script.BlazeServer)
+local RunItBackServer = require(script.RunItBackServer)
 local PickupsServer = require(script.PickupsServer)
 local ModeServers = require(script.ModeServers)
 
@@ -52,6 +54,7 @@ CloudServer.start()
 FlareServer.start()
 FireServer.start()
 BlazeServer.start()
+RunItBackServer.start()
 GroundGunsServer.start()
 PickupsServer.start()
 SettingsServer.start()
@@ -69,6 +72,7 @@ RunService.Heartbeat:Connect(function(dt)
 	PlayerSimServer.step(dt, now)
 	SpikeServer.step(now)
 	AbilityServer.step(now)
+	RunItBackServer.step(now)
 	CloudServer.step(now)
 	FlareServer.step(now)
 	BlazeServer.step(now)

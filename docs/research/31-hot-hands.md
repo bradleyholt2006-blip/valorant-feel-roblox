@@ -166,7 +166,8 @@ burst about 18 m ahead; that reading is ours.
 ### Not here yet
 
 - **Blaze and Run it Back.** They stay dimmed and `NOT YET`. Blaze plays since system 32
-  ([32-blaze.md](32-blaze.md)).
+  ([32-blaze.md](32-blaze.md)), and Run it Back since system 33
+  ([33-run-it-back.md](33-run-it-back.md)).
 - **Objects.** The reference's fire burns utility at half its rate; there's no utility here to
   burn.
 - **Late joiners.** Someone who joins while a fire burns doesn't see it, though it burns them.
