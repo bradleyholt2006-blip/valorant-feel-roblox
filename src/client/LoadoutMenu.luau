@@ -9,7 +9,8 @@
 -- side or in line for one, but not over the Play menu (system 24), and
 -- during a match, as the reference's, only in your own spawn room or while
 -- you're down: leaving the room closes it. While it's open the mouse moves
--- a cursor and its buttons are the menu's, and you can still move.
+-- a cursor and its buttons are the menu's, and you can still move. The
+-- settings menu opens over it, and gives the cursor back to it as it closes.
 --
 -- What you've picked comes from your TeamDeathmatchConfig.PICKS attribute,
 -- the stage under way from the arena model's Stage, and the map from its
@@ -33,6 +34,7 @@ local CameraController = require(script.Parent.CameraController)
 local InputSampler = require(script.Parent.InputSampler)
 local PlayerController = require(script.Parent.PlayerController)
 local PlayMenu = require(script.Parent.PlayMenu)
+local SettingsMenu = require(script.Parent.SettingsMenu)
 local Ui = require(script.Parent.Debug.Ui)
 
 local LoadoutMenu = {}
@@ -226,8 +228,10 @@ function LoadoutMenu.start()
 		end
 		LoadoutMenu.open = open
 		gui.Enabled = open
-		CameraController.cursorFree = open
-		InputSampler.blockMouse = open
+		if open or not SettingsMenu.open then
+			CameraController.cursorFree = open
+			InputSampler.blockMouse = open
+		end
 		if not open then
 			hovered = nil
 		end
@@ -249,6 +253,10 @@ function LoadoutMenu.start()
 			setOpen(false)
 			return
 		end
+		-- Every frame, as agent select does: the cursor stays the menu's
+		-- while the settings menu opens and closes over it.
+		CameraController.cursorFree = true
+		InputSampler.blockMouse = true
 		local viewport = Workspace.CurrentCamera.ViewportSize
 		scale.Scale = math.min(1, (viewport.X - 40) / width, (viewport.Y - 40) / height)
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
