@@ -259,8 +259,8 @@ function CombatServer.mend(entity: Entities.Entity, health: number, shield: numb
 end
 
 -- Takes a living entity out of play as it is, with no hit (Phoenix's Run it
--- Back running out, system 33): nothing hurts or heals it, and shots go
--- through it, until it's back.
+-- Back running out, system 33, and Omen gone in his Shrouded Step, system
+-- 42): nothing hurts or heals it, and shots go through it, until it's back.
 function CombatServer.withdraw(entity: Entities.Entity)
 	entity.health.alive = false
 end
@@ -276,6 +276,13 @@ function CombatServer.back(entity: Entities.Entity, kept: Health.Kept?)
 	local event = Entities.vitals(entity)
 	event.kind = "shield"
 	Remotes.get().Combat:FireAllClients(event)
+end
+
+-- An entity out of play back in it as it went (Omen's Shrouded Step,
+-- system 42): its health and shield unchanged, so clients have nothing new
+-- to be told.
+function CombatServer.reappear(entity: Entities.Entity)
+	entity.health.alive = true
 end
 
 -- The walls a shot met before `distance`, for the shooter's debug tools.

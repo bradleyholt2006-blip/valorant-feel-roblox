@@ -140,8 +140,8 @@ local HEAD_TOP = 0.8 -- the head's points, this far from its middle to its top
 local MIN_MOVE = 0.05 -- metres a velocity has to carry something to look from or at there too
 
 -- Where each sound a body makes goes silent, metres (SoundConfig's curves):
--- steps and landings, a reload, a plant or a defuse, a glide, and an
--- ability's cast.
+-- steps and landings, a reload, a plant or a defuse, a glide, an ability's
+-- cast, and Omen arriving by Shrouded Step (system 42).
 local function edge(points: { { number } }): number
 	return SoundMath.radius(points) or points[#points][1]
 end
@@ -152,6 +152,7 @@ FogOfWar.Edges = {
 	device = edge(C.device.points),
 	glide = edge(C.ability.points),
 	cast = edge(C.ability.points),
+	arrive = edge(C.arrival.points),
 }
 
 -- How far a weapon's shots or swings are heard, metres: where its sounds'

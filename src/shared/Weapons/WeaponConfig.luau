@@ -782,6 +782,29 @@ local BLIND_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a sent orb doesn't 
 	adsCamera = BLIND_NA,
 })
 
+-- Omen's Shrouded Step (system 42): not thrown, but a step to where its
+-- mark shows (StepSim), so no spread or kick moves the crosshair. A try
+-- with nowhere to step leaves it in hand for the next, a try a click, as
+-- the Healing Orb's.
+local STEP = "VALORANT Wiki, Shrouded Step"
+local STEPPED = "n/a: StepSim finds where he steps from the crosshair"
+local STEP_NA = p(0, "estimate", STEPPED)
+local stepExact = accuracy(
+	c({ { 1, 0 } }, "estimate", STEPPED),
+	p(1, "estimate", STEPPED),
+	p(0.1, "estimate", STEPPED),
+	p(1, "estimate", STEPPED),
+	{ crouch = STEP_NA, walk = STEP_NA, run = STEP_NA, air = STEP_NA }
+)
+stepExact.landError = STEP_NA
+local STEP_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a step doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = STEP_NA,
+	adsCamera = STEP_NA,
+})
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -1814,6 +1837,32 @@ WeaponConfig.Defs = {
 		accuracy = blindExact,
 		recoil = BLIND_KICK,
 	},
+	-- Omen's Shrouded Step (system 42): put in hand in the fifth slot by C
+	-- (AbilityConfig.ShroudedStep), as the Barrier Orb is by Sage's C. Fire
+	-- steps him to where its mark shows; PlayerSim turns that into the
+	-- ability's cast, so it fires no bullet, and keeps it in hand while
+	-- there's nowhere to step. It hurts nobody.
+	stepmark = {
+		id = "stepmark",
+		name = "Shrouded Step",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: C puts it in hand, the charge of Shrouded Step (" .. STEP .. ")"),
+		fireMode = "semi",
+		fireRate = ORB_TRIES,
+		magazine = p(1, "community", STEP .. ": 2 uses, a step each"),
+		reserve = p(0, "community", "None: another step is another charge (" .. STEP .. ": 2 uses)"),
+		reloadTime = STEP_NA,
+		equipTime = p(0.5, "community", STEP .. ": equip 0.5 s (game files)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it takes him somewhere (" .. STEP .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "shroudedstep",
+		accuracy = stepExact,
+		recoil = STEP_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -1821,8 +1870,8 @@ WeaponConfig.Defs = {
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
 -- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
 -- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
--- (system 38), the Resurrection (system 39), Dark Cover (system 40) and
--- Paranoia (system 41) last.
+-- (system 38), the Resurrection (system 39), Dark Cover (system 40),
+-- Paranoia (system 41) and Shrouded Step (system 42) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1856,6 +1905,7 @@ WeaponConfig.Ids = {
 	"revive",
 	"smokeorb",
 	"blindorb",
+	"stepmark",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

@@ -728,8 +728,8 @@ function GameSounds.start()
 	SoundEngine.prepare(spike.defused, "world", C.beep.points)
 	SoundEngine.prepare(spike.blast, "world", C.blast.points)
 	SoundEngine.prepare(spike.drop, "world", C.drop.points)
-	for _, sound in SoundConfig.Abilities do
-		SoundEngine.prepare(sound, "world", C.ability.points)
+	for kind, sound in SoundConfig.Abilities do
+		SoundEngine.prepare(sound, "world", (C :: any)[SoundConfig.CastCurves[kind] or "ability"].points)
 		SoundEngine.prepare(sound, "self")
 	end
 	SoundEngine.prepare(D.sound, "world", C.ability.points)

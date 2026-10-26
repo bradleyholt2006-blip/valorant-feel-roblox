@@ -26,7 +26,9 @@
 -- AbilityServer changes the kit between ticks. Phoenix's Run it Back
 -- (system 33) puts him back at its mark in the simulation too, and the
 -- snapshots start over from there; while his body's gone he's out of play
--- (inPlay), and they leave him out. Sage's Slow Orb (system 37) slows a
+-- (inPlay), and they leave him out. So does Omen's Shrouded Step (system
+-- 42) as he goes, out of play until he's there (StepServer). Sage's Slow
+-- Orb (system 37) slows a
 -- player's ticks in its fields (from SlowServer, PlayerSimServer.fields),
 -- and her Barrier Orb's walls stand in the world their ticks go through
 -- (system 38, from BarrierServer, PlayerSimServer.barriers), both judged
@@ -630,11 +632,12 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		local wallsAt = PlayerSimServer.barriers
 		local barriers = if wallsAt then wallsAt(judged) else nil
 		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective, slows, barriers)
-		-- Back at Run it Back's mark (system 33): the snapshots start over
-		-- from there, so he's never shown, or hit, on the way.
+		-- Back at Run it Back's mark (system 33), or gone to where Shrouded
+		-- Step takes him (system 42): the snapshots start over from there,
+		-- so he's never shown, or hit, on the way.
 		if casts then
 			for _, cast in casts do
-				if cast.kind == "rise" then
+				if cast.kind == "rise" or cast.kind == "vanish" then
 					restartPacing(r)
 				end
 			end

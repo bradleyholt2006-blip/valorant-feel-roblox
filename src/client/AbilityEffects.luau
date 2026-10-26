@@ -32,6 +32,9 @@
 --   * Paranoia: only heard here, as its orb's sent; ParanoiaView draws the
 --     orb in flight, warns those in its path and draws the nearsights it
 --     gives (system 41)
+--   * Shrouded Step: only heard here, as it's fired and as he arrives;
+--     StepView draws its targeter, his windup, his going, the shadow where
+--     he's going and his arrival (system 42)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -225,6 +228,8 @@ local function onCast(event: any)
 		return -- a heal: HealView's
 	elseif event.kind == "reviving" or event.kind == "revived" then
 		return -- a return: ReviveView's
+	elseif event.kind == "vanish" then
+		return -- a step's going: StepView's
 	end
 	table.insert(due, {
 		kind = event.kind,

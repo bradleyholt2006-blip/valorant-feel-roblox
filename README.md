@@ -306,6 +306,17 @@ Built one system at a time:
     wisp of shadow round a nearsighted player's head. One charge at 250 credits (in Team Deathmatch
     it comes back 73 s after it's spent), and the gun's back 0.7 s after a send -
     [research and design](docs/research/41-paranoia.md)
+42. **Omen's Shrouded Step**: C puts Omen's step in hand, ready in 0.5 s, with a violet ring on the
+    floor where it would take him and a faint shadow of him standing in it, both seen through walls,
+    and the ring on the minimap too: along the crosshair, 15 m out at most, and where the aim meets
+    a wall or nothing, on the floor below where it ends, clear of the wall. He must have room to
+    stand there and be in sight there, and it never puts him more than 1 m over his eye; with
+    nowhere to go the ring turns red. Mouse 1 starts a 0.7 s windup, through which he can't move,
+    fire or cast, shadow closing in on his screen and swirling round him for others. Then he's gone,
+    out of play, his screen dark, a puff of shadow where he was and a column of shadow where he's
+    going, and half a second later he's there, heard within 12.5 m, his gun back 0.7 s after. Two
+    charges at 100 credits, none free (in Team Deathmatch one comes back 33 s after it's spent) -
+    [research and design](docs/research/42-shrouded-step.md)
 
 ## Running it
 
@@ -449,7 +460,9 @@ metres), and `Workspace.VFClouds` holds each smoke and, with its orb in hand, it
 player's last Paranoia orb touched is their `VFLastParanoia` attribute (their names, in the order it
 touched them), and their nearsight their `VFNearsight` (when it began, when it stops being whole and
 when it's gone, in server time); `Workspace.VFParanoia` holds each orb in flight, the dark round the
-camera and each wisp. The
+camera and each wisp. Where a player's last Shrouded Step takes them is their `VFLastStep` attribute
+(the floor, in metres), and `Workspace.VFStep` holds its targeter, and others' windups, their going,
+the floor they're going to and their arrival. The
 minimap's ScreenGui, `VFMinimap`, carries what it
 shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`),
 whether the spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big map's open
@@ -502,8 +515,9 @@ goes, the wall rising, standing and breaking, what it does to steps, shots and s
 and the wire), her Resurrection (its points, the orb in hand and its tries, where bodies lie and the
 aim along them, the return's times and hold, who can be brought back, and the wire), Omen's Dark
 Cover (his kit, the orb in hand and its mark, where its smoke goes, its flight, the smoke and its
-warning, and the wire) and his Paranoia (the orb in hand and its send, its flight, whom it touches
-and who's warned, the nearsight, how far the nearsighted see and how the deafened hear) are pure
+warning, and the wire), his Paranoia (the orb in hand and its send, its flight, whom it touches
+and who's warned, the nearsight, how far the nearsighted see and how the deafened hear) and his
+Shrouded Step (its charges, its mark in hand, the step, where it takes him, and the wire) are pure
 Luau and run outside Roblox:
 
 ```

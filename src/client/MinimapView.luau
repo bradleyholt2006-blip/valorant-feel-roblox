@@ -25,6 +25,9 @@
 --   * clouds, walls of fire, fires, fields of ice (the Slow Orb's, system
 --     37) and walls of ice (the Barrier Orb's, system 38, a bar along each
 --     segment standing), edged in their owner's colour
+--   * where your Shrouded Step would take you, or is taking you (system 42,
+--     StepView.aimed; Patch 1.0: 'Omen can now see his teleport location on
+--     the map')
 --   * the sites' letters, and on the big map the places' names
 --   * a white circle round you as you make a sound, as far as it's heard
 --     (the minimap's sound circle: "Anyone outside of this white circle
@@ -41,7 +44,7 @@
 -- enemies shown, "3,7"), Spike (whether the spike is), Turn (degrees the
 -- map's turned), Big (whether the big map's open) and Dark (how covered it
 -- is, 0 to 1). Its icons are named Self, Ally_<id>, Enemy_<id>, Seen_<id>,
--- Pulse_<id>, Dead_<id>, Spike and Ring.
+-- Pulse_<id>, Dead_<id>, Spike, Step and Ring.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -77,6 +80,7 @@ local RemoteEntities = require(script.Parent.RemoteEntities)
 local Spectate = require(script.Parent.Spectate)
 local Visuals = require(script.Parent.Visuals)
 local ParanoiaView = require(script.Parent.ParanoiaView)
+local StepView = require(script.Parent.StepView)
 
 local MinimapView = {}
 
@@ -103,6 +107,7 @@ local ICE = Color3.fromRGB(110, 205, 235)
 local TEXT = Color3.fromRGB(235, 238, 244)
 local DEAD = Color3.fromRGB(235, 72, 72)
 local SHADOW = Color3.fromRGB(18, 12, 28) -- Paranoia's dark over it all (system 41)
+local STEP = Color3.fromRGB(160, 120, 240) -- where your Shrouded Step takes you (system 42)
 
 type Keyed = { parent: Instance, items: { [string]: GuiObject }, touched: { [string]: boolean } }
 
@@ -127,7 +132,7 @@ type Layer = {
 
 type Icon = {
 	name: string,
-	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead" or "spike"
+	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead", "spike" or "step"
 	position: vector,
 	yaw: number?,
 	fade: number, -- 0 solid, 1 gone
@@ -333,6 +338,11 @@ local function newIcon(kind: string): GuiObject
 		local d = plainFrame(SPIKE, 4)
 		d.Rotation = 45
 		stroke(d, DARK, 2)
+		return d
+	elseif kind == "step" then
+		local d = disc(STEP, 4)
+		d.BackgroundTransparency = 0.55
+		stroke(d, STEP, 1.5)
 		return d
 	end
 	-- "ring": the sound circle round you.
@@ -667,6 +677,11 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	local at = spike.position
 	if at and spike.state ~= "carried" and Minimap.spikeShown(spike.state, ours, spikeSeen) then
 		table.insert(icons, { name = "Spike", kind = "spike", position = at, fade = 0, carrier = false, edge = false })
+	end
+	-- Where your Shrouded Step would take you, or is taking you (system 42).
+	local step = StepView.aimed()
+	if step then
+		table.insert(icons, { name = "Step", kind = "step", position = step, fade = 0, carrier = false, edge = false })
 	end
 
 	-- What's been thrown.
