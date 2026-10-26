@@ -253,6 +253,15 @@ Built one system at a time:
     after, 22 s in Team Deathmatch. With the orb in hand, the ally it would heal is marked in green
     with a + over their head, and whoever's healed glows green -
     [research and design](docs/research/36-healing-orb.md)
+37. **Sage's Slow Orb**: Q puts Sage's Slow Orb in hand, ready in 0.5 s, and mouse 1 throws it.
+    It flies fast and far, off walls, and bursts where it lands into a field of ice 5.6 m round
+    that lasts 7 s. Everyone in it, enemies, allies and Sage alike, is held to half their speed at
+    once, on the ground and in the air (2.7 m/s with a rifle), jumps 30% lower and dashes half as
+    far, and crunches running or jumping through it, though walking is silent. Your own game
+    slows you just as the server does, both judging the field at the moment your screen showed,
+    so going in and out of it doesn't snap you back. Two charges at 200 credits, and the gun's
+    back 0.4 s after a throw -
+    [research and design](docs/research/37-slow-orb.md)
 
 ## Running it
 
@@ -294,8 +303,9 @@ Drift). As Phoenix, E readies Curveball's flare: mouse 1 throws it curving left,
 right, and E again puts it away; Q readies Hot Hands' fireball: mouse 1 throws it, mouse 2 lobs it,
 and Q again puts it away; C readies Blaze's flame: mouse 1 sends its wall, held it bends the wall
 towards your crosshair, and C again puts it away; X marks where you stand for Run it Back. As
-Sage, E readies the Healing Orb: mouse 1 heals the hurt ally in your crosshair, mouse 2 heals you,
-and E again puts it away. The spike rounds charge credits; the course and the arena are free.
+Sage, Q readies the Slow Orb: mouse 1 throws it, and Q again puts it away; E readies the Healing
+Orb: mouse 1 heals the hurt ally in your crosshair, mouse 2 heals you, and E again puts it away.
+The spike rounds charge credits; the course and the arena are free.
 On the course a spent charge comes back 1.5 s after it's done, and the ultimate's points are full at
 every life and fill again 1.5 s after Blade Storm ends or Run it Back brings you back; in the arena
 every life starts with every charge, in Team Deathmatch spent charges come back over time, a spent
@@ -369,11 +379,11 @@ their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`,
 line while both sides are full. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
 what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide, `equip`
-while Curveball's flare, Hot Hands' fireball, Blaze's flame or the Healing Orb is in hand, `bend`
-while a Blaze wall is bent, `back` while Run it Back runs, and `away` and `rise` through its
-return), and `VFTestBuy` set to `updraft` buys a charge. Where a kit's charges come back over time,
-when each of C, Q and E next has one is the player's `VFRecharge` attribute (server time, 0 for
-none coming). A player's agent is their `VFAgent` attribute, what
+while Curveball's flare, Hot Hands' fireball, Blaze's flame, the Healing Orb or the Slow Orb is in
+hand, `bend` while a Blaze wall is bent, `back` while Run it Back runs, and `away` and `rise`
+through its return), and `VFTestBuy` set to `updraft` buys a charge. Where a kit's charges come
+back over time, when each of C, Q and E next has one is the player's `VFRecharge` attribute
+(server time, 0 for none coming). A player's agent is their `VFAgent` attribute, what
 they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
 `open` or `locked`, unset where nobody picks), and while their window's open, when it closes
 (server time) `VFAgentCloses`. Where a player's last Cloudburst burst is their
@@ -387,7 +397,10 @@ of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Wor
 holds each wall's run on its way and each wall as models. Where a player last cast Run it Back is
 their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each mark as a model, its
 `Entity` attribute whose it is. Whom a player last healed with the Healing Orb is their `VFLastHeal`
-attribute (the healed player's name). The minimap's ScreenGui, `VFMinimap`, carries what it
+attribute (the healed player's name). Where a player's last Slow Orb burst is their `VFLastSlow`
+attribute (the floor under it, in metres), whether their last tick was slowed their `VFSlowed`,
+and `Workspace.VFSlows` holds each orb in the air, each burst and each field of ice. The
+minimap's ScreenGui, `VFMinimap`, carries what it
 shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`),
 whether the spike is (`Spike`), how far it's turned (`Turn`, degrees) and whether the big map's
 open (`Big`).
@@ -431,8 +444,10 @@ spares, a plant under way, and the wire), the minimap (who sees whom through the
 and walls of fire, every map's plan, the views each setting gives, allies held on the edge, the
 spike's and the names' rules, and the cones' rays), the fog of war (who's always sent, the lines
 from an eye to a body, both carried ahead, corner peeks, what's heard, the hold and the looks it
-skips) and Sage's Healing Orb (her kit, the orb in hand and its tries, whom a try heals, the heal
-and its pauses, and the wire) are pure Luau and run outside Roblox:
+skips), Sage's Healing Orb (her kit, the orb in hand and its tries, whom a try heals, the heal
+and its pauses, and the wire) and her Slow Orb (its charges, the orb in hand, its flight and its
+field, the slow on the ground, in the air, on a jump and on a dash, judged as a screen showed it,
+and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

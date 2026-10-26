@@ -27,8 +27,11 @@
 --            drop are SpikeView's, out in the world through playWorld
 --   abilities  a cast's gust or swish (system 17): yours on the Self bus,
 --            others' where they cast, both through playCast (AbilityEffects
---            says when); and a glide's gusts again and again while it lasts
---            (Drift, system 20), yours from your ticks and others' on them
+--            says when); a glide's gusts again and again while it lasts
+--            (Drift, system 20), yours from your ticks and others' on them;
+--            and a run or a jump through a Slow Orb's field, which crunches
+--            (system 37): yours as your ticks are slowed, others' where
+--            your screen has them in a field (iced)
 --
 -- Your steps come from your predicted ticks, others' from their poses as
 -- they are drawn (RemoteEntities), so they line up with where they're
@@ -77,6 +80,10 @@ GameSounds.settings = {
 	dummySteps = false, -- practice dummies' steps and landings (Sound Lab, Y)
 	footstepRadius = F.radius.value, -- this client's footstep curve (Sound Lab, [ ])
 }
+
+-- Whether feet (metres) stand in a Slow Orb's field as your screen shows
+-- it now (system 37, SlowView); none without.
+GameSounds.iced = nil :: ((feet: vector) -> boolean)?
 
 -- What each sound was and why it played as it did, newest last, for the
 -- Sound Lab.
@@ -307,6 +314,10 @@ local function onTick(info: any)
 				own("softLand")
 			end
 		end
+		-- Through a Slow Orb's field a run or a jump crunches (system 37).
+		if m.slowed and (e.loud or e.kind == "jump") then
+			own(SoundConfig.Abilities.crunch, F.ownVolume.value)
+		end
 	end
 
 	local w = s.weapons
@@ -482,8 +493,15 @@ local function onFrame()
 		local dummy = PlayerCodec.isDummy(id)
 		local silenced = inBuyPhaseAcross(id)
 		local events = StepTracker.push(r.steps, { time = renderTime, position = pose.position, grounded = pose.grounded, quiet = pose.quiet })
+		local iced = GameSounds.iced
 		for _, e in events do
-			if e.kind == "jump" or not e.loud or (dummy and not GameSounds.settings.dummySteps) then
+			if dummy and not GameSounds.settings.dummySteps then
+				continue
+			end
+			if iced and (e.loud or e.kind == "jump") and iced(e.position) then
+				GameSounds.playCast("crunch", e.position + FEET, id, true)
+			end
+			if e.kind == "jump" or not e.loud then
 				continue
 			end
 			local at = e.position + FEET

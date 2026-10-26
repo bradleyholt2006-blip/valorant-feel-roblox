@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-six
+Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-seven
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about six hours. Doing it in parts is fine; keep the order.
@@ -31,7 +31,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
    three, section 33 one and then three, section 34 one and then two, sections 35 and 36 one,
    then two, then three for their last check, section 37 one and then two, section 38 one, then
-   two, then three, section 39 two and then three, and section 40 one, then two, then three.
+   two, then three, section 39 two and then three, section 40 one, then two, then three, and
+   section 41 one, then two, then two in the spike rounds.
 
 | Key | What it does |
 | --- | --- |
@@ -2351,14 +2352,14 @@ and 4294967293 for player 3. Your `VFLastHeal` attribute is the name of the play
 healed. On the course a spent charge comes back 1.5 s after it's spent. Start each check with the
 Vandal in hand.
 
-- **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX and SAGE, and SAGE's reads
-  SENTINEL. Click it: her kit, C BARRIER ORB, Q SLOW ORB and X RESURRECTION dimmed, each with
-  `NOT YET` and its line, and E HEALING ORB lit, with `E readies a healing orb. Fire heals the hurt
-  ally in your crosshair, alt fire heals you, 100 health over 5 s.`; nothing under them, as she has
-  no passive. Click PICK SAGE: the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`. Close it
-  with T. On the ability bar BARRIER ORB, SLOW ORB and RESURRECTION are dimmed with their pips dark,
-  HEALING ORB has its one pip lit, and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. **Send:** a screenshot
-  of Sage's card.
+- **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX and SAGE, and SAGE's reads SENTINEL.
+  Click it: her kit, C BARRIER ORB and X RESURRECTION dimmed, each with `NOT YET` and its line, Q
+  SLOW ORB lit (section 41's), and E HEALING ORB lit, with `E readies a healing orb. Fire heals the
+  hurt ally in your crosshair, alt fire heals you, 100 health over 5 s.`; nothing under them, as she
+  has no passive. Click PICK SAGE: the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`.
+  Close it with T. On the ability bar BARRIER ORB and RESURRECTION are dimmed with their pips dark,
+  SLOW ORB has its two pips lit and HEALING ORB its one, and `VFKit` reads `C0/1 Q2/2 E1/1 X0/7`.
+  **Send:** a screenshot of Sage's card.
 - **HO2 In hand.** Press E: a quick whoosh, the Vandal goes, and a small green ball comes up over
   your hand. E's square lights, with `EQUIP` under it for 0.5 s; the HUD reads `Healing Orb   [E]`,
   with no ammo; E's pip stays lit; and `VFKit` ends in `equip`. You run at the knife's speed,
@@ -2368,7 +2369,7 @@ Vandal in hand.
   button: the same, as you're not hurt. Look at Dummy 1, the static dummy 10 m down the target lane,
   and click: the same, as it's on nobody's side.
 - **HO4 Put away.** E again: the orb goes and the Vandal comes back with its own draw, and `VFKit`
-  reads `C0/1 Q0/2 E1/1 X0/7`, nothing spent. E, then 1: the same.
+  reads `C0/1 Q2/2 E1/1 X0/7`, nothing spent. E, then 1: the same.
 - **HO5 The sounds.** Open the Sound Lab (F2 four times) and press E: it logs `orbEquip` as `yours`
   as the orb comes up, and clicks with it log nothing. Press 1, and F2 to close the lab.
 
@@ -2419,14 +2420,116 @@ comes up by itself: pick SAGE and LOCK IN in window 1, and LOCK IN in windows 2 
   reaches 0. **Send:** window 3's health a second after the bell.
 - **HO12 The spike rounds.** Press P twice in window 1 (gun game, then the spike rounds), and as
   round 1's buy phase starts, pick SAGE and LOCK IN in window 1. E's pip is lit, its charge free,
-  and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. B: Barrier Orb (`C`, 300) and Slow Orb (`Q`, 200) are
-  under the shields, dimmed, each tagged `NOT YET`; pointing at one shows `Not playable yet: it
-  comes with a later system`, and a click buys nothing.
+  and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. B: Barrier Orb (`C`, 300) is under the shields, dimmed,
+  tagged `NOT YET`; pointing at it shows `Not playable yet: it comes with a later system`, and a
+  click buys nothing. Slow Orb (`Q`, 200) beside it is for sale (section 41).
 - **HO13 Team Deathmatch.** Press M in window 1, click the TEAM DEATHMATCH card and PLAY TEAM
   DEATHMATCH. As the match starts, agent select comes up by itself: pick SAGE and LOCK IN in
   window 1. Run `VFMatchSkip` once to end the pre-game. Someone on the other side (Tab) shoots
   player 1 twice in the body with the Classic, and player 1 heals themselves as in HO6: E's pip goes
   dark with `22` under it, not 45, counting down, and lights again at 0.
+
+## 41. Sage's Slow Orb
+
+From [37-slow-orb.md](research/37-slow-orb.md). One player on the course, then two on the course,
+then two in the spike rounds. Play as Sage, as in section 40. Without keys or a mouse button,
+`VFTestButtons` 8192 presses Q, 16384 E, 128 the left button and 256 the right: set it and clear it
+again each time. `VFTestYaw` and `VFTestPitch` aim, in degrees: positive yaw turns left, and
+positive pitch looks up. As each orb bursts, your `VFLastSlow` attribute is the floor under it,
+where the server has it, in metres, and your `VFSlowed` attribute says whether your last move was
+slowed. `Workspace.VFSlows` holds a pale `Orb` ball for each orb in the air, a `Burst` while one
+flashes, and an `Ice` model for each field while it lasts. On the course a spent charge comes back
+1.5 s after it's spent. The numbers below are for throws from the spawn, facing down the target lane
+(`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand, and the speeds, the `state` line and the
+jump line are the HUD panel's (F3).
+
+- **SO1 Her kit.** In agent select (T), SAGE's card has Q SLOW ORB lit, with `Q readies a slowing
+  orb. Fire throws it; it bursts into a field of ice that slows everyone in it, you too.` and no
+  `NOT YET`; C BARRIER ORB and X RESURRECTION are still dimmed, each with `NOT YET`. On the ability
+  bar SLOW ORB is lit with both its pips, and `VFKit` reads `C0/1 Q2/2 E1/1 X0/7`.
+- **SO2 In hand.** Press Q: a light gust, the Vandal goes, and a pale ball with two shards of ice
+  comes up over your hand. Q's square lights, with `EQUIP` under it for 0.5 s; the HUD reads
+  `Slow Orb   [Q]`, with no ammo; both of Q's pips stay lit; and `VFKit` ends in `equip`. You run at
+  the knife's speed, 6.75 m/s.
+- **SO3 Thrown.** With it up, press the left button: a quick swish, and a pale glowing ball leaves
+  your eye, falling a little, and 0.83 s after the throw bursts with a flash and a crack of ice on
+  the floor about 4 m past the 20 m stripe. Ice spreads over the floor from it to 11.2 m across in
+  0.3 s, with shards standing up out of it, and 7 s after the burst it fades and is gone.
+  `VFLastSlow` reads about `(0.00, 0.00, -24.12)`. The Vandal is back in hand 0.4 s after the throw,
+  and one of Q's pips goes dark (`Q1/2`) and lights again 1.5 s later. On the minimap a round in
+  your colour lies on the lane while the ice does. **Send:** a screenshot of the field at its full
+  size.
+- **SO4 Slowed.** Set `VFTestPitch` to -60 and throw: it bursts at once just in front of you, at
+  about `(0.00, 0.00, -0.88)`, and the ice spreads round you. Run back and forth in it (W, then S):
+  the speed holds at 2.70 m/s, half the Vandal's 5.40, from the first step; the `state` line reads
+  `SLOWED`; the edge of your screen frosts over, pulsing faintly; `VFSlowed` is true; and every step
+  crunches. Hold Shift and walk: 1.65 m/s, with no crunch and no step heard. Jump standing still: a
+  crunch, and the jump line reads about `0.55 s` and `rise 0.58 m`, where out of the ice it reads
+  `0.66 s` and `rise 0.83 m`. Run out of the ice: as you leave it the speed climbs back to 5.40 m/s,
+  `SLOWED` and the frost go, and `VFSlowed` is false. Set `VFTestPitch` back to 0. **Send:** a
+  screenshot with the frosted edge.
+- **SO5 Running in, and jumping in.** Throw level, and at once run (W) after it down the lane: about
+  18 m out, as you reach the ice's edge, the speed drops from 5.40 to 2.70 m/s at once, with the
+  frost and `SLOWED`. Once the charge is back, throw again and run after it, jumping just before the
+  edge: as you come over the ice in the air the speed drops to 2.70 m/s, before you land, and the
+  landing crunches.
+- **SO6 Against the cover.** Set `VFTestYaw` to -21 and throw level: the orb flies at the waist-high
+  cover at 21 m on the right, comes back off its face, and bursts about 1.8 m in front of it, 0.89 s
+  after the throw, at about `(8.57, 0.00, -19.05)`. Its ice stops at the cover's face and doesn't go
+  behind it. Set `VFTestYaw` back to 0.
+- **SO7 Thrown high.** Set `VFTestPitch` to 85 and throw: the orb climbs almost straight up, out of
+  sight, and about 13 s after the throw comes back down and bursts between the 30 and 40 m stripes,
+  at about `(0.00, 0.00, -33.25)`. Set `VFTestPitch` back to 0.
+- **SO8 A dummy.** Open the Sound Lab (F2 four times) and press Y, so the dummies' steps are heard.
+  Set `VFTestYaw` to -11 and `VFTestPitch` to -3.5, and throw: it bursts at about
+  `(2.88, 0.00, -14.83)`, where Dummy 2 strafes at 15 m. For the 7 s of its ice Dummy 2's strafe is
+  about half as wide, and its steps crunch; then it's back to its full width. Press Y again, set
+  both back to 0, and press F2 to close the lab.
+- **SO9 Put away.** Q, then Q again before throwing: the orb goes and the Vandal comes back with its
+  own draw, nothing is thrown, and `VFKit` reads `Q2/2` with no `equip`. Q, then 1: the same. Q,
+  then the right button: nothing. Q, then E: the Healing Orb comes up in its place, with `EQUIP`
+  under E; then Q: the Slow Orb again, in place of the Healing Orb. Nothing's spent, `Q2/2` and
+  `E1/1`; press 1 to put it away.
+- **SO10 The sounds.** Open the Sound Lab (F2 four times) and throw as in SO3: it logs `slowEquip`
+  as `yours` as the orb comes up, `slowThrow` as `yours` at the throw, and `slowBurst` from `you`
+  about 24 m away. Throw at your feet as in SO4 and run: it logs `iceCrunch` as `yours` with each
+  step. Press F2 to close the lab.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+SAGE in window 1 (T). Player 2 stays Jett. Everyone on the course is everyone else's enemy.
+
+- **SO11 Others' orbs, and the slow.** In window 2, walk about 6 m down the target lane from the
+  spawn and stand still, facing down the lane. In window 1, at the spawn, set `VFTestPitch` to -13
+  and throw: it bursts at about `(0.00, 0.00, -6.15)`, at player 2's feet. Window 2 hears the swish
+  from player 1, sees the orb come from them and burst with a crack, and the ice spread round them.
+  Player 2 runs about in it: 2.70 m/s, `SLOWED`, the frost on window 2's edge, player 2's `VFSlowed`
+  true, and each step crunching in both windows, from player 2. Walking (Shift), window 1 hears
+  nothing from them. Out of the ice, player 2 runs at 5.40 m/s again.
+- **SO12 A step.** Player 2 stands in the middle of the 0.35 m step, the middle of the three behind
+  the spawn on the left. In window 1, at the spawn, set `VFTestYaw` to 120 and `VFTestPitch` to -10
+  and throw: it bursts about 3.1 m short of the step's middle, at about `(-6.70, 0.00, 3.87)`, and
+  player 2, running about on the step, is slowed: the step's too low to stop the ice. The ice is
+  drawn flat at the burst's height, so it runs out of sight under the step (one of the known gaps).
+  Set both back to 0.
+- **SO13 A dash.** Player 2 stands where they stood in SO11, facing down the lane, and player 1
+  throws again as in SO11. In window 2, press E to ready Tailwind, wait for its gust, and press E
+  again with no keys held: the dash goes about 3.5 m down the lane, half its 7 m, and the `pos`
+  line's last number goes from about -6 to about -9.5. Once the ice is gone and the charge is back,
+  the same dash goes about 7 m. Set `VFTestPitch` back to 0 in window 1.
+- **SO14 With a ping.** Open the Hit Reg Lab in window 2 (F2 three times), press `]` ten times
+  (100 ms each way), and note the HUD's `max` correction. Player 1 throws at player 2's feet as in
+  SO11, and player 2 runs in and out of the ice a few times and jumps in it: the slow starts and
+  stops at the ice's edge with no snap back, and `max` doesn't grow. Press `[` ten times to take the
+  latency off.
+
+Then the spike rounds: press P three times in window 1 (Skirmish, gun game, then the spike rounds),
+and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK IN in window 2.
+
+- **SO15 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`, both of Q's pips dark. B: under the shields
+  Slow Orb (`Q`, 200) is lit and Barrier Orb (`C`, 300) dimmed, tagged `NOT YET`. Click Slow Orb
+  twice: 400 credits go, Q's pips light, and `VFKit` reads `Q2/2`; a third click buys nothing. Once
+  the round's live, throw one at your feet (`VFTestPitch` -60): you're slowed as in SO4, and one of
+  Q's pips goes dark and stays dark, as nothing refills it here. Set `VFTestPitch` back to 0.
 
 ## Results
 
@@ -2626,8 +2729,22 @@ HO8 player 2 marked or healed: yes / no
 HO9 the mark with player 3 at full health: yes / no; once hurt: yes / no
 HO10 marked or healed behind cover: yes / no
 HO11 player 3's health after: ___; VFLastHeal: ___; the countdown from: ___
-HO12 both tiles NOT YET: yes / no
+HO12 the Barrier Orb's tile NOT YET: yes / no; the Slow Orb's for sale: yes / no
 HO13 the countdown in Team Deathmatch from: ___
+SO1 anything on Sage's card or the bar that read differently: ___
+SO2 EQUIP for about ___ s; speed with the orb: ___ m/s
+SO3 VFLastSlow: ___; the ice lasted about ___ s
+SO4 speed in the ice: ___ m/s running, ___ m/s walking; the jump line: ___ s, rise ___ m
+SO5 slowed in the air before landing: yes / no
+SO6 VFLastSlow: ___; ice behind the cover: yes / no
+SO7 VFLastSlow: ___, about ___ s after the throw
+SO8 Dummy 2's strafe half as wide: yes / no; its steps crunched: yes / no
+SO10 anything the Sound Lab logged differently: ___
+SO11 player 2's speed in the ice: ___ m/s; their crunches heard in window 1: yes / no
+SO12 player 2 slowed on the step: yes / no
+SO13 the dash in the ice: ___ m; out of it: ___ m
+SO14 max correction before: ___ mm, after: ___ mm
+SO15 Q after buying two: ___; a third bought: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2859,3 +2976,10 @@ Didn't look right (IDs and what you saw):
 | 36 | An enemy not healed, nor marked | HO8 |
 | 36 | A third player: the hurt ally marked under the crosshair, not behind cover or on full health; a heal on them, their glow and their green edge; `VFLastHeal`; the 45 s countdown | HO9, HO10, HO11 |
 | 36 | Team Deathmatch's 22 s | HO13 |
+| 37 | The Slow Orb lit on Sage's card and the bar, its two pips, and for sale at 200 in the spike rounds, two and no more | SO1, SO15 |
+| 37 | Q puts the orb in hand in 0.5 s, `EQUIP` on the bar; the left button throws it, a pip goes dark and the gun is back 0.4 s later; the right button does nothing; Q again, or a number key, puts it away, and E swaps it for the Healing Orb | SO2, SO3, SO9, SO10 |
+| 37 | The flight: a level throw bursting about 24 m ahead on the course; one into a wall coming back off it; one thrown high coming down | SO3, SO6, SO7 |
+| 37 | The field: spreading to about 11 m across, stopped by a wall but not by a step, gone after 7 s, and on the minimap | SO3, SO6, SO12 |
+| 37 | Running into it: 2.7 m/s with the Vandal at once, the frosted edge, `SLOWED`, `VFSlowed` and a crunch with each step; walking silent; a jump lower; back to 5.4 m/s out of it, and no correction going in or out | SO4, SO5, SO14 |
+| 37 | A strafing dummy slowed in it, its steps crunching | SO8 |
+| 37 | A second player slowed in your field, crunching where you see them, on a step too; Jett's dash half as far in it; no correction at 100 ms each way | SO11, SO12, SO13, SO14 |

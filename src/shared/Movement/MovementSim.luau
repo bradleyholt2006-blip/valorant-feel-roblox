@@ -17,8 +17,9 @@
 -- instead: its air acceleration, so air strafing works as it does there, but
 -- held to running speed, which is what Valorant players report. Abilities
 -- change a tick through Motion: Jett's Updraft and Tailwind (system 17), her
--- Drift, a glide while jump is held in a fall (system 20), and Phoenix's Run
--- it Back, which holds him where he is (system 33).
+-- Drift, a glide while jump is held in a fall (system 20), Phoenix's Run
+-- it Back, which holds him where he is (system 33), and Sage's Slow Orb,
+-- whose field slows whoever's in it (system 37).
 
 export type World = {
 	-- Sweep an axis-aligned box (center, halfExtents) along delta. Returns the
@@ -60,6 +61,9 @@ export type State = {
 	-- Whether the last tick's fall was held to a glide (Jett's Drift, system
 	-- 20), for the sound and the look; nothing steps from it.
 	gliding: boolean,
+	-- Whether the last tick was slowed (the Slow Orb's field, system 37),
+	-- for the sound and the look; nothing steps from it either.
+	slowed: boolean,
 }
 
 local Buttons = {
@@ -97,8 +101,13 @@ local Buttons = {
 --   * hold: held where they are this tick, with no speed and no fall
 --     (Phoenix's Run it Back, system 33: his body gone, then rising at its
 --     mark)
+--   * slow: slowed this tick (the Slow Orb's field, system 37): the most
+--     speed, along the ground and in the air, a `speed` share of what it
+--     was, and held to that at once, as a cap is; a jump at a `jump` share
+--     of its speed; and a dash at a `dash` share of its
 export type Glide = { speed: number, brake: number }
-export type Motion = { dash: vector?, lift: number?, cap: number?, glide: Glide?, hold: boolean? }
+export type Slow = { speed: number, jump: number, dash: number }
+export type Motion = { dash: vector?, lift: number?, cap: number?, glide: Glide?, hold: boolean?, slow: Slow? }
 
 -- Unreal's constants: a braking player under 10 cm/s stops dead, and a speed
 -- counts as over the limit only beyond 1% (of its square) to absorb rounding.
@@ -141,6 +150,7 @@ function MovementSim.newState(position: vector): State
 		lastJumpTick = -math.huge,
 		lastLandTick = -math.huge,
 		gliding = false,
+		slowed = false,
 	}
 end
 
@@ -478,9 +488,14 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	if motion and motion.hold then
 		s.velocity = ZERO
 		s.gliding = false
+		s.slowed = false
 		return s
 	end
 	local buttons = input.buttons
+	local slow = if motion then motion.slow else nil
+	if slow then
+		weaponMaxSpeed *= slow.speed
+	end
 
 	updateCrouch(s, world, buttons, dt, cfg)
 
@@ -490,6 +505,15 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	local dash = if motion then motion.dash else nil
 	local lift = if motion then motion.lift else nil
 	local cap = if motion then motion.cap else nil
+	if slow then
+		-- Slowed, the speed's held to the slowed most at once, in the air too
+		-- (Patch 0.47: the Slow Orb 'now also slows the air speed'), and a
+		-- dash goes slower (Patch 9.10).
+		cap = math.min(cap or math.huge, weaponMaxSpeed)
+		if dash then
+			dash *= slow.dash
+		end
+	end
 	if cap then
 		local h = horizontal(vel)
 		local speed = vector.magnitude(h)
@@ -520,7 +544,7 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 		s.jumpLatched = true
 		s.lastJumpTick = s.tick
 		vel = groundVelocity(vel, wishDir, wishSpeed, dt, cfg)
-		vel = vector.create(vel.x, cfg.jumpVelocity, vel.z)
+		vel = vector.create(vel.x, cfg.jumpVelocity * (if slow then slow.jump else 1), vel.z)
 	elseif s.grounded then
 		vel = groundVelocity(vel, wishDir, wishSpeed, dt, cfg)
 		vel = vector.create(vel.x, 0, vel.z)
@@ -564,6 +588,7 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	s.grounded = onGround
 	s.groundNormal = normal
 	s.gliding = glided and not onGround
+	s.slowed = slow ~= nil
 
 	s.position = center - UP * (height * 0.5)
 	s.velocity = vel

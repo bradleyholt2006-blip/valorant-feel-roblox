@@ -17,7 +17,8 @@
 -- ultimates that cost more, from kills and Ultimate Orbs. Phoenix is the
 -- second agent (system 30): his Curveball, Hot Hands (system 31), Blaze
 -- (system 32) and Run it Back (system 33) can be played, and his passive,
--- Inner Fire, works. Sage is the third (system 36), with her Healing Orb.
+-- Inner Fire, works. Sage is the third (system 36), with her Healing Orb
+-- and her Slow Orb (system 37).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -173,6 +174,10 @@ local RUN = "VALORANT Wiki, Run it Back"
 local P1300 = "Patch 13.00"
 local SAGE = "VALORANT Wiki, Sage"
 local ORB = "VALORANT Wiki, Healing Orb"
+local SLOW = "VALORANT Wiki, Slow Orb"
+local TRACKER = "valoranttracker.org, Sage"
+local P047 = "Patch 0.47"
+local P107 = "Patch 1.07"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -258,7 +263,7 @@ AbilityConfig.Defs = {
 		description = "Marks where you stand. Die before it's over, or let it run out, and you're back at the mark with full health.",
 	},
 	-- Sage's (system 36): her kit as the VALORANT Wiki lists it. Her Healing
-	-- Orb can be played.
+	-- Orb and her Slow Orb (system 37) can be played.
 	barrierorb = {
 		id = "barrierorb",
 		name = "Barrier Orb",
@@ -273,9 +278,10 @@ AbilityConfig.Defs = {
 		name = "Slow Orb",
 		slot = AbilityConfig.Q,
 		kind = "basic",
-		cost = p(200, "community", SAGE .. ": Slow Orb, 200 credits"),
+		cost = p(200, "confirmed", P300 .. ": Slow Orb (Q) 'Cost increased 100 >>> 200' (" .. SAGE .. ": 200 still)"),
 		charges = p(2, "community", SAGE .. ": Slow Orb, 2 uses"),
-		description = "Throws an orb that bursts into a field of ice, slowing everyone in it.",
+		weapon = "iceorb",
+		description = "Q readies a slowing orb. Fire throws it; it bursts into a field of ice that slows everyone in it, you too.",
 	},
 	healingorb = {
 		id = "healingorb",
@@ -653,6 +659,58 @@ AbilityConfig.HealingOrb = {
 	reach = p(60, "estimate", "Ours, metres: about a map's longest sightline; " .. ORB .. ": an ally 'must be in Sage's line of sight'"),
 }
 
+-- Sage's Slow Orb (system 37): Q puts the orb in hand (WeaponConfig's
+-- iceorb, in the fifth slot, as the fireball is), and fire throws it. It
+-- flies from the eye as Hot Hands' fireball does (FireballSim), faster and
+-- falling harder, off walls and ceilings, with no air time to run out, and
+-- bursts where it meets a floor into a field of ice (SlowSim). The field
+-- spreads to its radius, no further than the walls round it let it, and
+-- lasts its duration from the burst. Everyone standing in it, allies and
+-- Sage too, is slowed: their speed along the ground and in the air held to
+-- a share of their run's at once, their jumps lower and a dash slower.
+-- Riot gives the slow, its time, the air's and the dash's; the wiki and a
+-- tracker the rest they give (37-slow-orb.md, section 2).
+AbilityConfig.SlowOrb = {
+	-- From the throw until the gun's back in hand.
+	unequip = p(0.4, "community", SLOW .. ": 'Unequip' 0.4 seconds (game files)"),
+	-- Its flight: this fast, falling at this share of the world's gravity.
+	speed = p(29, "community", PROJECTILE .. ": the Slow Orb a 'Class 3' throw, 'Speed 2900', read as centimetres a second"),
+	gravity = p(0.45, "community", PROJECTILE .. ": 'Gravity 0.45', read as a share of the world's"),
+	worldGravity = p(9.8, "estimate", "Ours, as Hot Hands': Unreal Engine's default, 980 cm/s^2; no source gives the reference's"),
+	-- Half the size of the box that flies, for what it meets.
+	size = p(0.1, "estimate", "Ours: an orb about a hand across, as the fireball"),
+	-- What's kept of its speed off a wall, and how level a surface has to be
+	-- for it to burst there (the up of its normal).
+	bounce = p(0.5, "estimate", "Ours, as Hot Hands'"),
+	floor = p(0.7, "estimate", "Ours, about 45 degrees; " .. SLOW .. ": it detonates on contact with horizontal terrain"),
+	-- The field: this far round, grown to it over the spread, lasting its
+	-- duration from the burst, and gone at once.
+	radius = p(5.6, "community", TRACKER .. ": 'Radius 8m' (mid-2020), less " .. P107 .. "'s 'Size reduced by 30%', read as the radius"),
+	spread = p(0.3, "estimate", "Ours: the ice bursts out over a moment"),
+	duration = p(7, "confirmed", P050 .. ": 'Slow Orb zone duration decreased from 9 seconds to 7 seconds'"),
+	-- How high over its floor it slows, and how far below it; and how high
+	-- over the floor a wall stops it spreading.
+	height = p(
+		1.2,
+		"estimate",
+		"Ours: over a jump's top (0.85 m), so a jump in it stays slowed; " .. P050 .. " has 1.2 m to jump out of a damaging field"
+	),
+	depth = p(0.5, "estimate", "Ours, as Hot Hands' fire: down a slope or a step from the burst"),
+	wallHeight = p(0.5, "estimate", "Ours, as Hot Hands' fire: so a kerb doesn't stop it spreading and a crate does"),
+	-- What it takes from whoever's in it: the share of their speed, along
+	-- the ground and in the air; of a jump's height; and of a dash's speed.
+	slow = p(
+		0.5,
+		"confirmed",
+		P050
+			.. ": 'Slow Orb slowing amount decreased from 65% to 50%'; "
+			.. P047
+			.. ": it 'now also slows the air speed of players in the zone'"
+	),
+	jump = p(0.3, "community", TRACKER .. ": its jump height reduction, 30% (mid-2020)"),
+	dash = p(0.5, "confirmed", P910 .. ": 'reduce the dash speed of enemies caught inside the slowing zone by 50%'"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, and for the Healing Orb, after its
 -- heal).
@@ -663,6 +721,8 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.Blaze.unequip.value
 	elseif id == "healingorb" then
 		return AbilityConfig.HealingOrb.unequip.value
+	elseif id == "sloworb" then
+		return AbilityConfig.SlowOrb.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

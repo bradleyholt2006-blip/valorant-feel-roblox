@@ -17,7 +17,10 @@
 --     BlazeView)
 -- In Workspace's VFFires each fireball in the air is a `Fireball` ball, and
 -- each fire a `Fire` model while it burns. They all go when the server says
--- every fire's out (a new round, "out").
+-- every fire's out (a new round, "out"). Sage's Slow Orb (system 37,
+-- SlowView) draws its orbs and its fields of ice the same way, with what's
+-- shared here: a flight's keys and a field's reaches as the server sends
+-- them, and a floor drawn a triangle at a time.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -188,9 +191,10 @@ local function burst(at: vector, own: boolean, entity: number)
 	end)
 end
 
--- Two wedges drawn as the triangle a, b, c (studs), or hidden if it has no
--- area (a fire just burst, or a wall right against it).
-local function triangle(a: Vector3, b: Vector3, c: Vector3, w1: WedgePart, w2: WedgePart)
+-- Two wedges drawn as the triangle a, b, c (studs), `transparency` clear
+-- (a fire's, by default), or hidden if it has no area (a fire just burst,
+-- or a wall right against it).
+local function triangle(a: Vector3, b: Vector3, c: Vector3, w1: WedgePart, w2: WedgePart, transparency: number?)
 	local ab, ac, bc = b - a, c - a, c - b
 	local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
 	-- The longest side as bc: the corner opposite it, a, splits the
@@ -214,8 +218,10 @@ local function triangle(a: Vector3, b: Vector3, c: Vector3, w1: WedgePart, w2: W
 	w1.CFrame = CFrame.fromMatrix((a + b) / 2, right, up, back)
 	w2.Size = Vector3.new(THICK, height, math.abs(ac:Dot(back)))
 	w2.CFrame = CFrame.fromMatrix((a + c) / 2, -right, up, -back)
-	w1.Transparency, w2.Transparency = 0.35, 0.35
+	local clear = transparency or 0.35
+	w1.Transparency, w2.Transparency = clear, clear
 end
+FireView.triangle = triangle
 
 local function wedge(parent: Instance): WedgePart
 	local w = Instance.new("WedgePart")
@@ -321,7 +327,9 @@ local function keysOf(sent: any): { FireballSim.Key }?
 	end
 	return keys
 end
+FireView.keysOf = keysOf
 
+-- A field's reaches as the server sends them, or nil if they aren't.
 local function reachesOf(sent: any): { number }?
 	if typeof(sent) ~= "table" or #sent ~= FireSim.SECTORS then
 		return nil
@@ -335,6 +343,7 @@ local function reachesOf(sent: any): { number }?
 	end
 	return out
 end
+FireView.reachesOf = reachesOf
 
 local function onEvent(event: any)
 	if typeof(event) == "table" and event.kind == "out" then

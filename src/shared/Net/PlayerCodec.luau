@@ -188,6 +188,7 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 			+ (if m.crouched then 2 else 0)
 			+ (if m.jumpLatched then 4 else 0)
 			+ (if m.gliding then 8 else 0)
+			+ (if m.slowed then 16 else 0)
 	)
 	wf64(c, m.crouchAlpha)
 	w32(c, ago(m.tick, m.lastJumpTick))
@@ -291,6 +292,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		crouched = bit32.band(flags, 2) ~= 0,
 		jumpLatched = bit32.band(flags, 4) ~= 0,
 		gliding = bit32.band(flags, 8) ~= 0,
+		slowed = bit32.band(flags, 16) ~= 0,
 		groundNormal = vector.create(nx, ny, nz),
 		crouchAlpha = crouchAlpha,
 		lastJumpTick = tick - jumpAgo,

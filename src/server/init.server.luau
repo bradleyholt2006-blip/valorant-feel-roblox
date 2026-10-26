@@ -11,9 +11,9 @@
 -- a Phoenix whose body's been gone too long in Run it Back is back in play,
 -- thrown clouds whose thrower is dead fly on, flares pop, blinding whoever
 -- the moves left looking at them, walls of fire whose caster is dead run
--- on, fires burn whoever the moves left standing in them, and the Healing
+-- on, fires burn whoever the moves left standing in them, the Healing
 -- Orb's heals give what they've come to, after the fires' burns that pause
--- them.
+-- them, and the Slow Orb's fields say whom the moves left slowed.
 -- Regen Shields refill after the shots, and the minimap's spotting looks
 -- after them, so nobody they killed is seen; the fog of war's looks come
 -- after that, with what each side spots, and each player's snapshot goes
@@ -44,6 +44,7 @@ local CloudServer = require(script.CloudServer)
 local FlareServer = require(script.FlareServer)
 local FireServer = require(script.FireServer)
 local HealServer = require(script.HealServer)
+local SlowServer = require(script.SlowServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
 local MinimapServer = require(script.MinimapServer)
@@ -62,6 +63,7 @@ CloudServer.start()
 FlareServer.start()
 FireServer.start()
 HealServer.start()
+SlowServer.start()
 BlazeServer.start()
 RunItBackServer.start()
 MinimapServer.start()
@@ -89,6 +91,7 @@ RunService.Heartbeat:Connect(function(dt)
 	BlazeServer.step(now)
 	FireServer.step(now, dt)
 	HealServer.step(now)
+	SlowServer.step(now)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)
 	MinimapServer.step(now)

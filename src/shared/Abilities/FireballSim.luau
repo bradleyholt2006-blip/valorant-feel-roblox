@@ -15,7 +15,9 @@
 -- throw, so the server flies each one at once and tells every client its
 -- keys, which each draws it from (FireballSim.at), and the thrower's
 -- client flies its own the same way. Where it bursts, FireSim's fire
--- burns.
+-- burns. Sage's Slow Orb (system 37) flies the same way as its own (a
+-- Flight: SlowSim.FLIGHT), with no air time to run out, and where it
+-- bursts its field of ice slows.
 --
 -- No Roblox APIs here: the world is MovementSim's, so the offline tests fly
 -- it through a fake one.
@@ -26,10 +28,29 @@ local AbilityConfig = require("./AbilityConfig")
 -- `velocity`, falling at `gravity` metres a second each second.
 export type Key = { age: number, position: vector, velocity: vector, gravity: number }
 
+type Param = AbilityConfig.Param
+
+-- How a throw flies (Hot Hands' by default, AbilityConfig.HotHands): this
+-- fast thrown, and lobbed if it can be; falling at this share of the
+-- world's gravity, for its air time if it has one; the box that flies this
+-- big, keeping this much of its speed off a wall; and a surface this level
+-- a floor (the up of its normal).
+export type Flight = {
+	speed: Param,
+	lobSpeed: Param?,
+	gravity: Param,
+	worldGravity: Param,
+	airTime: Param?,
+	size: Param,
+	bounce: Param,
+	floor: Param,
+}
+
 export type Fireball = {
 	owner: number, -- the thrower's entity id
 	id: number, -- the tick it was thrown on, which names it on both ends
 	lob: boolean, -- thrown underhand (alt fire)
+	flight: Flight,
 	position: vector, -- metres
 	age: number, -- seconds since the throw
 	dropping: boolean, -- its air time's up
@@ -39,7 +60,7 @@ export type Fireball = {
 
 local FireballSim = {}
 
-local HH = AbilityConfig.HotHands
+local HH: Flight = AbilityConfig.HotHands
 local EPS = 1e-9
 local DOWN = vector.create(0, -1, 0)
 -- How far off a wall it's set after a bounce, and how far back along its
@@ -54,14 +75,30 @@ local BOUNCES_A_TICK = 4
 -- out of the level (ours).
 FireballSim.LONGEST = 5
 
--- A new throw from `origin` (the eye) the way `aim` points: lobbed, if
--- `lob`, underhand at the lob's speed.
-function FireballSim.throw(owner: number, id: number, origin: vector, aim: vector, lob: boolean): Fireball
-	local speed = if lob then HH.lobSpeed.value else HH.speed.value
+-- The longest a throw flying as `flight` says flies before it's given up
+-- on: FireballSim.LONGEST, and with no air time to run out (the Slow
+-- Orb's), as long again as one thrown straight up takes to come back down
+-- to where it was thrown from.
+function FireballSim.longest(flight: Flight): number
+	if flight.airTime then
+		return FireballSim.LONGEST
+	end
+	return FireballSim.LONGEST + 2 * flight.speed.value / (flight.gravity.value * flight.worldGravity.value)
+end
+
+-- A new throw from `origin` (the eye) the way `aim` points, flying as
+-- `flight` says (Hot Hands' fireball's by default): lobbed, if `lob` and
+-- it can be, underhand at the lob's speed.
+function FireballSim.throw(owner: number, id: number, origin: vector, aim: vector, lob: boolean, flight: Flight?): Fireball
+	local f = flight or HH
+	local lobSpeed = f.lobSpeed
+	local lobbed = lob and lobSpeed ~= nil
+	local speed = if lobbed and lobSpeed then lobSpeed.value else f.speed.value
 	return {
 		owner = owner,
 		id = id,
-		lob = lob,
+		lob = lobbed,
+		flight = f,
 		position = origin,
 		age = 0,
 		dropping = false,
@@ -71,7 +108,7 @@ function FireballSim.throw(owner: number, id: number, origin: vector, aim: vecto
 				age = 0,
 				position = origin,
 				velocity = vector.normalize(aim) * speed,
-				gravity = HH.gravity.value * HH.worldGravity.value,
+				gravity = f.gravity.value * f.worldGravity.value,
 			},
 		},
 	}
@@ -127,14 +164,17 @@ function FireballSim.step(f: Fireball, dt: number, world: any?): boolean
 	if f.landed then
 		return true
 	end
-	-- Its air time up: it stops going anywhere but down, under the world's
-	-- gravity.
-	if not f.dropping and f.age >= HH.airTime.value - EPS then
+	-- Its air time up, if it has one: it stops going anywhere but down,
+	-- under the world's gravity.
+	local flight = f.flight
+	local airTime = flight.airTime
+	if airTime and not f.dropping and f.age >= airTime.value - EPS then
 		f.dropping = true
 		local v = FireballSim.velocityAt(f.keys[#f.keys], f.age)
-		turn(f, f.position, vector.create(0, math.min(v.y, 0), 0), HH.worldGravity.value)
+		turn(f, f.position, vector.create(0, math.min(v.y, 0), 0), flight.worldGravity.value)
 	end
-	local half = vector.create(HH.size.value, HH.size.value, HH.size.value)
+	local size = flight.size.value
+	local half = vector.create(size, size, size)
 	local left = dt
 	local bounces = 0
 	while left > EPS do
@@ -154,7 +194,7 @@ function FireballSim.step(f: Fireball, dt: number, world: any?): boolean
 		f.age += span
 		left -= span
 		local at = f.position + delta * fraction
-		if normal.y >= HH.floor.value then
+		if normal.y >= flight.floor.value then
 			-- A floor: it bursts there.
 			f.landed = f.age
 			turn(f, at, vector.zero, 0)
@@ -168,7 +208,7 @@ function FireballSim.step(f: Fireball, dt: number, world: any?): boolean
 				v -= normal * into
 			else
 				-- Off a wall or a ceiling, it keeps a share of its speed.
-				v = (v - normal * (2 * into)) * HH.bounce.value
+				v = (v - normal * (2 * into)) * flight.bounce.value
 			end
 		end
 		turn(f, at + normal * MARGIN, v, key.gravity)
@@ -181,7 +221,8 @@ end
 -- with none), or until it's flown the longest it may. Returns the age it
 -- burst at, nil if it never did; its keys are then its path.
 function FireballSim.fly(f: Fireball, dt: number, world: any?): number?
-	while not f.landed and f.age < FireballSim.LONGEST - EPS do
+	local longest = FireballSim.longest(f.flight)
+	while not f.landed and f.age < longest - EPS do
 		FireballSim.step(f, dt, world)
 	end
 	return f.landed
