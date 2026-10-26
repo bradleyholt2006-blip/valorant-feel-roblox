@@ -2,9 +2,10 @@
 -- One player's full deterministic simulation: movement + weapons + hit slow,
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
--- Curveball does its flare (system 30), Hot Hands its fireball (system 31)
--- and Blaze its flame (system 32), and whose Run it Back holds the player
--- through his return and puts him back at its mark (system 33).
+-- Curveball does its flare (system 30), Hot Hands its fireball (system 31),
+-- Blaze its flame (system 32) and the Healing Orb its orb (system 36), and
+-- whose Run it Back holds the player through his return and puts him back
+-- at its mark (system 33).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -304,8 +305,10 @@ function PlayerSim.step(
 	end
 	-- An ability in hand (system 30): what it fires is its throw, the
 	-- ability's cast and no bullet, and the gun's back in hand a moment
-	-- after, or once the wall it sent out is let go (Blaze, system 32).
-	-- Anything else drawn puts it away unthrown.
+	-- after, or once the wall it sent out is let go (Blaze, system 32). The
+	-- Healing Orb's is a try (system 36), and it stays in hand for the next,
+	-- until the server finds one heals and puts it away. Anything else drawn
+	-- puts it away unthrown.
 	if kit.holding ~= 0 then
 		local held = s.weapons.loadout[WeaponSim.ULT]
 		local shot = if shots and held ~= "" and shots[1].weapon == held then shots[1] else nil
@@ -318,7 +321,9 @@ function PlayerSim.step(
 				table.insert(list, cast)
 				casts = list
 			end
-			if kit.steering ~= 0 then
+			if kit.holding ~= 0 then
+				WeaponSim.refill(s.weapons, WeaponSim.ULT)
+			elseif kit.steering ~= 0 then
 				WeaponSim.keep(s.weapons, kit.steerUntil)
 			else
 				WeaponSim.putAway(s.weapons, t, AbilityConfig.unequip(if def then def.id else ""))

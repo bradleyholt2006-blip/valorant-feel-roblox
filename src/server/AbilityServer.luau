@@ -20,6 +20,9 @@
 --     with points from kills and Ultimate Orbs alone. When each slot's next
 --     charge comes is a player attribute (AbilityConfig.RECHARGE_ATTRIBUTE),
 --     for the ability bar's count
+--   * everywhere else an ability with a cooldown of its own (Sage's Healing
+--     Orb, system 36) brings a spent charge back once it's run, the same
+--     way
 --   * the ultimate's points: one for a kill (a dummy's too), a death, a
 --     plant and a defuse; and kills bring the signature's charge back
 --     (Jett's: two). A kill with a single Blade Storm knife brings all its
@@ -34,12 +37,13 @@
 -- when the frame on their screen reaches it, but Blade Storm's knives drawn
 -- again and an ability put in hand (Curveball's flare, system 30; Hot
 -- Hands' fireball, system 31; Blaze's flame, system 32), which others see
--- in hand: Run it Back's mark and rising to every client, as the mark's
--- drawn for everyone, and any other to those who'd hear it or have the
--- caster in their snapshots (the fog of war, system 35). The caster's own
--- client has predicted it already. Each kit is a player attribute
--- (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary writes it), which
--- scripted checks read.
+-- in hand, and the Healing Orb's tries (system 36), which HealServer judges
+-- and tells of as one heals: Run it Back's mark and rising to every client,
+-- as the mark's drawn for everyone, and any other to those who'd hear it or
+-- have the caster in their snapshots (the fog of war, system 35). The
+-- caster's own client has predicted it already. Each kit is a player
+-- attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary writes it),
+-- which scripted checks read.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -128,12 +132,28 @@ function AbilityServer.agentOf(player: Player): string
 end
 
 -- How long a kit's ability in `slot` takes to bring a charge back in the
--- mode played, if it recharges over time there.
+-- mode played, if it recharges over time there: the mode's time for it,
+-- where the mode has its own kit, and otherwise its own cooldown, if it has
+-- one (the Healing Orb's, system 36).
 local function cooldownOf(kit: AbilitySim.State, slot: number): number?
 	local rules = AbilityServer.rules
 	local def = AbilitySim.def(kit, slot)
-	local seconds = if rules and def and AbilitySim.playable(def.id) then rules.cooldowns[def.id] else nil
+	if AbilityServer.off or not def or not AbilitySim.playable(def.id) then
+		return nil
+	end
+	local recharge = def.recharge
+	local seconds = if rules then rules.cooldowns[def.id] elseif recharge and recharge.kind == "cooldown" then recharge.seconds else nil
 	return if seconds then seconds.value else nil
+end
+
+-- Whether any of a kit's abilities recharges over time in the mode played.
+local function recharges(kit: AbilitySim.State): boolean
+	for slot = AbilityConfig.C, AbilityConfig.E do
+		if cooldownOf(kit, slot) then
+			return true
+		end
+	end
+	return false
 end
 
 -- As a round of the spike rounds starts: "match" for the first of a match,
@@ -220,7 +240,7 @@ function AbilityServer.addPoints(player: Player, amount: number)
 	end)
 end
 
--- A mode's abilities recharging at `now`: each slot short of its most has a
+-- A kit's abilities recharging at `now`: each slot short of its most has a
 -- charge back once its time's up, and its next on the way.
 local function recharge(player: Player, kit: AbilitySim.State, now: number)
 	local coming = due[player]
@@ -274,8 +294,8 @@ function AbilityServer.sell(player: Player, id: string): boolean
 end
 
 -- Once a server frame: the course's refills, the ultimate's points with
--- them, a mode's recharge, and each kit told to clients, with Drift's glide
--- and when its charges come back.
+-- them, the recharge, and each kit told to clients, with Drift's glide and
+-- when its charges come back.
 function AbilityServer.step(now: number)
 	for _, player in Players:GetPlayers() do
 		local kit = PlayerSimServer.abilitiesOf(player)
@@ -283,7 +303,7 @@ function AbilityServer.step(now: number)
 			continue
 		end
 		local recharging: string? = nil
-		if AbilityServer.rules then
+		if AbilityServer.rules or recharges(kit) then
 			recharge(player, kit, now)
 			local coming = due[player]
 			recharging = string.format("%.2f,%.2f,%.2f", coming[1], coming[2], coming[3])
@@ -317,7 +337,7 @@ end
 function AbilityServer.start()
 	table.insert(PlayerSimServer.castListeners, function(player: Player, cast: AbilitySim.Cast)
 		local entity = PlayerSimServer.entityOf(player)
-		if not entity or cast.kind == "draw" or cast.kind == "equip" then
+		if not entity or cast.kind == "draw" or cast.kind == "equip" or cast.kind == "heal" or cast.kind == "selfheal" then
 			return
 		end
 		local event: CastEvent = {

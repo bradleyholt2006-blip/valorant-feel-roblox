@@ -42,6 +42,11 @@
 -- (fizzle), his body's gone, and once it's been gone its time he's back at
 -- the mark (PlayerSim) and rises there. Through all of his return he's
 -- held: nothing he presses does anything.
+-- Sage's Healing Orb (E, system 36) puts its orb in hand the same way, but
+-- it isn't thrown: fire tries it on the ally under the crosshair and alt
+-- fire on herself, a try at a time, and it stays in hand, its charge with
+-- it, until the server finds a try heals someone (HealServer), spends the
+-- charge and puts it away (used).
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -82,9 +87,9 @@ export type State = {
 	-- The ultimate under way (Blade Storm): its knives are carried.
 	-- PlayerSim ends it when they're gone.
 	storm: boolean,
-	-- The slot whose ability is in hand (Curveball's flare, system 30, or
-	-- Hot Hands' fireball, system 31), 0 for none. PlayerSim puts it away
-	-- when the hand goes elsewhere.
+	-- The slot whose ability is in hand (Curveball's flare, system 30, Hot
+	-- Hands' fireball, system 31, or the Healing Orb, system 36), 0 for none.
+	-- PlayerSim puts it away when the hand goes elsewhere.
 	holding: number,
 	-- The slot whose wall is being bent (Blaze, system 32), 0 for none, and
 	-- when its run's over, the longest it's bent for: its flame stays in
@@ -107,9 +112,10 @@ export type State = {
 -- "ready", "dash", "throw", "storm" (Blade Storm cast), "draw" (its knives
 -- drawn again), "equip" (an ability put in hand), "flare" (Curveball's
 -- thrown), "fireball" (Hot Hands' thrown), "flame" (Blaze's sent out),
--- "mark" (Run it Back cast), "fizzle" (his body gone as it runs out) or
--- "rise" (back at its mark), where the player's feet and eye were, and the
--- way it goes (the dash's way, up for a lift, the way they faced for a
+-- "mark" (Run it Back cast), "fizzle" (his body gone as it runs out),
+-- "rise" (back at its mark), "heal" (the Healing Orb tried on an ally) or
+-- "selfheal" (tried on herself), where the player's feet and eye were, and
+-- the way it goes (the dash's way, up for a lift, the way they faced for a
 -- readied gust and for Run it Back's, the way they looked for the rest). A
 -- flare's says which way round it curves, and a fireball's whether it was
 -- lobbed.
@@ -153,15 +159,16 @@ local PLAYABLE: { [string]: boolean } = {
 	blaze = true,
 	runitback = true,
 	innerfire = true,
+	healingorb = true,
 }
 
 function AbilitySim.playable(id: string): boolean
 	return PLAYABLE[id] == true
 end
 
--- Whether an ability is one its key puts in hand, to be thrown from there
--- (Curveball's flare, Hot Hands' fireball, Blaze's flame): a weapon of its
--- own, outside the ultimate.
+-- Whether an ability is one its key puts in hand, to be thrown or tried
+-- from there (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
+-- Healing Orb): a weapon of its own, outside the ultimate.
 local function held(def: AbilityConfig.AbilityDef?): boolean
 	return def ~= nil and def.weapon ~= nil and def.kind ~= "ultimate" and PLAYABLE[def.id] == true
 end
@@ -409,8 +416,8 @@ end
 -- ready", or "X0/8 storm" in Blade Storm, "back" while Run it Back runs,
 -- "away" while his body's gone and "rise" as he rises at its mark, "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
--- flame), "bend" while a wall is being bent (Blaze), and "glide" while
--- `gliding` (the movement's, for Drift).
+-- flame, the Healing Orb), "bend" while a wall is being bent (Blaze), and
+-- "glide" while `gliding` (the movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -565,11 +572,27 @@ end
 -- `alt` says alt fire threw it: Curveball's flare goes round to the right
 -- then, and to the left otherwise, and Hot Hands' fireball is lobbed.
 -- Blaze's wall is sent out from `feet`, and is bent from then until its
--- run's over, if fire's held that long. Nil with nothing in hand to throw.
+-- run's over, if fire's held that long. The Healing Orb is only tried, on
+-- the ally the crosshair's over or with `alt` on herself: it stays in hand
+-- with its charge until the server finds the try heals (used). Nil with
+-- nothing in hand to throw.
 function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, origin: vector, aim: vector, alt: boolean): Cast?
 	local slot = s.holding
-	s.holding = 0
 	local def = if slot ~= 0 then AbilitySim.def(s, slot) else nil
+	if def and def.id == "healingorb" and s.charges[slot] > 0 then
+		local try: Cast = {
+			slot = slot,
+			ability = def.id,
+			kind = if alt then "selfheal" else "heal",
+			tick = tick,
+			time = t,
+			position = feet,
+			origin = origin,
+			direction = aim,
+		}
+		return try
+	end
+	s.holding = 0
 	if not def or s.charges[slot] <= 0 then
 		return nil
 	end
@@ -595,6 +618,16 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		cast.curve = if alt then 1 else -1
 	end
 	return cast
+end
+
+-- The ability in `slot` used, between ticks, as the server finds a try of
+-- it heals (the Healing Orb, system 36): its charge spent and, if it's in
+-- hand, out of it. The ack takes it to its owner.
+function AbilitySim.used(s: State, slot: number)
+	s.charges[slot] = math.max(s.charges[slot] - 1, 0)
+	if s.holding == slot then
+		s.holding = 0
+	end
 end
 
 -- The ticks something lasting `duration` from a tick runs for, that tick

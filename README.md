@@ -243,6 +243,16 @@ Built one system at a time:
     made them, and a shot's verdict lists only the targets its shooter has. The dead have what
     their side in play has, and enemies' labels no longer show through walls -
     [research and design](docs/research/35-fog-of-war.md)
+36. **Sage's Healing Orb**: Sage joins Jett and Phoenix in agent select, a Sentinel with her whole
+    kit on the bar, and her Healing Orb is the first of it played. E puts the orb in hand, ready in
+    0.5 s. With the crosshair over a hurt ally in sight, a click of mouse 1 heals them, and mouse 2
+    heals you if you're hurt: 100 health over 5 s, 20 a second up to the most, no shield, stopping
+    for a second each time they're hurt. The server decides whom a click heals, from what your
+    screen showed as you clicked; a click that heals nobody leaves the orb in hand. A heal spends
+    its one charge, free each round, and puts the gun back 0.7 s later; the charge comes back 45 s
+    after, 22 s in Team Deathmatch. With the orb in hand, the ally it would heal is marked in green
+    with a + over their head, and whoever's healed glows green -
+    [research and design](docs/research/36-healing-orb.md)
 
 ## Running it
 
@@ -283,12 +293,14 @@ that are left; with a gun drawn, X draws the knives again). Space held in the ai
 Drift). As Phoenix, E readies Curveball's flare: mouse 1 throws it curving left, mouse 2 curving
 right, and E again puts it away; Q readies Hot Hands' fireball: mouse 1 throws it, mouse 2 lobs it,
 and Q again puts it away; C readies Blaze's flame: mouse 1 sends its wall, held it bends the wall
-towards your crosshair, and C again puts it away; X marks where you stand for Run it Back. The
-spike rounds charge credits; the course and the arena are free.
+towards your crosshair, and C again puts it away; X marks where you stand for Run it Back. As
+Sage, E readies the Healing Orb: mouse 1 heals the hurt ally in your crosshair, mouse 2 heals you,
+and E again puts it away. The spike rounds charge credits; the course and the arena are free.
 On the course a spent charge comes back 1.5 s after it's done, and the ultimate's points are full at
 every life and fill again 1.5 s after Blade Storm ends or Run it Back brings you back; in the arena
-every life starts with every charge, in Team Deathmatch spent charges come back over time, and gun
-game and deathmatch have no abilities.
+every life starts with every charge, in Team Deathmatch spent charges come back over time, a spent
+Healing Orb comes back 45 s after in the arena and the spike rounds, and gun game and deathmatch
+have no abilities.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows), a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair) and
 the minimap's: Rotate or Fixed, the same way round or by side, kept centred, its size and zoom,
@@ -357,9 +369,11 @@ their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`,
 line while both sides are full. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
 what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide, `equip`
-while Curveball's flare, Hot Hands' fireball or Blaze's flame is in hand, `bend` while a Blaze
-wall is bent, `back` while Run it Back runs, and `away` and `rise` through its return), and
-`VFTestBuy` set to `updraft` buys a charge. A player's agent is their `VFAgent` attribute, what
+while Curveball's flare, Hot Hands' fireball, Blaze's flame or the Healing Orb is in hand, `bend`
+while a Blaze wall is bent, `back` while Run it Back runs, and `away` and `rise` through its
+return), and `VFTestBuy` set to `updraft` buys a charge. Where a kit's charges come back over time,
+when each of C, Q and E next has one is the player's `VFRecharge` attribute (server time, 0 for
+none coming). A player's agent is their `VFAgent` attribute, what
 they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
 `open` or `locked`, unset where nobody picks), and while their window's open, when it closes
 (server time) `VFAgentCloses`. Where a player's last Cloudburst burst is their
@@ -372,9 +386,11 @@ last Hot Hands burst is their `VFLastFire` attribute (the floor under it, in met
 of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Workspace.VFWalls`
 holds each wall's run on its way and each wall as models. Where a player last cast Run it Back is
 their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each mark as a model, its
-`Entity` attribute whose it is. The minimap's ScreenGui, `VFMinimap`, carries what it shows: the
-plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the
-spike is (`Spike`), how far it's turned (`Turn`, degrees) and whether the big map's open (`Big`).
+`Entity` attribute whose it is. Whom a player last healed with the Healing Orb is their `VFLastHeal`
+attribute (the healed player's name). The minimap's ScreenGui, `VFMinimap`, carries what it
+shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`),
+whether the spike is (`Spike`), how far it's turned (`Turn`, degrees) and whether the big map's
+open (`Big`).
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -413,9 +429,10 @@ through walls and down ledges, the wall and who stands in it, the burn, Inner Fi
 wire), Run it Back (the cast and its activation, running out, the return and the rise, a hit it
 spares, a plant under way, and the wire), the minimap (who sees whom through the level, clouds
 and walls of fire, every map's plan, the views each setting gives, allies held on the edge, the
-spike's and the names' rules, and the cones' rays) and the fog of war (who's always sent, the lines
+spike's and the names' rules, and the cones' rays), the fog of war (who's always sent, the lines
 from an eye to a body, both carried ahead, corner peeks, what's heard, the hold and the looks it
-skips) are pure Luau and run outside Roblox:
+skips) and Sage's Healing Orb (her kit, the orb in hand and its tries, whom a try heals, the heal
+and its pauses, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

@@ -44,5 +44,6 @@ require("./blaze")
 require("./runitback")
 require("./minimap")
 require("./fogofwar")
+require("./healingorb")
 
 H.finish()

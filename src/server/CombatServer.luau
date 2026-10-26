@@ -232,8 +232,8 @@ function CombatServer.heal(entity: Entities.Entity)
 end
 
 -- Some health and shield back for a living entity, each up to its most
--- (Team Deathmatch's Recovery Orbs, system 28), and tells clients if it
--- changed.
+-- (Team Deathmatch's Recovery Orbs, system 28, and the Healing Orb's heals,
+-- system 36), and tells clients if it changed.
 function CombatServer.mend(entity: Entities.Entity, health: number, shield: number)
 	if not Health.mend(entity.health, health, shield) then
 		return
@@ -328,6 +328,23 @@ local function rewindFor(attacker: Entities.Entity, viewTime: number): (LagCompe
 			and not (protected and protected(entity))
 	end)
 	return rewind, rewound
+end
+
+-- Every living entity `include` accepts, other than `viewer`, posed as the
+-- viewer's screen showed them at `viewTime` (as far back as the cap
+-- allows), and the time they're posed at: Sage's Healing Orb looks there
+-- for the ally its holder had the crosshair over (system 36).
+function CombatServer.rewound(
+	viewer: Entities.Entity,
+	viewTime: number,
+	include: (Entities.Entity) -> boolean
+): ({ LagCompensation.Target }, number)
+	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
+	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
+		local entity = Entities.get(id)
+		return id ~= viewer.id and entity ~= nil and entity.health.alive and entity.pose() ~= nil and include(entity)
+	end)
+	return rewound, rewind.time
 end
 
 -- One round: its bullets, all fired on the same tick from the same eye.

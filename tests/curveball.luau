@@ -176,7 +176,7 @@ do
 			and AbilitySim.playable("drift")
 	)
 	local pickable = AgentSelect.pickable()
-	check("so he can be picked, after Jett", pickable[1] == "jett" and pickable[2] == PHOENIX and #pickable == 2)
+	check("so he can be picked, after Jett", pickable[1] == "jett" and pickable[2] == PHOENIX)
 	check(
 		"and he's second on the wire",
 		AbilityConfig.AgentIds[2] == PHOENIX and AbilityConfig.AgentIndex[PHOENIX] == 2 and AbilityConfig.Passives.innerfire ~= nil
