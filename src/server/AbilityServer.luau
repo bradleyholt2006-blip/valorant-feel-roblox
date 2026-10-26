@@ -32,10 +32,10 @@
 --     the kit starting over as the mode starts one, or with their next life
 -- Each cast is told to every client (the Ability remote) for its sound and
 -- look, when the frame on their screen reaches it, but Blade Storm's knives
--- drawn again, which others see in hand. The caster's own client has
--- predicted it already. Each kit is a player attribute
--- (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary writes it), which
--- scripted checks read.
+-- drawn again and Curveball's flare put in hand (system 30), which others see
+-- in hand. The caster's own client has predicted it already. Each kit is a
+-- player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
+-- writes it), which scripted checks read.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -307,7 +307,7 @@ end
 function AbilityServer.start()
 	table.insert(PlayerSimServer.castListeners, function(player: Player, cast: AbilitySim.Cast)
 		local entity = PlayerSimServer.entityOf(player)
-		if not entity or cast.kind == "draw" then
+		if not entity or cast.kind == "draw" or cast.kind == "equip" then
 			return
 		end
 		local event: CastEvent = {

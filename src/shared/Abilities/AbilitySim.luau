@@ -23,6 +23,11 @@
 -- And her passive, Drift (system 20): with jump held, a fall is held to a
 -- glide, which MovementSim does. It takes no charge, and nothing but a dash
 -- or a lift under way stops it.
+-- Phoenix's Curveball (E, system 30) puts its flare in hand, if it has a
+-- charge: a weapon of its own in WeaponSim's fifth slot, which PlayerSim
+-- puts there. Fire or alt fire throws it once it's in hand, which spends
+-- the charge (thrown), and E again, or drawing anything else, puts it away
+-- unthrown. FlareSim flies it.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -63,13 +68,17 @@ export type State = {
 	-- The ultimate under way (Blade Storm): its knives are carried.
 	-- PlayerSim ends it when they're gone.
 	storm: boolean,
+	-- The slot whose ability is in hand (Curveball's flare, system 30), 0
+	-- for none. PlayerSim puts it away when the hand goes elsewhere.
+	holding: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
--- "ready", "dash", "throw", "storm" (Blade Storm cast) or "draw" (its
--- knives drawn again), where the player's feet and eye were, and the way it
--- goes (the dash's way, up for a lift, the way they faced for a readied
--- gust, the way they looked for the rest).
+-- "ready", "dash", "throw", "storm" (Blade Storm cast), "draw" (its knives
+-- drawn again), "equip" (Curveball's flare put in hand) or "flare" (thrown),
+-- where the player's feet and eye were, and the way it goes (the dash's
+-- way, up for a lift, the way they faced for a readied gust, the way they
+-- looked for the rest). A flare's says which way round it curves.
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -79,6 +88,7 @@ export type Cast = {
 	position: vector,
 	origin: vector,
 	direction: vector,
+	curve: number?, -- a flare's: -1 round to the left, 1 to the right
 }
 
 local AbilitySim = {}
@@ -93,8 +103,16 @@ local UP = vector.create(0, 1, 0)
 AbilitySim.BUTTONS = { B.AbilityC, B.AbilityQ, B.AbilityE, B.Ultimate }
 local ALL = bit32.bor(B.AbilityC, B.AbilityQ, B.AbilityE, B.Ultimate)
 
--- Abilities whose casts are written; the rest can't be bought or cast yet.
-local PLAYABLE: { [string]: boolean } = { cloudburst = true, updraft = true, tailwind = true, bladestorm = true }
+-- Abilities whose casts are written, and passives that work; the rest
+-- can't be bought or cast yet.
+local PLAYABLE: { [string]: boolean } = {
+	cloudburst = true,
+	updraft = true,
+	tailwind = true,
+	bladestorm = true,
+	drift = true,
+	curveball = true,
+}
 
 function AbilitySim.playable(id: string): boolean
 	return PLAYABLE[id] == true
@@ -118,6 +136,7 @@ function AbilitySim.new(agent: string?): State
 		dashX = 0,
 		dashZ = 0,
 		storm = false,
+		holding = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -167,12 +186,14 @@ function AbilitySim.pointsNeeded(s: State): number
 end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
--- ultimate. Nothing carries into a new life or a new round.
+-- ultimate, an ability in hand. Nothing carries into a new life or a new
+-- round.
 function AbilitySim.settle(s: State)
 	s.readyFrom, s.readyUntil = 0, 0
 	s.liftUntil = 0
 	s.dashUntil, s.dashX, s.dashZ = 0, 0, 0
 	s.storm = false
+	s.holding = 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -319,8 +340,8 @@ end
 -- The kit in a few characters, for the server to tell clients (scripted
 -- checks read it): each slot's charges and most, the ultimate's points and
 -- what they need, and what's under way at `t`, as "C0/2 Q1/1 E0/1 X3/8
--- ready", or "X0/8 storm" in Blade Storm, and "glide" while `gliding` (the
--- movement's, for Drift).
+-- ready", or "X0/8 storm" in Blade Storm, "equip" with Curveball's flare in
+-- hand, and "glide" while `gliding` (the movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -329,6 +350,9 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	table.insert(parts, string.format("X%d/%d", s.points, AbilitySim.pointsNeeded(s)))
 	if s.storm then
 		table.insert(parts, "storm")
+	end
+	if s.holding ~= 0 then
+		table.insert(parts, "equip")
 	end
 	if AbilitySim.dashing(s, t) then
 		table.insert(parts, "dash")
@@ -357,6 +381,39 @@ end
 -- Whether a readied window is open at `t`.
 function AbilitySim.ready(s: State, t: number): boolean
 	return s.readyUntil > 0 and t >= s.readyFrom - EPS and t < s.readyUntil - EPS
+end
+
+-- The weapon the kit has in WeaponSim's fifth slot now, "" for none:
+-- Blade Storm's knives while it lasts, or the ability in hand's.
+function AbilitySim.carried(s: State): string
+	local slot = if s.storm then X elseif s.holding ~= 0 then s.holding else 0
+	local def = if slot ~= 0 then AbilitySim.def(s, slot) else nil
+	return if def and def.weapon then def.weapon else ""
+end
+
+-- The ability in hand thrown (Curveball's flare, which WeaponSim fires as
+-- PlayerSim has it): its charge spent, and its cast, from `origin` (the eye)
+-- the way `aim` points, round the way `curve` says (-1 left, 1 right). Nil
+-- with nothing in hand to throw.
+function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, origin: vector, aim: vector, curve: number): Cast?
+	local slot = s.holding
+	s.holding = 0
+	local def = if slot ~= 0 then AbilitySim.def(s, slot) else nil
+	if not def or s.charges[slot] <= 0 then
+		return nil
+	end
+	s.charges[slot] -= 1
+	return {
+		slot = slot,
+		ability = def.id,
+		kind = "flare",
+		tick = tick,
+		time = t,
+		position = feet,
+		origin = origin,
+		direction = aim,
+		curve = if curve < 0 then -1 else 1,
+	}
 end
 
 -- The ticks something lasting `duration` from a tick runs for, that tick
@@ -411,6 +468,10 @@ function AbilitySim.step(
 	s.held = keys
 	if s.readyUntil > 0 and t >= s.readyUntil - EPS then
 		s.readyFrom, s.readyUntil = 0, 0
+	end
+	-- An ability in hand with no charge left to throw goes (one sold back).
+	if s.holding ~= 0 and s.charges[s.holding] <= 0 then
+		s.holding = 0
 	end
 
 	local motion: MovementSim.Motion = {}
@@ -488,6 +549,23 @@ function AbilitySim.step(
 					slot = slot,
 					ability = id,
 					kind = "storm",
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = aim,
+				})
+			elseif id == "curveball" and s.holding == slot then
+				-- E again: the flare goes away unthrown (PlayerSim).
+				s.holding = 0
+			elseif id == "curveball" and s.holding == 0 and not s.storm and s.charges[slot] > 0 then
+				-- The flare in hand (PlayerSim); its charge goes as it's thrown.
+				s.holding = slot
+				local aim = Accuracy.aim(input.yaw, input.pitch)
+				started({
+					slot = slot,
+					ability = id,
+					kind = "equip",
 					tick = tick,
 					time = t,
 					position = feet,

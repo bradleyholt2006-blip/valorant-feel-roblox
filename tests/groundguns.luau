@@ -88,14 +88,17 @@ do
 	)
 	check("a sidearm in slot 2", GroundGuns.slotOf("classic") == 2 and GroundGuns.slotOf("sheriff") == 2)
 	check(
-		"the knife, the spike and Blade Storm's knives never lie there",
-		GroundGuns.slotOf("knife") == nil and GroundGuns.slotOf("spike") == nil and GroundGuns.slotOf("kunai") == nil
+		"the knife, the spike, Blade Storm's knives and Curveball's flare never lie there",
+		GroundGuns.slotOf("knife") == nil
+			and GroundGuns.slotOf("spike") == nil
+			and GroundGuns.slotOf("kunai") == nil
+			and GroundGuns.slotOf("flare") == nil
 	)
 	check("nor does anything that isn't a weapon", GroundGuns.slotOf("") == nil and GroundGuns.slotOf("regen") == nil)
 	local everyGun = true
 	for id, def in WeaponConfig.Defs do
 		local slot = GroundGuns.slotOf(id)
-		local gun = not def.melee and not def.spike and not def.ultimate
+		local gun = not def.melee and not def.spike and not def.ultimate and not def.ability
 		if (slot ~= nil) ~= gun or (slot ~= nil and slot ~= def.slot) then
 			everyGun = false
 			print("    " .. id)

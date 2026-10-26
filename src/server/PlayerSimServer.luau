@@ -383,7 +383,9 @@ end
 function PlayerSimServer.give(player: Player, slot: number, id: string, ammo: number?, reserve: number?): boolean
 	local r = records[player]
 	local def = WeaponConfig.Defs[id]
-	local fits = if id == "" then slot == 1 or slot == 2 else def ~= nil and def.slot == slot and not def.spike and not def.ultimate
+	local fits = if id == ""
+		then slot == 1 or slot == 2
+		else def ~= nil and def.slot == slot and not def.spike and not def.ultimate and not def.ability
 	if not r or not fits then
 		return false
 	end

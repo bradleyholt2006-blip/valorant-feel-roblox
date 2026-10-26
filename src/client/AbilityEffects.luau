@@ -7,6 +7,8 @@
 --     flash at the edges of the screen
 --   * Cloudburst: only heard here, as it's thrown and as it bursts;
 --     CloudView draws it in the air and the cloud (system 18)
+--   * Curveball: only its throw heard here; FlareView draws the flare in
+--     the air and its pop, and BlindView the blind (system 30)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -195,7 +197,7 @@ local function onCast(event: any)
 		return -- predicted already
 	end
 	if event.kind == "flight" then
-		return -- a throw on its way: CloudView's
+		return -- a throw on its way: CloudView's or FlareView's
 	end
 	table.insert(due, {
 		kind = event.kind,

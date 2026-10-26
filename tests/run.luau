@@ -38,5 +38,6 @@ require("./deathmatch")
 require("./teamdeathmatch")
 require("./tdmpickups")
 require("./agentselect")
+require("./curveball")
 
 H.finish()

@@ -389,9 +389,11 @@ do
 			table.insert(missing, id .. ": curve " .. sounds.curve)
 		end
 		local def = WeaponConfig.get(id)
-		local reloads = def.fireMode ~= "none" and not def.ultimate
+		local reloads = def.fireMode ~= "none" and not def.ultimate and not def.ability
 		if reloads ~= (sounds.reload ~= nil) then
-			local why = if sounds.reload then "the knife, the spike and Blade Storm's knives don't reload" else "no reload"
+			local why = if sounds.reload
+				then "the knife, the spike, Blade Storm's knives and Curveball's flare don't reload"
+				else "no reload"
 			table.insert(missing, id .. ": " .. why)
 		end
 		local swings = sounds.slash ~= nil and sounds.stab ~= nil and sounds.hit ~= nil and sounds.wall ~= nil

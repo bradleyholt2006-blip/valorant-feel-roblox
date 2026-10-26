@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
@@ -235,11 +236,15 @@ function CombatHud.start()
 			local w = sim.weapons
 			local def = PlayerSim.def(sim)
 			local slot = w.equipped
-			ammoText.Text = if def.fireMode == "none"
+			-- An ability's weapon (Curveball's flare, system 30) has its key, and
+			-- its charges are the ability bar's.
+			local ability = if def.ability then AbilityConfig.Defs[def.ability] else nil
+			ammoText.Text = if def.fireMode == "none" or ability
 				then ""
 				elseif def.ultimate then tostring(w.ammo[slot])
 				else string.format("%d <font size=\"18\" color=\"#%s\">/ %d</font>", w.ammo[slot], Ui.hex(Ui.DIM), w.reserve[slot])
-			weaponText.Text = string.format("%s   [%s]", def.name, if def.ultimate then "X" else tostring(slot))
+			local key = if def.ultimate then "X" elseif ability then AbilityConfig.KEYS[ability.slot] else tostring(slot)
+			weaponText.Text = string.format("%s   [%s]", def.name, key)
 			if w.scoped > 0 and def.ads then
 				zoom = def.ads.zoom[w.scoped]
 			end

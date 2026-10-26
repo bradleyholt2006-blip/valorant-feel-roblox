@@ -97,7 +97,7 @@ Built one system at a time:
 17. **The ability kit**: four abilities on C, Q, E and X, with an ability bar between health and
     ammo. Basic abilities are bought a charge at a time in the buy phase and kept through a death
     into the next round; the signature has a free charge every round; the ultimate fills with a
-    point for each kill, death, plant and defuse. Everyone plays Jett for now: Updraft throws you
+    point for each kill, death, plant and defuse. Jett's kit came first: Updraft throws you
     straight up about 4 m, and Tailwind readies a gust that, after a second's windup, dashes you
     about 7 m the way you're moving, and comes back with two kills. Casts are predicted on your
     screen and decided by the server, and others see and hear them where you're drawn -
@@ -190,8 +190,18 @@ Built one system at a time:
     players, an agent picked is yours at once, as in the reference's Range. An agent locked in goes
     on your kit at once where nothing's lost by it (a buy phase, the pre-game, your own spawn room,
     or while you're down), or else with your next life, and in the spike rounds what you'd bought
-    into the last agent's kit this buy phase is sold back. Jett is the only agent for now, so the
-    screen has her card alone - [research and design](docs/research/29-agent-select.md)
+    into the last agent's kit this buy phase is sold back. Jett and Phoenix (system 30) are the
+    agents to pick from - [research and design](docs/research/29-agent-select.md)
+30. **Curveball**, Phoenix's flash: Phoenix joins Jett in agent select with his whole kit on the
+    bar, and Curveball, his signature, is the first of it played. E readies a flare in 0.8 s;
+    mouse 1 throws it curving round to the left and mouse 2 to the right, and your gun is back
+    0.48 s later. It flies straight for a moment, turns a quarter round, stops against a wall, and
+    pops 0.6 s after the throw, blinding everyone who can see it, you and your side too: the
+    screen goes white for up to 1.5 s, longest looking straight at it from close by and briefly
+    turned away, then clears over a second. The server decides who's blinded and for how long,
+    and others see a glow on a blinded player's face. It holds two charges at 250 credits, with
+    one free every round and one back for two kills -
+    [research and design](docs/research/30-curveball.md)
 
 ## Running it
 
@@ -229,10 +239,12 @@ T agent select (a click selects an agent's card, and LOCK IN locks it in),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
-Drift). The spike rounds charge credits; the course and the arena are free. On the course a spent
-charge comes back 1.5 s after it's done, and the ultimate's points are full at every life and fill
-again 1.5 s after Blade Storm ends; in the arena every life starts with every charge, in Team
-Deathmatch spent charges come back over time, and gun game and deathmatch have no abilities.
+Drift). As Phoenix, E readies Curveball's flare: mouse 1 throws it curving left, mouse 2 curving
+right, and E again puts it away. The spike rounds charge credits; the course and the arena are free.
+On the course a spent charge comes back 1.5 s after it's done, and the ultimate's points are full at
+every life and fill again 1.5 s after Blade Storm ends; in the arena every life starts with every
+charge, in Team Deathmatch spent charges come back over time, and gun game and deathmatch have no
+abilities.
 O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it shows) and a
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair).
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
@@ -297,13 +309,17 @@ their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`,
 `VFLoadout` in either, and `VFStartCredits` in the spike rounds. `VFInLine` is a player's place in
 line while both sides are full. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
-what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide), and
+what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide, `equip`
+while Curveball's flare is in hand), and
 `VFTestBuy` set to `updraft` buys a charge. A player's agent is their `VFAgent` attribute, what
 they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
 `open` or `locked`, unset where nobody picks), and while their window's open, when it closes
 (server time) `VFAgentCloses`. Where a player's last Cloudburst burst is their
 `VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the air and each
-cloud as parts. Workspace's `VFPlayMenu` is whether players start in the Play menu (always on a
+cloud as parts. Where a player's last Curveball popped is their `VFLastFlare` attribute (metres),
+and their blind their `VFBlind` (when it began, when its white ends and when it's gone, in server
+time); `Workspace.VFFlares` holds each flare in the air and each pop as parts. Workspace's
+`VFPlayMenu` is whether players start in the Play menu (always on a
 live server; in Studio, tick it in the place before you press Play), and `VFModeCounts` how many
 are in servers playing each mode (`skirmish=6,gungame=0,...`). A player's `VFPlaying` is true once
 they've pressed PLAY on this server. The `Play` remote carries PLAY to the server, and what came of
@@ -330,7 +346,8 @@ its curve and what stops it, and the cloud's life), Blade Storm (the cast, singl
 burst, the kills that bring the knives back, swapping, and what ends it), Drift (the glide from a
 jump, a ledge and Updraft, a press in a fall, landing with jump held, and what it leaves alone) and
 agent select (where each player picks, the window, locking in, the time running out, a swap at
-once or with the next life, and what's sold back) are pure Luau and run outside Roblox:
+once or with the next life, and what's sold back) and Curveball (Phoenix's kit, the flare in hand,
+its throw and flight, the blind, and the kit on the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

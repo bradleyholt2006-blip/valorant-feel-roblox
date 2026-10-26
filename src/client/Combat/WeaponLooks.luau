@@ -113,6 +113,14 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.09, 0.022, 0.03), offset = vector.create(0, 0, 0) }, -- hilts
 		},
 	},
+	-- Curveball's flare (system 30): an orb of light held up in the hand.
+	flare = {
+		muzzle = vector.create(0, 0.05, -0.12),
+		pieces = {
+			{ size = vector.create(0.07, 0.07, 0.07), offset = vector.create(0, 0.05, -0.08), accent = true }, -- orb
+			{ size = vector.create(0.045, 0.06, 0.07), offset = vector.create(0, -0.01, -0.03) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -140,6 +148,7 @@ local SHAPE_OF: { [string]: string } = {
 	knife = "knife",
 	spike = "spike",
 	kunai = "kunai",
+	flare = "flare",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -166,6 +175,7 @@ local ACCENT: { [string]: Color3 } = {
 	knife = Color3.fromRGB(190, 195, 205),
 	spike = Color3.fromRGB(235, 70, 60),
 	kunai = Color3.fromRGB(150, 230, 255),
+	flare = Color3.fromRGB(255, 176, 80),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

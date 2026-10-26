@@ -1,7 +1,8 @@
 --!strict
 -- One player's full deterministic simulation: movement + weapons + hit slow,
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
--- whose Blade Storm puts its knives in the weapons' hand (system 19).
+-- whose Blade Storm puts its knives in the weapons' hand (system 19), as
+-- Curveball does its flare (system 30).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -175,7 +176,8 @@ function PlayerSim.step(
 	local motion, casts = AbilitySim.step(s.abilities, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
 	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
 	-- A throw puts the gun away for a moment (system 18). Blade Storm's cast
-	-- puts its knives in hand, and X draws them again (system 19).
+	-- puts its knives in hand, and X draws them again (system 19). Curveball's
+	-- E puts its flare in hand (system 30).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -187,12 +189,23 @@ function PlayerSim.step(
 				end
 			elseif cast.kind == "draw" then
 				WeaponSim.takeUp(s.weapons, t, input.slot)
+			elseif cast.kind == "equip" then
+				local weapon = AbilityConfig.Defs[cast.ability].weapon
+				if weapon then
+					WeaponSim.arm(s.weapons, weapon, t, WeaponConfig.get(weapon).equipTime.value, input.slot)
+				end
 			end
 		end
 	end
-	-- Blade Storm's knives go once it's over, as the server ends it between
-	-- ticks (a death, a new round or a new kit).
-	if not s.abilities.storm and s.weapons.loadout[WeaponSim.ULT] ~= "" then
+	-- A plant or a defuse puts an ability in hand away.
+	if PlayerSim.rooted(s) then
+		s.abilities.holding = 0
+	end
+	-- What's in the fifth slot goes once what put it there is over: Blade
+	-- Storm's knives as the server ends it between ticks (a death, a new
+	-- round or a new kit), and an ability's once it's put away.
+	local carried = s.weapons.loadout[WeaponSim.ULT]
+	if carried ~= "" and carried ~= AbilitySim.carried(s.abilities) then
 		WeaponSim.putAway(s.weapons, t)
 	end
 	local tick = s.movement.tick
@@ -216,6 +229,27 @@ function PlayerSim.step(
 	-- And Blade Storm is over once its knives are gone.
 	if s.abilities.storm and s.weapons.loadout[WeaponSim.ULT] == "" then
 		s.abilities.storm = false
+	end
+	-- An ability in hand (system 30): what it fires is its throw, the
+	-- ability's cast and no bullet, and the gun's back in hand a moment
+	-- after. Anything else drawn puts it away unthrown.
+	if s.abilities.holding ~= 0 then
+		local held = s.weapons.loadout[WeaponSim.ULT]
+		local shot = if shots and held ~= "" and shots[1].weapon == held then shots[1] else nil
+		if shot then
+			shots = nil
+			local curve = if shot.mode == "alt" then 1 else -1
+			local cast = AbilitySim.thrown(s.abilities, tick, t, s.movement.position, shot.origin, shot.aim, curve)
+			if cast then
+				local list = casts or {}
+				table.insert(list, cast)
+				casts = list
+			end
+			WeaponSim.putAway(s.weapons, t, AbilityConfig.Curveball.unequip.value)
+		elseif held == "" or s.weapons.equipped ~= WeaponSim.ULT then
+			s.abilities.holding = 0
+			WeaponSim.putAway(s.weapons, t)
+		end
 	end
 	return shots, swing, act, dropped, casts
 end

@@ -7,8 +7,9 @@
 -- The spike moves on after the moves that planted, defused or picked it up,
 -- so its blast is in the frame's snapshot; the guns on the ground after the
 -- moves that walked over them.
--- Ability kits refill on the course after the moves that cast from them, and
--- thrown clouds whose thrower is dead fly on.
+-- Ability kits refill on the course after the moves that cast from them,
+-- thrown clouds whose thrower is dead fly on, and flares pop, blinding whoever
+-- the moves left looking at them.
 -- Regen Shields refill after the shots. The arena's rounds move on last, so
 -- a round that ends in this frame's shots respawns its players after the
 -- frame's snapshot, and agent select after them, as the rounds have it.
@@ -33,6 +34,7 @@ local GroundGunsServer = require(script.GroundGunsServer)
 local AbilityServer = require(script.AbilityServer)
 local AgentServer = require(script.AgentServer)
 local CloudServer = require(script.CloudServer)
+local FlareServer = require(script.FlareServer)
 local PickupsServer = require(script.PickupsServer)
 local ModeServers = require(script.ModeServers)
 
@@ -44,6 +46,7 @@ ShopServer.start()
 AbilityServer.start()
 AgentServer.start()
 CloudServer.start()
+FlareServer.start()
 GroundGunsServer.start()
 PickupsServer.start()
 SettingsServer.start()
@@ -62,6 +65,7 @@ RunService.Heartbeat:Connect(function(dt)
 	SpikeServer.step(now)
 	AbilityServer.step(now)
 	CloudServer.step(now)
+	FlareServer.step(now)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)
 	Replication.step(now)

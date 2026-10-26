@@ -14,7 +14,9 @@
 -- plant, defuse and ultimate orb. An agent can also have a passive, which
 -- takes no slot or key of its own: Jett's Drift (system 20). Team Deathmatch
 -- has a kit of its own (system 28): abilities that recharge over time, and
--- ultimates that cost more, from kills and Ultimate Orbs.
+-- ultimates that cost more, from kills and Ultimate Orbs. Phoenix is the
+-- second agent (system 30), his Curveball the first of his abilities that
+-- can be played.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -119,11 +121,15 @@ AbilityConfig.TeamDeathmatch = {
 	orb = p(10, "community", TDM_WIKI .. ": an Ultimate Orb 'Grants 10 points towards the player's ultimate charge'"),
 	ultimate = {
 		bladestorm = p(60, "community", TDM_WIKI .. "'s ultimate costs: Jett's Blade Storm, 60 points"),
+		runitback = p(70, "community", TDM_WIKI .. "'s ultimate costs: Phoenix's Run it Back, 70 points"),
 	},
 	cooldowns = {
 		cloudburst = p(29, "community", TDM_WIKI .. "'s cooldowns: Jett's Cloudburst, 29 s"),
 		updraft = p(44, "community", TDM_WIKI .. "'s cooldowns: Jett's Updraft, 44 s"),
 		tailwind = p(44, "community", TDM_WIKI .. "'s cooldowns: Jett's Tailwind, 44 s"),
+		blaze = p(48, "community", TDM_WIKI .. "'s cooldowns: Phoenix's Blaze, 48 s"),
+		hothands = p(54, "community", TDM_WIKI .. "'s cooldowns: Phoenix's Hot Hands, 54 s"),
+		curveball = p(44, "community", TDM_WIKI .. "'s cooldowns: Phoenix's Curveball, 44 s"),
 	},
 	signatureStart = p(1, "community", TDM_WIKI .. ": 'Most agents start the match with one full charge of their signature ability'"),
 	headStart = p(
@@ -142,6 +148,13 @@ local WIKI = "VALORANT Wiki, Jett"
 local FANDOM = "Fandom wiki, Cloudburst"
 local MOBALYTICS = "Mobalytics, Jett"
 local BLADE = "VALORANT Wiki, Blade Storm"
+local P501 = "Patch 5.01"
+local P910 = "Patch 9.10"
+local P1100 = "Patch 11.00"
+local P1302 = "Patch 13.02"
+local PHOENIX = "VALORANT Wiki, Phoenix"
+local CURVE = "VALORANT Wiki, Curveball"
+local STATUS = "VALORANT Wiki, 'Status Effect'"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -181,9 +194,52 @@ AbilityConfig.Defs = {
 		weapon = "kunai",
 		description = "Five throwing knives. Fire throws one, and a kill brings them all back; alt fire throws all that are left.",
 	},
+	-- Phoenix's (system 30): his kit as the VALORANT Wiki lists it since
+	-- Patch 9.10 moved Curveball to E and Hot Hands to Q. Curveball is the
+	-- one that can be played.
+	blaze = {
+		id = "blaze",
+		name = "Blaze",
+		slot = AbilityConfig.C,
+		kind = "basic",
+		cost = p(150, "community", PHOENIX .. ": Blaze, 150"),
+		charges = p(1, "community", PHOENIX .. ": Blaze, 1 use"),
+		description = "A wall of fire that blocks sight and burns whoever walks through it.",
+	},
+	hothands = {
+		id = "hothands",
+		name = "Hot Hands",
+		slot = AbilityConfig.Q,
+		kind = "basic",
+		cost = p(200, "confirmed", P910 .. ": Hot Hands 'Changed to a non-signature ability', 'Cost 200 credits'"),
+		charges = p(1, "community", PHOENIX .. ": Hot Hands, 1 use"),
+		description = "A fireball that bursts into a pool of fire where it lands.",
+	},
+	curveball = {
+		id = "curveball",
+		name = "Curveball",
+		slot = AbilityConfig.E,
+		kind = "signature",
+		cost = p(250, "confirmed", P300 .. ": Curveball 'Cost increased 200 >>> 250' (" .. PHOENIX .. ": 250 still)"),
+		charges = p(2, "community", PHOENIX .. ": Curveball, 2 uses"),
+		-- Patch 9.10: 'Grants a free charge on round start'.
+		free = 1,
+		recharge = { kind = "kills", kills = p(2, "confirmed", P910 .. ": '2 kill reset to generate an additional charge'") },
+		weapon = "flare",
+		description = "E readies a flare. Fire throws it curving left, alt fire curving right; it soon pops, blinding all who see it.",
+	},
+	runitback = {
+		id = "runitback",
+		name = "Run it Back",
+		slot = AbilityConfig.X,
+		kind = "ultimate",
+		points = p(7, "confirmed", P1302 .. ": 'Ultimate points increased from 6 to 7.'"),
+		description = "Marks where you stand. Die before it's over, or let it run out, and you're back at the mark with full health.",
+	},
 } :: { [string]: AbilityDef }
 
--- Jett's role is Riot's: 'Duelist', on playvalorant.com's page for her.
+-- The roles are Riot's: 'Duelist', on playvalorant.com's pages for Jett and
+-- for Phoenix.
 AbilityConfig.Agents = {
 	jett = {
 		id = "jett",
@@ -192,11 +248,21 @@ AbilityConfig.Agents = {
 		abilities = { "cloudburst", "updraft", "tailwind", "bladestorm" },
 		passive = "drift",
 	},
+	phoenix = {
+		id = "phoenix",
+		name = "Phoenix",
+		role = "Duelist",
+		abilities = { "blaze", "hothands", "curveball", "runitback" },
+		passive = "innerfire",
+	},
 } :: { [string]: Agent }
 
 -- What each passive does, for agent select (system 29), in our words.
+-- Phoenix's Inner Fire heals him in his own fire (Patch 9.10), which isn't
+-- here yet.
 AbilityConfig.Passives = {
 	drift = { name = "Drift", description = "Hold jump while you fall to glide." },
+	innerfire = { name = "Inner Fire", description = "His own fire heals him, where it would burn anyone else." },
 } :: { [string]: { name: string, description: string } }
 
 -- The agent each player plays until they pick another (agent select,
@@ -208,8 +274,8 @@ AbilityConfig.NO_AGENT = ""
 
 -- The agents' ids by index, and each id's index, for the wire (0 for no
 -- agent's kit).
-AbilityConfig.AgentIds = { "jett" }
-AbilityConfig.AgentIndex = { jett = 1 } :: { [string]: number }
+AbilityConfig.AgentIds = { "jett", "phoenix" }
+AbilityConfig.AgentIndex = { jett = 1, phoenix = 2 } :: { [string]: number }
 
 -- The ability an agent has in a slot, if any.
 function AbilityConfig.abilityOf(agent: string, slot: number): AbilityDef?
@@ -290,6 +356,69 @@ AbilityConfig.Drift = {
 	fallSpeed = p(2, "estimate", "Not published; ours. Time a glide from Updraft's top to the floor in a public clip"),
 	-- How quickly a faster fall slows to the glide when jump is held mid-fall.
 	brake = p(60, "estimate", "Ours, metres a second each second. Frame-count a press mid-fall in a public clip"),
+}
+
+-- Phoenix's Curveball (system 30): E puts a flare in hand (WeaponConfig's
+-- flare, in the fifth slot, as Blade Storm's knives are), and fire throws it
+-- curving left, alt fire right. It flies a fixed path from the eye, ahead
+-- and then round to the side, stops where it meets the level, and pops its
+-- windup after the throw (FlareSim). The pop blinds whoever can see it, the
+-- thrower and their side too: all of the longest blind for those looking
+-- at it from near enough, less the further it is off their view and the
+-- further away they are. A blind is a white screen for its share of the
+-- longest, then clears over that share of the fade. Nothing public gives
+-- the flight's speed or shape, or the falloff's angles and distances:
+-- those are ours, to be measured from public footage (30-curveball.md,
+-- section 3).
+AbilityConfig.Curveball = {
+	-- From the throw until the gun's back in hand.
+	unequip = p(0.48, "community", CURVE .. ": 'Unequip' 0.48 seconds"),
+	-- From the throw to the pop.
+	windup = p(0.6, "confirmed", P1100 .. ": 'Curveball Windup increased 0.5s >>> 0.6s'"),
+	-- The longest a blind is white for, looking straight at the pop.
+	maxBlind = p(1.5, "confirmed", P501 .. ": 'Flash Max duration increased 1.1s >>> 1.5s'"),
+	-- And how long the longest takes to clear after.
+	fade = p(1, "community", STATUS .. ": 'its effects will gradually disappear from the player's screen over 1 second'"),
+	-- Its flight: this fast, straight this long, then turning this fast round
+	-- to the side this far, and straight again.
+	speed = p(12, "estimate", "Ours, metres a second. Measure a throw's path against a map's floor grid in a public clip"),
+	straight = p(0.1, "estimate", "Ours, seconds; the same clip"),
+	turnRate = p(300, "estimate", "Ours, degrees a second; the same clip"),
+	turn = p(90, "estimate", "Ours: a quarter turn, round a corner (Riot's agent page: it 'takes a curving path')"),
+	-- Half the size of the box that flies, for what it meets.
+	size = p(0.1, "estimate", "Ours: an orb about a hand across, as Cloudburst's"),
+	-- The falloff: all of the longest blind within `fullAngle` of the view,
+	-- falling to the `away` share at `edgeAngle` and behind; all of it out
+	-- to `near`, falling to none at `far`; and less than `least` is none.
+	fullAngle = p(
+		50,
+		"estimate",
+		"Ours, degrees: about the view's sides (103 degrees across, CameraController); "
+			.. STATUS
+			.. ": 'Players looking directly at the flash on detonation will be blinded for the full duration'"
+	),
+	edgeAngle = p(
+		90,
+		"estimate",
+		"Ours, degrees: off the screen. Patch 11.08: Yoru's flashes 'that were slightly offscreen were more effective than intended',"
+			.. " and now follow 'the standard flash falloff curves'"
+	),
+	away = p(
+		0.15,
+		"estimate",
+		"Ours; " .. STATUS .. ": those who 'have their backs to it' 'only be slightly blinded for a very brief time'"
+	),
+	near = p(
+		25,
+		"estimate",
+		"Ours, metres; " .. STATUS .. ": 'the further away from the flash the player is, the less time they will be blinded for'"
+	),
+	far = p(
+		60,
+		"estimate",
+		"Ours, metres; " .. STATUS .. ": 'At especially large distances it is possible for a player to not be blinded at all'"
+	),
+	least = p(0.05, "estimate", "Ours: a blind under a tenth of a second is none"),
 }
 
 return AbilityConfig

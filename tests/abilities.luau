@@ -513,6 +513,7 @@ do
 			and a.dashX == b.dashX
 			and a.dashZ == b.dashZ
 			and a.storm == b.storm
+			and a.holding == b.holding
 	end
 
 	local s = newPlayer()

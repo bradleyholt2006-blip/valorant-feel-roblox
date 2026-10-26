@@ -401,11 +401,25 @@ SoundConfig.Sounds = {
 	glide = sound(0.35, 0.08, 4, {
 		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
 	}, 0.5),
+	-- Curveball (system 30): the flare lit in hand is Updraft's gust, quick
+	-- and quiet; its throw, Cloudburst's thin swish; and its pop, the spike
+	-- blast's crack, sped right up so it snaps.
+	flareEquip = sound(0.5, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.4),
+	flareThrow = sound(0.6, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 1),
+	flarePop = sound(0.7, 0.03, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 1.7),
 }
 
--- What each kind of cast sounds like (AbilitySim.Cast's kind, and a
--- thrown cloud's burst), heard as the ability curve says (systems 17 to
--- 19). Blade Storm's knives drawn again sound as their draw does.
+-- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
+-- cloud's burst and a flare's pop), heard as the ability curve says
+-- (systems 17 to 19, and 30). Blade Storm's knives drawn again sound as
+-- their draw does, and so does Curveball's flare put in hand, which only
+-- the one drawing it hears.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -413,6 +427,8 @@ SoundConfig.Abilities = {
 	throw = "smokeThrow",
 	cloud = "smokeBurst",
 	storm = "storm",
+	flare = "flareThrow",
+	pop = "flarePop",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -510,6 +526,9 @@ SoundConfig.Weapons = {
 	-- Blade Storm's knives (system 19): thrown, heard as far as an
 	-- ability, and never reloaded.
 	kunai = { shot = "kunai", pitch = 1, draw = "knife", curve = "ability", hit = "kunaiHit" },
+	-- Curveball's flare (system 30): only its draw; its throw and pop are
+	-- the ability's (SoundConfig.Abilities).
+	flare = { draw = "flareEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig
