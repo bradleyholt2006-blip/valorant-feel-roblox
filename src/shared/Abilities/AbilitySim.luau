@@ -48,7 +48,13 @@
 -- it, until the server finds a try heals someone (HealServer), spends the
 -- charge and puts it away (used). Her Slow Orb (Q, system 37) puts its orb
 -- in hand as Hot Hands does its fireball: fire throws it (there's no lob),
--- SlowSim flies it, and its field slows whoever's in it (PlayerSim).
+-- SlowSim flies it, and its field slows whoever's in it (PlayerSim). Her
+-- Barrier Orb (C, system 38) puts its orb in hand the same way, with a
+-- targeter where its wall would go (BarrierSim): C again turns the
+-- targeter a quarter rather than putting it away, alt fire held keeps it
+-- facing the way it did as she turns, and the turn's kept for the next
+-- time it's in hand, until a new life or round. Fire raises the wall
+-- where the targeter shows it, if it shows it anywhere (PlayerSim).
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -60,6 +66,7 @@
 -- No Roblox APIs here.
 
 local AbilityConfig = require("./AbilityConfig")
+local BarrierSim = require("./BarrierSim")
 local MovementSim = require("../Movement/MovementSim")
 local Accuracy = require("../Weapons/Accuracy")
 
@@ -109,6 +116,12 @@ export type State = {
 	markGrounded: boolean,
 	markCrouched: boolean,
 	returnAt: number,
+	-- The Barrier Orb's targeter (system 38): how far it's turned from
+	-- across her view (radians); whether alt fire's turning it, and the yaw
+	-- it's held facing meanwhile.
+	turn: number,
+	turning: boolean,
+	fixed: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -117,12 +130,13 @@ export type State = {
 -- thrown), "fireball" (Hot Hands' thrown), "flame" (Blaze's sent out),
 -- "mark" (Run it Back cast), "fizzle" (his body gone as it runs out),
 -- "rise" (back at its mark), "heal" (the Healing Orb tried on an ally),
--- "selfheal" (tried on herself) or "slow" (the Slow Orb thrown), where the
--- player's feet and eye were, and
+-- "selfheal" (tried on herself), "slow" (the Slow Orb thrown) or
+-- "barrier" (the Barrier Orb's wall raised), where the player's feet and
+-- eye were, and
 -- the way it goes (the dash's way, up for a lift, the way they faced for a
 -- readied gust and for Run it Back's, the way they looked for the rest). A
--- flare's says which way round it curves, and a fireball's whether it was
--- lobbed.
+-- flare's says which way round it curves, a fireball's whether it was
+-- lobbed, and a wall's where it goes.
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -134,6 +148,7 @@ export type Cast = {
 	direction: vector,
 	curve: number?, -- a flare's: -1 round to the left, 1 to the right
 	lob: boolean?, -- a fireball's: thrown underhand, by alt fire
+	wall: BarrierSim.Placement?, -- a wall's: where it goes
 }
 
 local AbilitySim = {}
@@ -165,6 +180,7 @@ local PLAYABLE: { [string]: boolean } = {
 	innerfire = true,
 	healingorb = true,
 	sloworb = true,
+	barrierorb = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -173,7 +189,8 @@ end
 
 -- Whether an ability is one its key puts in hand, to be thrown or tried
 -- from there (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
--- Healing Orb, the Slow Orb): a weapon of its own, outside the ultimate.
+-- Healing Orb, the Slow Orb, the Barrier Orb): a weapon of its own, outside
+-- the ultimate.
 local function held(def: AbilityConfig.AbilityDef?): boolean
 	return def ~= nil and def.weapon ~= nil and def.kind ~= "ultimate" and PLAYABLE[def.id] == true
 end
@@ -205,6 +222,9 @@ function AbilitySim.new(agent: string?): State
 		markGrounded = false,
 		markCrouched = false,
 		returnAt = 0,
+		turn = 0,
+		turning = false,
+		fixed = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -255,7 +275,9 @@ end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
 -- ultimate (Blade Storm, or Run it Back and the return it brings), an
--- ability in hand, a wall being bent. Nothing carries into a new life or a
+-- ability in hand, a wall being bent; and the Barrier Orb's targeter is
+-- across the view again (the VALORANT Wiki has it across the view when
+-- it's first equipped in a round). Nothing carries into a new life or a
 -- new round.
 function AbilitySim.settle(s: State)
 	s.readyFrom, s.readyUntil = 0, 0
@@ -266,6 +288,7 @@ function AbilitySim.settle(s: State)
 	s.steering, s.steerUntil = 0, 0
 	s.backUntil, s.returnAt = 0, 0
 	s.mark, s.markYaw, s.markGrounded, s.markCrouched = ZERO, 0, false, false
+	s.turn, s.turning, s.fixed = 0, false, 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -421,8 +444,10 @@ end
 -- ready", or "X0/8 storm" in Blade Storm, "back" while Run it Back runs,
 -- "away" while his body's gone and "rise" as he rises at its mark, "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
--- flame, the Healing Orb), "bend" while a wall is being bent (Blaze), and
--- "glide" while `gliding` (the movement's, for Drift).
+-- flame, the Healing Orb, the Slow Orb, the Barrier Orb), "bend" while a
+-- wall is being bent (Blaze), "turn" while the Barrier Orb's targeter is
+-- turned from across the view, and "glide" while `gliding` (the
+-- movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -444,6 +469,9 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	end
 	if s.steering ~= 0 then
 		table.insert(parts, "bend")
+	end
+	if math.abs(s.turn) > 1e-6 then
+		table.insert(parts, "turn")
 	end
 	if AbilitySim.dashing(s, t) then
 		table.insert(parts, "dash")
@@ -576,7 +604,8 @@ end
 -- charge spent, and its cast, from `origin` (the eye) the way `aim` points.
 -- `alt` says alt fire threw it: Curveball's flare goes round to the right
 -- then, and to the left otherwise, and Hot Hands' fireball is lobbed. The
--- Slow Orb has no alt fire.
+-- Slow Orb has no alt fire, nor has the Barrier Orb, whose wall goes where
+-- PlayerSim has placed it.
 -- Blaze's wall is sent out from `feet`, and is bent from then until its
 -- run's over, if fire's held that long. The Healing Orb is only tried, on
 -- the ally the crosshair's over or with `alt` on herself: it stays in hand
@@ -618,6 +647,8 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		cast.lob = alt
 	elseif def.id == "sloworb" then
 		cast.kind = "slow"
+	elseif def.id == "barrierorb" then
+		cast.kind = "barrier"
 	elseif def.id == "blaze" then
 		cast.kind = "flame"
 		s.steering = slot
@@ -795,6 +826,15 @@ function AbilitySim.step(
 					origin = eye,
 					direction = facing(input.yaw),
 				})
+			elseif held(def) and s.holding == slot and id == "barrierorb" then
+				-- The Barrier Orb's key again turns its targeter (BarrierSim's
+				-- quarter, or back across the view), and it stays in hand: a
+				-- turn doesn't hold up the wall (until Patch 6.11, as the
+				-- VALORANT Wiki's history has it, 'when Sage rotated her
+				-- Barrier Orb 90 degrees, she was blocked from placing the
+				-- wall for .8 seconds').
+				s.turn = BarrierSim.toggled(s.turn)
+				s.fixed = input.yaw + s.turn
 			elseif held(def) and s.holding == slot then
 				-- Its key again: what's in hand goes away unthrown (PlayerSim).
 				s.holding = 0
@@ -817,6 +857,21 @@ function AbilitySim.step(
 				})
 			end
 		end
+	end
+
+	-- The Barrier Orb in hand (system 38): with alt fire held its targeter
+	-- keeps facing the way it did as alt fire went down, however she turns
+	-- ('ALT FIRE rotates the targeter'), and the turn she's left it at is
+	-- kept as it's let go.
+	local inHand = AbilitySim.def(s, s.holding)
+	if inHand and inHand.id == "barrierorb" and MovementSim.has(buttons, B.AltFire) then
+		if not s.turning then
+			s.turning = true
+			s.fixed = input.yaw + s.turn
+		end
+		s.turn = BarrierSim.wrap(s.fixed - input.yaw)
+	else
+		s.turning = false
 	end
 
 	if AbilitySim.dashing(s, t) then

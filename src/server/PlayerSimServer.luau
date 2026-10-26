@@ -28,7 +28,9 @@
 -- snapshots start over from there; while his body's gone he's out of play
 -- (inPlay), and they leave him out. Sage's Slow Orb (system 37) slows a
 -- player's ticks in its fields (from SlowServer, PlayerSimServer.fields),
--- judged at the time their screen showed (SlowSim.judged), as their own
+-- and her Barrier Orb's walls stand in the world their ticks go through
+-- (system 38, from BarrierServer, PlayerSimServer.barriers), both judged
+-- at the time their screen showed (SlowSim.judged), as their own
 -- prediction judges them.
 --
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
@@ -58,6 +60,7 @@ local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local SlowSim = require(Shared.Abilities.SlowSim)
+local BarrierSim = require(Shared.Abilities.BarrierSim)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
@@ -131,6 +134,9 @@ PlayerSimServer.dropListeners = {} :: { (Player, WeaponSim.Dropped, vector, numb
 PlayerSimServer.castListeners = {} :: { (Player, AbilitySim.Cast) -> () }
 -- The Slow Orbs' fields in play (system 37, SlowServer); none without.
 PlayerSimServer.fields = nil :: (() -> { SlowSim.Field })?
+-- The Barrier Orbs' walls in play, judged at a server time, and whether a
+-- wall can go up then (system 38, BarrierServer); none without.
+PlayerSimServer.barriers = nil :: ((number) -> BarrierSim.Walls)?
 -- Called after each of a player's ticks, with its input and its casts, if
 -- any (system 18 flies thrown clouds on them).
 PlayerSimServer.tickListeners = {} :: { (Player, PlayerCodec.WireInput, { AbilitySim.Cast }?) -> () }
@@ -539,9 +545,12 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
 		local objectiveFor = PlayerSimServer.objectiveFor
 		local objective = if objectiveFor then objectiveFor(r.player) else nil
+		local judged = SlowSim.judged(input.viewTime, stepNow)
 		local fieldsOf = PlayerSimServer.fields
-		local slows = if fieldsOf then { fields = fieldsOf(), time = SlowSim.judged(input.viewTime, stepNow) } else nil
-		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective, slows)
+		local slows = if fieldsOf then { fields = fieldsOf(), time = judged } else nil
+		local wallsAt = PlayerSimServer.barriers
+		local barriers = if wallsAt then wallsAt(judged) else nil
+		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective, slows, barriers)
 		-- Back at Run it Back's mark (system 33): the snapshots start over
 		-- from there, so he's never shown, or hit, on the way.
 		if casts then

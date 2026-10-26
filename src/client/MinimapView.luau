@@ -20,10 +20,11 @@
 --   * the spike planted, and dropped while it's shown to you
 --     (Minimap.spikeShown); carried, a mark on its carrier for their side
 --   * vision cones, yours and your side's, each ray as far as it goes from
---     the eye before the level, a cloud or a wall of fire stops it (Patch
---     6.07 fixed cones flickering at walls of fire)
---   * clouds, walls of fire, fires and fields of ice (the Slow Orb's,
---     system 37), edged in their owner's colour
+--     the eye before the level, a cloud or a wall of fire or of ice stops
+--     it (Patch 6.07 fixed cones flickering at walls of fire)
+--   * clouds, walls of fire, fires, fields of ice (the Slow Orb's, system
+--     37) and walls of ice (the Barrier Orb's, system 38, a bar along each
+--     segment standing), edged in their owner's colour
 --   * the sites' letters, and on the big map the places' names
 --   * a white circle round you as you make a sound, as far as it's heard
 --     (the minimap's sound circle: "Anyone outside of this white circle
@@ -63,6 +64,7 @@ local CloudView = require(script.Parent.CloudView)
 local BlazeView = require(script.Parent.BlazeView)
 local FireView = require(script.Parent.FireView)
 local SlowView = require(script.Parent.SlowView)
+local BarrierView = require(script.Parent.BarrierView)
 local GameSounds = require(script.Parent.Audio.GameSounds)
 local SoundEngine = require(script.Parent.Audio.SoundEngine)
 local NetSim = require(script.Parent.NetSim)
@@ -137,7 +139,7 @@ type Scene = {
 	clouds: { Round },
 	fires: { Round },
 	slows: { Round },
-	walls: { { points: { vector }, colour: Color3 } },
+	walls: { { points: { vector }, colour: Color3, fill: Color3 } },
 	cones: { Cone },
 	ring: { radius: number, fade: number }?,
 	home: Minimap.Shape?,
@@ -666,7 +668,10 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	end
 	local walls = {}
 	for _, w in BlazeView.standing() do
-		table.insert(walls, { points = w.points, colour = ownerColour(w.entity, side) })
+		table.insert(walls, { points = w.points, colour = ownerColour(w.entity, side), fill = FIRE })
+	end
+	for _, w in BarrierView.standing() do
+		table.insert(walls, { points = w.points, colour = ownerColour(w.entity, side), fill = ICE })
 	end
 
 	local r = ring
@@ -747,6 +752,7 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 			f.Position = UDim2.fromOffset(((a.x + b.x) / 2 - mid.x) * scale, ((a.z + b.z) / 2 - mid.z) * scale)
 			f.Size = UDim2.fromOffset(thick, length + thick / 2)
 			f.Rotation = math.deg(math.atan2(dx, -dz))
+			f.BackgroundColor3 = w.fill
 			local edge = f:FindFirstChildOfClass("UIStroke")
 			if edge then
 				edge.Color = w.colour

@@ -4,11 +4,11 @@
 -- what their screen showed as they tried (the input's viewTime): fire's on
 -- the hurt ally the crosshair was over, posed as the screen showed them (as
 -- far back as a shot's rewind goes, CombatServer.rewound) and in sight of
--- the eye, past the level, clouds and walls of fire (HealSim.aimedAt); alt
--- fire's on the healer, if they're hurt. A try that heals spends the
--- charge and puts the orb away between ticks, the gun back in hand a
--- moment after (AbilityConfig.HealingOrb), and the ack takes it to its
--- owner; one that heals nobody leaves it in hand.
+-- the eye, past the level, clouds and walls of fire and of ice
+-- (HealSim.aimedAt); alt fire's on the healer, if they're hurt. A try that
+-- heals spends the charge and puts the orb away between ticks, the gun
+-- back in hand a moment after (AbilityConfig.HealingOrb), and the ack
+-- takes it to its owner; one that heals nobody leaves it in hand.
 --
 -- A heal gives its health a few points at a time (FireServer.EVERY), as
 -- HealSim runs it, through CombatServer.mend. It's over once its time has
@@ -41,6 +41,7 @@ local CombatServer = require(script.Parent.CombatServer)
 local FogServer = require(script.Parent.FogServer)
 local CloudServer = require(script.Parent.CloudServer)
 local BlazeServer = require(script.Parent.BlazeServer)
+local BarrierServer = require(script.Parent.BarrierServer)
 local FireServer = require(script.Parent.FireServer)
 
 local HealServer = {}
@@ -74,6 +75,7 @@ local function aimedAt(healer: Entities.Entity, cast: AbilitySim.Cast, viewTime:
 	local o: Sight.Occluders = {
 		clouds = CloudServer.standing(time),
 		walls = BlazeServer.standing(time),
+		barriers = BarrierServer.standing(),
 		time = time,
 		blocked = FogServer.blocked,
 	}

@@ -14,7 +14,8 @@
 -- gone in Run it Back, system 33), and nobody blinded white by a Curveball
 -- (system 30) sees. In the way: the level, but not the spawns' barriers,
 -- which are see-through, nor anyone's body; the clouds standing
--- (CloudServer) and the walls of fire (BlazeServer).
+-- (CloudServer), the walls of fire (BlazeServer) and the walls of ice
+-- (BarrierServer, system 38).
 --
 -- Who each side spots goes to the fog of war too (FogServer, system 35),
 -- so their snapshots carry whoever their minimap shows.
@@ -36,6 +37,7 @@ local Units = require(Shared.Units)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local CloudServer = require(script.Parent.CloudServer)
 local BlazeServer = require(script.Parent.BlazeServer)
+local BarrierServer = require(script.Parent.BarrierServer)
 local FogServer = require(script.Parent.FogServer)
 
 local MinimapServer = {}
@@ -116,6 +118,7 @@ local function look(now: number)
 	local o: Sight.Occluders = {
 		clouds = CloudServer.standing(now),
 		walls = BlazeServer.standing(now),
+		barriers = BarrierServer.standing(),
 		time = now,
 		blocked = blocked,
 	}

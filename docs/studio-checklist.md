@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-seven
+Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-eight
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about six hours. Doing it in parts is fine; keep the order.
@@ -2353,12 +2353,12 @@ healed. On the course a spent charge comes back 1.5 s after it's spent. Start ea
 Vandal in hand.
 
 - **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX and SAGE, and SAGE's reads SENTINEL.
-  Click it: her kit, C BARRIER ORB and X RESURRECTION dimmed, each with `NOT YET` and its line, Q
-  SLOW ORB lit (section 41's), and E HEALING ORB lit, with `E readies a healing orb. Fire heals the
+  Click it: her kit, X RESURRECTION dimmed, with `NOT YET` and its line, C BARRIER ORB and Q SLOW
+  ORB lit (sections 42 and 41), and E HEALING ORB lit, with `E readies a healing orb. Fire heals the
   hurt ally in your crosshair, alt fire heals you, 100 health over 5 s.`; nothing under them, as she
   has no passive. Click PICK SAGE: the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`.
-  Close it with T. On the ability bar BARRIER ORB and RESURRECTION are dimmed with their pips dark,
-  SLOW ORB has its two pips lit and HEALING ORB its one, and `VFKit` reads `C0/1 Q2/2 E1/1 X0/7`.
+  Close it with T. On the ability bar RESURRECTION is dimmed with its pips dark, BARRIER ORB has its
+  pip lit, SLOW ORB its two and HEALING ORB its one, and `VFKit` reads `C1/1 Q2/2 E1/1 X0/7`.
   **Send:** a screenshot of Sage's card.
 - **HO2 In hand.** Press E: a quick whoosh, the Vandal goes, and a small green ball comes up over
   your hand. E's square lights, with `EQUIP` under it for 0.5 s; the HUD reads `Healing Orb   [E]`,
@@ -2369,7 +2369,7 @@ Vandal in hand.
   button: the same, as you're not hurt. Look at Dummy 1, the static dummy 10 m down the target lane,
   and click: the same, as it's on nobody's side.
 - **HO4 Put away.** E again: the orb goes and the Vandal comes back with its own draw, and `VFKit`
-  reads `C0/1 Q2/2 E1/1 X0/7`, nothing spent. E, then 1: the same.
+  reads `C1/1 Q2/2 E1/1 X0/7`, nothing spent. E, then 1: the same.
 - **HO5 The sounds.** Open the Sound Lab (F2 four times) and press E: it logs `orbEquip` as `yours`
   as the orb comes up, and clicks with it log nothing. Press 1, and F2 to close the lab.
 
@@ -2420,9 +2420,8 @@ comes up by itself: pick SAGE and LOCK IN in window 1, and LOCK IN in windows 2 
   reaches 0. **Send:** window 3's health a second after the bell.
 - **HO12 The spike rounds.** Press P twice in window 1 (gun game, then the spike rounds), and as
   round 1's buy phase starts, pick SAGE and LOCK IN in window 1. E's pip is lit, its charge free,
-  and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. B: Barrier Orb (`C`, 300) is under the shields, dimmed,
-  tagged `NOT YET`; pointing at it shows `Not playable yet: it comes with a later system`, and a
-  click buys nothing. Slow Orb (`Q`, 200) beside it is for sale (section 41).
+  and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. B: under the shields, Barrier Orb (`C`, 300) and Slow Orb
+  (`Q`, 200) are both for sale (sections 42 and 41).
 - **HO13 Team Deathmatch.** Press M in window 1, click the TEAM DEATHMATCH card and PLAY TEAM
   DEATHMATCH. As the match starts, agent select comes up by itself: pick SAGE and LOCK IN in
   window 1. Run `VFMatchSkip` once to end the pre-game. Someone on the other side (Tab) shoots
@@ -2445,8 +2444,8 @@ jump line are the HUD panel's (F3).
 
 - **SO1 Her kit.** In agent select (T), SAGE's card has Q SLOW ORB lit, with `Q readies a slowing
   orb. Fire throws it; it bursts into a field of ice that slows everyone in it, you too.` and no
-  `NOT YET`; C BARRIER ORB and X RESURRECTION are still dimmed, each with `NOT YET`. On the ability
-  bar SLOW ORB is lit with both its pips, and `VFKit` reads `C0/1 Q2/2 E1/1 X0/7`.
+  `NOT YET`; X RESURRECTION is still dimmed, with `NOT YET`. On the ability bar SLOW ORB is lit with
+  both its pips, and `VFKit` reads `C1/1 Q2/2 E1/1 X0/7`.
 - **SO2 In hand.** Press Q: a light gust, the Vandal goes, and a pale ball with two shards of ice
   comes up over your hand. Q's square lights, with `EQUIP` under it for 0.5 s; the HUD reads
   `Slow Orb   [Q]`, with no ammo; both of Q's pips stay lit; and `VFKit` ends in `equip`. You run at
@@ -2526,10 +2525,127 @@ Then the spike rounds: press P three times in window 1 (Skirmish, gun game, then
 and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK IN in window 2.
 
 - **SO15 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`, both of Q's pips dark. B: under the shields
-  Slow Orb (`Q`, 200) is lit and Barrier Orb (`C`, 300) dimmed, tagged `NOT YET`. Click Slow Orb
+  Slow Orb (`Q`, 200) is lit, and Barrier Orb (`C`, 300) beside it (section 42). Click Slow Orb
   twice: 400 credits go, Q's pips light, and `VFKit` reads `Q2/2`; a third click buys nothing. Once
   the round's live, throw one at your feet (`VFTestPitch` -60): you're slowed as in SO4, and one of
   Q's pips goes dark and stays dark, as nothing refills it here. Set `VFTestPitch` back to 0.
+
+## 42. Sage's Barrier Orb
+
+From [38-barrier-orb.md](research/38-barrier-orb.md). One player on the course, then two on the
+course, then two in the spike rounds. Play as Sage, as in section 40. Without keys or a mouse
+button, `VFTestButtons` 4096 presses C, 128 the left button and 256 the right: set it and clear it
+again each time (hold 256 where a check says to hold the right button). `VFTestYaw` and
+`VFTestPitch` aim, in degrees: positive yaw turns left, and positive pitch looks up. Your `VFWall`
+attribute is your last wall's blocks' health, from left to right as you raised it: a number for each
+standing, `x` for one broken or gone, and `-` for one left out. `VFKit` ends in `turn` while the
+targeter's turned from across your view. `Workspace.VFBarriers` holds a `Barrier` model for each
+wall while it stands, with a `Segment` part for each block, the `Targeter` model of `Ghost` parts,
+and the `Chip`s of a block breaking. On the course a spent charge comes back 1.5 s after it's spent.
+The numbers below are for walls raised from the spawn, with the Vandal in hand, and the `pos` line
+is the HUD panel's (F3).
+
+- **BO1 Her kit.** In agent select (T), SAGE's card has C BARRIER ORB lit, with `C readies a barrier
+  orb. Fire raises a wall of ice where it shows; C again or held alt fire turns it.` and no
+  `NOT YET`; X RESURRECTION is still dimmed, with `NOT YET`. On the ability bar BARRIER ORB is lit
+  with its pip, and `VFKit` reads `C1/1 Q2/2 E1/1 X0/7`.
+- **BO2 In hand.** Open the Sound Lab (F2 four times), and keep it open to BO8. Facing down the
+  target lane (`VFTestYaw` 0, `VFTestPitch` 0), press C: a gust, logged as `barrierEquip`, `yours`;
+  the Vandal goes, and a pale ball with a slab of ice behind it comes up over your hand. C's square
+  lights, with `EQUIP` under it for 0.8 s; the HUD reads `Barrier Orb   [C]`, with no ammo; C's pip
+  stays lit; and `VFKit` ends in `equip`. Across the lane, about 15 m out, four faint shimmering
+  blocks stand side by side on the floor, 10.4 m from end to end and 2.5 m tall: the targeter. You
+  run at the knife's speed, 6.75 m/s.
+- **BO3 Aimed.** Set `VFTestPitch` to -15: the targeter comes in to about 6 m ahead, still across
+  the lane. At -30 it's about 2.8 m ahead. At 40, looking up into the sky, it's on the floor about
+  11.4 m ahead, under where the aim's 15 m run ends. Set `VFTestPitch` to -15 again.
+- **BO4 Raised.** Set `VFTestYaw` to 5 and press the left button: a deep crack, logged as
+  `barrierRise`, `yours`, and four blocks of pale blue ice rise out of the floor over 1.35 s, about
+  6 m ahead, where the targeter was: 10.4 m long, 2.5 m tall and 1.5 m thick, across your view, so
+  turned 5° from straight across the lane. They're solid: nothing behind them shows through.
+  `VFWall` reads `400,400,400,400`. 2 s after the crack each block flashes white and turns paler,
+  with a quieter, higher crack (`barrierFortify`, from `you`, about 6 m away), and `VFWall` reads
+  `600,600,600,600`. The Vandal's back in hand 0.7 s after the crack, and C's pip goes dark (`C0/1`)
+  and lights again 1.5 s later. BO5 to BO8 use this wall, which stands for 40 s. **Send:** a
+  screenshot of the wall.
+- **BO5 Solid.** Set `VFTestYaw` and `VFTestPitch` to 0: the wall fills the view, and Dummy 1, 10 m
+  down the lane, is hidden behind it. Walk into it (W): you stop at its face, sliding a little to
+  the right along it as it's turned, at about `pos` `1.29 0.00 -5.07`. Jump into it: you don't get
+  over. Walk back about 5 m (S).
+- **BO6 Shot.** Fire at the wall in bursts of three: each bullet stops at it with a small pale
+  spark, none reaches Dummy 1, and each takes 40 off the block it hits, the third (`VFWall`
+  `600,600,560,600` after the first). After 15 hits `VFWall` reads `600,600,x,600`: that block
+  bursts into chips of ice that fall and fade, with a sharp crack (`barrierBreak`, from `you`, about
+  6 m away), and through the gap Dummy 1 shows. Walk through the gap: you pass.
+- **BO7 A knife.** Draw the knife (3), walk up to the block left of the gap and swing at it with the
+  left button: a pale spark where the blade meets it, and its number in `VFWall` drops by 50. Swing
+  with the right button: 75 more. Draw the Vandal again (1).
+- **BO8 Its end.** About 35 s after the wall rose, the blocks cloud over grey, and the numbers in
+  `VFWall` start to fall, every block's together: 2.5 s later each is half what it was at 35 s. At
+  40 s what's left bursts into chips with one sharp crack (`barrierBreak`), `VFWall` reads
+  `x,x,x,x`, and the `Barrier` model's gone. Press F2 to close the Sound Lab.
+- **BO9 Turned.** Set `VFTestPitch` to -15 and press C: the targeter's across the lane. Press C
+  again: it turns a quarter, running down the lane from about 1 m to 11 m ahead, the orb stays in
+  hand, and `VFKit` ends in `equip turn`. Press C a third time: across again, and `turn` goes. Hold
+  the right button and turn to `VFTestYaw` 45, then 90: the targeter stays across the lane, so from
+  where you look it turns until it runs along your view, and the view doesn't zoom. Let go of the
+  right button and set `VFTestYaw` back to 0: the targeter now runs down the lane, as it's kept the
+  turn you left it at, and `VFKit` ends in `turn`. Press 1: the Vandal's back and nothing's spent;
+  press C: the targeter comes up still turned down the lane. Press C: across again.
+- **BO10 Down the lane.** Press C again, so the targeter runs down the lane, and at once the left
+  button: the wall goes up with no wait after the turn, down the middle of the lane from about 1 m
+  to 11 m ahead. Dummy 1, at 10 m, stands where its far block rises: it's lifted with it onto its
+  top, 2.5 m up, and stays there. Set `VFTestPitch` back to 0.
+- **BO11 Lifted.** Face right (`VFTestYaw` -90), walk a few metres onto open floor and stand still.
+  Set `VFTestPitch` to -80 and raise a wall: it rises under your feet and lifts you with it,
+  smoothly and with no snap back, the `pos` line's middle number climbing to about 2.51 over 1.35 s,
+  and you stand on its top. Walk back off it (S): you drop to the floor. Set `VFTestPitch` back to
+  0.
+- **BO12 The edge.** Face left (`VFTestYaw` 90) and walk along the course to its left edge, past the
+  wallbang lane, stopping 2 to 3 m short of it. Press C: with the crosshair level, out over the
+  edge, there's no targeter, and the left button raises nothing: the orb stays in hand and C's pip
+  stays lit. Face down the course (`VFTestYaw` 0) with `VFTestPitch` -15: the targeter shows three
+  blocks, the left one, which would stand over the edge, missing. Raise it: three rise, and `VFWall`
+  reads `-,400,400,400`.
+- **BO13 The spike.** Set `VFTestGive` to `spike`, walk into site A just inside its front edge, and
+  plant (hold 4 for 4 s, as in D4). Step back about 3 m toward the spawn, press C and put the
+  crosshair on the spike: the targeter's middle sits on it. Raise it: as it rises, the block over
+  the spike (both middle ones, if it's right between them) bursts into chips at once with a sharp
+  crack, `VFWall` has an `x` for it, and the rest rise. Then defuse the spike (hold 4 by it, as in
+  D7) before it goes off.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+SAGE in window 1 (T). Player 2 stays Jett. Everyone on the course is everyone else's enemy.
+
+- **BO14 Others' walls.** In window 2, walk about 10 m down the target lane, 2 m to the left of
+  Dummy 1, and turn to face the spawn. In window 1, at the spawn, raise a wall as in BO4
+  (`VFTestYaw` 5, `VFTestPitch` -15). Window 2 sees it rise between them and player 1, with a deep
+  crack from the wall, and player 1 is hidden behind it. Player 2 walks toward the spawn: they stop
+  at its far face. Player 2 shoots the block in front of them: each hit a pale spark, and its number
+  in window 1's `VFWall` drops by 40. Once it's fortified, 15 hits break it: it bursts in both
+  windows, the crack heard in both, and player 2 walks through the gap.
+- **BO15 Lifted, from window 2.** Player 2 stands still on the lane about 3 m out from the spawn
+  (`pos` about `0.00 0.00 -3.00`). In window 1, at the spawn, set `VFTestYaw` to 0 and `VFTestPitch`
+  to -28, and raise a wall: it rises under player 2, who goes up with it in both windows, smoothly
+  and with no snap back, onto its top 2.5 m up (window 2's `pos` middle number about 2.51). Player 2
+  walks off it. Set `VFTestPitch` back to 0 in window 1.
+- **BO16 With a ping.** Once the walls are gone (40 s after each rose), open the Hit Reg Lab in
+  window 2 (F2 three times), press `]` ten times (100 ms each way), and note the HUD's `max`
+  correction. Do BO15 again; then player 2 walks off the wall, into its face and along it, and jumps
+  at it: no snap back, and `max` doesn't grow. Press `[` ten times to take the latency off.
+
+Then the spike rounds: press P three times in window 1 (Skirmish, gun game, then the spike rounds),
+and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK IN in window 2.
+
+- **BO17 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`, C's pip dark. B: under the shields Barrier
+  Orb (`C`, 300) is lit, beside the Slow Orb. Click it: 300 credits go, C's pip lights, and `VFKit`
+  reads `C1/1`; a second click buys nothing. Close the menu (B) and press C: the targeter's red, and
+  the left button raises nothing, the orb staying in hand with C's pip lit. Press 1. Once the
+  round's live, press C: the targeter's pale blue. Raise it in the open: it rises as on the course,
+  and on the minimap a pale blue bar lies along each block, edged in your colour, with your cone
+  stopping at it.
+- **BO18 Who breaks it.** Shoot your own wall: sparks, and `VFWall` doesn't change. Player 2, on the
+  other side, shoots it: each hit takes 40 off, and at nothing a block breaks, as on the course.
 
 ## Results
 
@@ -2729,7 +2845,7 @@ HO8 player 2 marked or healed: yes / no
 HO9 the mark with player 3 at full health: yes / no; once hurt: yes / no
 HO10 marked or healed behind cover: yes / no
 HO11 player 3's health after: ___; VFLastHeal: ___; the countdown from: ___
-HO12 the Barrier Orb's tile NOT YET: yes / no; the Slow Orb's for sale: yes / no
+HO12 the Barrier Orb and the Slow Orb for sale: yes / no
 HO13 the countdown in Team Deathmatch from: ___
 SO1 anything on Sage's card or the bar that read differently: ___
 SO2 EQUIP for about ___ s; speed with the orb: ___ m/s
@@ -2745,6 +2861,24 @@ SO12 player 2 slowed on the step: yes / no
 SO13 the dash in the ice: ___ m; out of it: ___ m
 SO14 max correction before: ___ mm, after: ___ mm
 SO15 Q after buying two: ___; a third bought: yes / no
+BO1 anything on Sage's card or the bar that read differently: ___
+BO2 EQUIP for about ___ s; the targeter about ___ m out
+BO3 the targeter at pitch -15: ___ m; at -30: ___ m; at 40: ___ m
+BO4 VFWall as it rose: ___; 2 s later: ___
+BO5 pos where you stopped: ___; over it with a jump: yes / no
+BO6 hits to break the block: ___; a bullet through it before it broke: yes / no
+BO7 its number after a swing: ___; after a heavy one: ___
+BO8 VFWall 2.5 s into its decay: ___; gone at about ___ s; anything the Sound Lab logged differently: ___
+BO9 anything the targeter did differently: ___
+BO10 Dummy 1 lifted onto it: yes / no
+BO11 the pos line's height on top: ___; any snap back: yes / no
+BO12 a targeter out over the edge: yes / no; VFWall: ___
+BO13 VFWall over the spike: ___
+BO14 player 1 seen through it: yes / no; hits to break a block: ___
+BO15 player 2's height on top: ___; any snap back: yes / no
+BO16 max correction before: ___ mm, after: ___ mm
+BO17 red in the buy phase: yes / no; C after buying: ___; a second bought: yes / no
+BO18 your own bullets took health off it: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2983,3 +3117,9 @@ Didn't look right (IDs and what you saw):
 | 37 | Running into it: 2.7 m/s with the Vandal at once, the frosted edge, `SLOWED`, `VFSlowed` and a crunch with each step; walking silent; a jump lower; back to 5.4 m/s out of it, and no correction going in or out | SO4, SO5, SO14 |
 | 37 | A strafing dummy slowed in it, its steps crunching | SO8 |
 | 37 | A second player slowed in your field, crunching where you see them, on a step too; Jett's dash half as far in it; no correction at 100 ms each way | SO11, SO12, SO13, SO14 |
+| 38 | The Barrier Orb lit on Sage's card and the bar, with its pip, and for sale at 300 in the spike rounds, one and no more | BO1, BO17 |
+| 38 | C puts the orb in hand in 0.8 s, `EQUIP` on the bar, with its targeter on the floor ahead; the left button raises the wall, the pip goes dark and the gun is back 0.7 s later; a number key puts it away | BO2, BO4, BO9 |
+| 38 | The targeter: across the view, turned a quarter by C and back, held by alt fire as you turn, kept, red in the buy phase, and nowhere off the edge of the course | BO3, BO9, BO12, BO17 |
+| 38 | The wall: rising out of the floor in 1.35 s, 10.4 m long and 2.5 m tall, solid, fortifying at 2 s with a flash and a crack, clouding over from 35 s and gone at 40 s; `VFWall` as it goes; on the minimap | BO4, BO5, BO8, BO17 |
+| 38 | In the way: walking and jumping into it, shots stopped at it, a dummy behind it, a segment shot down and the gap it leaves, being lifted onto it, and a segment over the planted spike breaking | BO5, BO6, BO7, BO10, BO11, BO13 |
+| 38 | A second player stopped by your wall, lifted onto it and breaking it, with no correction at 100 ms each way; and in the spike rounds, your own bullets not breaking it | BO14, BO15, BO16, BO18 |

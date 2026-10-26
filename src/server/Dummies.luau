@@ -10,7 +10,9 @@
 -- They tick at 128 Hz on the server's clock, two or three ticks a 60 Hz
 -- frame, so the snapshots show them through a MovePacer, about a tick
 -- behind, and they move as evenly as the simulation does. A Slow Orb's
--- field slows them as it does a player (system 37), on that clock.
+-- field slows them as it does a player (system 37), and a Barrier Orb's
+-- wall stands in their way and lifts them as it does a player's (system
+-- 38), on that clock.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,6 +22,7 @@ local MovementConfig = require(Shared.Movement.MovementConfig)
 local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local PlayerSim = require(Shared.PlayerSim)
 local SlowSim = require(Shared.Abilities.SlowSim)
+local BarrierSim = require(Shared.Abilities.BarrierSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
@@ -57,6 +60,9 @@ local Dummies = {}
 
 -- The Slow Orbs' fields in play (system 37, SlowServer); none without.
 Dummies.fields = nil :: (() -> { SlowSim.Field })?
+-- The Barrier Orbs' walls in play, judged at a server time (system 38,
+-- BarrierServer); none without.
+Dummies.barriers = nil :: ((number) -> BarrierSim.Walls)?
 
 local dummies: { Dummy } = {}
 local world = RobloxWorld.new()
@@ -189,7 +195,17 @@ function Dummies.step(now: number)
 			d.ticks += 1
 			local input = { seq = d.ticks, buttons = buttonsFor(d), yaw = d.yaw, pitch = 0, slot = 1, viewTime = 0 }
 			local fieldsOf = Dummies.fields
-			PlayerSim.step(d.sim, input, cfg, world, DT, nil, if fieldsOf then { fields = fieldsOf(), time = last } else nil)
+			local wallsAt = Dummies.barriers
+			PlayerSim.step(
+				d.sim,
+				input,
+				cfg,
+				world,
+				DT,
+				nil,
+				if fieldsOf then { fields = fieldsOf(), time = last } else nil,
+				if wallsAt then wallsAt(last) else nil
+			)
 			MovePacer.push(d.pacer, last, currentPose(d))
 		end
 	end

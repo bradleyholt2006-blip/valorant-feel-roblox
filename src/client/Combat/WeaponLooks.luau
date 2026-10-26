@@ -162,6 +162,16 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- The Barrier Orb (system 38): a pale orb the Slow Orb's size, a slab of
+	-- ice standing behind it, over the open hand.
+	wallorb = {
+		muzzle = vector.create(0, 0.07, -0.12),
+		pieces = {
+			{ size = vector.create(0.08, 0.08, 0.08), offset = vector.create(0, 0.07, -0.08), accent = true }, -- orb
+			{ size = vector.create(0.11, 0.07, 0.015), offset = vector.create(0, 0.08, -0.03), accent = true }, -- slab
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -194,6 +204,7 @@ local SHAPE_OF: { [string]: string } = {
 	flamewall = "flamewall",
 	healorb = "healorb",
 	iceorb = "iceorb",
+	wallorb = "wallorb",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -225,6 +236,7 @@ local ACCENT: { [string]: Color3 } = {
 	flamewall = Color3.fromRGB(255, 90, 20),
 	healorb = Color3.fromRGB(110, 235, 150),
 	iceorb = Color3.fromRGB(140, 220, 240),
+	wallorb = Color3.fromRGB(185, 230, 250),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

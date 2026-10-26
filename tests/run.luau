@@ -46,5 +46,6 @@ require("./minimap")
 require("./fogofwar")
 require("./healingorb")
 require("./sloworb")
+require("./barrierorb")
 
 H.finish()

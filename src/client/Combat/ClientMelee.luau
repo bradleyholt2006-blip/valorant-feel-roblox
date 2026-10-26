@@ -126,7 +126,7 @@ function ClientMelee.predict(swing: WeaponSim.Swing, attack: WeaponConfig.SwingD
 			tested[entry.id] = { pose = pose, from = l.from, to = l.to, held = l.held }
 		end
 	end
-	return Melee.resolve(ClientShots.level, swing.origin, swing.direction, attack, targets, me), tested
+	return Melee.resolve(ClientShots.levelAt(viewTime), swing.origin, swing.direction, attack, targets, me), tested
 end
 
 local function onSwing(swing: WeaponSim.Swing, input: PlayerCodec.WireInput)

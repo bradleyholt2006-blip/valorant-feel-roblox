@@ -17,8 +17,8 @@
 -- ultimates that cost more, from kills and Ultimate Orbs. Phoenix is the
 -- second agent (system 30): his Curveball, Hot Hands (system 31), Blaze
 -- (system 32) and Run it Back (system 33) can be played, and his passive,
--- Inner Fire, works. Sage is the third (system 36), with her Healing Orb
--- and her Slow Orb (system 37).
+-- Inner Fire, works. Sage is the third (system 36), with her Healing Orb,
+-- her Slow Orb (system 37) and her Barrier Orb (system 38).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -178,6 +178,10 @@ local SLOW = "VALORANT Wiki, Slow Orb"
 local TRACKER = "valoranttracker.org, Sage"
 local P047 = "Patch 0.47"
 local P107 = "Patch 1.07"
+local P1104 = "Patch 11.04"
+local P1108 = "Patch 11.08"
+local BARRIER = "VALORANT Wiki, Barrier Orb"
+local DIGNITAS = "Dignitas, 'Tips and Tricks Using Sage Effectively'"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -263,15 +267,17 @@ AbilityConfig.Defs = {
 		description = "Marks where you stand. Die before it's over, or let it run out, and you're back at the mark with full health.",
 	},
 	-- Sage's (system 36): her kit as the VALORANT Wiki lists it. Her Healing
-	-- Orb and her Slow Orb (system 37) can be played.
+	-- Orb, her Slow Orb (system 37) and her Barrier Orb (system 38) can be
+	-- played.
 	barrierorb = {
 		id = "barrierorb",
 		name = "Barrier Orb",
 		slot = AbilityConfig.C,
 		kind = "basic",
-		cost = p(300, "community", SAGE .. ": Barrier Orb, 300 credits"),
+		cost = p(300, "confirmed", P1108 .. ": Barrier Orb 'Cost reduced from 400 to 300'"),
 		charges = p(1, "community", SAGE .. ": Barrier Orb, 1 use"),
-		description = "Raises a wall of ice where you aim, which blocks the way until it's broken or melts.",
+		weapon = "wallorb",
+		description = "C readies a barrier orb. Fire raises a wall of ice where it shows; C again or held alt fire turns it.",
 	},
 	sloworb = {
 		id = "sloworb",
@@ -711,9 +717,61 @@ AbilityConfig.SlowOrb = {
 	dash = p(0.5, "confirmed", P910 .. ": 'reduce the dash speed of enemies caught inside the slowing zone by 50%'"),
 }
 
+-- Sage's Barrier Orb (system 38): C puts the orb in hand (WeaponConfig's
+-- wallorb, in the fifth slot), and a targeter shows where its wall would
+-- go (BarrierSim): on the floor where the crosshair meets it, no further
+-- than its range, across the way she looks. C again turns it a quarter,
+-- and alt fire held turns it as she turns. Fire raises the wall there, if
+-- there's a floor for it: its segments in a row, each standing on the
+-- floor under its middle and left out where there's none near enough. It
+-- rises out of the floor over its deploy time, lifting anyone standing
+-- where it rises onto its top, and stands its duration from the cast, in
+-- everyone's way: their steps', their bullets' and their sight's. Each
+-- segment has health of its own, which enemies' bullets and knives take,
+-- and breaks at none. It fortifies its time after the cast, each segment
+-- gaining what fortifying adds, so what it's lost stays lost, and in its
+-- last moments it decays, each segment losing its share of what it has
+-- left, until they all go together. It can't be raised in the buy phase.
+-- Riot gives the health, the fortify, the range and the buy phase; the
+-- wiki and a guide the rest they give (38-barrier-orb.md, section 2).
+AbilityConfig.BarrierOrb = {
+	-- From the wall raised until the gun's back in hand.
+	unequip = p(0.7, "community", BARRIER .. ": unequip 0.7 s (game files)"),
+	-- Where it can go: this far from the eye at most, on a floor this level
+	-- (the up of its normal).
+	range = p(15, "confirmed", P1104 .. ": 'Sage wall cast range has increased from 10m >>> 15m'"),
+	floor = p(0.7, "estimate", "Ours, about 45 degrees, as the Slow Orb's; " .. BARRIER .. ": it places a wall on horizontal terrain"),
+	-- How far below where the aim ends it looks for a floor, and how far
+	-- over and under the targeter's floor each segment looks for its own.
+	drop = p(20, "estimate", "Ours: aimed into the sky at the range's end, down to the floor below"),
+	climb = p(1, "estimate", "Ours: a segment stands on a crate or a step up to a metre over the targeter's floor"),
+	fall = p(1, "estimate", "Ours: or on a floor down to a metre under it; past either it's left out"),
+	-- The wall: this many segments in a row, each this long, this thick and
+	-- this tall over its floor, reaching this far under it, so a slope or a
+	-- step under its ends leaves no gap.
+	segments = p(4, "community", BARRIER .. ": size, 4 segments (game files)"),
+	length = p(2.6, "community", BARRIER .. ": '2.6 x 1.5 meters each', '10.4 x 1.5 meters total' (game files): 2.6 along it"),
+	thickness = p(
+		1.5,
+		"community",
+		BARRIER .. ": and 1.5 through it (our reading: as its height, it wouldn't hide a standing agent's eye)"
+	),
+	height = p(2.5, "community", DIGNITAS .. ": 'It seems to be about 140% of the player's height', of our 1.8 m player"),
+	sink = p(0.5, "estimate", "Ours: under its floor, so it meets a slope or a step under its ends"),
+	-- Its time from the cast: rising over the first of it, fortified once
+	-- this long's gone, decaying from this long, and gone at the end.
+	rise = p(1.35, "community", BARRIER .. ": deploy time 1.35 s (estimated), read as the time it rises over"),
+	fortify = p(2, "confirmed", P1108 .. ": 'Fortification delay reduced from 3.3 seconds to 2 seconds'"),
+	decay = p(35, "community", BARRIER .. ": decay begins after 35 s (game files)"),
+	duration = p(40, "community", BARRIER .. ": duration 40 s in all, the deploy time included (game files)"),
+	-- Each segment's health as it rises, and once it's fortified.
+	health = p(400, "confirmed", P107 .. ": 'Wall forms at 400 HP'"),
+	fortified = p(600, "confirmed", P1108 .. ": 'Health of Barrier segments decreased from 800 to 600'"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
--- for Blaze, after its run's let go, and for the Healing Orb, after its
--- heal).
+-- for Blaze, after its run's let go, for the Healing Orb, after its heal,
+-- and for the Barrier Orb, after its wall's raised).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -723,6 +781,8 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.HealingOrb.unequip.value
 	elseif id == "sloworb" then
 		return AbilityConfig.SlowOrb.unequip.value
+	elseif id == "barrierorb" then
+		return AbilityConfig.BarrierOrb.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

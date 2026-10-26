@@ -262,6 +262,16 @@ Built one system at a time:
     so going in and out of it doesn't snap you back. Two charges at 200 credits, and the gun's
     back 0.4 s after a throw -
     [research and design](docs/research/37-slow-orb.md)
+38. **Sage's Barrier Orb**: C puts Sage's Barrier Orb in hand, ready in 0.8 s, with a targeter
+    on the floor where the crosshair meets it, up to 15 m away, and mouse 1 raises its wall there:
+    four segments of ice in a row, 10.4 m long and 2.5 m tall, rising out of the floor over 1.35 s
+    and standing for 40 s. Nobody walks, shoots or sees through it, and whoever stands where it
+    rises is lifted onto its top, by your own game just as by the server's. C again turns the
+    targeter a quarter, and mouse 2 held keeps it facing the same way as you turn. Each segment
+    forms at 400 health and fortifies to 600 after 2 s, less what it's lost; enemies' bullets and
+    knives break it, one over the planted spike breaks at once, and in its last 5 s it wears away.
+    One charge at 300 credits, none raised in the buy phase, and the gun's back 0.7 s after -
+    [research and design](docs/research/38-barrier-orb.md)
 
 ## Running it
 
@@ -445,9 +455,11 @@ and walls of fire, every map's plan, the views each setting gives, allies held o
 spike's and the names' rules, and the cones' rays), the fog of war (who's always sent, the lines
 from an eye to a body, both carried ahead, corner peeks, what's heard, the hold and the looks it
 skips), Sage's Healing Orb (her kit, the orb in hand and its tries, whom a try heals, the heal
-and its pauses, and the wire) and her Slow Orb (its charges, the orb in hand, its flight and its
+and its pauses, and the wire), her Slow Orb (its charges, the orb in hand, its flight and its
 field, the slow on the ground, in the air, on a jump and on a dash, judged as a screen showed it,
-and the wire) are pure Luau and run outside Roblox:
+and the wire) and her Barrier Orb (its charge, the orb in hand and its targeter's turns, where its
+wall goes, the wall rising, standing and breaking, what it does to steps, shots and sight, its
+health, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

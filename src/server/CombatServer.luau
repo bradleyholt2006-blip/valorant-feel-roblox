@@ -47,6 +47,12 @@
 -- play, with no health, but nobody's killed them. Out of play, nothing
 -- hurts or heals them, shots go through, and the snapshots leave them out,
 -- until they're back in it (CombatServer.back).
+--
+-- Sage's walls of ice stand in the level that shots and swings are traced
+-- through, as the attacker's screen showed them (CombatServer.levelAt,
+-- system 38), and stop every bullet. A bullet or a knife that strikes one
+-- takes its damage off it (CombatServer.struck): a bullet's to the body at
+-- its range, less what the walls before took, and a knife's from in front.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -64,6 +70,7 @@ local LagCompensation = require(Shared.Combat.LagCompensation)
 local Penetration = require(Shared.Combat.Penetration)
 local Melee = require(Shared.Combat.Melee)
 local RobloxLevel = require(Shared.Combat.RobloxLevel)
+local BarrierSim = require(Shared.Abilities.BarrierSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -94,6 +101,14 @@ CombatServer.protected = nil :: ((Entities.Entity) -> boolean)?
 -- killListeners: it's taken the hit and is out of play, but there's no kill
 -- and no death.
 CombatServer.spares = nil :: ((Entities.Entity, Entities.Entity?, string, string?) -> boolean)?
+-- The level shots and swings are traced through, as the attacker's screen
+-- showed it at `viewTime`: with Sage's walls standing then in it
+-- (BarrierServer, system 38). The level alone without.
+CombatServer.levelAt = nil :: ((Penetration.Level, number) -> Penetration.Level)?
+-- Called with what struck a surface that stopped it, the surface's key and
+-- the damage it would have done there: a wall of Sage's takes it
+-- (BarrierServer); the level's own surfaces don't.
+CombatServer.struck = nil :: ((Entities.Entity, any, number) -> ())?
 
 local level = RobloxLevel.new()
 local history = LagCompensation.new()
@@ -347,6 +362,12 @@ function CombatServer.rewound(
 	return rewound, rewind.time
 end
 
+-- The level as an attacker's screen showed it at `viewTime`.
+local function levelFor(viewTime: number): Penetration.Level
+	local at = CombatServer.levelAt
+	return if at then at(level, viewTime) else level
+end
+
 -- One round: its bullets, all fired on the same tick from the same eye.
 function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot }, viewTime: number)
 	local first = shots[1]
@@ -355,6 +376,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 	end
 	local def = WeaponConfig.get(first.weapon)
 	local rewind, rewound = rewindFor(shooter, viewTime)
+	local shotLevel = levelFor(viewTime)
 	local targets = LagCompensation.shotTargets(rewound)
 
 	-- Each bullet: where it ended, what it hit and the damage it did. The
@@ -365,7 +387,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 	local hits: { Volley.Hit } = {}
 	local throughWall: { [number]: boolean } = {} -- targets a bullet reached through a wall
 	for _, shot in shots do
-		local trace = Penetration.trace(level, shot.origin, shot.direction, def.penetration, WeaponConfig.MaxRange)
+		local trace = Penetration.trace(shotLevel, shot.origin, shot.direction, def.penetration, WeaponConfig.MaxRange)
 		local blockedAt = trace.stop
 		local hit = ShotResolver.resolve(shot.origin, shot.direction, targets, blockedAt, shooter.id)
 		for _, t in rewound do
@@ -405,6 +427,13 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 				if #pellet.walls > 0 then
 					throughWall[hit.targetId] = true
 				end
+			end
+		else
+			-- What stopped it takes what it would have done there.
+			local last = trace.walls[#trace.walls]
+			local struck = CombatServer.struck
+			if struck and trace.stopped and last and last.exit == nil then
+				struck(shooter, last.key, Penetration.damage(WeaponConfig.damageAt(def, "body", blockedAt), multiplier))
 			end
 		end
 		table.insert(pellets, pellet)
@@ -463,7 +492,8 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 	end
 	local attack = if swing.kind == "stab" then melee.stab else melee.slash
 	local rewind, rewound = rewindFor(attacker, viewTime)
-	local result = Melee.resolve(level, swing.origin, swing.direction, attack, LagCompensation.shotTargets(rewound), attacker.id)
+	local result =
+		Melee.resolve(levelFor(viewTime), swing.origin, swing.direction, attack, LagCompensation.shotTargets(rewound), attacker.id)
 	local tested = {}
 	local hitId = if result.hit then result.hit.targetId else nil
 	for _, t in rewound do
@@ -504,6 +534,10 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 		verdict.wall = Units.asVector3(wallPoint)
 		verdict.normal = Units.asVector3(wall.normal)
 		verdict.material = wall.material
+		local struck = CombatServer.struck
+		if struck then
+			struck(attacker, wall.key, attack.front.value)
+		end
 	end
 
 	local remotes = Remotes.get()
@@ -522,6 +556,8 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 		hit = verdict.target ~= nil,
 		wall = if verdict.wall and wallPoint then Units.toStuds(wallPoint) else nil,
 		normal = verdict.normal,
+		-- A wall of Sage's, which takes no cut.
+		ice = if verdict.wall and wall and BarrierSim.piece(wall.key) then true else nil,
 	}
 	local reach = FogOfWar.weaponEdge(swing.weapon)
 	for _, entity in Entities.all() do
