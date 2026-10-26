@@ -15,7 +15,8 @@
 --     Sight remote), and where one was last seen a faded mark for a while
 --     (Patch 5.08's "Recently Seen Enemy" icons, which stay where they were);
 --     in deathmatch everyone, for a moment, as you come back to life (the
---     VALORANT Wiki's Deathmatch page: a pulse on respawning; community)
+--     VALORANT Wiki's Deathmatch page: a pulse on respawning; community),
+--     each where they are as the fog of war sends them for it (system 35)
 --   * the spike planted, and dropped while it's shown to you
 --     (Minimap.spikeShown); carried, a mark on its carrier for their side
 --   * vision cones, yours and your side's, each ray as far as it goes from
@@ -45,6 +46,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local Minimap = require(Shared.Match.Minimap)
+local FogOfWar = require(Shared.Combat.FogOfWar)
 local Sight = require(Shared.Combat.Sight)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
@@ -154,6 +156,10 @@ local spikeSeen = false
 local recent: { [number]: Marker } = {}
 local pulses: { [number]: Marker } = {}
 local dead: { [number]: vector } = {}
+-- Until when (os.clock()) everyone else reaching the snapshots pulses, as
+-- you're back in deathmatch, and who has.
+local pulseUntil = 0
+local pulsed: { [number]: boolean } = {}
 -- Entities killed and not back yet.
 local down: { [number]: boolean } = {}
 local ring: { radius: number, at: number }? = nil
@@ -527,6 +533,8 @@ local function forgetMarks()
 	table.clear(pulses)
 	table.clear(dead)
 	table.clear(down)
+	table.clear(pulsed)
+	pulseUntil = 0
 end
 
 -- What both maps show this frame, for a player on `side`.
@@ -607,6 +615,18 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 				icons,
 				{ name = "Seen_" .. id, kind = "seen", position = mark.position, fade = fade, carrier = false, edge = false }
 			)
+		end
+	end
+	-- Deathmatch's pulse: everyone else, as they reach your snapshots in
+	-- the moment after you're back (the fog of war sends them for it).
+	if now < pulseUntil then
+		for _, player in Players:GetPlayers() do
+			local other = PlayerCodec.entityIdForUser(player.UserId)
+			local pose = if player ~= me and not pulsed[other] then posed(other, render) else nil
+			if pose then
+				pulses[other] = { position = pose.position, at = now }
+				pulsed[other] = true
+			end
 		end
 	end
 	for id, mark in pulses do
@@ -940,15 +960,8 @@ local function onCombat(event: any)
 		dead[id] = nil
 		recent[id] = nil
 		if id == PlayerController.entityId and Workspace:GetAttribute(ArenaConfig.MODE) == "deathmatch" then
-			local now = os.clock()
-			local render = RemoteEntities.renderTime()
-			for _, player in Players:GetPlayers() do
-				local other = PlayerCodec.entityIdForUser(player.UserId)
-				local pose = if player ~= me then posed(other, render) else nil
-				if pose then
-					pulses[other] = { position = pose.position, at = now }
-				end
-			end
+			pulseUntil = os.clock() + FogOfWar.Params.reveal.value
+			table.clear(pulsed)
 		end
 	end
 end

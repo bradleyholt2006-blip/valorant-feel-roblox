@@ -522,10 +522,11 @@ local function seat(sides: Roster.Sides?, vote: MapVote.Vote?)
 end
 
 -- A health pack where it lies (deathmatch): a green cross a little above
--- the floor, lit, that nothing collides with, hits or queries.
+-- the floor, lit, that nothing collides with, hits or queries, on every
+-- client wherever they are (a character's root stays where its life
+-- started, system 35, so a streaming place streams around that).
 local function newPack(feet: vector): Model
-	local root = Instance.new("Model")
-	root.Name = "HealthPack"
+	local root = newModel("HealthPack")
 	local centre = feet + vector.create(0, 0.45, 0)
 	for i, size in { vector.create(0.5, 0.14, 0.14), vector.create(0.14, 0.5, 0.14), vector.create(0.14, 0.14, 0.5) } do
 		local p = newPart("Cross", size, centre, 0)

@@ -33,6 +33,12 @@
 -- life starts while the player is still alive (the arena restarts a round),
 -- the moves the owner sent for the old one before it knew are dropped here,
 -- instead of running on the new life.
+--
+-- A character's root is put where its life starts and left there: moved
+-- with the player, it would tell every client where they are, which the
+-- fog of war keeps from those who can't see them (system 35). Every client
+-- draws everyone from the snapshots instead (RemoteEntities), and the
+-- owner moves its own.
 
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
@@ -86,6 +92,7 @@ type Record = {
 	kit: { string }?, -- that kit's weapons by slot (nil: WeaponConfig.DefaultLoadout)
 	kitShield: string?, -- and its shield ("" for none; nil: WeaponConfig.DefaultShield)
 	spawnAskedAt: number?, -- os.clock() when a new life was asked for, until it starts
+	behind: number, -- seconds their screen was behind the server at their last move run
 }
 
 -- Called with the bullets of each round a player fires (several for a
@@ -138,6 +145,8 @@ local records: { [Player]: Record } = {}
 local world = RobloxWorld.new()
 local onShot: ShotHandler = function() end
 local onSwing: SwingHandler = function() end
+-- The server time of the frame the moves are running in.
+local stepNow = 0
 -- Seeds each life's spray randomness. The owner learns it from the first ack,
 -- so its prediction draws the same bullets the server does.
 local seeds = Random.new()
@@ -199,6 +208,8 @@ local function restartPacing(r: Record)
 	r.shown = nil
 end
 
+-- Puts the character's root where the player is, as a life starts (and not
+-- after: the header says why).
 local function placeRoot(r: Record)
 	local root = r.root
 	if not root then
@@ -321,6 +332,7 @@ local function onPlayerAdded(player: Player)
 		kit = nil,
 		kitShield = nil,
 		spawnAskedAt = nil,
+		behind = 0,
 	}
 	records[player] = r
 	Entities.add(entity)
@@ -493,6 +505,16 @@ function PlayerSimServer.entityOf(player: Player): Entities.Entity?
 	return if r then r.entity else nil
 end
 
+-- How many seconds a player's screen was behind the server when their last
+-- move ran: the server's time then less the time their screen showed (the
+-- input's viewTime). That's how long they go on moving, from where the
+-- server has their eye, before their screen shows the server's present
+-- (the fog of war looks from there too, FogOfWar.eyes).
+function PlayerSimServer.behind(player: Player): number?
+	local r = records[player]
+	return if r then r.behind else nil
+end
+
 -- Runs the player's next queued input, if the budget allows one. Returns
 -- whether there may be more to run this frame.
 local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
@@ -505,6 +527,7 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 			continue
 		end
 		r.lastSeq = input.seq
+		r.behind = stepNow - input.viewTime
 		r.buttons = input.buttons
 		r.yaw = input.yaw
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
@@ -556,6 +579,7 @@ end
 -- One server frame: dt seconds since the last, ending at server time `now`
 -- (the time this frame's snapshot carries).
 function PlayerSimServer.step(dt: number, now: number)
+	stepNow = now
 	local cfg = Tuning.config()
 	for _, r in records do
 		if r.root then
@@ -584,7 +608,6 @@ function PlayerSimServer.step(dt: number, now: number)
 			restartPacing(r)
 		end
 		r.shown = if r.alive then MovePacer.advance(r.pacer, now) else nil
-		placeRoot(r)
 		if r.ackDirty then
 			r.ackDirty = false
 			remotes.PlayerAck:FireClient(r.player, PlayerCodec.encodeAck(r.lastSeq, r.sim))

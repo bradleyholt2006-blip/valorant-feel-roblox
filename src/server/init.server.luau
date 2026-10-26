@@ -13,10 +13,11 @@
 -- the moves left looking at them, walls of fire whose caster is dead run
 -- on, and fires burn whoever the moves left standing in them.
 -- Regen Shields refill after the shots, and the minimap's spotting looks
--- after them, so nobody they killed is seen. The arena's rounds move on
--- last, so a round that ends in this frame's shots respawns its players
--- after the frame's snapshot, and agent select after them, as the rounds
--- have it.
+-- after them, so nobody they killed is seen; the fog of war's looks come
+-- after that, with what each side spots, and each player's snapshot goes
+-- by them. The arena's rounds move on last, so a round that ends in this
+-- frame's shots respawns its players after the frame's snapshot, and agent
+-- select after them, as the rounds have it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -43,6 +44,7 @@ local FireServer = require(script.FireServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
 local MinimapServer = require(script.MinimapServer)
+local FogServer = require(script.FogServer)
 local PickupsServer = require(script.PickupsServer)
 local ModeServers = require(script.ModeServers)
 
@@ -59,6 +61,7 @@ FireServer.start()
 BlazeServer.start()
 RunItBackServer.start()
 MinimapServer.start()
+FogServer.start()
 GroundGunsServer.start()
 PickupsServer.start()
 SettingsServer.start()
@@ -84,6 +87,7 @@ RunService.Heartbeat:Connect(function(dt)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)
 	MinimapServer.step(now)
+	FogServer.step(now)
 	Replication.step(now)
 	Arena.step(now)
 	AgentServer.step(now)

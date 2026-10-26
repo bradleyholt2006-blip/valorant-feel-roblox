@@ -18,6 +18,17 @@
 -- the hitboxes (a default avatar stands 1.43 m against the boxes' 1.75 m),
 -- so a shot at its head would hit the body.
 --
+-- Over each is a label, their name and health, which shows through walls
+-- but for an enemy's (another side's): through a wall it would say where an
+-- enemy is that the fog of war (system 35) has sent unseen, one heard
+-- behind it or about to come round its corner.
+--
+-- An entity that isn't in the newest snapshot (the fog of war has left it
+-- out, or it's gone) isn't drawn, and the client's guess at a shot or a
+-- swing doesn't hit it; as it's back, its history starts over if it was
+-- away long enough (PoseHistory.MAX_GAP), so it never slides from where it
+-- went to where it's back.
+--
 -- Where each entity is drawn every frame also goes into a MotionMeter, for
 -- the Hit Reg Lab's motion line.
 --
@@ -38,6 +49,7 @@ local NetConfig = require(Shared.Net.NetConfig)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 local CharacterRig = require(Shared.CharacterRig)
+local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local Health = require(Shared.Combat.Health)
@@ -114,6 +126,7 @@ type Visual = {
 	model: Model,
 	parts: { [string]: BasePart },
 	colors: { [string]: Color3 },
+	billboard: BillboardGui,
 	label: TextLabel,
 	flashUntil: { [string]: number },
 }
@@ -305,7 +318,7 @@ local function makeVisual(id: number): Visual
 	label.Parent = billboard
 	billboard.Parent = model
 	model.Parent = folderFor(id)
-	return { model = model, parts = parts, colors = colors, label = label, flashUntil = {} }
+	return { model = model, parts = parts, colors = colors, billboard = billboard, label = label, flashUntil = {} }
 end
 
 -- Hides another player's Roblox avatar on this client, with its shadow,
@@ -362,6 +375,7 @@ local function onRender()
 	local now = os.clock()
 	frameTime = InterpClock.advance(RemoteEntities.clock, now)
 	local renderTime = RemoteEntities.renderTime()
+	local mySide = Players.LocalPlayer:GetAttribute(ArenaConfig.SIDE)
 	for id in histories do
 		local present = RemoteEntities.isPresent(id)
 		local pose = if present then RemoteEntities.sample(id, renderTime) else nil
@@ -403,6 +417,11 @@ local function onRender()
 			local hp = RemoteEntities.healthOf(id)
 			local health = string.format("%d + %d", RemoteEntities.points(hp.health), RemoteEntities.points(hp.shield))
 			visual.label.Text = if player then player.DisplayName .. "  " .. health else health
+			local theirSide = if player then player:GetAttribute(ArenaConfig.SIDE) else nil
+			local enemy = typeof(mySide) == "number" and typeof(theirSide) == "number" and theirSide ~= mySide
+			if visual.billboard.AlwaysOnTop == enemy then
+				visual.billboard.AlwaysOnTop = not enemy
+			end
 		end
 		-- Keep the hidden character where the blocks are, for anything that
 		-- reads its position.

@@ -43,5 +43,6 @@ require("./hothands")
 require("./blaze")
 require("./runitback")
 require("./minimap")
+require("./fogofwar")
 
 H.finish()

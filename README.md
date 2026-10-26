@@ -233,6 +233,16 @@ Built one system at a time:
     leaves a faded mark where they were for 3 s. Caps Lock held opens the big map, with the
     places' names, and the settings menu has the reference's map settings -
     [research and design](docs/research/34-minimap.md)
+35. **The fog of war**: each player's snapshots carry only the enemies they could see by the next
+    look, hear, or their side spots, and for half a second after, so a client that read them
+    couldn't see anyone through a wall. Twenty times a second the server looks from each player's
+    eye, and where it's moving to by the time their screen shows it, to seven points of each
+    enemy's body and where it's moving to, through the level but not the clouds or walls of fire.
+    Running steps, jumps, reloads, the spike's plant and defuse and glides are heard as far as
+    their sounds go; gunshots, swings and casts go only to those who'd hear them or have whoever
+    made them, and a shot's verdict lists only the targets its shooter has. The dead have what
+    their side in play has, and enemies' labels no longer show through walls -
+    [research and design](docs/research/35-fog-of-war.md)
 
 ## Running it
 
@@ -365,7 +375,9 @@ their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each ma
 `Entity` attribute whose it is. The minimap's ScreenGui, `VFMinimap`, carries what it shows: the
 plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the
 spike is (`Spike`), how far it's turned (`Turn`, degrees) and whether the big map's open (`Big`).
-Workspace's
+Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
+and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
+the milliseconds of server time they took. Workspace's
 `VFPlayMenu` is whether players start in the Play menu (always on a
 live server; in Studio, tick it in the place before you press Play), and `VFModeCounts` how many
 are in servers playing each mode (`skirmish=6,gungame=0,...`). A player's `VFPlaying` is true once
@@ -399,9 +411,11 @@ flight off walls and ceilings to the floor, its fire and who stands in it, the b
 heal, and the wire), Blaze (the flame in hand, sending and bending the wall, its run up boxes,
 through walls and down ledges, the wall and who stands in it, the burn, Inner Fire's heal, and the
 wire), Run it Back (the cast and its activation, running out, the return and the rise, a hit it
-spares, a plant under way, and the wire) and the minimap (who sees whom through the level, clouds
+spares, a plant under way, and the wire), the minimap (who sees whom through the level, clouds
 and walls of fire, every map's plan, the views each setting gives, allies held on the edge, the
-spike's and the names' rules, and the cones' rays) are pure Luau and run outside Roblox:
+spike's and the names' rules, and the cones' rays) and the fog of war (who's always sent, the lines
+from an eye to a body, both carried ahead, corner peeks, what's heard, the hold and the looks it
+skips) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

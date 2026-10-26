@@ -3,7 +3,9 @@
 --
 --   * every other player's three hitboxes where this client draws them this
 --     frame, outlined so they show through walls (players and practice
---     dummies are drawn as their hitboxes; dummies are left out here)
+--     dummies are drawn as their hitboxes; dummies are left out here). On a
+--     live server, not an enemy's: through a wall it would show where one
+--     is that the fog of war has sent unseen (system 35)
 --   * for each of your shots, for two seconds: the ray, the client's end
 --     point (yellow) and the boxes of the targets near the ray exactly as the
 --     client tested them (yellow)
@@ -28,12 +30,14 @@
 --     the damage, whether from behind and how many the level hid. A red aim
 --     line and label mean the client guessed otherwise.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local Melee = require(Shared.Combat.Melee)
@@ -416,8 +420,18 @@ local function render()
 	end
 	local renderTime = RemoteEntities.renderTime()
 	local seen: { [number]: boolean } = {}
+	local mySide = if RunService:IsStudio() then nil else Players.LocalPlayer:GetAttribute(ArenaConfig.SIDE)
+	local enemies: { [number]: boolean } = {}
+	if typeof(mySide) == "number" then
+		for _, player in Players:GetPlayers() do
+			local side = player:GetAttribute(ArenaConfig.SIDE)
+			if typeof(side) == "number" and side ~= mySide then
+				enemies[PlayerCodec.entityIdForUser(player.UserId)] = true
+			end
+		end
+	end
 	for _, id in RemoteEntities.ids() do
-		if PlayerCodec.isDummy(id) or not RemoteEntities.isPresent(id) then
+		if PlayerCodec.isDummy(id) or not RemoteEntities.isPresent(id) or enemies[id] then
 			continue
 		end
 		local pose = RemoteEntities.sample(id, renderTime)

@@ -30,8 +30,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    need one and then two. Section 11 needs headphones. Section 15 needs one, sections 16 to 24
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
    three, section 33 one and then three, section 34 one and then two, sections 35 and 36 one,
-   then two, then three for their last check, section 37 one and then two, and section 38 one,
-   then two, then three.
+   then two, then three for their last check, section 37 one and then two, section 38 one, then
+   two, then three, and section 39 two and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -2267,6 +2267,77 @@ Then three players: stop the game, start a Local Server with 3 players and press
   tinted. Player 2 kills player 1: as player 1 comes back 1.5 s later, players 2 and 3 show on
   window 1's minimap as faint red dots where they were (`Pulse_4294967294` and `Pulse_4294967293`),
   fading out over 3 s.
+
+## 39. The fog of war
+
+From [35-fog-of-war.md](research/35-fog-of-war.md). Two players in a Local Server, then three,
+through the course, Skirmish, the spike rounds and deathmatch. What a client's been sent of the
+others is in its own Explorer, in each player's window: `Workspace.VFPlayers` holds a model for each
+player in its snapshots, named as the player is (`Player1`, `Player2`, `Player3`), so an enemy it
+hasn't been sent has none there. The server window's Workspace has `VFFogLines` and `VFFogMs`, what
+the fog's looks cost in the last second (the lines they cast, and the milliseconds of server time
+they took), and `VFFogOff`, which set true turns the fog off.
+
+Start a Local Server with 2 players, as in section 9.
+
+- **FW1 The course.** Before anyone presses P, both players are on the course, on no side. Player 2
+  walks behind the course's walls, out of player 1's sight: `Player2` stays in window 1's
+  `VFPlayers` all the while, as `Player1` does in window 2's, and on the server `VFFogLines` reads
+  0.
+- **FW2 Behind cover.** Press P in window 1 (Skirmish): players 1 and 2 are on opposite sides. As
+  round 1's buy phase starts, agent select comes up in both windows: lock in JETT in both. Once the
+  round starts, player 2 goes behind tall cover, or round a corner, where player 1 can't see any
+  part of them, and both stand still: half a second later `Player2` is gone from window 1's
+  `VFPlayers`, and nothing of player 2 shows in window 1, not even their label. On the server,
+  `VFFogLines` reads under 30 while both stand still. Player 2 walks out (Shift held, and A or D)
+  into player 1's sight: `Player2` is back in `VFPlayers` before any of them shows, and they're
+  drawn whole from their first frame in view, never popping in. `VFFogLines` reads more while
+  player 2 walks behind the cover than while they stand. **Send:** `VFFogLines` and `VFFogMs` with
+  both still out of sight, and with player 2 walking behind the cover.
+- **FW3 A peek with a ping.** Open the Hit Reg Lab in window 1 (F2 three times) and press `]` ten
+  times: 100 ms each way. Player 2 stands still behind the corner, and player 1 runs (W) out past
+  it: player 2 shows as player 1 comes round, where they stand, from the first frame, with no
+  pop-in. Then player 1 holds still, looking at the corner, and player 2 runs out past it: the same.
+  Press `[` ten times to take the latency off, and close the lab.
+- **FW4 Heard.** Player 2 goes back behind the cover, and player 1 stands where they can't see them,
+  a few metres away. Player 2 runs back and forth behind it (A and D): `Player2` is in window 1's
+  `VFPlayers` while they run, and window 1 hears their steps from behind the cover, but no label of
+  theirs shows through it. Player 2 walks instead (Shift held): `Player2` goes half a second after
+  their last running step, and window 1 hears nothing. Player 2 fires a few rounds into the floor:
+  window 1 hears the shots, and `Player2` stays out. Player 2 stands still and reloads (R): in for
+  the reload and half a second after. Player 2 jumps on the spot: in while they're in the air.
+- **FW5 A knife's swing.** Player 2 stays behind the cover, draws the knife (3) and slashes the air
+  (the left button): window 1, a few metres away, hears it. Player 2 goes to the back of their spawn
+  room and player 1 to the back of theirs, and player 2 slashes again: window 1 hears nothing.
+- **FW6 Roots.** In the server window's Explorer, open `Workspace.Player1` and select its
+  `HumanoidRootPart`: as player 1 walks round the hall its position stays where they spawned, though
+  in window 1 everything goes on as before (the view, the sounds, dropping your gun with G and
+  picking it back up with F).
+- **FW7 Off.** In the server window, set Workspace's `VFFogOff` to true: window 1's `VFPlayers` has
+  `Player2` wherever they go, and `VFFogLines` reads 0. Set it false: once player 2 is out of
+  player 1's sight again and still, `Player2` is gone half a second later.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1.
+
+- **FW8 Teammates.** Player 3 goes behind cover, out of player 1's sight: `Player3` stays in
+  window 1's `VFPlayers`, and their label shows through the cover.
+- **FW9 Spotted.** Player 2 stands still behind cover from player 1 but in the open in front of
+  player 3, and player 3 looks at them: `Player2` is in window 1's `VFPlayers`, and their red dot's
+  on window 1's minimap, moving as they move. Player 3 looks away: half a second later `Player2` is
+  gone from window 1's `VFPlayers`.
+- **FW10 Down.** Player 2 kills player 1, and window 1 watches player 3 (as in F2): window 1's
+  `VFPlayers` has `Player2` while player 3 sees, hears or spots them, as window 3's does, and not
+  while player 3 doesn't.
+- **FW11 Out of earshot.** Press P twice in window 1 (gun game, then the spike rounds). Once round 1
+  starts, player 2 runs about in their spawn, and player 1 stays in theirs: no `Player2` in
+  window 1's `VFPlayers`, and no steps heard. Player 2 fires a few rounds into the floor: window 1
+  hears them, and `Player2` stays out.
+- **FW12 Deathmatch's pulse.** Press M in window 1, click the DEATHMATCH card and PLAY DEATHMATCH.
+  Player 2 kills player 1: as player 1 comes back, players 2 and 3 pulse on window 1's minimap where
+  they are (`Pulse_4294967294` and `Pulse_4294967293`), behind walls or not; `Player2` and `Player3`
+  are in window 1's `VFPlayers` for a moment, then only whoever player 1 sees or hears.
+
 ## Results
 
 ```
@@ -2447,6 +2518,15 @@ MP11 a `?` where player 2 fell: yes / no
 MP12 player 3 held on the edge: yes / no; player 2 shown by player 3's sight: yes / no; the X: yes / no
 MP13 the defenders' Spike: before ___, looking at it ___, looking away ___, planted ___
 MP14 the pulse lasted ___ s
+FW2 VFFogLines both still: ___, player 2 walking behind the cover: ___; VFFogMs: ___ and ___
+FW3 anything popped in at 100 ms: yes / no (who, and which way)
+FW4 Player2 in while running: yes / no; out while walking: yes / no; a label through the cover: yes / no
+FW5 the slash heard from the back of the spawn room: yes / no
+FW6 the server's root stayed where player 1 spawned: yes / no; anything in window 1 that stopped working: ___
+FW9 Player2 in window 1's VFPlayers while player 3 looked at them: yes / no
+FW10 window 1's VFPlayers matched window 3's: yes / no
+FW11 Player2 in window 1's VFPlayers across the map: yes / no; the shots heard: yes / no
+FW12 the pulse showed everyone behind walls: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -2661,3 +2741,13 @@ Didn't look right (IDs and what you saw):
 | 34 | The white circle as you run, reload and use an ability, and none as you walk or fire | MP6 |
 | 34 | A second player: shown while you see them, gone behind a wall, a cloud or a wall of fire, and not while you're blinded; the last-seen mark; the spike's rules; deathmatch's pulse | MP8, MP9, MP10, MP11, MP13, MP14 |
 | 34 | A third: an ally's arrow and cone, held on the edge, and the X where they fall | MP12 |
+| 35 | On the course, everyone sent to everyone | FW1 |
+| 35 | An enemy behind cover not sent, and one stepping out drawn from their first frame, at no ping and at 100 ms each way | FW2, FW3 |
+| 35 | An enemy heard running, reloading or jumping behind cover sent, and not walking; out of earshot on a spike map not sent, though their shots are heard | FW4, FW11 |
+| 35 | A knife swung behind cover heard only near it | FW5 |
+| 35 | Teammates always sent, and an enemy a teammate spots sent too | FW8, FW9 |
+| 35 | The dead seeing what their side does, watching a teammate | FW10 |
+| 35 | Enemies' labels not through walls, teammates' through them | FW4, FW8 |
+| 35 | Deathmatch's pulse showing everyone as you're back | FW12 |
+| 35 | `VFFogOff` sending everyone; the cost in `VFFogLines` and `VFFogMs` | FW2, FW7 |
+| 35 | A character's root staying where they spawned on the server, nothing else changed | FW6 |

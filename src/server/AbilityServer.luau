@@ -30,13 +30,16 @@
 --   * each player's kit is their own agent's, as they pick it (system 29,
 --     AgentServer): at once where they can have it (AbilityServer.choose),
 --     the kit starting over as the mode starts one, or with their next life
--- Each cast is told to every client (the Ability remote) for its sound and
--- look, when the frame on their screen reaches it, but Blade Storm's knives
--- drawn again and an ability put in hand (Curveball's flare, system 30; Hot
+-- Each cast is told to clients (the Ability remote) for its sound and look,
+-- when the frame on their screen reaches it, but Blade Storm's knives drawn
+-- again and an ability put in hand (Curveball's flare, system 30; Hot
 -- Hands' fireball, system 31; Blaze's flame, system 32), which others see
--- in hand. The caster's own client has predicted it already. Each kit is a
--- player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
--- writes it), which scripted checks read.
+-- in hand: Run it Back's mark and rising to every client, as the mark's
+-- drawn for everyone, and any other to those who'd hear it or have the
+-- caster in their snapshots (the fog of war, system 35). The caster's own
+-- client has predicted it already. Each kit is a player attribute
+-- (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary writes it), which
+-- scripted checks read.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -45,6 +48,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local FogOfWar = require(Shared.Combat.FogOfWar)
 local PlayerSim = require(Shared.PlayerSim)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -52,6 +56,7 @@ local Units = require(Shared.Units)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local CombatServer = require(script.Parent.CombatServer)
 local SpikeServer = require(script.Parent.SpikeServer)
+local FogServer = require(script.Parent.FogServer)
 
 local AbilityServer = {}
 
@@ -84,6 +89,10 @@ export type CastEvent = {
 	position: Vector3, -- studs: the caster's feet
 	direction: Vector3, -- a unit vector
 }
+
+-- The casts every client is told of: Run it Back's mark, a flame on the
+-- floor for everyone (system 33), and his rising at it.
+local EVERYONE: { [string]: boolean } = { mark = true, rise = true }
 
 -- Since when each kit has been short of a charge with nothing under way.
 local shortSince: { [Player]: number } = {}
@@ -319,7 +328,16 @@ function AbilityServer.start()
 			position = Units.toStuds(cast.position),
 			direction = Units.asVector3(cast.direction),
 		}
-		Remotes.get().Ability:FireAllClients(event)
+		local remote = Remotes.get().Ability
+		if EVERYONE[cast.kind] then
+			remote:FireAllClients(event)
+			return
+		end
+		for _, other in Players:GetPlayers() do
+			if FogServer.hears(other, cast.position, FogOfWar.Edges.cast, entity.id) then
+				remote:FireClient(other, event)
+			end
+		end
 	end)
 	-- Every life is the agent's, another agent's kit starting over (one
 	-- picked while it couldn't be had at once), and on the course and in
