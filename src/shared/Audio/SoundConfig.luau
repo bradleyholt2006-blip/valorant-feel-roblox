@@ -149,6 +149,12 @@ SoundConfig.Curves = {
 		"community",
 		"note.com (yuyujan11_valo, 2023): the drop heard at '50 m?', very quietly there; the shape between is ours"
 	),
+	-- Omen arriving by Shrouded Step (system 42): heard out to 12.5 m.
+	arrival = curve(
+		{ { 0, 1 }, { 3, 1 }, { 10, 0.6 }, { 12, 0.3 }, { 12.5, 0 } },
+		"community",
+		"VALORANT Wiki, Shrouded Step: arrival audio cue radius 12.5 m (game files); the shape within is ours"
+	),
 }
 
 -- Walls -------------------------------------------------------------------------
@@ -539,6 +545,18 @@ SoundConfig.Sounds = {
 	nearsight = sound(0.6, 0.02, 2, {
 		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
 	}, 0.5),
+	-- Shrouded Step (system 42): in hand the thick whoosh, lowest of his;
+	-- fired, the spike's defuse tone slowed right down, as the shadow
+	-- takes him; and his arrival the same tone faster, as he forms there.
+	stepEquip = sound(0.45, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.6),
+	stepGo = sound(0.8, 0.03, 3, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 0.35),
+	stepArrive = sound(0.8, 0.03, 3, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 0.7),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
@@ -547,8 +565,10 @@ SoundConfig.Sounds = {
 -- Healing Orb's starting, a Slow Orb's burst, a run or a jump through its
 -- field, Sage's wall rising, fortifying and a piece of it breaking, a body
 -- she brings back rising and bursting out, Omen's orb sent, its smoke
--- forming and warning that it's going, and his Paranoia sent), heard as
--- the ability curve says (systems 17 to 19, 30 to 33 and 36 to 41). Blade
+-- forming and warning that it's going, his Paranoia sent, and his
+-- Shrouded Step fired and his arrival, which is heard only as far as the
+-- arrival curve says), heard as the ability curve says (systems 17 to 19,
+-- 30 to 33 and 36 to 42). Blade
 -- Storm's knives drawn again sound as their draw does, and so does an
 -- ability put in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
@@ -584,6 +604,14 @@ SoundConfig.Abilities = {
 	darkcover = "darkForm",
 	fading = "darkWarn",
 	paranoia = "paranoiaSend",
+	step = "stepGo",
+	arrive = "stepArrive",
+} :: { [string]: string }
+
+-- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and
+-- the curve (SoundConfig.Curves): Shrouded Step's arrival (system 42).
+SoundConfig.CastCurves = {
+	arrive = "arrival",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -718,6 +746,9 @@ SoundConfig.Weapons = {
 	smokeorb = { draw = "darkEquip", curve = "ability" },
 	-- Paranoia's orb (system 41): the same, the orb sent the ability's.
 	blindorb = { draw = "paranoiaEquip", curve = "ability" },
+	-- Shrouded Step (system 42): the same, its firing and his arrival the
+	-- ability's.
+	stepmark = { draw = "stepEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

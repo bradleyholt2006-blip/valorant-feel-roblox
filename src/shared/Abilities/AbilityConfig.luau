@@ -20,7 +20,7 @@
 -- Inner Fire, works. Sage is the third (system 36), with her Healing Orb,
 -- her Slow Orb (system 37), her Barrier Orb (system 38) and her
 -- Resurrection (system 39). Omen is the fourth (system 40), with his Dark
--- Cover and his Paranoia (system 41).
+-- Cover, his Paranoia (system 41) and his Shrouded Step (system 42).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -194,6 +194,7 @@ local P404 = "Patch 4.04"
 local OMEN = "VALORANT Wiki, Omen"
 local COVER = "VALORANT Wiki, Dark Cover"
 local PARANOIA = "VALORANT Wiki, Paranoia"
+local STEP = "VALORANT Wiki, Shrouded Step"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -322,15 +323,17 @@ AbilityConfig.Defs = {
 		description = "X readies it. Fire on a fallen ally's body brings them back where they lie, with full health and no shield.",
 	},
 	-- Omen's (system 40): his kit as the VALORANT Wiki lists it. His Dark
-	-- Cover and his Paranoia (system 41) can be played.
+	-- Cover, his Paranoia (system 41) and his Shrouded Step (system 42) can
+	-- be played.
 	shroudedstep = {
 		id = "shroudedstep",
 		name = "Shrouded Step",
 		slot = AbilityConfig.C,
 		kind = "basic",
-		cost = p(100, "community", OMEN .. ": Shrouded Step, 100 credits"),
+		cost = p(100, "confirmed", P404 .. ": Shrouded Step 'Cost decreased 150 >>> 100' (" .. OMEN .. ": 100 still)"),
 		charges = p(2, "community", OMEN .. ": Shrouded Step, 2 uses"),
-		description = "C readies a short teleport. Fire steps you through the shadows to where it shows.",
+		weapon = "stepmark",
+		description = "C readies a short teleport, its mark on the floor. Fire steps you through the shadows to it.",
 	},
 	paranoia = {
 		id = "paranoia",
@@ -928,10 +931,39 @@ AbilityConfig.Paranoia = {
 	fade = p(0.5, "estimate", "Ours: " .. PARANOIA .. " gives no fade time; the dark clears over a moment"),
 }
 
+-- Omen's Shrouded Step (system 42): C puts it in hand (WeaponConfig's
+-- stepmark, in the fifth slot), with a mark where it would take him: along
+-- the crosshair no further than its range, on the floor below where the
+-- aim ends, if he'd stand there (StepSim). Fire there spends its charge
+-- and starts its windup, through which he can't move or fire, though he
+-- falls and slides on as he was; as it ends he's gone, out of play, and
+-- once he's been gone its time he's there, free to move, his gun back in
+-- hand a moment after. Riot gives the cost and the windup; the wiki the
+-- range and the times (42-shrouded-step.md, section 2).
+AbilityConfig.ShroudedStep = {
+	-- From his arrival until the gun's back in hand.
+	unequip = p(0.7, "community", STEP .. ": unequip 0.7 s (game files)"),
+	-- How far along the crosshair the aim can end, and how far below where
+	-- it ends it looks for a floor.
+	range = p(15, "community", STEP .. ": max cast distance 15 m (game files)"),
+	drop = p(20, "estimate", "Ours, as the Barrier Orb's: aimed into the sky at the range's end, down to the floor below"),
+	-- How far over his eye the floor it puts him on can be: onto the maps'
+	-- high crates (2.0 m), never onto a wall (5 m), even from a crate.
+	above = p(1, "estimate", "Ours: the maps have no ceiling over their walls to keep him off them"),
+	-- From the fire until he's gone, then gone this long until he's there.
+	windup = p(0.7, "confirmed", P404 .. ": 'Pre teleport delay decreased 1s >>> 0.7s'"),
+	away = p(0.5, "community", STEP .. ": arrival delay 0.5 s (its estimate, tested by hand)"),
+	-- How much longer than his time gone, on the server's clock, he stays
+	-- out of play when his moves haven't brought him there (they've stopped
+	-- coming): then he's back in play where it took him.
+	grace = p(1, "estimate", "Ours, as Run it Back's: so moves held back can't keep him out of play for long"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
--- for the Barrier Orb, after its wall's raised, and for the Resurrection,
--- after it's cast).
+-- for the Barrier Orb, after its wall's raised, for the Resurrection,
+-- after it's cast, and for Shrouded Step, after it's fired: its windup,
+-- his time gone and the draw).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -949,6 +981,9 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.DarkCover.unequip.value
 	elseif id == "paranoia" then
 		return AbilityConfig.Paranoia.unequip.value
+	elseif id == "shroudedstep" then
+		local SS = AbilityConfig.ShroudedStep
+		return SS.windup.value + SS.away.value + SS.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

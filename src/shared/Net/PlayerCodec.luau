@@ -159,7 +159,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 9 + 8 * 15 + 4 * 3 -- the ability kit
+	+ 1 + 3 + 9 + 8 * 16 + 4 * 6 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -259,10 +259,14 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.floatUntil)
 	wf64(c, a.heldUntil)
 	wf64(c, a.reach)
+	wf64(c, a.stepAt)
 	-- Exact: a vector's components are single precision.
 	wf32(c, a.mark.x)
 	wf32(c, a.mark.y)
 	wf32(c, a.mark.z)
+	wf32(c, a.stepTo.x)
+	wf32(c, a.stepTo.y)
+	wf32(c, a.stepTo.z)
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -399,9 +403,13 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local floatUntil = rf64(c)
 	local heldUntil = rf64(c)
 	local reach = rf64(c)
+	local stepAt = rf64(c)
 	local mx = rf32(c)
 	local my = rf32(c)
 	local mz = rf32(c)
+	local sx = rf32(c)
+	local sy = rf32(c)
+	local sz = rf32(c)
 	local abilities = {
 		agent = agent,
 		charges = charges,
@@ -432,6 +440,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		floatUntil = floatUntil,
 		heldUntil = heldUntil,
 		reach = reach,
+		stepAt = stepAt,
+		stepTo = vector.create(sx, sy, sz),
 	}
 
 	local tagUntilTick = r32(c)

@@ -205,6 +205,17 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- Shrouded Step (system 42): no orb, a wisp of shadow curling up off the
+	-- open hand.
+	stepmark = {
+		muzzle = vector.create(0, 0.07, -0.12),
+		pieces = {
+			{ size = vector.create(0.05, 0.05, 0.05), offset = vector.create(0, 0.035, -0.08), accent = true }, -- wisp
+			{ size = vector.create(0.035, 0.06, 0.035), offset = vector.create(0.02, 0.08, -0.07), accent = true }, -- wisp
+			{ size = vector.create(0.025, 0.05, 0.025), offset = vector.create(-0.005, 0.125, -0.06), accent = true }, -- wisp
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -241,6 +252,7 @@ local SHAPE_OF: { [string]: string } = {
 	revive = "revive",
 	smokeorb = "smokeorb",
 	blindorb = "blindorb",
+	stepmark = "stepmark",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -276,6 +288,7 @@ local ACCENT: { [string]: Color3 } = {
 	revive = Color3.fromRGB(90, 230, 210),
 	smokeorb = Color3.fromRGB(110, 70, 170),
 	blindorb = Color3.fromRGB(64, 34, 102),
+	stepmark = Color3.fromRGB(84, 52, 128),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

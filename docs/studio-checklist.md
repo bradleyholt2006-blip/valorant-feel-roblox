@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-one
+Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-two
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about six hours. Doing it in parts is fine; keep the order.
@@ -33,7 +33,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three, and
-   sections 44 and 45 one and then three.
+   sections 44 to 46 one and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -2730,13 +2730,13 @@ mark, `SmokeMark`. On the course a spent charge comes back 1.5 s after it's spen
 spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 
 - **DC1 His kit.** In agent select, the cards are JETT, PHOENIX, SAGE and OMEN, and OMEN's reads
-  CONTROLLER. Click it: his kit, with C SHROUDED STEP and X FROM THE SHADOWS dimmed with `NOT YET`,
-  Q PARANOIA lit (section 45), and E DARK COVER lit, with `E readies a shadow orb. Hold fire to send
-  its mark further, alt fire to bring it closer, and E again to smoke there.`; nothing under them,
-  as he has no passive. Click PICK OMEN: the button reads `PLAYING OMEN`, and `VFAgent` reads
-  `omen`. Close it with T. On the ability bar SHROUDED STEP and FROM THE SHADOWS are dimmed with
-  their pips dark, PARANOIA has its pip lit and DARK COVER its two, and `VFKit` reads
-  `C0/2 Q1/1 E2/2 X0/7`. **Send:** a screenshot of Omen's card.
+  CONTROLLER. Click it: his kit, with X FROM THE SHADOWS dimmed with `NOT YET`, C SHROUDED STEP lit
+  (section 46), Q PARANOIA lit (section 45), and E DARK COVER lit, with `E readies a shadow orb.
+  Hold fire to send its mark further, alt fire to bring it closer, and E again to smoke there.`;
+  nothing under them, as he has no passive. Click PICK OMEN: the button reads `PLAYING OMEN`, and
+  `VFAgent` reads `omen`. Close it with T. On the ability bar FROM THE SHADOWS is dimmed with its
+  pips dark, SHROUDED STEP and DARK COVER have their two pips lit and PARANOIA its one, and `VFKit`
+  reads `C2/2 Q1/1 E2/2 X0/7`. **Send:** a screenshot of Omen's card.
 - **DC2 In hand.** Open the Sound Lab (F2 four times), and keep it open to DC6. Press E: a low
   whoosh, logged as `darkEquip`, `yours`; the Vandal goes, and a violet ball with two wisps comes up
   over an open hand. E's square lights, with `EQUIP` under it for 0.6 s; the HUD reads
@@ -2744,7 +2744,7 @@ spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Van
   and 20 m stripes, at eye height, is the mark, a small violet ball, and round it a faint violet
   ball 8.2 m across, its middle on the floor under the mark: both show over anything in front of
   them, Dummy 1 too. Click the left button: nothing's fired or heard, and the mark's number goes up
-  a little. Press 1: the Vandal's back, the mark's gone, and `VFKit` reads `C0/2 Q1/1 E2/2 X0/7`,
+  a little. Press 1: the Vandal's back, the mark's gone, and `VFKit` reads `C2/2 Q1/1 E2/2 X0/7`,
   nothing spent.
 - **DC3 The mark.** Press E. Set `VFTestButtons` to 128 for about 2 s, then clear it: the mark
   slides away down the lane, its number climbing about 15 a second, to about 45, with the faint ball
@@ -2796,8 +2796,8 @@ Then the spike rounds: press P twice more in window 1 (gun game, then the spike 
 round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
 
 - **DC11 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, one of E's pips lit. B: under the shields
-  Dark Cover (`E`, 150) and Paranoia (`Q`, 250) are lit, and Shrouded Step reads `NOT YET`. Click
-  Dark Cover: 150 credits go, E's second pip lights, and `VFKit` reads `E2/2`; it then reads `FULL`,
+  Dark Cover (`E`, 150), Paranoia (`Q`, 250) and Shrouded Step (`C`, 100) are all lit. Click Dark
+  Cover: 150 credits go, E's second pip lights, and `VFKit` reads `E2/2`; it then reads `FULL`,
   and a second click buys nothing. Close the menu (B). Once the round's live, send one: `E1/2`, and
   E counts down from 40 under it, then reads `E2/2` again.
 
@@ -2816,8 +2816,8 @@ Vandal in hand.
 
 - **PA1 His kit.** In agent select (T), OMEN's card has Q PARANOIA lit now, with `Q readies a shadow
   orb. Fire sends it forward through walls, nearsighting and deafening everyone it touches.`, and
-  only C SHROUDED STEP and X FROM THE SHADOWS dimmed with `NOT YET`. Close it with T. On the ability
-  bar PARANOIA has its pip lit, and `VFKit` reads `C0/2 Q1/1 E2/2 X0/7`.
+  only X FROM THE SHADOWS dimmed with `NOT YET`. Close it with T. On the ability bar PARANOIA has
+  its pip lit, and `VFKit` reads `C2/2 Q1/1 E2/2 X0/7`.
 - **PA2 In hand.** Open the Sound Lab (F2 four times), and keep it open to PA5. Press Q: a thick,
   low whoosh, logged as `paranoiaEquip`, `yours`; the Vandal goes, and a dark violet ball with a
   flat band through it comes up over an open hand. Q's square lights, with `EQUIP` under it for
@@ -2880,10 +2880,106 @@ Then the spike rounds: press P twice more in window 1 (gun game, then the spike 
 round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
 
 - **PA8 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, Q's pip dark. B: under the shields Paranoia
-  (`Q`, 250) and Dark Cover (`E`, 150) are lit, and Shrouded Step reads `NOT YET`. Click Paranoia:
+  (`Q`, 250), Dark Cover (`E`, 150) and Shrouded Step (`C`, 100) are all lit. Click Paranoia:
   250 credits go, Q's pip lights, and `VFKit` reads `Q1/1`; it then reads `FULL`, and a second click
   buys nothing. Close the menu (B). Once the round's live, send one: `Q0/1`, and nothing brings it
   back that round.
+
+## 46. Omen's Shrouded Step
+
+From [42-shrouded-step.md](research/42-shrouded-step.md). One player on the course, then three
+there and in the spike rounds. Play as Omen, as in section 44. Without keys or a mouse button,
+`VFTestButtons` 4096 presses C, 128 the left button, 1 W and 64 Space: set it and clear it again
+each time. `VFTestYaw` and `VFTestPitch` aim, in degrees: positive yaw turns left, and positive
+pitch looks up. The F3 panel's `pos` line is where you stand, in metres. Your `VFLastStep` attribute
+is where your last step takes you, set as it's fired: the floor, in metres. `Workspace.VFStep` holds
+the targeter, a `StepMark` part with its `Ring` and `Ghost`, and others' steps: their windups as
+`Swirl` balls, their going as a `Puff`, the floor they're going to as a `Shadow` model, its `Entity`
+attribute whose it is, and their arrival as a `Form`. PlayerGui's `VFStep` is your own screen
+through it: its `Edge` frame through the windup, and `Dark` while you're gone. On the course a spent
+charge comes back 1.5 s after you're there. Start at the spawn facing down the target lane
+(`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **SS1 His kit.** In agent select (T), OMEN's card has C SHROUDED STEP lit now, with `C readies a
+  short teleport, its mark on the floor. Fire steps you through the shadows to it.`, and only X FROM
+  THE SHADOWS dimmed with `NOT YET`. Close it with T. On the ability bar SHROUDED STEP has its two
+  pips lit, and `VFKit` reads `C2/2 Q1/1 E2/2 X0/7`.
+- **SS2 In hand.** Open the Sound Lab (F2 four times), and keep it open to SS4. Press C: a thick,
+  low whoosh, logged as `stepEquip`, `yours`; the Vandal goes, and three wisps of shadow curl up off
+  an open hand. C's square lights, with `EQUIP` under it for 0.5 s; the HUD reads
+  `Shrouded Step   [C]`, with no ammo; and `VFKit` ends in `equip`. Just short of half way from the
+  10 m stripe to the 20 m one, about 14.9 m ahead, is a violet ring on the floor with a faint violet
+  shadow of you standing in it, both shown over anything in front of them, Dummy 1 too. Set
+  `VFTestPitch` to 20, into the sky: the ring comes back a little, to about 14 m, on the floor under
+  where your aim ends. Set it back to 0. Press C again: the Vandal's back, the ring's gone, and
+  `VFKit` still reads `C2/2`, nothing spent. **Send:** a screenshot of the ring and the shadow of
+  you.
+- **SS3 The step.** Set `VFTestPitch` to -18 and press C: once it's ready the ring's about 5 m
+  ahead, half way to the 10 m stripe. Click the left button: a slow, deep tone, logged as `stepGo`,
+  `yours`; the open hand goes, and shadow closes in from the screen's edges for 0.7 s. C's square
+  stays lit with `STEP` under it, and C has one pip lit (`VFKit` `C1/2 Q1/1 E2/2 X0/7 step`). Then
+  the screen goes dark (`VFKit` ends in `shroud`), and half a second later it clears as you're
+  there: a quicker tone, logged as `stepArrive`, `yours`, and `pos` reads about `0.00 0.00 -4.99`.
+  `VFLastStep` reads about `0, 0, -4.99`. The Vandal's back 0.7 s after you're there, and C's second
+  pip lights again 1.5 s after you're there. Walk back to the spawn.
+- **SS4 Held.** Press C, and once it's ready click the left button and at once set `VFTestButtons`
+  to 65 (W and Space), and keep it: through the windup and while you're gone you neither move nor
+  jump, `pos` changing only as you're put 5 m ahead, and once you're there you jump and walk on down
+  the lane. Clear it, press F2 to close the Sound Lab, and walk back to the spawn.
+- **SS5 Nowhere.** Walk to the crouch tunnel, behind the spawn on the right, and stand 3 m in front
+  of its mouth facing into it (`pos` about `3.00 0.00 8.00`, `VFTestYaw` -90). Press C and set
+  `VFTestPitch` to -18: the ring's red, on the floor under the tunnel's roof, which is lower than
+  you stand, and there's no shadow of you. Click the left button: nothing's fired or heard, the open
+  hand stays, and `VFKit` still reads `C2/2`. Set `VFTestPitch` to -30: the ring's violet again just
+  outside the tunnel's mouth, drawn back from under its roof, with the shadow of you in it. Click
+  the left button: you're put there, `pos` about `5.61 0.00 8.00`.
+- **SS6 Onto a box.** Walk to the red 1.00 m jump box, the furthest left of the four, and stand 5 m
+  in front of it facing it (`pos` about `-13.50 0.00 -5.00`, `VFTestYaw` 0). Press C and set
+  `VFTestPitch` to -7: the ring's on the box's top, with the shadow of you standing on it. Click the
+  left button: you're put on top, `pos` about `-13.50 1.00 -10.05`. Walk off it.
+- **SS7 A wall.** Walk to the wallbang lane and stand on its line in front of the `concrete 0.10 m`
+  wall, facing the walls (`pos` about `-26.00 0.00 -10.00`, `VFTestYaw` 0, `VFTestPitch` 0). Press
+  C: the ring's on the floor just this side of the wall, never behind it. Click the left button:
+  `pos` about `-26.00 0.00 -19.51`, the wall right in front of you. Press C and set `VFTestPitch` to
+  75, the aim up over the wall into the sky: the floor below where it ends is behind the wall, out
+  of your sight, so the ring's red, and the left button does nothing. Press C to put it away, set
+  `VFTestPitch` back to 0, and walk back to the spawn.
+
+Then three players: stop the game and start a Local Server with 3 players, as in section 9. In
+window 1 play as Omen, as before, and open the Sound Lab in windows 2 and 3.
+
+- **SS8 Seen and heard.** Player 1 stands 4 m left of the spawn facing down the target lane (`pos`
+  about `-4.00 0.00 0.00`, `VFTestYaw` 0), player 3 about 2 m to their right, and player 2 down the
+  lane, half way from the 20 m stripe to the 30 m one, in line with player 1 and facing them. In
+  window 1 press C, set `VFTestPitch` to -9, the ring about 10 m ahead, and click the left button:
+  windows 2 and 3 log `stepGo`, and in both, shadow swirls up round player 1 (`Swirl` balls in
+  `Workspace.VFStep`). 0.7 s later player 1's gone from both: a puff of shadow where they stood
+  (`Puff`), and a column of shadow on the floor where they're going, darkening (a `Shadow` model).
+  Half a second later player 1 stands there, shadow drawn in round them (`Form`), and the column's
+  gone. Window 3, about 10 m away, logs `stepArrive`; window 2, about 15 m away, logs it as
+  `not heard: out of range`, or not at all. **Send:** a screenshot of window 2 with the column of
+  shadow.
+- **SS9 Out of play.** Player 1 walks back to where they stood, and player 2 draws the Vandal. Once
+  C's pips are both lit again, player 1 steps about 10 m ahead as before, and as the column of
+  shadow shows in window 2, player 2 aims at it and holds the left button for about a third of a
+  second: nothing hits player 1 before they're there, and the health over their head doesn't change.
+  Once they're there, player 2's shots hit them again.
+
+Then the spike rounds: press P three times in window 1, and as round 1's buy phase starts, pick OMEN
+and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+
+- **SS10 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, C's pips dark. B: under the shields Shrouded
+  Step (`C`, 100), Paranoia (`Q`, 250) and Dark Cover (`E`, 150) are all lit. Click Shrouded Step:
+  100 credits go, and C's first pip lights (`VFKit` `C1/2`). Click it again: another 100, both pips
+  lit (`C2/2`); it then reads `FULL`, and a third click buys nothing. Close the menu (B). Press C:
+  the ring shows on the minimap too, a violet disc where it would take you (`VFMinimap`'s `Icons`
+  has `Step`). Still in the buy phase, walk up to the barrier in the door you face until it stops
+  you, then step back about 2 m, facing it. Set `VFTestPitch` to -10: the ring's on the floor this
+  side of the barrier, never past it. Set `VFTestPitch` to 70 and then 80, the aim up over the
+  barrier: the ring's red both times, and the left button does nothing. Set it to 0 and press C to
+  put it away: still `C2/2`. Once the round's live and the barrier's gone, press C, set
+  `VFTestPitch` to -18 and click the left button: you're put about 5 m ahead, through the door, and
+  `VFKit` reads `C1/2`, which nothing brings back that round.
 
 ## Results
 
@@ -3146,6 +3242,16 @@ PA5 dark past about ___ m, ahead and behind; the muffles' Frequency ___ and the 
 PA6 window 2 warned: yes / no; windows 1 and 3 warned: yes / no; window 2 dark about ___ s after the send; its Seen while dark: ___; the wisp in windows 1 and 3: yes / no
 PA7 window 2's VFBlind after the first flare: ___; after the second: ___
 PA8 Q's pip as the round began: ___; bought for ___
+SS1 anything on Omen's card or the bar that read differently: ___
+SS2 EQUIP for about ___ s; the ring about ___ m out, and ___ m at pitch 20; anything the Sound Lab logged differently: ___
+SS3 pos after the step: ___; VFLastStep: ___; dark for about ___ s; the Vandal back after ___ s; C's pip back after ___ s
+SS4 moved or jumped before you were there: yes / no; walked on after: yes / no
+SS5 the ring at pitch -18: ___; pos after the step at pitch -30: ___
+SS6 pos after the step onto the box: ___
+SS7 pos after the step at the wall: ___; the ring at pitch 75: ___
+SS8 the windows that logged stepGo: ___; stepArrive in window 3: ___; in window 2: ___; the swirl, puff, column and form in windows 2 and 3: yes / no
+SS9 the health over player 1's head after the shots at the column: ___; hit once there: yes / no
+SS10 C's pips as the round began: ___; bought for ___ each; the minimap's Step: yes / no; the ring past the barrier in the buy phase: yes / no; red over it: yes / no; C after the step once live: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -3406,3 +3512,8 @@ Didn't look right (IDs and what you saw):
 | 41 | Through walls: the dummies behind the wallbang lane's walls touched | PA4 |
 | 41 | The nearsight on your own screen: dark past 7.5 m whichever way you look, the sky too, a shell of shadow round the camera seen from inside, the tone, the muffling and the minimap covered, all clearing after 2 s | PA5, PA6 |
 | 41 | With other players: the warning in its path, an enemy nearsighted and deafened, their minimap telling them of nobody, the wisp, a far flash not blinding them, and the charge bought for 250 | PA6, PA7, PA8 |
+| 42 | Shrouded Step lit on Omen's card and the bar, `C2/2` on the course, and in hand 0.5 s after C, with the ring where it would take you shown through anything | SS1, SS2 |
+| 42 | The step: the windup, then gone, then there 5 m down the lane, the gun back 0.7 s after, and `VFLastStep` | SS3 |
+| 42 | Held through the windup: moving and jumping do nothing, and you walk on once you're there | SS4 |
+| 42 | Nowhere under the crouch tunnel's roof, the ring red; onto the 1.00 m jump box; in front of a wall, never through it or over it | SS5, SS6, SS7 |
+| 42 | With other players: the swirl, the puff, the shadow where you're going and your arrival, heard within 12.5 m; nothing hitting you while you're gone; the minimap's ring; and in the spike rounds, both charges bought at 100 and no step past the spawn's barrier, through it or over it | SS8, SS9, SS10 |

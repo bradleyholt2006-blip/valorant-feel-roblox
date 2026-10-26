@@ -229,7 +229,8 @@ local function tick()
 	simTime += DT
 	PlayerController.buttons = input.buttons
 	-- Back at Run it Back's mark (system 33): the view's there at once,
-	-- turned the way he faced as he cast it.
+	-- turned the way he faced as he cast it. Gone by Shrouded Step (system
+	-- 42), it's where he's going at once, turned as it was.
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "rise" then
@@ -237,6 +238,9 @@ local function tick()
 				visualOffset = vector.create(0, 0, 0)
 				CameraController.yaw = s.abilities.markYaw
 				CameraController.pitch = 0
+			elseif cast.kind == "vanish" then
+				prevPosition = s.movement.position
+				visualOffset = vector.create(0, 0, 0)
 			end
 		end
 	end
@@ -470,9 +474,11 @@ local function onAck(payload: buffer)
 		end
 		visualOffset += before - corrected.movement.position
 		prevPosition += corrected.movement.position - before
-		-- Held through Run it Back's return (system 33), he's where the
-		-- server has him at once, the blend left out.
-		if AbilitySim.returning(corrected.abilities, corrected.movement.tick * DT) then
+		-- Held through Run it Back's return (system 33), or gone by Shrouded
+		-- Step (system 42), he's where the server has him at once, the blend
+		-- left out.
+		local last = corrected.movement.tick * DT
+		if AbilitySim.returning(corrected.abilities, last) or AbilitySim.shrouded(corrected.abilities, last) then
 			visualOffset = vector.create(0, 0, 0)
 			prevPosition = corrected.movement.position
 		end

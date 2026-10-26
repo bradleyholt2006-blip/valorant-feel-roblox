@@ -38,14 +38,16 @@
 -- again and an ability put in hand (Curveball's flare, system 30; Hot
 -- Hands' fireball, system 31; Blaze's flame, system 32), which others see
 -- in hand, the Healing Orb's tries (system 36), which HealServer judges
--- and tells of as one heals, and the Barrier Orb's wall (system 38), which
--- BarrierServer tells of as it rises: Run it Back's mark and rising to
--- every client, as the mark's drawn for everyone, Dark Cover's orb sent
--- (system 40) to the caster's side alone (Patch 11.00: 'Dark Cover no
--- longer plays audio in third person within 12.5 meters for opponents.
--- This audio will still play for Allies.'), and any other to those who'd
--- hear it or have the caster in their snapshots (the fog of war, system
--- 35). The caster's own client has predicted it already. Each kit
+-- and tells of as one heals, the Barrier Orb's wall (system 38), which
+-- BarrierServer tells of as it rises, and Omen going in his Shrouded Step
+-- (system 42), which StepServer tells of with where he's going: Run it
+-- Back's mark and rising to every client, as the mark's drawn for
+-- everyone, Dark Cover's orb sent (system 40) to the caster's side alone
+-- (Patch 11.00: 'Dark Cover no longer plays audio in third person within
+-- 12.5 meters for opponents. This audio will still play for Allies.'), and
+-- any other to those who'd hear it or have the caster in their snapshots
+-- (the fog of war, system 35), Omen's arrival as far as its own curve goes.
+-- The caster's own client has predicted it already. Each kit
 -- is a player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
 -- writes it), which scripted checks read.
 
@@ -349,6 +351,7 @@ function AbilityServer.start()
 			or cast.kind == "heal"
 			or cast.kind == "selfheal"
 			or cast.kind == "barrier"
+			or cast.kind == "vanish"
 		then
 			return
 		end
@@ -374,8 +377,9 @@ function AbilityServer.start()
 			end
 			return
 		end
+		local edge = if cast.kind == "arrive" then FogOfWar.Edges.arrive else FogOfWar.Edges.cast
 		for _, other in Players:GetPlayers() do
-			if FogServer.hears(other, cast.position, FogOfWar.Edges.cast, entity.id) then
+			if FogServer.hears(other, cast.position, edge, entity.id) then
 				remote:FireClient(other, event)
 			end
 		end

@@ -50,5 +50,6 @@ require("./barrierorb")
 require("./resurrection")
 require("./darkcover")
 require("./paranoia")
+require("./shroudedstep")
 
 H.finish()

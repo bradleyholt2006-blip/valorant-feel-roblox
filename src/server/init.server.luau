@@ -7,15 +7,15 @@
 -- The spike moves on after the moves that planted, defused or picked it up,
 -- so its blast is in the frame's snapshot; the guns on the ground after the
 -- moves that walked over them.
--- Ability kits refill on the course after the moves that cast from them,
--- a Phoenix whose body's been gone too long in Run it Back is back in play,
--- thrown clouds whose thrower is dead fly on, flares pop, blinding whoever
--- the moves left looking at them, walls of fire whose caster is dead run
--- on, fires burn whoever the moves left standing in them, the Healing
--- Orb's heals give what they've come to, after the fires' burns that pause
--- them, the Slow Orb's fields say whom the moves left slowed, and
--- Paranoia's orbs touch whoever the moves left in their way, before the
--- minimap's spotting goes by what they see.
+-- Ability kits refill on the course after the moves that cast from them, a
+-- Phoenix whose body's been gone too long in Run it Back is back in play, and
+-- so is an Omen gone too long in his Shrouded Step, thrown clouds whose thrower
+-- is dead fly on, flares pop, blinding whoever the moves left looking at them,
+-- walls of fire whose caster is dead run on, fires burn whoever the moves left
+-- standing in them, the Healing Orb's heals give what they've come to, after
+-- the fires' burns that pause them, the Slow Orb's fields say whom the moves
+-- left slowed, and Paranoia's orbs touch whoever the moves left in their way,
+-- before the minimap's spotting goes by what they see.
 -- Regen Shields refill after the shots, and the minimap's spotting looks
 -- after them, so nobody they killed is seen; the fog of war's looks come
 -- after that, with what each side spots, and each player's snapshot goes
@@ -52,6 +52,7 @@ local ReviveServer = require(script.ReviveServer)
 local ParanoiaServer = require(script.ParanoiaServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
+local StepServer = require(script.StepServer)
 local MinimapServer = require(script.MinimapServer)
 local FogServer = require(script.FogServer)
 local PickupsServer = require(script.PickupsServer)
@@ -74,6 +75,7 @@ ReviveServer.start()
 ParanoiaServer.start()
 BlazeServer.start()
 RunItBackServer.start()
+StepServer.start()
 MinimapServer.start()
 FogServer.start()
 GroundGunsServer.start()
@@ -94,6 +96,7 @@ RunService.Heartbeat:Connect(function(dt)
 	SpikeServer.step(now)
 	AbilityServer.step(now)
 	RunItBackServer.step(now)
+	StepServer.step(now)
 	CloudServer.step(now)
 	FlareServer.step(now)
 	BlazeServer.step(now)

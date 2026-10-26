@@ -9,7 +9,9 @@
 -- fireball, system 31; Blaze's flame, system 32; the Healing Orb, system
 -- 36), its note EQUIP until it can be thrown, and Blaze's while its wall's
 -- being bent; Run it Back's while it runs, its note the seconds left, and
--- through his return, BACK (system 33). What can't be played yet is dimmed.
+-- through his return, BACK (system 33); and Shrouded Step's through its
+-- windup and his time gone, STEP (system 42). What can't be played yet is
+-- dimmed.
 -- It reads the local player's predicted kit (PlayerController.sim), so a
 -- cast shows on the tick it's pressed. A kit of no agent's, as deathmatch's
 -- (system 26), has no bar. Where abilities recharge over time (Team
@@ -211,6 +213,9 @@ function AbilityHud.start()
 					end
 				elseif def and def.id == "updraft" then
 					lit = AbilitySim.lifting(kit, t)
+				elseif def and def.id == "shroudedstep" and AbilitySim.stepping(kit, t) then
+					lit = true
+					note = "STEP"
 				elseif kit.holding == index then
 					lit = true
 					if t < s.weapons.equipEndTime then
