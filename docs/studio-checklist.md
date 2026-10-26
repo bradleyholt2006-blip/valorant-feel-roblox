@@ -1637,7 +1637,9 @@ Start a Local Server with 2 players, as in section 9. Both start on the course.
   ARMOR); PHANTOM and VANDAL (HEAVY ARMOR). The first of each is outlined in gold, and the mouse
   moves a cursor. Click GHOST: the outline moves to it, the Ghost is in your hands at once in the
   Classic's place, and the HUD shows no shield. In stage 2's column click STINGER, in stage 3's
-  SPECTRE, and close the menu with B. **Send:** a screenshot of the menu.
+  SPECTRE. O opens the settings menu over it; close it with O, and the menu is still up, the
+  mouse still moves its cursor, and a click still fires nothing. Close the menu with B.
+  **Send:** a screenshot of the menu.
 - **TD3 The match.** Wait out the countdown, or run `VFMatchSkip` once. The barriers go, the
   top bar's clock reads `9:30` counting down with `STAGE 1 OF 4` under it, and under the bar
   `FIRST TO 100   NEXT STAGE IN 1:15   B loadouts`. In the middle,
@@ -1975,7 +1977,7 @@ DM4 the pack healed to 100 + 50: yes / no; the magazine full: yes / no; the cros
 DM5 respawns in player 1's sight: ___ of 5; facing a wall: ___ of 5
 DM6 window 2's title: ___; MATCH MVP on ___
 TD1 the map: ___; the TEAM DEATHMATCH card's name fit: yes / no; anything that did work of 5 to 9 and G: ___
-TD2 anything in the menu that read differently: ___; the Ghost in hand at once: yes / no
+TD2 anything in the menu that read differently: ___; the Ghost in hand at once: yes / no; after O closed, the cursor stayed the menu's: yes / no
 TD3 the menu closed as you left the room: yes / no; B did nothing out there: yes / no
 TD4 the burn began ___ s into the match; player 2 fell ___ s after; the kill feed read: ___
 TD5 player 2 a force field: yes / no; their label stayed at 100 + 25: yes / no; ENEMY SPAWN ROOM at once: yes / no
@@ -2174,7 +2176,7 @@ Didn't look right (IDs and what you saw):
 | 26 | A life comes back 1.5 s after a death, away from where it fell, facing open floor | DM4, DM5 |
 | 26 | A match's end: the victory screen of everyone in their places, `VICTORY` and `2ND PLACE`, MATCH MVP on the winner, then the vote of the spike rounds' maps, and the next match on the winner | DM6, DM7 |
 | 27 | PLAY TEAM DEATHMATCH on the Play menu's seventh card, `5v5`, starts it on one of the three maps, each side in its own spawn room behind the barriers, with the pre-game's countdown | TD1 |
-| 27 | B opens the loadout menu; a click picks a loadout, and in the pre-game or the room it's in your hands at once, with its shield. Out of the room in a match, B does nothing | TD2, TD3, TD6 |
+| 27 | B opens the loadout menu; a click picks a loadout, and in the pre-game or the room it's in your hands at once, with its shield. Out of the room in a match, B does nothing. The settings menu opens over it and gives the cursor back to it | TD2, TD3, TD6 |
 | 27 | The top bar's kills, clock and stage, and a new stage's loadout handed over 5 s in, or at once in the room, with a new primary drawn | TD3, TD6, TD7 |
 | 27 | A respawn is a force field to others and can't be hurt until it fires or leaves the room | TD3, TD5 |
 | 27 | Staying in your room 15 s, or going into the other side's, burns, with the HUD's warning, and a death there reads `SPAWN ROOM` in the kill feed | TD4, TD5 |
