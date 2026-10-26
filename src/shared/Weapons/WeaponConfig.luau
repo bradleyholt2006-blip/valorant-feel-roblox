@@ -750,6 +750,12 @@ local BARRIER_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a wall raised doe
 -- A try a click, as the Healing Orb's (ours: no source says).
 local WALL_TRIES = p(10, "estimate", "Ours: ten tries a second while fire's held, until there's somewhere for its wall")
 
+-- Sage's Resurrection (system 39): not thrown, but tried on the fallen ally
+-- whose body is under the crosshair (ReviveSim), as the Healing Orb is on a
+-- standing one, so it takes the orb's no spread, no kick and try a click. A
+-- try over nobody leaves it in hand for the next.
+local RESURRECTION = "VALORANT Wiki, Resurrection"
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -1707,14 +1713,41 @@ WeaponConfig.Defs = {
 		accuracy = barrierExact,
 		recoil = BARRIER_KICK,
 	},
+	-- Sage's Resurrection (system 39): put in hand in the fifth slot by X
+	-- once its points are full (AbilityConfig.Resurrection), as the Healing
+	-- Orb is by E. Fire tries it on the fallen ally whose body is under the
+	-- crosshair; PlayerSim turns each try into the ability's cast, so it
+	-- fires no bullet, and keeps it in hand, a try at a time, until the
+	-- server finds one brings someone back (ReviveServer) and puts it away.
+	revive = {
+		id = "revive",
+		name = "Resurrection",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought: X puts it in hand once the ultimate's points are full (" .. RESURRECTION .. ")"),
+		fireMode = "semi",
+		fireRate = ORB_TRIES,
+		magazine = p(1, "community", RESURRECTION .. ": a revive"),
+		reserve = p(0, "community", "None: another revive is another ultimate (" .. RESURRECTION .. ")"),
+		reloadTime = ORB_NA,
+		equipTime = p(0.8, "community", RESURRECTION .. ": equip time 0.8 s (game files)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it brings back (" .. RESURRECTION .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "resurrection",
+		accuracy = orbExact,
+		recoil = ORB_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
 -- they always were, the rest in alphabetical order after them, the spike
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
 -- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
--- the Healing Orb (system 36), the Slow Orb (system 37) and the Barrier Orb
--- (system 38) last.
+-- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
+-- (system 38) and the Resurrection (system 39) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1745,6 +1778,7 @@ WeaponConfig.Ids = {
 	"healorb",
 	"iceorb",
 	"wallorb",
+	"revive",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

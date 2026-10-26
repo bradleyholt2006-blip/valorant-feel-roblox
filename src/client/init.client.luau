@@ -38,6 +38,7 @@ local RunItBackView = require(script.RunItBackView)
 local HealView = require(script.HealView)
 local SlowView = require(script.SlowView)
 local BarrierView = require(script.BarrierView)
+local ReviveView = require(script.ReviveView)
 local MinimapView = require(script.MinimapView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
@@ -123,6 +124,7 @@ RunItBackView.start()
 HealView.start()
 SlowView.start()
 BarrierView.start()
+ReviveView.start()
 -- The minimap at the top left (system 34), and the big map while Caps Lock
 -- is held: the map, your side and the enemies it sees, the spike, what's
 -- been thrown, and the sounds you make.

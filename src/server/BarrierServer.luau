@@ -12,7 +12,9 @@
 -- buy phase (Patch 1.14). Shots and swings are traced through them as the
 -- attacker's screen showed them (CombatServer.levelAt), and nobody sees
 -- through them (BarrierServer.standing, for the minimap's spotting and the
--- Healing Orb's aim).
+-- Healing Orb's aim). Someone Sage's Resurrection brings back inside a
+-- wall breaks the segments they're in as they burst out (breakIn, system
+-- 39).
 --
 -- Each segment's health is kept here: 400 as it forms, fortified to 600
 -- less what it's lost 2 s after it's raised, and decaying to nothing over
@@ -37,6 +39,7 @@ local BarrierSim = require(Shared.Abilities.BarrierSim)
 local SlowSim = require(Shared.Abilities.SlowSim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local Penetration = require(Shared.Combat.Penetration)
+local BoxMath = require(Shared.Movement.BoxMath)
 local Spike = require(Shared.Spike.Spike)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -217,6 +220,31 @@ function BarrierServer.step(now: number)
 		table.clear(walls)
 		for _, k in kept do
 			table.insert(walls, k.wall)
+		end
+	end
+	show(now)
+end
+
+-- Every segment standing at `now` that the box at `center` (`half` its
+-- half size, metres) is in breaks: someone the Resurrection brings back
+-- there bursts out through it (system 39; Patch 3.0: 'Characters blocked
+-- by Sage's Barrier Orb when resurrected now break the wall to ensure they
+-- don't get pushed inside map geo').
+function BarrierServer.breakIn(center: vector, half: vector, now: number)
+	for _, k in kept do
+		local wall = k.wall
+		for _, segment in wall.segments do
+			if BarrierSim.standing(wall, segment, now) and BoxMath.separation(center, half, BarrierSim.box(wall, segment, now)) < 0 then
+				segment.broken = now
+				Remotes.get().Ability:FireAllClients({
+					entity = wall.owner,
+					ability = "barrierorb",
+					kind = "break",
+					id = wall.id,
+					index = segment.index,
+					at = now,
+				})
+			end
 		end
 	end
 	show(now)

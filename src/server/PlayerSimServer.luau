@@ -31,7 +31,12 @@
 -- and her Barrier Orb's walls stand in the world their ticks go through
 -- (system 38, from BarrierServer, PlayerSimServer.barriers), both judged
 -- at the time their screen showed (SlowSim.judged), as their own
--- prediction judges them.
+-- prediction judges them. Her Resurrection (system 39, ReviveServer) asks
+-- for a new life where a body lies (revive): it starts as high as the body
+-- has risen, out of play, on the last life's kit with no shield, and held
+-- in its simulation (AbilitySim's floatUntil and heldUntil, which the
+-- owner learns from CharacterRig.REVIVED) until ReviveServer has it burst
+-- out.
 --
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
 -- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
@@ -48,6 +53,8 @@
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
@@ -59,8 +66,10 @@ local Accuracy = require(Shared.Weapons.Accuracy)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local SlowSim = require(Shared.Abilities.SlowSim)
 local BarrierSim = require(Shared.Abilities.BarrierSim)
+local ReviveSim = require(Shared.Abilities.ReviveSim)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
@@ -100,6 +109,10 @@ type Record = {
 	kitShield: string?, -- and its shield ("" for none; nil: WeaponConfig.DefaultShield)
 	spawnAskedAt: number?, -- os.clock() when a new life was asked for, until it starts
 	behind: number, -- seconds their screen was behind the server at their last move run
+	-- The Resurrection's return asked for (system 39), until its life starts:
+	-- the floor under the body, the way it faced, and when it was cast
+	-- (server time).
+	revive: { feet: vector, yaw: number, at: number }?,
 }
 
 -- Called with the bullets of each round a player fires (several for a
@@ -243,8 +256,16 @@ local function onCharacter(r: Record, character: Model)
 	character.DescendantAdded:Connect(tagPart)
 
 	r.rootOffset = CharacterRig.rootOffset(character, root)
+	-- The Resurrection's return (system 39) starts where the body lies, as
+	-- high as it's risen by now, facing the way it does.
+	local revive = r.revive
+	r.revive = nil
+	local now = Workspace:GetServerTimeNow()
 	local picker = PlayerSimServer.spawnPicker
-	local point = if picker then picker(r.player) else nil
+	local point: SpawnPoint? = if revive
+		then { feet = revive.feet + vector.create(0, ReviveSim.risen(revive.at, now), 0), yaw = revive.yaw }
+		elseif picker then picker(r.player)
+		else nil
 	local feet = if point then point.feet else Units.toMetres(root.Position - Vector3.new(0, r.rootOffset, 0))
 	r.spawnFeet = feet + vector.create(0, 0.05, 0)
 	r.lastSeq += InputQueue.LIFE_GAP
@@ -254,16 +275,31 @@ local function onCharacter(r: Record, character: Model)
 		r.yaw, r.pitch = point.yaw, 0
 		character:SetAttribute(CharacterRig.SPAWN_YAW, point.yaw)
 	end
+	-- Held as it rises until it bursts out, and then for the fall, in the
+	-- life's own seconds.
+	local floatFor = if revive then math.max(ReviveSim.burstAt(revive.at) - now, 0) else nil
+	if floatFor then
+		character:SetAttribute(CharacterRig.REVIVED, floatFor)
+	end
 	character:SetAttribute(CharacterRig.SPAWN_FEET, Units.asVector3(r.spawnFeet))
 	r.spawnAskedAt = nil
 	r.sim = newSim(r)
+	if floatFor then
+		r.sim.abilities.floatUntil = floatFor
+		r.sim.abilities.heldUntil = floatFor + AbilityConfig.Resurrection.fall.value
+	end
 	r.inputs = InputQueue.new()
 	r.character = character
 	r.root = root
 	r.ackDirty = true
 	r.alive = true
 	restartPacing(r)
-	local kept = if PlayerSimServer.keepShields and not r.freshKit then Health.keep(r.entity.health) else nil
+	-- Brought back with full health 'excluding shields' (the VALORANT
+	-- Wiki): the shield worn, broken.
+	local kept = if revive
+		then ReviveSim.UNSHIELDED
+		elseif PlayerSimServer.keepShields and not r.freshKit then Health.keep(r.entity.health)
+		else nil
 	if r.freshKit then
 		Health.setShield(r.entity.health, r.kitShield or WeaponConfig.DefaultShield)
 		r.freshKit = false
@@ -271,6 +307,10 @@ local function onCharacter(r: Record, character: Model)
 	Health.reset(r.entity.health)
 	if kept then
 		Health.restore(r.entity.health, kept)
+	end
+	-- Out of play as the body rises, until it bursts out (ReviveServer).
+	if revive then
+		r.entity.health.alive = false
 	end
 	r.entity.sim = r.sim
 
@@ -345,6 +385,7 @@ local function onPlayerAdded(player: Player)
 		kitShield = nil,
 		spawnAskedAt = nil,
 		behind = 0,
+		revive = nil,
 	}
 	records[player] = r
 	Entities.add(entity)
@@ -379,10 +420,18 @@ end
 
 -- Debug loadout changes, 5 to 9 (Studio / place owner); in the arena, its
 -- buy phase decides. The buy menu is ShopServer's. Asking for the spike
--- hands over the one there is.
+-- hands over the one there is, and in Studio asking for "ultimate" fills
+-- the ultimate's points, so one can be checked in any mode.
 local function onLoadout(player: Player, slot: any, id: any)
 	local r = records[player]
 	if not r or typeof(slot) ~= "number" or typeof(id) ~= "string" then
+		return
+	end
+	if id == "ultimate" then
+		if RunService:IsStudio() then
+			AbilitySim.addPoints(r.sim.abilities, math.huge)
+			PlayerSimServer.markDirty(player)
+		end
 		return
 	end
 	local rule = PlayerSimServer.loadoutRule
@@ -488,6 +537,36 @@ function PlayerSimServer.expectSpawn(player: Player)
 	local r = records[player]
 	if r then
 		r.spawnAskedAt = os.clock()
+	end
+end
+
+-- A new life for a fallen player brought back by the Resurrection (system
+-- 39), asked for at once: it starts on the floor under their body (`feet`)
+-- as high as it's risen since the cast at server time `at`, facing `yaw`,
+-- out of play and held until it bursts out (ReviveServer). It keeps the
+-- last life's kit, whatever a death in the spike rounds took back for the
+-- next round (startingKit), but with no shield.
+function PlayerSimServer.revive(player: Player, feet: vector, yaw: number, at: number)
+	local r = records[player]
+	if not r then
+		return
+	end
+	r.revive = { feet = feet, yaw = yaw, at = at }
+	r.freshKit = false
+	PlayerSimServer.expectSpawn(player)
+	task.defer(function()
+		if player.Parent and r.revive then
+			player:LoadCharacterAsync()
+		end
+	end)
+end
+
+-- A return asked for that hasn't started given up (a new round): the next
+-- life starts as any other.
+function PlayerSimServer.forgetRevive(player: Player)
+	local r = records[player]
+	if r then
+		r.revive = nil
 	end
 end
 

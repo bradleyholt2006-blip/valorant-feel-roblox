@@ -2353,13 +2353,13 @@ healed. On the course a spent charge comes back 1.5 s after it's spent. Start ea
 Vandal in hand.
 
 - **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX and SAGE, and SAGE's reads SENTINEL.
-  Click it: her kit, X RESURRECTION dimmed, with `NOT YET` and its line, C BARRIER ORB and Q SLOW
-  ORB lit (sections 42 and 41), and E HEALING ORB lit, with `E readies a healing orb. Fire heals the
-  hurt ally in your crosshair, alt fire heals you, 100 health over 5 s.`; nothing under them, as she
-  has no passive. Click PICK SAGE: the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`.
-  Close it with T. On the ability bar RESURRECTION is dimmed with its pips dark, BARRIER ORB has its
-  pip lit, SLOW ORB its two and HEALING ORB its one, and `VFKit` reads `C1/1 Q2/2 E1/1 X0/7`.
-  **Send:** a screenshot of Sage's card.
+  Click it: her kit, X RESURRECTION, C BARRIER ORB and Q SLOW ORB lit (sections 43, 42 and 41), and
+  E HEALING ORB lit, with `E readies a healing orb. Fire heals the hurt ally in your crosshair, alt
+  fire heals you, 100 health over 5 s.`; nothing under them, as she has no passive. Click PICK SAGE:
+  the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`. Close it with T. On the ability bar
+  RESURRECTION has its seven pips lit gold, BARRIER ORB has its pip lit, SLOW ORB its two and
+  HEALING ORB its one, and `VFKit` reads `C1/1 Q2/2 E1/1 X7/7`. **Send:** a screenshot of Sage's
+  card.
 - **HO2 In hand.** Press E: a quick whoosh, the Vandal goes, and a small green ball comes up over
   your hand. E's square lights, with `EQUIP` under it for 0.5 s; the HUD reads `Healing Orb   [E]`,
   with no ammo; E's pip stays lit; and `VFKit` ends in `equip`. You run at the knife's speed,
@@ -2369,7 +2369,7 @@ Vandal in hand.
   button: the same, as you're not hurt. Look at Dummy 1, the static dummy 10 m down the target lane,
   and click: the same, as it's on nobody's side.
 - **HO4 Put away.** E again: the orb goes and the Vandal comes back with its own draw, and `VFKit`
-  reads `C1/1 Q2/2 E1/1 X0/7`, nothing spent. E, then 1: the same.
+  reads `C1/1 Q2/2 E1/1 X7/7`, nothing spent. E, then 1: the same.
 - **HO5 The sounds.** Open the Sound Lab (F2 four times) and press E: it logs `orbEquip` as `yours`
   as the orb comes up, and clicks with it log nothing. Press 1, and F2 to close the lab.
 
@@ -2444,8 +2444,8 @@ jump line are the HUD panel's (F3).
 
 - **SO1 Her kit.** In agent select (T), SAGE's card has Q SLOW ORB lit, with `Q readies a slowing
   orb. Fire throws it; it bursts into a field of ice that slows everyone in it, you too.` and no
-  `NOT YET`; X RESURRECTION is still dimmed, with `NOT YET`. On the ability bar SLOW ORB is lit with
-  both its pips, and `VFKit` reads `C1/1 Q2/2 E1/1 X0/7`.
+  `NOT YET`; X RESURRECTION is lit too (section 43). On the ability bar SLOW ORB is lit with both
+  its pips, and `VFKit` reads `C1/1 Q2/2 E1/1 X7/7`.
 - **SO2 In hand.** Press Q: a light gust, the Vandal goes, and a pale ball with two shards of ice
   comes up over your hand. Q's square lights, with `EQUIP` under it for 0.5 s; the HUD reads
   `Slow Orb   [Q]`, with no ammo; both of Q's pips stay lit; and `VFKit` ends in `equip`. You run at
@@ -2546,9 +2546,9 @@ The numbers below are for walls raised from the spawn, with the Vandal in hand, 
 is the HUD panel's (F3).
 
 - **BO1 Her kit.** In agent select (T), SAGE's card has C BARRIER ORB lit, with `C readies a barrier
-  orb. Fire raises a wall of ice where it shows; C again or held alt fire turns it.` and no
-  `NOT YET`; X RESURRECTION is still dimmed, with `NOT YET`. On the ability bar BARRIER ORB is lit
-  with its pip, and `VFKit` reads `C1/1 Q2/2 E1/1 X0/7`.
+  orb. Fire raises a wall of ice where it shows; C again or held alt fire turns it.` and no `NOT
+  YET`; X RESURRECTION is lit too (section 43). On the ability bar BARRIER ORB is lit with its pip,
+  and `VFKit` reads `C1/1 Q2/2 E1/1 X7/7`.
 - **BO2 In hand.** Open the Sound Lab (F2 four times), and keep it open to BO8. Facing down the
   target lane (`VFTestYaw` 0, `VFTestPitch` 0), press C: a gust, logged as `barrierEquip`, `yours`;
   the Vandal goes, and a pale ball with a slab of ice behind it comes up over your hand. C's square
@@ -2646,6 +2646,75 @@ and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK I
   stopping at it.
 - **BO18 Who breaks it.** Shoot your own wall: sparks, and `VFWall` doesn't change. Player 2, on the
   other side, shoots it: each hit takes 40 off, and at nothing a block breaks, as on the course.
+
+## 43. Sage's Resurrection
+
+From [39-resurrection.md](research/39-resurrection.md). One player on the course, then three in
+Skirmish. Play as Sage, as in section 40. Without keys or a mouse button, `VFTestButtons` 32768
+presses X, 4096 C and 128 the left button: set it and clear it again each time. `VFTestYaw` and
+`VFTestPitch` aim, in degrees: positive yaw turns left, and positive pitch looks up.
+`Workspace.VFBodies` holds an invisible part for each body, named by its owner's entity id (Dummy
+1's is `4294901761`), with `VFReviver` and `VFReviveAt` while a return's under way, and
+`Workspace.VFBodyViews` holds the drawn ones, a `VFBody` model each with the id after it. Your
+`VFLastRevive` attribute is the name of the one you last brought back. On the course the ultimate's
+points are full every life and fill again 1.5 s after they're spent. Start at the spawn facing down
+the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **RE1 Her kit.** In agent select (T), SAGE's card has X RESURRECTION lit, with `X readies it. Fire
+  on a fallen ally's body brings them back where they lie, with full health and no shield.` and no
+  `NOT YET`: nothing on her card is dimmed now. On the ability bar RESURRECTION has its seven pips
+  lit gold, and `VFKit` reads `C1/1 Q2/2 E1/1 X7/7`.
+- **RE2 In hand.** Open the Sound Lab (F2 four times), and keep it open to RE6. Press X: a gust,
+  logged as `reviveEquip`, `yours`; the Vandal goes, and a small teal ball with three shards of
+  crystal comes up over an open hand. X's square lights, with `EQUIP` under it for 0.8 s; the HUD
+  reads `Resurrection   [X]`, with no ammo; and `VFKit` ends in `equip`. With nobody fallen, press
+  the left button: nothing happens, the orb stays in hand, and `VFKit` still reads `X7/7`. Press 1:
+  the Vandal's back, and nothing's spent.
+- **RE3 A body.** Set `VFTestPitch` to -3 and fire single shots at Dummy 1, the static dummy 10 m
+  down the lane: the fourth fells it. Where it stood its body lies on the floor, darkened, along the
+  lane with its head toward you, 1.75 m long, over a disc 1.6 m across glowing red, as it's on
+  nobody's side; `Workspace.VFBodies` has a part `4294901761`. 2 s after it fell, Dummy 1 stands
+  where it stood again, and its body and disc are gone.
+- **RE4 Kept down.** Fell it again and press X within 2 s: it stays down, its body there, as long as
+  the orb's in hand. Press 1: it's back at once. Fell it again, press X within 2 s once more, and
+  keep the orb in hand to RE6.
+- **RE5 The mark.** With `VFTestPitch` 0 nothing's marked. Set it to -8: a green box round each of
+  the body's three blocks, and a green + over it. At -20 the mark's gone. Set it to -8 again.
+- **RE6 Brought back.** Press the left button: a deep chime, logged as `reviveChime`, and the body
+  rises in a shell of pale crystal, 0.5 m over 2 s; the body's part has `VFReviver` and
+  `VFReviveAt`, and your `VFLastRevive` reads `Dummy 1 (static)`. The orb goes at once and the
+  Vandal's back 1 s later; X's pips go dark (`X0/7`) and light again 1.5 s after the chime. 2 s
+  after the chime, a sharp crack, logged as `reviveBurst`: the shell bursts in chips of crystal that
+  fall and fade, the body and its disc are gone, and Dummy 1 stands where it stood, dropping the 0.5
+  m to the floor. The kill feed reads your name, `Resurrection` in teal, then `Dummy 1 (static)`.
+  Press F2 to close the Sound Lab. **Send:** a screenshot of the shell as it rises.
+- **RE7 No shield.** Set `VFTestPitch` to -3 and fire single shots at Dummy 1: the third fells it,
+  where the fourth did in RE3, as it came back with no shield. 2 s later it stands again, its shield
+  back.
+- **RE8 Into a wall.** Fell it again, press X within 2 s, and bring it back as in RE6 (`VFTestPitch`
+  -8). At once press C, then C again as soon as the targeter shows, so it runs down the lane
+  (section 42, BO9), set `VFTestPitch` to -15, and raise the wall before the burst: it rises down
+  the middle of the lane, round the shell. As Dummy 1 bursts out, the block it's in breaks in chips
+  of ice with a sharp crack, your `VFWall` has an `x` for it, and Dummy 1 drops to the floor, not
+  onto the wall. Set `VFTestPitch` back to 0.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1. As round 1's buy phase starts, agent select
+comes up by itself: pick SAGE and LOCK IN in window 1, and LOCK IN in windows 2 and 3. In Studio,
+setting `VFTestGive` to `ultimate` fills the ultimate's points.
+
+- **RE9 An ally.** Once the round is live, set `VFTestGive` to `ultimate` in window 1:
+  RESURRECTION's seven pips light, and `VFKit` reads `X7/7`. Player 3 walks about 5 m out in front
+  of player 1 and stands in the open, and player 2 comes out to where they can see player 3 and
+  shoots them down. Windows 1 and 3 see player 3's body over a blue disc, and window 2 sees it over
+  a red one. In window 1, press X and put the crosshair on the body: it's marked, as in RE5.
+- **RE10 Back.** Click in window 1: the chime, in all three windows. Window 3's view rises with the
+  body, 0.5 m over 2 s, and its keys do nothing; window 2 sees the body rise in its shell, and their
+  shots at it do nothing. At the burst, window 3 reads 100 health and no shield, its view drops to
+  the floor, and for 1.3 s W, jumps and clicks do nothing and `VFKit` ends in `revived`; then player
+  3 moves and shoots again. Shots from player 2 as player 3 falls take health off. Every window's
+  kill feed reads `Player1`, `Resurrection` in teal, then `Player3`. As the next round starts, every
+  body's gone from all three windows. **Send:** a screenshot of window 2 as the shell rises.
 
 ## Results
 
@@ -2879,6 +2948,16 @@ BO15 player 2's height on top: ___; any snap back: yes / no
 BO16 max correction before: ___ mm, after: ___ mm
 BO17 red in the buy phase: yes / no; C after buying: ___; a second bought: yes / no
 BO18 your own bullets took health off it: yes / no
+RE1 anything on Sage's card or the bar that read differently: ___
+RE2 EQUIP for about ___ s; anything the Sound Lab logged differently: ___
+RE3 shots to fell Dummy 1: ___; its body along the lane, head toward you: yes / no
+RE4 kept down with the orb in hand: yes / no
+RE5 marked at pitch 0: yes / no; at -8: yes / no; at -20: yes / no
+RE6 the shell rose about ___ m over ___ s; the burst ___ s after the chime; X's pips back after ___ s; the kill feed read: ___
+RE7 shots to fell it after: ___
+RE8 the wall up before the burst: yes / no; VFWall after it: ___
+RE9 the discs' colours in windows 1, 2 and 3: ___
+RE10 window 3's health after the burst: ___; held for about ___ s; player 2's hits in the fall took health: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -3123,3 +3202,9 @@ Didn't look right (IDs and what you saw):
 | 38 | The wall: rising out of the floor in 1.35 s, 10.4 m long and 2.5 m tall, solid, fortifying at 2 s with a flash and a crack, clouding over from 35 s and gone at 40 s; `VFWall` as it goes; on the minimap | BO4, BO5, BO8, BO17 |
 | 38 | In the way: walking and jumping into it, shots stopped at it, a dummy behind it, a segment shot down and the gap it leaves, being lifted onto it, and a segment over the planted spike breaking | BO5, BO6, BO7, BO10, BO11, BO13 |
 | 38 | A second player stopped by your wall, lifted onto it and breaking it, with no correction at 100 ms each way; and in the spike rounds, your own bullets not breaking it | BO14, BO15, BO16, BO18 |
+| 39 | The Resurrection lit on Sage's card and the bar, `X7/7` on the course, and in hand 0.8 s after X | RE1, RE2 |
+| 39 | A body where a dummy falls, kept down while the orb's in hand, and the mark on it only with the crosshair over it | RE3, RE4, RE5 |
+| 39 | The return: the chime, the body rising 0.5 m in its shell over 2 s, the crack and the chips, the dummy back where it lay and falling to the floor, the kill feed's line, the points spent and refilled, and the gun back 1 s after | RE6 |
+| 39 | Brought back with no shield: fewer shots to fell it again | RE7 |
+| 39 | A wall of ice where it comes back breaking | RE8 |
+| 39 | An ally in Skirmish: the discs' colours, rising with the body out of harm's way, held as they fall and in harm's way then, and every body gone with a new round | RE9, RE10 |

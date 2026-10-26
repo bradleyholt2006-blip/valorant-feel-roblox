@@ -209,11 +209,11 @@ do
 			and d.resurrection.points.status == "confirmed"
 	)
 	check(
-		"her Healing Orb can be played, her Slow Orb (system 37) and her Barrier Orb (system 38), but not Resurrection yet",
+		"her Healing Orb can be played, her Slow Orb (system 37), her Barrier Orb (system 38) and her Resurrection (system 39)",
 		AbilitySim.playable("healingorb")
 			and AbilitySim.playable("sloworb")
 			and AbilitySim.playable("barrierorb")
-			and not AbilitySim.playable("resurrection")
+			and AbilitySim.playable("resurrection")
 	)
 	local pickable = AgentSelect.pickable()
 	check("so she can be picked, after Jett and Phoenix", pickable[3] == SAGE and #pickable == 3)
@@ -236,10 +236,10 @@ do
 	check("the Barrier Orb can be bought, and the Slow Orb", AbilitySim.canBuy(k, "barrierorb") and AbilitySim.canBuy(k, "sloworb"))
 	AbilitySim.fill(k, true)
 	check(
-		"the course fills the orb, the Slow Orb and the Barrier Orb, but not Resurrection",
-		k.charges[E] == 1 and k.charges[C] == 1 and k.charges[Q] == 2 and k.points == 0
+		"the course fills the orb, the Slow Orb, the Barrier Orb and Resurrection's points",
+		k.charges[E] == 1 and k.charges[C] == 1 and k.charges[Q] == 2 and k.points == 7
 	)
-	check("the kit says so", AbilitySim.summary(k, 0) == "C1/1 Q2/2 E1/1 X0/7", AbilitySim.summary(k, 0))
+	check("the kit says so", AbilitySim.summary(k, 0) == "C1/1 Q2/2 E1/1 X7/7", AbilitySim.summary(k, 0))
 	k.charges[E] = 0
 	AbilitySim.newRound(k)
 	check("each round gives it back", k.charges[E] == 1)

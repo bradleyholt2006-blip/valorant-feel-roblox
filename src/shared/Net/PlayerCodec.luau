@@ -159,7 +159,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 9 + 8 * 12 + 4 * 3 -- the ability kit
+	+ 1 + 3 + 9 + 8 * 14 + 4 * 3 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -256,6 +256,8 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.markYaw)
 	wf64(c, a.turn)
 	wf64(c, a.fixed)
+	wf64(c, a.floatUntil)
+	wf64(c, a.heldUntil)
 	-- Exact: a vector's components are single precision.
 	wf32(c, a.mark.x)
 	wf32(c, a.mark.y)
@@ -393,6 +395,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local markYaw = rf64(c)
 	local turn = rf64(c)
 	local fixed = rf64(c)
+	local floatUntil = rf64(c)
+	local heldUntil = rf64(c)
 	local mx = rf32(c)
 	local my = rf32(c)
 	local mz = rf32(c)
@@ -423,6 +427,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		turn = turn,
 		turning = bit32.band(markFlags, 4) ~= 0,
 		fixed = fixed,
+		floatUntil = floatUntil,
+		heldUntil = heldUntil,
 	}
 
 	local tagUntilTick = r32(c)

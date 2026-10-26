@@ -486,6 +486,26 @@ function MatchRules.died(s: State, id: number, now: number, killer: number?)
 	end
 end
 
+-- Whether `by` can bring `id` back with Sage's Resurrection now (system
+-- 39): while the round's played, `by` alive and `id` down, on one side.
+function MatchRules.canRevive(s: State, by: number, id: number): boolean
+	local a, b = s.members[by], s.members[id]
+	return a ~= nil and b ~= nil and a.alive and not b.alive and a.side == b.side and (s.phase == "live" or s.phase == "planted")
+end
+
+-- Someone brought back by Sage's Resurrection, alive again as they burst
+-- out (system 39). Only while the round's played, and only someone down.
+-- Returns whether they are.
+function MatchRules.revived(s: State, id: number): boolean
+	local m = s.members[id]
+	if not m or m.alive or (s.phase ~= "live" and s.phase ~= "planted") then
+		return false
+	end
+	m.alive = true
+	s.version += 1
+	return true
+end
+
 -- The spike has been planted, to go off at `detonateAt`: the round's clock
 -- gives way to the spike's, and every attacker is paid for it, alive or
 -- not. Too late once the round is over.

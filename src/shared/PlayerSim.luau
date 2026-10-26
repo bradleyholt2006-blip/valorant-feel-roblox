@@ -4,9 +4,12 @@
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
 -- Curveball does its flare (system 30), Hot Hands its fireball (system 31),
 -- Blaze its flame (system 32), the Healing Orb its orb (system 36), the
--- Slow Orb its own (system 37) and the Barrier Orb its own (system 38), and
--- whose Run it Back holds the player through his return and puts him back
--- at its mark (system 33). A Slow Orb's field slows whoever starts a tick
+-- Slow Orb its own (system 37), the Barrier Orb its own (system 38) and
+-- the Resurrection its own (system 39), and whose Run it Back holds the
+-- player through his return and puts him back at its mark (system 33), as
+-- the Resurrection holds a life it brings back, rising with the body and
+-- then falling to the floor (system 39). A Slow Orb's field slows whoever
+-- starts a tick
 -- in it (SlowSim), from the fields each step's given, and a Barrier Orb's
 -- wall stands in the world everything in the tick goes through
 -- (BarrierSim.world), from the walls it's given.
@@ -152,6 +155,26 @@ end
 local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire)
 
 local HOLD: MovementSim.Motion = { hold = true }
+local RES = AbilityConfig.Resurrection
+local UP = vector.create(0, 1, 0)
+
+-- A tick at `t` of a life the Resurrection brought back, while it's held
+-- (system 39): nothing pressed counts, and the gun's away until control's
+-- back. Until they burst out they rise with the body, out of harm's way,
+-- at its steady speed (the server starts the life as high as the body's
+-- risen by then); then they fall to the floor under them.
+local function revived(s: State, input: any, cfg: any, world: any, dt: number, t: number)
+	local still = table.clone(input)
+	still.buttons = 0
+	local kit = s.abilities
+	WeaponSim.stow(s.weapons, t, kit.heldUntil - t)
+	local motion: MovementSim.Motion? = nil
+	if AbilitySim.floating(kit, t) then
+		s.movement.position += UP * (RES.height.value / RES.rise.value * dt)
+		motion = HOLD
+	end
+	MovementSim.step(s.movement, still, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
+end
 
 -- A tick of Run it Back's return at `t` (system 33), with what started in
 -- it, if anything (AbilitySim.comeBack): nothing pressed counts, so a plant
@@ -210,13 +233,18 @@ function PlayerSim.step(
 	if barriers then
 		world = BarrierSim.world(world, barriers.walls, barriers.time)
 	end
-	-- Run it Back's return goes before anything (system 33): through it the
-	-- player's held. Then the plant and the defuse: the tick they start on,
-	-- they root, and nothing's cast. G lets go of the spike if it's in hand
-	-- (SpikeSim), and otherwise of the gun in hand, once nothing is under
-	-- way.
+	-- A life the Resurrection brought back is held first (system 39), and
+	-- Run it Back's return goes before anything else (system 33): through it
+	-- the player's held. Then the plant and the defuse: the tick they start
+	-- on, they root, and nothing's cast. G lets go of the spike if it's in
+	-- hand (SpikeSim), and otherwise of the gun in hand, once nothing is
+	-- under way.
 	local t = (s.movement.tick + 1) * dt
 	local kit = s.abilities
+	if AbilitySim.reviving(kit, t) then
+		revived(s, input, cfg, world, dt, t)
+		return nil, nil, nil, nil, nil
+	end
 	local holding, back = AbilitySim.comeBack(kit, t, dt, s.movement.tick + 1, s.movement.position, PlayerSim.eye(s, cfg))
 	if holding then
 		local heldAct, heldCasts = held(s, input, cfg, world, dt, objective, t, back)
@@ -327,7 +355,9 @@ function PlayerSim.step(
 	-- ability's cast and no bullet, and the gun's back in hand a moment
 	-- after, or once the wall it sent out is let go (Blaze, system 32). The
 	-- Healing Orb's is a try (system 36), and it stays in hand for the next,
-	-- until the server finds one heals and puts it away. The Barrier Orb's
+	-- until the server finds one heals and puts it away, as the
+	-- Resurrection's is until one brings someone back (system 39). The
+	-- Barrier Orb's
 	-- wall goes where its targeter shows it, turned as the kit has it, and
 	-- with nowhere to go, or in the buy phase, the orb stays in hand (system
 	-- 38). Anything else drawn puts it away unthrown.

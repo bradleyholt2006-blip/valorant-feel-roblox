@@ -12,7 +12,9 @@
 -- behind, and they move as evenly as the simulation does. A Slow Orb's
 -- field slows them as it does a player (system 37), and a Barrier Orb's
 -- wall stands in their way and lifts them as it does a player's (system
--- 38), on that clock.
+-- 38), on that clock. Sage's Resurrection can bring a fallen one back
+-- (system 39, ReviveServer): it's kept down meanwhile (keepDown), and
+-- comes back where it lies, held as it falls (revive).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -51,6 +53,7 @@ type Dummy = {
 	sim: PlayerSim.State,
 	alive: boolean,
 	respawnAt: number,
+	kept: boolean, -- kept down past respawnAt (the Resurrection, system 39)
 	ticks: number,
 	pacer: MovePacer.Pacer, -- the pose after each tick, at the tick's server time
 	shown: PlayerCodec.Pose?, -- what this frame's snapshot shows
@@ -140,6 +143,7 @@ local function addDummy(index: number, feet: vector, mode: string)
 		sim = PlayerSim.new(feet),
 		alive = true,
 		respawnAt = 0,
+		kept = false,
 		ticks = 0,
 		pacer = MovePacer.new(),
 		shown = nil,
@@ -167,6 +171,57 @@ local function findSpawns(): { BasePart }
 	return out
 end
 
+-- The dummy that's entity `id`, if there is one.
+local function dummyOf(id: number): Dummy?
+	for _, d in dummies do
+		if d.entity.id == id then
+			return d
+		end
+	end
+	return nil
+end
+
+-- The way a dummy faces (yaw, radians), if `id` is one.
+function Dummies.yawOf(id: number): number?
+	local d = dummyOf(id)
+	return if d then d.yaw else nil
+end
+
+-- A fallen dummy kept down (system 39): while the Resurrection could bring
+-- it back, or does, until it has or it's let go (release).
+function Dummies.keepDown(id: number)
+	local d = dummyOf(id)
+	if d and not d.alive then
+		d.kept = true
+	end
+end
+
+-- A fallen dummy kept down let come back as it would have.
+function Dummies.release(id: number)
+	local d = dummyOf(id)
+	if d then
+		d.kept = false
+	end
+end
+
+-- A fallen dummy brought back by the Resurrection (system 39), bursting
+-- out at `feet` and held for `held` seconds of its ticks as it falls. Its
+-- health is CombatServer.back's.
+function Dummies.revive(id: number, feet: vector, held: number)
+	local d = dummyOf(id)
+	if not d or d.alive then
+		return
+	end
+	d.sim = PlayerSim.new(feet, { "vandal", "", "" }, d.entity.id)
+	d.sim.abilities.heldUntil = held
+	d.entity.sim = d.sim
+	d.alive = true
+	d.kept = false
+	d.ticks = 0
+	MovePacer.reset(d.pacer)
+	d.shown = nil
+end
+
 function Dummies.start()
 	for i, part in findSpawns() do
 		local feet = Units.toMetres(part.Position - Vector3.new(0, part.Size.Y / 2, 0)) + vector.create(0, 0.02, 0)
@@ -187,7 +242,7 @@ function Dummies.step(now: number)
 		last += DT
 		for _, d in dummies do
 			if not d.alive then
-				if last >= d.respawnAt then
+				if last >= d.respawnAt and not d.kept then
 					spawnDummy(d)
 				end
 				continue

@@ -14,6 +14,10 @@ CharacterRig.FIRST_SEQ = "VFFirstSeq"
 -- And, when the life starts facing a set way (the arena's spawns), the yaw
 -- in radians. Also set before SPAWN_FEET.
 CharacterRig.SPAWN_YAW = "VFSpawnYaw"
+-- And, for a life the Resurrection brought back (system 39), until when it
+-- rises with the body and until when it's held, as seconds of that life's
+-- simulation (a Vector2: X and Y). Also set before SPAWN_FEET.
+CharacterRig.REVIVED = "VFRevived"
 
 function CharacterRig.rootOffset(character: Model, root: BasePart): number
 	local humanoid = character:FindFirstChildOfClass("Humanoid")

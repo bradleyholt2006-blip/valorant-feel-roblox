@@ -273,6 +273,26 @@ function ArenaRules.died(s: State, id: number, now: number, killer: number?)
 	end
 end
 
+-- Whether `by` can bring `id` back with Sage's Resurrection now (system
+-- 39): while the round's played, `by` alive and `id` down, on one side.
+function ArenaRules.canRevive(s: State, by: number, id: number): boolean
+	local a, b = s.members[by], s.members[id]
+	return a ~= nil and b ~= nil and a.alive and not b.alive and a.side == b.side and s.phase == "live"
+end
+
+-- Someone brought back by Sage's Resurrection, alive again as they burst
+-- out (system 39). Only while the round's played, and only someone down.
+-- Returns whether they are.
+function ArenaRules.revived(s: State, id: number): boolean
+	local m = s.members[id]
+	if not m or m.alive or s.phase ~= "live" then
+		return false
+	end
+	m.alive = true
+	s.version += 1
+	return true
+end
+
 -- Moves the clock on. Returns who to spawn now.
 function ArenaRules.step(s: State, now: number): { number }
 	if s.phase == "waiting" then
