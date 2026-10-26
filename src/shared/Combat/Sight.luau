@@ -14,7 +14,8 @@
 -- wall of ice (Sage's Barrier Orb, system 38, BarrierSim.hides). A body is
 -- seen when any of three points of it is: the middle of its head, its body
 -- and its legs (Hitboxes). Nobody else is in the way of anyone: the level,
--- clouds and walls are.
+-- clouds and walls are. A viewer who's nearsighted (Omen's Paranoia,
+-- system 41) sees nothing further away than their vision's range.
 --
 -- No Roblox APIs here: the server passes its level in as `blocked`, so the
 -- offline tests run it on a fake one.
@@ -28,8 +29,8 @@ export type Status = "confirmed" | "community" | "estimate"
 export type Param = { value: number, status: Status, source: string }
 
 -- Someone looking: their side, their eye and the way it looks (a unit
--- vector), all in metres.
-export type Viewer = { side: number, eye: vector, look: vector }
+-- vector), all in metres, and how far they see, if not forever.
+export type Viewer = { side: number, eye: vector, look: vector, range: number? }
 -- Someone who can be seen: their entity id, their side and the points of
 -- them that count.
 export type Target = { id: number, side: number, points: { vector } }
@@ -165,7 +166,11 @@ end
 
 -- Whether a viewer sees any of `points`.
 function Sight.sees(viewer: Viewer, points: { vector }, o: Occluders): boolean
+	local range = viewer.range
 	for _, point in points do
+		if range and vector.magnitude(point - viewer.eye) > range then
+			continue
+		end
 		if Sight.inView(viewer.eye, viewer.look, point) and not Sight.hidden(viewer.eye, point, o) then
 			return true
 		end

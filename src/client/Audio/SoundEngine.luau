@@ -3,9 +3,9 @@
 --
 --   AudioPlayer -> AudioFilter -> AudioEmitter      a sound out in the world,
 --                                      : heard by    on an Attachment there
---   AudioListener (on the camera) -> World --\
---   AudioPlayer -> Self (what you make) -------> Master -> Limiter -> AudioDeviceOutput
---   AudioPlayer -> Ui (hit and kill sounds) --/
+--   AudioListener (on the camera) -> World -> Muffle --\
+--   AudioPlayer -> Self (what you make) -> Muffle -------> Master -> Limiter -> AudioDeviceOutput
+--   AudioPlayer -> Ui (hit and kill sounds) ------------/
 --
 -- Every sound has a pool of voices for each bus it plays on, made up front
 -- with its asset loading, so a sound plays on the frame it's asked for. A
@@ -25,7 +25,9 @@
 -- An AudioAnalyzer on each bus, before the master fader, measures what it
 -- plays for the Sound Lab, so with VFTestMute set on the local player (for
 -- scripted playtests, which shouldn't make noise) nothing is heard but the
--- meters still move.
+-- meters still move. The World and Self buses each have a low-pass after
+-- them, open but while you're deafened (Omen's Paranoia, system 41), when
+-- it muffles them and their faders turn them down (setDeafened).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -78,6 +80,7 @@ local listener: AudioListener? = nil
 local master: AudioFader? = nil
 local buses: { [string]: AudioFader } = {}
 local analyzers: { [string]: AudioAnalyzer } = {}
+local muffles: { [string]: AudioFilter } = {} -- the World and Self buses' low-pass
 local pools: { [string]: Pool } = {}
 local curves: { [string]: { { number } } } = {} -- world pool key -> curve in metres
 local rng = Random.new()
@@ -297,6 +300,17 @@ function SoundEngine.isMuted(): boolean
 	return Players.LocalPlayer:GetAttribute(MUTE_ATTRIBUTE) == true
 end
 
+-- How deafened you are, 0 to 1 (Omen's Paranoia, system 41): the World and
+-- Self buses muffled and turned down by that much (SoundMath.deafened).
+function SoundEngine.setDeafened(amount: number)
+	local cutoff, volume = SoundMath.deafened(amount)
+	for bus, muffle in muffles do
+		muffle.Bypass = cutoff >= SoundConfig.OPEN_CUTOFF
+		muffle.Frequency = math.clamp(cutoff, 20, SoundConfig.OPEN_CUTOFF)
+		buses[bus].Volume = volume
+	end
+end
+
 local function placeListener()
 	local l = listener
 	local camera = Workspace.CurrentCamera
@@ -357,7 +371,19 @@ function SoundEngine.start()
 		local fader = Instance.new("AudioFader")
 		fader.Name = bus
 		fader.Parent = f
-		wire(fader, m, fader)
+		if bus == "ui" then
+			wire(fader, m, fader)
+		else
+			local muffle = Instance.new("AudioFilter")
+			muffle.Name = bus .. "Muffle"
+			muffle.FilterType = Enum.AudioFilterType.Lowpass24dB
+			muffle.Frequency = SoundConfig.OPEN_CUTOFF
+			muffle.Bypass = true
+			muffle.Parent = fader
+			wire(fader, muffle, muffle)
+			wire(muffle, m, muffle)
+			muffles[bus] = muffle
+		end
 		local analyzer = Instance.new("AudioAnalyzer")
 		analyzer.Name = bus .. "Meter"
 		analyzer.Parent = fader

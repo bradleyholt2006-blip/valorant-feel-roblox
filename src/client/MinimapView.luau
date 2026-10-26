@@ -31,13 +31,17 @@
 --     can't hear you", ONE Esports; community), for a sound made where you
 --     are whose edge is near enough to show (Minimap.Params.ringMost)
 -- Nothing of an enemy is drawn that the server hasn't said your side sees.
+-- While you're nearsighted by Omen's Paranoia (system 41), or whoever you
+-- look out of is, all of it's covered in dark (ParanoiaView.dark), as the
+-- reference's minimap 'will become obscured' (the VALORANT Wiki's Status
+-- Effect page; community).
 --
 -- For scripted checks, the minimap's ScreenGui (VFMinimap) carries what it
 -- shows as attributes: Plan (the plan's key), Seen (the entity ids of the
 -- enemies shown, "3,7"), Spike (whether the spike is), Turn (degrees the
--- map's turned) and Big (whether the big map's open). Its icons are named
--- Self, Ally_<id>, Enemy_<id>, Seen_<id>, Pulse_<id>, Dead_<id>, Spike and
--- Ring.
+-- map's turned), Big (whether the big map's open) and Dark (how covered it
+-- is, 0 to 1). Its icons are named Self, Ally_<id>, Enemy_<id>, Seen_<id>,
+-- Pulse_<id>, Dead_<id>, Spike and Ring.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -72,6 +76,7 @@ local PlayerController = require(script.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.RemoteEntities)
 local Spectate = require(script.Parent.Spectate)
 local Visuals = require(script.Parent.Visuals)
+local ParanoiaView = require(script.Parent.ParanoiaView)
 
 local MinimapView = {}
 
@@ -97,6 +102,7 @@ local FIRE = Color3.fromRGB(255, 128, 40)
 local ICE = Color3.fromRGB(110, 205, 235)
 local TEXT = Color3.fromRGB(235, 238, 244)
 local DEAD = Color3.fromRGB(235, 72, 72)
+local SHADOW = Color3.fromRGB(18, 12, 28) -- Paranoia's dark over it all (system 41)
 
 type Keyed = { parent: Instance, items: { [string]: GuiObject }, touched: { [string]: boolean } }
 
@@ -112,6 +118,7 @@ type Layer = {
 	coneMap: Frame,
 	cones: Keyed,
 	icons: Keyed,
+	cover: Frame, -- the dark over it all while you're nearsighted
 	big: boolean,
 	built: string, -- the plan, scale and names its shapes are drawn for
 	spawns: { { frame: Frame, shape: Minimap.Shape } },
@@ -383,6 +390,14 @@ local function newLayer(name: string, order: number, big: boolean): Layer
 	-- The icons don't turn: they're placed by Minimap.toView.
 	local icons = blank(box, "Icons", 3)
 	icons.Size = UDim2.fromScale(1, 1)
+	local cover = Instance.new("Frame")
+	cover.Name = "Cover"
+	cover.BorderSizePixel = 0
+	cover.BackgroundColor3 = SHADOW
+	cover.BackgroundTransparency = 1
+	cover.Size = UDim2.fromScale(1, 1)
+	cover.ZIndex = 4
+	cover.Parent = box
 	return {
 		gui = gui,
 		box = box,
@@ -394,6 +409,7 @@ local function newLayer(name: string, order: number, big: boolean): Layer
 		coneMap = coneMap,
 		cones = keyed(coneMap),
 		icons = keyed(icons),
+		cover = cover,
 		big = big,
 		built = "",
 		spawns = {},
@@ -905,6 +921,9 @@ local function step()
 		draw(bLayer, plan, bigView, scene)
 	end
 	bLayer.gui.Enabled = big
+	local covered = ParanoiaView.dark
+	mLayer.cover.BackgroundTransparency = 1 - covered
+	bLayer.cover.BackgroundTransparency = 1 - covered
 
 	-- For scripted checks.
 	local shown = {}
@@ -920,6 +939,7 @@ local function step()
 	gui:SetAttribute("Spike", if mLayer.icons.items.Spike then true else false)
 	gui:SetAttribute("Turn", math.floor(math.deg(view.turn) * 10 + 0.5) / 10)
 	gui:SetAttribute("Big", big)
+	gui:SetAttribute("Dark", math.floor(covered * 100 + 0.5) / 100)
 end
 
 -- The server's word on who your side sees: those it no longer sees are

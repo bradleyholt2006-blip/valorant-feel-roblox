@@ -527,6 +527,18 @@ SoundConfig.Sounds = {
 	darkWarn = sound(0.6, 0.02, 3, {
 		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
 	}, 0.3),
+	-- Paranoia (system 41): the orb in hand the thick whoosh, lower than
+	-- Dark Cover's; sent, the heavy whoosh slowed right down; and touched by
+	-- it, the spike's defuse tone slowed, as the dark closes in.
+	paranoiaEquip = sound(0.45, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.7),
+	paranoiaSend = sound(0.8, 0.03, 3, {
+		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.483, 0.11),
+	}, 0.45),
+	nearsight = sound(0.6, 0.02, 2, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 0.5),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
@@ -534,14 +546,14 @@ SoundConfig.Sounds = {
 -- wall rising, a Phoenix's body going in Run it Back, a heal of the
 -- Healing Orb's starting, a Slow Orb's burst, a run or a jump through its
 -- field, Sage's wall rising, fortifying and a piece of it breaking, a body
--- she brings back rising and bursting out, and Omen's orb sent, its smoke
--- forming and warning that it's going), heard as the ability curve says
--- (systems 17 to 19, 30 to 33 and 36 to 40). Blade Storm's
--- knives drawn again sound as their draw does, and so does an ability put
--- in hand (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
--- Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb),
--- which only the one drawing it hears. The orbs' tries make no sound: only
--- a heal or a return does.
+-- she brings back rising and bursting out, Omen's orb sent, its smoke
+-- forming and warning that it's going, and his Paranoia sent), heard as
+-- the ability curve says (systems 17 to 19, 30 to 33 and 36 to 41). Blade
+-- Storm's knives drawn again sound as their draw does, and so does an
+-- ability put in hand (Curveball's flare, Hot Hands' fireball, Blaze's
+-- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
+-- Resurrection's orb), which only the one drawing it hears. The orbs'
+-- tries make no sound: only a heal or a return does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -571,6 +583,7 @@ SoundConfig.Abilities = {
 	smoke = "darkSend",
 	darkcover = "darkForm",
 	fading = "darkWarn",
+	paranoia = "paranoiaSend",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -602,6 +615,18 @@ SoundConfig.Drift = {
 	sound = "glide",
 	every = p(0.3, "estimate", "Seconds from one gust of a glide to the next, so they run together"),
 	ownVolume = p(0.6, "estimate", "Your own glide against someone else's next to you, so it doesn't cover their steps"),
+}
+
+-- Deafened (system 41): while Omen's Paranoia has someone nearsighted,
+-- what they hear in the world and what they make themselves is muffled and
+-- quieter, clearing as the nearsight clears. The VALORANT Wiki's Status
+-- Effect page has a deafened player's audio 'severely dampened'
+-- (community), with no numbers. The touch itself sounds on the UI bus,
+-- which isn't muffled, so it's heard as the dark closes in.
+SoundConfig.Deafen = {
+	sound = "nearsight",
+	cutoff = p(400, "estimate", "Hz: the World and Self buses' low-pass, deafened, so little but the low end gets through"),
+	volume = p(0.35, "estimate", "Their level deafened, about 9 dB down"),
 }
 
 -- Which sounds each weapon makes, by WeaponConfig id. The library has five
@@ -691,6 +716,8 @@ SoundConfig.Weapons = {
 	-- Dark Cover's orb (system 40): the same, the orb sent, its smoke
 	-- forming and warning the ability's.
 	smokeorb = { draw = "darkEquip", curve = "ability" },
+	-- Paranoia's orb (system 41): the same, the orb sent the ability's.
+	blindorb = { draw = "paranoiaEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

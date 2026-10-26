@@ -223,7 +223,8 @@ the reference turns it then is ours to check.
 - **M.** M is the Play menu here (system 24), so the big map is on Caps Lock alone, held.
 - **Pings.** The big map takes no pings.
 - **Height.** Patch 10.03's shading for raised ground isn't here, nor ziplines; the plans are flat.
-- **Status effects.** No ability here deafens or brings paranoia, so nothing obscures the minimap.
+- **Status effects.** Of the abilities that obscure the minimap, only Omen's Paranoia is here
+  (system 41).
 - **Reveals.** No ability here reveals anyone (Sova's, Cypher's), so only sight does.
 - **Enemy utility out of sight.** Every cloud, wall and fire shows, whoever's it is and wherever it
   is; no source says whether the reference hides an enemy's out of sight.

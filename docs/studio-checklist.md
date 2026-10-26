@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the thirty-eight
+Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-one
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about six hours. Doing it in parts is fine; keep the order.
@@ -31,8 +31,9 @@ Fill in the results block at the end of this page and reply with it, plus:
    one and then two, section 25 three and then one, sections 26 to 31 two, section 32 two or
    three, section 33 one and then three, section 34 one and then two, sections 35 and 36 one,
    then two, then three for their last check, section 37 one and then two, section 38 one, then
-   two, then three, section 39 two and then three, section 40 one, then two, then three, and
-   section 41 one, then two, then two in the spike rounds.
+   two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
+   and 42 one, then two, then two in the spike rounds, section 43 one and then three, and
+   sections 44 and 45 one and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -2729,13 +2730,13 @@ mark, `SmokeMark`. On the course a spent charge comes back 1.5 s after it's spen
 spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 
 - **DC1 His kit.** In agent select, the cards are JETT, PHOENIX, SAGE and OMEN, and OMEN's reads
-  CONTROLLER. Click it: his kit, with C SHROUDED STEP, Q PARANOIA and X FROM THE SHADOWS dimmed with
-  `NOT YET`, and E DARK COVER lit, with `E readies a shadow orb. Hold fire to send its mark further,
-  alt fire to bring it closer, and E again to smoke there.`; nothing under them, as he has no
-  passive. Click PICK OMEN: the button reads `PLAYING OMEN`, and `VFAgent` reads `omen`. Close it
-  with T. On the ability bar SHROUDED STEP, PARANOIA and FROM THE SHADOWS are dimmed with their pips
-  dark, DARK COVER has its two pips lit, and `VFKit` reads `C0/2 Q0/1 E2/2 X0/7`. **Send:** a
-  screenshot of Omen's card.
+  CONTROLLER. Click it: his kit, with C SHROUDED STEP and X FROM THE SHADOWS dimmed with `NOT YET`,
+  Q PARANOIA lit (section 45), and E DARK COVER lit, with `E readies a shadow orb. Hold fire to send
+  its mark further, alt fire to bring it closer, and E again to smoke there.`; nothing under them,
+  as he has no passive. Click PICK OMEN: the button reads `PLAYING OMEN`, and `VFAgent` reads
+  `omen`. Close it with T. On the ability bar SHROUDED STEP and FROM THE SHADOWS are dimmed with
+  their pips dark, PARANOIA has its pip lit and DARK COVER its two, and `VFKit` reads
+  `C0/2 Q1/1 E2/2 X0/7`. **Send:** a screenshot of Omen's card.
 - **DC2 In hand.** Open the Sound Lab (F2 four times), and keep it open to DC6. Press E: a low
   whoosh, logged as `darkEquip`, `yours`; the Vandal goes, and a violet ball with two wisps comes up
   over an open hand. E's square lights, with `EQUIP` under it for 0.6 s; the HUD reads
@@ -2743,7 +2744,7 @@ spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Van
   and 20 m stripes, at eye height, is the mark, a small violet ball, and round it a faint violet
   ball 8.2 m across, its middle on the floor under the mark: both show over anything in front of
   them, Dummy 1 too. Click the left button: nothing's fired or heard, and the mark's number goes up
-  a little. Press 1: the Vandal's back, the mark's gone, and `VFKit` reads `C0/2 Q0/1 E2/2 X0/7`,
+  a little. Press 1: the Vandal's back, the mark's gone, and `VFKit` reads `C0/2 Q1/1 E2/2 X0/7`,
   nothing spent.
 - **DC3 The mark.** Press E. Set `VFTestButtons` to 128 for about 2 s, then clear it: the mark
   slides away down the lane, its number climbing about 15 a second, to about 45, with the faint ball
@@ -2775,7 +2776,7 @@ spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Van
   the crosshair meets it, and the faint ball's middle on the floor under the ramp, through it. Press
   E again: the smoke forms there, and `VFLastSmoke`'s middle number reads 0. Do the same in front of
   the 45 deg ramp (`pos` about `10.00 0.00 9.00`): the smoke forms on its slope, the middle number
-  about 1.5.
+  about 1.3.
 
 Then three players: stop the game, start a Local Server with 3 players and press P in window 1
 (Skirmish). Players 1 and 3 share a side, as in F1. As round 1's buy phase starts, agent select
@@ -2795,10 +2796,91 @@ Then the spike rounds: press P twice more in window 1 (gun game, then the spike 
 round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
 
 - **DC11 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, one of E's pips lit. B: under the shields
-  Dark Cover (`E`, 150) is lit, and Shrouded Step and Paranoia read `NOT YET`. Click Dark Cover: 150
-  credits go, E's second pip lights, and `VFKit` reads `E2/2`; it then reads `FULL`, and a second
-  click buys nothing. Close the menu (B). Once the round's live, send one: `E1/2`, and E counts down
-  from 40 under it, then reads `E2/2` again.
+  Dark Cover (`E`, 150) and Paranoia (`Q`, 250) are lit, and Shrouded Step reads `NOT YET`. Click
+  Dark Cover: 150 credits go, E's second pip lights, and `VFKit` reads `E2/2`; it then reads `FULL`,
+  and a second click buys nothing. Close the menu (B). Once the round's live, send one: `E1/2`, and
+  E counts down from 40 under it, then reads `E2/2` again.
+
+## 45. Omen's Paranoia
+
+From [41-paranoia.md](research/41-paranoia.md). One player on the course, then three in Skirmish and
+the spike rounds. Play as Omen, as in section 44. Without keys or a mouse button, `VFTestButtons`
+8192 presses Q, 128 the left button and 256 the right: set it and clear it again each time.
+`VFTestYaw` and `VFTestPitch` aim, in degrees: positive yaw turns left, and positive pitch looks up.
+The F3 panel's `pos` line is where you stand, in metres. Your `VFLastParanoia` attribute is whom
+your last orb touched, set once it's flown, and your `VFNearsight` is your nearsight while any of
+it's left; `Workspace.VFParanoia` holds each orb in flight, an `Orb` ball, and the dark round the
+camera, `Dark`. On the course a spent charge comes back 1.5 s after it's spent. Start at the spawn
+facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **PA1 His kit.** In agent select (T), OMEN's card has Q PARANOIA lit now, with `Q readies a shadow
+  orb. Fire sends it forward through walls, nearsighting and deafening everyone it touches.`, and
+  only C SHROUDED STEP and X FROM THE SHADOWS dimmed with `NOT YET`. Close it with T. On the ability
+  bar PARANOIA has its pip lit, and `VFKit` reads `C0/2 Q1/1 E2/2 X0/7`.
+- **PA2 In hand.** Open the Sound Lab (F2 four times), and keep it open to PA5. Press Q: a thick,
+  low whoosh, logged as `paranoiaEquip`, `yours`; the Vandal goes, and a dark violet ball with a
+  flat band through it comes up over an open hand. Q's square lights, with `EQUIP` under it for
+  1.1 s; the HUD reads `Paranoia   [Q]`, with no ammo; and `VFKit` ends in `equip`. Click the right
+  button: nothing's sent or heard. Press Q again: the Vandal's back, and `VFKit` still reads `Q1/1`,
+  nothing spent.
+- **PA3 Down the lane.** Set `VFTestYaw` to 5, a little to the left, so it passes wide of the
+  strafing dummies. Press Q and, once it's ready, click the left button: a heavy, slow whoosh,
+  logged as `paranoiaSend`, `yours`. A see-through ball of shadow 8.6 m across, with a darker core,
+  appears about 4.5 m ahead and flies down the lane through Dummies 1, 3 and 4, and 1.25 s later,
+  its middle just short of the 30 m stripe, it's gone. The Vandal's back 0.7 s after the send, and
+  Q's pip goes dark (`VFKit` `Q0/1`) and lights again 1.5 s later. Once the orb's gone,
+  `VFLastParanoia` reads `Dummy 1 (static),Dummy 3 (crouch),Dummy 4 (static)`, and your own screen
+  has stayed clear. Set `VFTestYaw` back to 0. **Send:** a screenshot of the orb in flight.
+- **PA4 Through walls.** Walk to the wallbang lane, left of the spawn, and stand on its line in
+  front of the `concrete 0.10 m` wall, facing the walls (`pos` about `-26.00 0.00 -10.00`,
+  `VFTestYaw` 0). Send another: it flies straight through the walls, and `VFLastParanoia` reads
+  `Dummy 11 (static)` first, the dummy behind that wall, then Dummies 10 and 12 in either order,
+  then Dummies 9 and 13: the five behind the walls within 4.3 m of its path. Walk back to the spawn
+  and face down the lane.
+- **PA5 Nearsighted.** Set `VFTestPitch` to -89, looking straight down, send one, and set
+  `VFTestPitch` straight back to 0: it appeared 4.5 m under your eye, inside the floor, near enough
+  to your legs to touch you. At once a slowed tone, logged as `nearsight`, and the screen past about
+  7.5 m is dark: Dummy 1 and the 10 m stripe are gone in it, and the floor round you still shows.
+  The minimap is covered in dark, and `VFMinimap` reads `Dark` 1. `VFNearsight` is set, and in
+  SoundService `VFSound.world.worldMuffle` and `VFSound.self.selfMuffle` have Bypass off and
+  Frequency 400, and the `world` and `self` faders Volume 0.35. 1.25 s after the send,
+  `VFLastParanoia` reads your name. 2 s after the tone the dark starts to clear, and half a second
+  later it's gone: `Dark` 0, `VFNearsight` unset, both muffles bypassed again, and the faders at
+  full Volume again. Press F2 to close the Sound Lab. **Send:** a screenshot while it's dark.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1. As round 1's buy phase starts, agent select
+comes up by itself: pick OMEN and LOCK IN in window 1, pick PHOENIX and LOCK IN in window 3, and
+LOCK IN in window 2. Open the Sound Lab in window 2. In Skirmish each life starts with every charge.
+
+- **PA6 Warned and nearsighted.** Once the round is live, players 1 and 3 stand side by side, 2 m
+  apart, and player 2 about 20 m in front of them in the open, facing them: window 2's `VFMinimap`
+  `Seen` has both of them. In window 1 press Q and, once it's ready, send it straight at player 2:
+  window 2 logs `paranoiaSend`, about 20 m away. As the orb shows, the edges of window 2's screen go
+  dark for a moment, and windows 1 and 3 don't. About half a second after the send, window 2 hears
+  the tone, logged as `nearsight`, and its screen goes dark past about 7.5 m, players 1 and 3 gone
+  in it; its minimap's covered (`Dark` 1), its `Seen` is empty, its `VFNearsight` is set, and its
+  muffles are on, as in PA5. Windows 1 and 3 see a wisp of shadow round player 2's head, a `Wisp` in
+  `Workspace.VFParanoia` with player 2's name as its `Player`. About 2.5 s after the tone it's all
+  gone: window 2 is clear, its `Seen` has both again, and the wisp's gone. Player 1's
+  `VFLastParanoia` reads `Player2`. Player 1 shoots player 2 down to end the round. **Send:** a
+  screenshot of window 1 with the wisp.
+- **PA7 A far flash.** In the next round, players 1, 2 and 3 stand as in PA6, and in window 3 press
+  E to ready Curveball. Player 1 sends the orb at player 2 again, and as window 2 goes dark,
+  player 3 throws the flare with the left button: it pops a few metres ahead of player 3, off to
+  their left, well over 7.5 m from player 2 and in their view, and window 2 doesn't go white; its
+  `VFBlind` stays unset. Windows 1 and 3 may go white, as it blinds whoever sees it. Once window 2's
+  dark has gone, player 3 readies and throws the second flare the same way: now window 2 goes white,
+  and its `VFBlind` is set.
+
+Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
+round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+
+- **PA8 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, Q's pip dark. B: under the shields Paranoia
+  (`Q`, 250) and Dark Cover (`E`, 150) are lit, and Shrouded Step reads `NOT YET`. Click Paranoia:
+  250 credits go, Q's pip lights, and `VFKit` reads `Q1/1`; it then reads `FULL`, and a second click
+  buys nothing. Close the menu (B). Once the round's live, send one: `Q0/1`, and nothing brings it
+  back that round.
 
 ## Results
 
@@ -3053,6 +3135,14 @@ DC8 VFLastSmoke's middle number at the 50 deg ramp: ___; at the 45 deg ramp: ___
 DC9 the windows that logged darkSend: ___; darkForm: ___
 DC10 player 2 dropped from window 1's minimap behind it: yes / no; every smoke gone with the next round: yes / no
 DC11 E's pips as the round began: ___; bought for ___; E back after ___ s
+PA1 anything on Omen's card or the bar that read differently: ___
+PA2 EQUIP for about ___ s; anything the Sound Lab logged differently: ___
+PA3 VFLastParanoia: ___; the orb gone after about ___ s; Q's pip back after ___ s
+PA4 VFLastParanoia: ___
+PA5 dark past about ___ m; Dark ___; the muffles' Frequency ___ and the faders' Volume ___; all clear after about ___ s
+PA6 window 2 warned: yes / no; windows 1 and 3 warned: yes / no; window 2 dark about ___ s after the send; its Seen while dark: ___; the wisp in windows 1 and 3: yes / no
+PA7 window 2's VFBlind after the first flare: ___; after the second: ___
+PA8 Q's pip as the round began: ___; bought for ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -3308,3 +3398,8 @@ Didn't look right (IDs and what you saw):
 | 40 | The smoke: sent with E, the gun back 0.7 s after, forming where the mark showed, growing over 1 s, standing 15 s, flickering for its last 1.5 s and gone, and dark from inside | DC5, DC6, DC7 |
 | 40 | A mark behind a wall, and over a ramp too steep to stand on | DC4, DC5, DC8 |
 | 40 | With other players: their spotting stopped at it, the send heard by the sender's side alone, every smoke gone with a new round, and the second charge bought at 150 | DC9, DC10, DC11 |
+| 41 | Paranoia lit on Omen's card and the bar, `Q1/1` on the course, and in hand 1.1 s after Q | PA1, PA2 |
+| 41 | Sent with fire: appearing ahead, flying 25 m down the lane in 1.25 s and gone, the gun back 0.7 s after, and whom it touched in `VFLastParanoia` | PA3 |
+| 41 | Through walls: the dummies behind the wallbang lane's walls touched | PA4 |
+| 41 | The nearsight on your own screen: dark past 7.5 m, a ball of shadow round the camera seen from inside, the tone, the muffling and the minimap covered, all clearing after 2 s | PA5 |
+| 41 | With other players: the warning in its path, an enemy nearsighted and deafened, their minimap telling them of nobody, the wisp, a far flash not blinding them, and the charge bought for 250 | PA6, PA7, PA8 |

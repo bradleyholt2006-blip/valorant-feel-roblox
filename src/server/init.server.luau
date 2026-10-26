@@ -13,7 +13,9 @@
 -- the moves left looking at them, walls of fire whose caster is dead run
 -- on, fires burn whoever the moves left standing in them, the Healing
 -- Orb's heals give what they've come to, after the fires' burns that pause
--- them, and the Slow Orb's fields say whom the moves left slowed.
+-- them, the Slow Orb's fields say whom the moves left slowed, and
+-- Paranoia's orbs touch whoever the moves left in their way, before the
+-- minimap's spotting goes by what they see.
 -- Regen Shields refill after the shots, and the minimap's spotting looks
 -- after them, so nobody they killed is seen; the fog of war's looks come
 -- after that, with what each side spots, and each player's snapshot goes
@@ -47,6 +49,7 @@ local HealServer = require(script.HealServer)
 local SlowServer = require(script.SlowServer)
 local BarrierServer = require(script.BarrierServer)
 local ReviveServer = require(script.ReviveServer)
+local ParanoiaServer = require(script.ParanoiaServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
 local MinimapServer = require(script.MinimapServer)
@@ -68,6 +71,7 @@ HealServer.start()
 SlowServer.start()
 BarrierServer.start()
 ReviveServer.start()
+ParanoiaServer.start()
 BlazeServer.start()
 RunItBackServer.start()
 MinimapServer.start()
@@ -98,6 +102,7 @@ RunService.Heartbeat:Connect(function(dt)
 	SlowServer.step(now)
 	BarrierServer.step(now)
 	ReviveServer.step(now)
+	ParanoiaServer.step(now)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)
 	MinimapServer.step(now)

@@ -296,6 +296,16 @@ Built one system at a time:
     hears the orb sent. Two charges, one free each round and the second 150 credits; a spent one
     comes back 40 s after (65 s in Team Deathmatch), and the gun's back 0.7 s after a send -
     [research and design](docs/research/40-dark-cover.md)
+41. **Omen's Paranoia**: Q puts Omen's other shadow orb in hand, ready in 1.1 s, and mouse 1 sends
+    it straight along the crosshair, a see-through ball of shadow 8.6 m across: it appears 4.5 m
+    ahead and flies 25 m at 20 m/s, through walls and anyone in its way. Everyone it comes within
+    4.3 m of, his own side and Omen too, is nearsighted for 2 s: past 7.5 m they see nothing but
+    darkness, what they hear is muffled and quieter, their minimap is covered and tells them of
+    nobody, and a flash popping further away doesn't blind them; then it clears over half a second.
+    Whoever stands in its path as it's sent sees shadow at their screen's edges, and others see a
+    wisp of shadow round a nearsighted player's head. One charge at 250 credits (in Team Deathmatch
+    it comes back 73 s after it's spent), and the gun's back 0.7 s after a send -
+    [research and design](docs/research/41-paranoia.md)
 
 ## Running it
 
@@ -435,11 +445,15 @@ attribute (the healed player's name). Where a player's last Slow Orb burst is th
 attribute (the floor under it, in metres), whether their last tick was slowed their `VFSlowed`,
 and `Workspace.VFSlows` holds each orb in the air, each burst and each field of ice. Where a
 player's last Dark Cover smoke went is their `VFLastSmoke` attribute (the floor under its mark, in
-metres), and `Workspace.VFClouds` holds each smoke and, with its orb in hand, its mark. The
+metres), and `Workspace.VFClouds` holds each smoke and, with its orb in hand, its mark. Whom a
+player's last Paranoia orb touched is their `VFLastParanoia` attribute (their names, in the order it
+touched them), and their nearsight their `VFNearsight` (when it began, when it stops being whole and
+when it's gone, in server time); `Workspace.VFParanoia` holds each orb in flight, the dark round the
+camera and each wisp. The
 minimap's ScreenGui, `VFMinimap`, carries what it
 shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`),
-whether the spike is (`Spike`), how far it's turned (`Turn`, degrees) and whether the big map's
-open (`Big`).
+whether the spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big map's open
+(`Big`) and how covered it is by a nearsight's dark (`Dark`, 0 to 1).
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -486,9 +500,11 @@ field, the slow on the ground, in the air, on a jump and on a dash, judged as a 
 and the wire), her Barrier Orb (its charge, the orb in hand and its targeter's turns, where its wall
 goes, the wall rising, standing and breaking, what it does to steps, shots and sight, its health,
 and the wire), her Resurrection (its points, the orb in hand and its tries, where bodies lie and the
-aim along them, the return's times and hold, who can be brought back, and the wire) and Omen's Dark
+aim along them, the return's times and hold, who can be brought back, and the wire), Omen's Dark
 Cover (his kit, the orb in hand and its mark, where its smoke goes, its flight, the smoke and its
-warning, and the wire) are pure Luau and run outside Roblox:
+warning, and the wire) and his Paranoia (the orb in hand and its send, its flight, whom it touches
+and who's warned, the nearsight, how far the nearsighted see and how the deafened hear) are pure
+Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

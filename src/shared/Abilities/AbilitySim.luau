@@ -70,7 +70,9 @@
 -- comes into hand, then held fire sends it further and held alt fire
 -- brings it closer (Patch 1.0). Fire throws nothing; E again sends the orb
 -- (a "smoke" cast), and PlayerSim spends its charge and puts it away if
--- there's a floor under the mark for its smoke, or leaves it in hand.
+-- there's a floor under the mark for its smoke, or leaves it in hand. His
+-- Paranoia (Q, system 41) puts its orb in hand as the Slow Orb's: fire
+-- sends it (there's no alt fire), and ParanoiaSim flies it.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -157,8 +159,8 @@ export type State = {
 -- "rise" (back at its mark), "heal" (the Healing Orb tried on an ally),
 -- "selfheal" (tried on herself), "slow" (the Slow Orb thrown),
 -- "barrier" (the Barrier Orb's wall raised), "revive" (the Resurrection
--- tried on a body) or "smoke" (Dark Cover's orb sent), where the player's
--- feet and eye were, and
+-- tried on a body), "smoke" (Dark Cover's orb sent) or "paranoia"
+-- (Paranoia's orb sent), where the player's feet and eye were, and
 -- the way it goes (the dash's way, up for a lift, the way they faced for a
 -- readied gust and for Run it Back's, the way they looked for the rest). A
 -- flare's says which way round it curves, a fireball's whether it was
@@ -212,6 +214,7 @@ local PLAYABLE: { [string]: boolean } = {
 	barrierorb = true,
 	resurrection = true,
 	darkcover = true,
+	paranoia = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -487,11 +490,12 @@ end
 -- "away" while his body's gone and "rise" as he rises at its mark, "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
--- Resurrection's orb, Dark Cover's orb), "mark 15.0" with Dark Cover's orb
--- in hand, how far its mark is (metres), "bend" while a wall is being bent
--- (Blaze), "turn" while the Barrier Orb's targeter is turned from across
--- the view, "revived" while a life the Resurrection brought back is held,
--- and "glide" while `gliding` (the movement's, for Drift).
+-- Resurrection's orb, Dark Cover's orb, Paranoia's orb), "mark 15.0" with
+-- Dark Cover's orb in hand, how far its mark is (metres), "bend" while a
+-- wall is being bent (Blaze), "turn" while the Barrier Orb's targeter is
+-- turned from across the view, "revived" while a life the Resurrection
+-- brought back is held, and "glide" while `gliding` (the movement's, for
+-- Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -666,8 +670,8 @@ end
 -- charge spent, and its cast, from `origin` (the eye) the way `aim` points.
 -- `alt` says alt fire threw it: Curveball's flare goes round to the right
 -- then, and to the left otherwise, and Hot Hands' fireball is lobbed. The
--- Slow Orb has no alt fire, nor has the Barrier Orb, whose wall goes where
--- PlayerSim has placed it.
+-- Slow Orb has no alt fire, nor has Paranoia's orb (system 41), nor the
+-- Barrier Orb, whose wall goes where PlayerSim has placed it.
 -- Blaze's wall is sent out from `feet`, and is bent from then until its
 -- run's over, if fire's held that long. The Healing Orb is only tried, on
 -- the ally the crosshair's over or with `alt` on herself: it stays in hand
@@ -711,6 +715,8 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		cast.lob = alt
 	elseif def.id == "sloworb" then
 		cast.kind = "slow"
+	elseif def.id == "paranoia" then
+		cast.kind = "paranoia"
 	elseif def.id == "barrierorb" then
 		cast.kind = "barrier"
 	elseif def.id == "blaze" then

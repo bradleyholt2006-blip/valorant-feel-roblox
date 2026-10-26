@@ -29,6 +29,9 @@
 --   * Dark Cover: only heard here, as its orb's sent (by the sender's side
 --     alone) and as others' smokes form; CloudView draws its mark and the
 --     smokes, and sounds yours forming and each one's warning (system 40)
+--   * Paranoia: only heard here, as its orb's sent; ParanoiaView draws the
+--     orb in flight, warns those in its path and draws the nearsights it
+--     gives (system 41)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -217,7 +220,7 @@ local function onCast(event: any)
 		return -- predicted already
 	end
 	if event.kind == "flight" then
-		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's or SlowView's
+		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's, SlowView's or ParanoiaView's
 	elseif event.kind == "healing" then
 		return -- a heal: HealView's
 	elseif event.kind == "reviving" or event.kind == "revived" then
