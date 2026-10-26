@@ -16,12 +16,33 @@
 --     (FireSim.healed). His Blaze's wall (system 32, BlazeSim) heals him
 --     the same way, at its own pace
 -- The server keeps the fires and burns with them, and tells every client of
--- each as it's thrown, which draws it the same way (FireSim.edge).
+-- each as it's thrown, which draws it the same way (FireSim.edge). Sage's
+-- Slow Orb (system 37) lays its field of ice the same way, its own shape
+-- (a Shape: SlowSim's), and what's in it is slowed instead (SlowSim).
 --
 -- No Roblox APIs here: the world is MovementSim's, so the offline tests
 -- burn through a fake one.
 
 local AbilityConfig = require("./AbilityConfig")
+
+type Param = AbilityConfig.Param
+
+-- What lies on the floor where a throw burst (Hot Hands' fire by default,
+-- AbilityConfig.HotHands): this far round, spread to it over this long,
+-- lasting this long from the burst; reaching this high over its floor and
+-- this far below it; stopped spreading by a wall this high over the floor,
+-- but not by a surface this level (the up of its normal); and half the
+-- size of the box that burst, resting on the floor.
+export type Shape = {
+	radius: Param,
+	spread: Param,
+	duration: Param,
+	height: Param,
+	depth: Param,
+	wallHeight: Param,
+	floor: Param,
+	size: Param,
+}
 
 export type Pool = {
 	owner: number, -- the thrower's entity id
@@ -29,6 +50,7 @@ export type Pool = {
 	centre: vector, -- the floor under the burst, metres
 	start: number, -- when it burst, on its clock (server time on the server)
 	reaches: { number }, -- how far it can spread each way round, metres, by sector
+	shape: Shape,
 }
 
 -- What a fire owes someone, kept from one server frame to the next: what's
@@ -60,47 +82,52 @@ function FireSim.direction(i: number): vector
 end
 
 -- The floor under a fireball that burst at `at` (the middle of the box
--- that flew, resting on it).
-function FireSim.floorUnder(at: vector): vector
-	return at - vector.create(0, HH.size.value, 0)
+-- that flew, resting on it), or under another `shape`'s throw.
+function FireSim.floorUnder(at: vector, shape: Shape?): vector
+	return at - vector.create(0, (shape or HH).size.value, 0)
 end
 
--- How far a fire at `centre` can spread along each sector's first side: its
--- radius, or as far as the first wall at the height one stops it. What's
--- level enough to burst on (a ramp up) doesn't stop it.
-function FireSim.reaches(centre: vector, world: any?): { number }
-	local out = table.create(FireSim.SECTORS, HH.radius.value)
+-- How far a fire at `centre` (or another `shape` there) can spread along
+-- each sector's first side: its radius, or as far as the first wall at the
+-- height one stops it. What's level enough to burst on (a ramp up) doesn't
+-- stop it.
+function FireSim.reaches(centre: vector, world: any?, shape: Shape?): { number }
+	local f = shape or HH
+	local radius = f.radius.value
+	local out = table.create(FireSim.SECTORS, radius)
 	if not world then
 		return out
 	end
-	local from = centre + vector.create(0, HH.wallHeight.value, 0)
+	local from = centre + vector.create(0, f.wallHeight.value, 0)
 	for i = 1, FireSim.SECTORS do
-		local fraction, normal = world:sweep(from, THIN, FireSim.direction(i) * HH.radius.value)
-		if fraction and not (normal and normal.y >= HH.floor.value) then
-			out[i] = fraction * HH.radius.value
+		local fraction, normal = world:sweep(from, THIN, FireSim.direction(i) * radius)
+		if fraction and not (normal and normal.y >= f.floor.value) then
+			out[i] = fraction * radius
 		end
 	end
 	return out
 end
 
-function FireSim.new(owner: number, id: number, centre: vector, start: number, reaches: { number }): Pool
-	return { owner = owner, id = id, centre = centre, start = start, reaches = reaches }
+-- A fire, or with `shape` what that is.
+function FireSim.new(owner: number, id: number, centre: vector, start: number, reaches: { number }, shape: Shape?): Pool
+	return { owner = owner, id = id, centre = centre, start = start, reaches = reaches, shape = shape or HH }
 end
 
 -- How far a fire has spread at `t`: nothing at the burst, all its radius
 -- from the end of its spread time.
 function FireSim.radiusAt(pool: Pool, t: number): number
-	return HH.radius.value * math.clamp((t - pool.start) / HH.spread.value, 0, 1)
+	local f = pool.shape
+	return f.radius.value * math.clamp((t - pool.start) / f.spread.value, 0, 1)
 end
 
 -- Whether a fire burns at `t`: from the burst for its duration.
 function FireSim.burning(pool: Pool, t: number): boolean
-	return t >= pool.start - EPS and t < pool.start + HH.duration.value - EPS
+	return t >= pool.start - EPS and t < pool.start + pool.shape.duration.value - EPS
 end
 
 -- When a fire's out.
 function FireSim.ends(pool: Pool): number
-	return pool.start + HH.duration.value
+	return pool.start + pool.shape.duration.value
 end
 
 -- How far it reaches along sector i's first side, spread out to `r`.
@@ -129,7 +156,7 @@ function FireSim.inside(pool: Pool, feet: vector, t: number, pad: number?): bool
 		return false
 	end
 	local d = feet - pool.centre
-	if d.y > HH.height.value + EPS or d.y < -HH.depth.value - EPS then
+	if d.y > pool.shape.height.value + EPS or d.y < -pool.shape.depth.value - EPS then
 		return false
 	end
 	local grow = pad or 0

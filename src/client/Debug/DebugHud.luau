@@ -273,6 +273,7 @@ function DebugHud.start(controller: any)
 		local flags = table.concat({
 			if s.grounded then "ground" else "air",
 			if s.gliding then "glide" else "",
+			if s.slowed then "SLOWED" else "",
 			if s.crouched then "crouch" else "",
 			if bit32.band(lastInput, B.Walk) ~= 0 then "walk" else "",
 			if landPenalty then "LAND" else "",

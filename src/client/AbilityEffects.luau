@@ -18,6 +18,8 @@
 --     and his rising (system 33)
 --   * the Healing Orb: neither here; HealView marks the ally it would heal,
 --     and sounds and draws each heal (system 36)
+--   * the Slow Orb: only its throw heard here; SlowView draws the orb in
+--     the air, its burst and its field of ice (system 37)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -206,7 +208,7 @@ local function onCast(event: any)
 		return -- predicted already
 	end
 	if event.kind == "flight" then
-		return -- a throw on its way: CloudView's, FlareView's, FireView's or BlazeView's
+		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's or SlowView's
 	elseif event.kind == "healing" then
 		return -- a heal: HealView's
 	end

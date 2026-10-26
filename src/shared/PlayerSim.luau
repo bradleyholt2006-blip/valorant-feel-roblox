@@ -3,9 +3,11 @@
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
 -- Curveball does its flare (system 30), Hot Hands its fireball (system 31),
--- Blaze its flame (system 32) and the Healing Orb its orb (system 36), and
--- whose Run it Back holds the player through his return and puts him back
--- at its mark (system 33).
+-- Blaze its flame (system 32), the Healing Orb its orb (system 36) and the
+-- Slow Orb its own (system 37), and whose Run it Back holds the player
+-- through his return and puts him back at its mark (system 33). A Slow
+-- Orb's field slows whoever starts a tick in it (SlowSim), from the fields
+-- each step's given.
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -23,6 +25,7 @@ local Spike = require("./Spike/Spike")
 local SpikeSim = require("./Spike/SpikeSim")
 local AbilitySim = require("./Abilities/AbilitySim")
 local AbilityConfig = require("./Abilities/AbilityConfig")
+local SlowSim = require("./Abilities/SlowSim")
 
 export type State = {
 	movement: MovementSim.State,
@@ -186,14 +189,17 @@ end
 -- several for a shotgun), the knife swing that started, if one did, what
 -- happened with the spike, if anything, the gun G let go of, if it did
 -- (system 15), and the abilities cast, if any (system 17). `objective` is
--- what this player can do with the spike now (Spike.NONE when nothing).
+-- what this player can do with the spike now (Spike.NONE when nothing), and
+-- `slows` the Slow Orbs' fields in play and the time they're judged at
+-- (system 37): none without.
 function PlayerSim.step(
 	s: State,
 	input: any,
 	cfg: any,
 	world: any,
 	dt: number,
-	objective: Spike.Context?
+	objective: Spike.Context?,
+	slows: SlowSim.Slows?
 ): ({ WeaponSim.Shot }?, WeaponSim.Swing?, SpikeSim.Act?, WeaponSim.Dropped?, { AbilitySim.Cast }?)
 	-- Run it Back's return goes before anything (system 33): through it the
 	-- player's held. Then the plant and the defuse: the tick they start on,
@@ -223,6 +229,11 @@ function PlayerSim.step(
 	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
 	local grounded, crouched = s.movement.grounded, s.movement.crouched
 	local motion, casts = AbilitySim.step(kit, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
+	-- Standing in a Slow Orb's field as the tick starts, they're slowed
+	-- through it (system 37).
+	if slows and SlowSim.slowed(slows.fields, feet, slows.time, cfg.halfWidth) then
+		motion.slow = SlowSim.SLOW
+	end
 	MovementSim.step(s.movement, moveInput, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, motion)
 	-- A throw puts the gun away for a moment (system 18). Blade Storm's cast
 	-- puts its knives in hand, and X draws them again (system 19). An

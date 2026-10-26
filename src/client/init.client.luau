@@ -36,6 +36,7 @@ local FireView = require(script.FireView)
 local BlazeView = require(script.BlazeView)
 local RunItBackView = require(script.RunItBackView)
 local HealView = require(script.HealView)
+local SlowView = require(script.SlowView)
 local MinimapView = require(script.MinimapView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
@@ -108,7 +109,8 @@ GameSounds.start()
 -- each cast's look and sound; Cloudburst's throws and clouds (system 18),
 -- Curveball's flares and blinds (system 30), Hot Hands' fireballs and fire
 -- (system 31), Blaze's walls of fire (system 32), Run it Back's marks and
--- returns (system 33), and the Healing Orb's heals (system 36).
+-- returns (system 33), the Healing Orb's heals (system 36) and the Slow
+-- Orb's fields of ice (system 37).
 AbilityHud.start()
 AbilityEffects.start()
 CloudView.start()
@@ -118,6 +120,7 @@ FireView.start()
 BlazeView.start()
 RunItBackView.start()
 HealView.start()
+SlowView.start()
 -- The minimap at the top left (system 34), and the big map while Caps Lock
 -- is held: the map, your side and the enemies it sees, the spike, what's
 -- been thrown, and the sounds you make.

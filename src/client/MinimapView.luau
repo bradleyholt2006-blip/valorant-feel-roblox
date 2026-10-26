@@ -22,7 +22,8 @@
 --   * vision cones, yours and your side's, each ray as far as it goes from
 --     the eye before the level, a cloud or a wall of fire stops it (Patch
 --     6.07 fixed cones flickering at walls of fire)
---   * clouds, walls of fire and fires, edged in their owner's colour
+--   * clouds, walls of fire, fires and fields of ice (the Slow Orb's,
+--     system 37), edged in their owner's colour
 --   * the sites' letters, and on the big map the places' names
 --   * a white circle round you as you make a sound, as far as it's heard
 --     (the minimap's sound circle: "Anyone outside of this white circle
@@ -61,6 +62,7 @@ local ClientSpike = require(script.Parent.ClientSpike)
 local CloudView = require(script.Parent.CloudView)
 local BlazeView = require(script.Parent.BlazeView)
 local FireView = require(script.Parent.FireView)
+local SlowView = require(script.Parent.SlowView)
 local GameSounds = require(script.Parent.Audio.GameSounds)
 local SoundEngine = require(script.Parent.Audio.SoundEngine)
 local NetSim = require(script.Parent.NetSim)
@@ -90,6 +92,7 @@ local SELF = Color3.fromRGB(255, 236, 140)
 local SPIKE = Color3.fromRGB(255, 150, 40)
 local SMOKE = Color3.fromRGB(196, 214, 228)
 local FIRE = Color3.fromRGB(255, 128, 40)
+local ICE = Color3.fromRGB(110, 205, 235)
 local TEXT = Color3.fromRGB(235, 238, 244)
 local DEAD = Color3.fromRGB(235, 72, 72)
 
@@ -133,6 +136,7 @@ type Scene = {
 	icons: { Icon },
 	clouds: { Round },
 	fires: { Round },
+	slows: { Round },
 	walls: { { points: { vector }, colour: Color3 } },
 	cones: { Cone },
 	ring: { radius: number, fade: number }?,
@@ -656,6 +660,10 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	for _, f in FireView.burning() do
 		table.insert(fires, { centre = f.centre, radius = f.radius, colour = ownerColour(f.entity, side) })
 	end
+	local slows: { Round } = {}
+	for _, f in SlowView.standing() do
+		table.insert(slows, { centre = f.centre, radius = f.radius, colour = ownerColour(f.entity, side) })
+	end
 	local walls = {}
 	for _, w in BlazeView.standing() do
 		table.insert(walls, { points = w.points, colour = ownerColour(w.entity, side) })
@@ -669,6 +677,7 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 		icons = icons,
 		clouds = clouds,
 		fires = fires,
+		slows = slows,
 		walls = walls,
 		cones = if ClientSettings.current.mapCones then cones else {},
 		ring = if r and fade < 1 and you then { radius = r.radius, fade = fade } else nil,
@@ -677,7 +686,7 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	}
 end
 
--- A round drawn on the turning map: a cloud or a fire.
+-- A round drawn on the turning map: a cloud, a fire or a field of ice.
 local function drawRound(layer: Layer, name: string, round: Round, mid: vector, scale: number, colour: Color3, transparency: number)
 	local f = get(layer.utility, name, function()
 		local d = disc(colour, 1)
@@ -720,6 +729,9 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 	end
 	for i, f in scene.fires do
 		drawRound(layer, "Fire_" .. i, f, mid, scale, FIRE, 0.25)
+	end
+	for i, f in scene.slows do
+		drawRound(layer, "Slow_" .. i, f, mid, scale, ICE, 0.35)
 	end
 	local thick = math.max(2, scale * 0.6)
 	for i, w in scene.walls do

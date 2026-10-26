@@ -463,16 +463,35 @@ SoundConfig.Sounds = {
 	healChime = sound(0.6, 0.02, 3, {
 		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
 	}, 0.6),
+	-- The Slow Orb (system 37): the orb lit in hand is the gust again, as
+	-- high as the Healing Orb's but quicker; its throw, the thin swish,
+	-- quick; its burst, the spike blast's crack sped up, as ice breaking;
+	-- and a run or a jump through its field, a foot stomp pitched up into a
+	-- crunch.
+	slowEquip = sound(0.45, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.55),
+	slowThrow = sound(0.6, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 1.15),
+	slowBurst = sound(0.6, 0.03, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 1.3),
+	iceCrunch = sound(0.5, 0.08, 4, {
+		asset(9114523345, "Foot Stomp 3 (SFX)", 0.183),
+		asset(9114523629, "Foot Stomp 7 (SFX)", 0.178),
+	}, 1.6),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
 -- cloud's burst, a flare's pop, a fireball's burst and its fire, Blaze's
--- wall rising, a Phoenix's body going in Run it Back, and a heal of the
--- Healing Orb's starting), heard as the ability curve says (systems 17 to
--- 19, 30 to 33 and 36). Blade Storm's knives drawn again sound as their
--- draw does, and so does an ability put in hand (Curveball's flare, Hot
--- Hands' fireball, Blaze's flame, the Healing Orb), which only the one
--- drawing it hears. The orb's tries make no sound: only a heal does.
+-- wall rising, a Phoenix's body going in Run it Back, a heal of the
+-- Healing Orb's starting, a Slow Orb's burst, and a run or a jump through
+-- its field), heard as the ability curve says (systems 17 to 19, 30 to 33,
+-- 36 and 37). Blade Storm's knives drawn again sound as their draw does,
+-- and so does an ability put in hand (Curveball's flare, Hot Hands'
+-- fireball, Blaze's flame, the Healing Orb, the Slow Orb), which only the
+-- one drawing it hears. The orb's tries make no sound: only a heal does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -491,6 +510,9 @@ SoundConfig.Abilities = {
 	fizzle = "fizzle",
 	rise = "markRise",
 	healing = "healChime",
+	slow = "slowThrow",
+	ice = "slowBurst",
+	crunch = "iceCrunch",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -599,6 +621,9 @@ SoundConfig.Weapons = {
 	flamewall = { draw = "wallEquip", curve = "ability" },
 	-- The Healing Orb (system 36): the same, its heal the ability's.
 	healorb = { draw = "orbEquip", curve = "ability" },
+	-- The Slow Orb (system 37): the same, its throw, burst and crunch the
+	-- ability's.
+	iceorb = { draw = "slowEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

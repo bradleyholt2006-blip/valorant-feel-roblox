@@ -33,7 +33,8 @@ export type CurveParam = { points: Curve, status: Status, source: string }
 -- in the fifth slot while the ultimate lasts, and never sold either.
 -- "ability" is an ability's (system 30: Phoenix's Curveball flare; system
 -- 31: his Hot Hands fireball; system 32: his Blaze flame; system 36: Sage's
--- Healing Orb), in the fifth slot while it's in hand, and never sold.
+-- Healing Orb; system 37: her Slow Orb), in the fifth slot while it's in
+-- hand, and never sold.
 export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike" | "ultimate" | "ability"
 
 export type AccuracyDef = {
@@ -153,10 +154,10 @@ export type WeaponDef = {
 	-- bought, dropped or reloaded (WeaponSim.arm).
 	ultimate: boolean?,
 	-- An ability's weapon (system 30: Curveball's flare; system 31: Hot Hands'
-	-- fireball; system 32: Blaze's flame; system 36: the Healing Orb): the
-	-- AbilityConfig id whose cast puts it in hand in the fifth slot. Like an
-	-- ultimate's, never bought, dropped or reloaded, and gone once it's out
-	-- of hand.
+	-- fireball; system 32: Blaze's flame; system 36: the Healing Orb; system
+	-- 37: the Slow Orb): the AbilityConfig id whose cast puts it in hand in
+	-- the fifth slot. Like an ultimate's, never bought, dropped or reloaded,
+	-- and gone once it's out of hand.
 	ability: string?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
@@ -701,6 +702,28 @@ local orbSelf: AltDef = {
 	accuracy = orbExact,
 	recoil = ORB_KICK,
 }
+
+-- Sage's Slow Orb (system 37): thrown along the crosshair and flown by
+-- FireballSim as the Slow Orb's (SlowSim), as the fireball is, so no spread
+-- or kick moves it either. It has no alt fire.
+local SLOW = "VALORANT Wiki, Slow Orb"
+local SLOW_FLOWN = "n/a: SlowSim flies it from the crosshair"
+local SLOW_NA = p(0, "estimate", SLOW_FLOWN)
+local slowExact = accuracy(
+	c({ { 1, 0 } }, "estimate", SLOW_FLOWN),
+	p(1, "estimate", SLOW_FLOWN),
+	p(0.1, "estimate", SLOW_FLOWN),
+	p(1, "estimate", SLOW_FLOWN),
+	{ crouch = SLOW_NA, walk = SLOW_NA, run = SLOW_NA, air = SLOW_NA }
+)
+slowExact.landError = SLOW_NA
+local SLOW_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a thrown orb doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = SLOW_NA,
+	adsCamera = SLOW_NA,
+})
 
 WeaponConfig.Defs = {
 	classic = {
@@ -1603,13 +1626,40 @@ WeaponConfig.Defs = {
 		accuracy = orbExact,
 		recoil = ORB_KICK,
 	},
+	-- Sage's Slow Orb (system 37): put in hand in the fifth slot by Q
+	-- (AbilityConfig.SlowOrb), as the fireball is by Phoenix's Q. Fire throws
+	-- it; PlayerSim turns the throw into the ability's cast, which SlowSim
+	-- flies, so it fires no bullet. Where it bursts, its field slows; the
+	-- orb itself hurts nobody.
+	iceorb = {
+		id = "iceorb",
+		name = "Slow Orb",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: Q puts it in hand, a charge of the Slow Orb (" .. SLOW .. ")"),
+		-- Held, it goes as soon as it's in hand (ours, as the flare).
+		fireMode = "auto",
+		fireRate = ONE_THROW,
+		magazine = p(1, "community", SLOW .. ": 2 uses, an orb each"),
+		reserve = p(0, "community", "None: another throw is another charge (" .. SLOW .. ": 2 uses)"),
+		reloadTime = SLOW_NA,
+		equipTime = p(0.5, "community", SLOW .. ": 'Equip' 0.5 seconds (game files)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: its field slows (" .. SLOW .. "), and the orb itself hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "sloworb",
+		accuracy = slowExact,
+		recoil = SLOW_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
 -- they always were, the rest in alphabetical order after them, the spike
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
--- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32)
--- and the Healing Orb (system 36) last.
+-- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
+-- the Healing Orb (system 36) and the Slow Orb (system 37) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1638,6 +1688,7 @@ WeaponConfig.Ids = {
 	"fireball",
 	"flamewall",
 	"healorb",
+	"iceorb",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

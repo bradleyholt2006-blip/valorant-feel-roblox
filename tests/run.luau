@@ -45,5 +45,6 @@ require("./runitback")
 require("./minimap")
 require("./fogofwar")
 require("./healingorb")
+require("./sloworb")
 
 H.finish()

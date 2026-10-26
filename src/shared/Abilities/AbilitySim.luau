@@ -46,7 +46,9 @@
 -- it isn't thrown: fire tries it on the ally under the crosshair and alt
 -- fire on herself, a try at a time, and it stays in hand, its charge with
 -- it, until the server finds a try heals someone (HealServer), spends the
--- charge and puts it away (used).
+-- charge and puts it away (used). Her Slow Orb (Q, system 37) puts its orb
+-- in hand as Hot Hands does its fireball: fire throws it (there's no lob),
+-- SlowSim flies it, and its field slows whoever's in it (PlayerSim).
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -88,7 +90,8 @@ export type State = {
 	-- PlayerSim ends it when they're gone.
 	storm: boolean,
 	-- The slot whose ability is in hand (Curveball's flare, system 30, Hot
-	-- Hands' fireball, system 31, or the Healing Orb, system 36), 0 for none.
+	-- Hands' fireball, system 31, the Healing Orb, system 36, or the Slow
+	-- Orb, system 37), 0 for none.
 	-- PlayerSim puts it away when the hand goes elsewhere.
 	holding: number,
 	-- The slot whose wall is being bent (Blaze, system 32), 0 for none, and
@@ -113,8 +116,9 @@ export type State = {
 -- drawn again), "equip" (an ability put in hand), "flare" (Curveball's
 -- thrown), "fireball" (Hot Hands' thrown), "flame" (Blaze's sent out),
 -- "mark" (Run it Back cast), "fizzle" (his body gone as it runs out),
--- "rise" (back at its mark), "heal" (the Healing Orb tried on an ally) or
--- "selfheal" (tried on herself), where the player's feet and eye were, and
+-- "rise" (back at its mark), "heal" (the Healing Orb tried on an ally),
+-- "selfheal" (tried on herself) or "slow" (the Slow Orb thrown), where the
+-- player's feet and eye were, and
 -- the way it goes (the dash's way, up for a lift, the way they faced for a
 -- readied gust and for Run it Back's, the way they looked for the rest). A
 -- flare's says which way round it curves, and a fireball's whether it was
@@ -160,6 +164,7 @@ local PLAYABLE: { [string]: boolean } = {
 	runitback = true,
 	innerfire = true,
 	healingorb = true,
+	sloworb = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -168,7 +173,7 @@ end
 
 -- Whether an ability is one its key puts in hand, to be thrown or tried
 -- from there (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
--- Healing Orb): a weapon of its own, outside the ultimate.
+-- Healing Orb, the Slow Orb): a weapon of its own, outside the ultimate.
 local function held(def: AbilityConfig.AbilityDef?): boolean
 	return def ~= nil and def.weapon ~= nil and def.kind ~= "ultimate" and PLAYABLE[def.id] == true
 end
@@ -570,7 +575,8 @@ end
 -- The ability in hand thrown (WeaponSim fires it as PlayerSim has it): its
 -- charge spent, and its cast, from `origin` (the eye) the way `aim` points.
 -- `alt` says alt fire threw it: Curveball's flare goes round to the right
--- then, and to the left otherwise, and Hot Hands' fireball is lobbed.
+-- then, and to the left otherwise, and Hot Hands' fireball is lobbed. The
+-- Slow Orb has no alt fire.
 -- Blaze's wall is sent out from `feet`, and is bent from then until its
 -- run's over, if fire's held that long. The Healing Orb is only tried, on
 -- the ally the crosshair's over or with `alt` on herself: it stays in hand
@@ -610,6 +616,8 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 	if def.id == "hothands" then
 		cast.kind = "fireball"
 		cast.lob = alt
+	elseif def.id == "sloworb" then
+		cast.kind = "slow"
 	elseif def.id == "blaze" then
 		cast.kind = "flame"
 		s.steering = slot

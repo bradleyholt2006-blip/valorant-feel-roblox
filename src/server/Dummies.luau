@@ -9,7 +9,8 @@
 --
 -- They tick at 128 Hz on the server's clock, two or three ticks a 60 Hz
 -- frame, so the snapshots show them through a MovePacer, about a tick
--- behind, and they move as evenly as the simulation does.
+-- behind, and they move as evenly as the simulation does. A Slow Orb's
+-- field slows them as it does a player (system 37), on that clock.
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,6 +19,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local PlayerSim = require(Shared.PlayerSim)
+local SlowSim = require(Shared.Abilities.SlowSim)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
@@ -52,6 +54,9 @@ type Dummy = {
 }
 
 local Dummies = {}
+
+-- The Slow Orbs' fields in play (system 37, SlowServer); none without.
+Dummies.fields = nil :: (() -> { SlowSim.Field })?
 
 local dummies: { Dummy } = {}
 local world = RobloxWorld.new()
@@ -183,7 +188,8 @@ function Dummies.step(now: number)
 			end
 			d.ticks += 1
 			local input = { seq = d.ticks, buttons = buttonsFor(d), yaw = d.yaw, pitch = 0, slot = 1, viewTime = 0 }
-			PlayerSim.step(d.sim, input, cfg, world, DT)
+			local fieldsOf = Dummies.fields
+			PlayerSim.step(d.sim, input, cfg, world, DT, nil, if fieldsOf then { fields = fieldsOf(), time = last } else nil)
 			MovePacer.push(d.pacer, last, currentPose(d))
 		end
 	end

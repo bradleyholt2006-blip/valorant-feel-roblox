@@ -26,7 +26,10 @@
 -- AbilityServer changes the kit between ticks. Phoenix's Run it Back
 -- (system 33) puts him back at its mark in the simulation too, and the
 -- snapshots start over from there; while his body's gone he's out of play
--- (inPlay), and they leave him out.
+-- (inPlay), and they leave him out. Sage's Slow Orb (system 37) slows a
+-- player's ticks in its fields (from SlowServer, PlayerSimServer.fields),
+-- judged at the time their screen showed (SlowSim.judged), as their own
+-- prediction judges them.
 --
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
 -- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
@@ -54,6 +57,7 @@ local Accuracy = require(Shared.Weapons.Accuracy)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local SlowSim = require(Shared.Abilities.SlowSim)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
@@ -125,6 +129,8 @@ PlayerSimServer.spikeListeners = {} :: { (Player, SpikeSim.Act) -> () }
 PlayerSimServer.dropListeners = {} :: { (Player, WeaponSim.Dropped, vector, number) -> () }
 -- Called with each ability a player casts (system 17).
 PlayerSimServer.castListeners = {} :: { (Player, AbilitySim.Cast) -> () }
+-- The Slow Orbs' fields in play (system 37, SlowServer); none without.
+PlayerSimServer.fields = nil :: (() -> { SlowSim.Field })?
 -- Called after each of a player's ticks, with its input and its casts, if
 -- any (system 18 flies thrown clouds on them).
 PlayerSimServer.tickListeners = {} :: { (Player, PlayerCodec.WireInput, { AbilitySim.Cast }?) -> () }
@@ -533,7 +539,9 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
 		local objectiveFor = PlayerSimServer.objectiveFor
 		local objective = if objectiveFor then objectiveFor(r.player) else nil
-		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective)
+		local fieldsOf = PlayerSimServer.fields
+		local slows = if fieldsOf then { fields = fieldsOf(), time = SlowSim.judged(input.viewTime, stepNow) } else nil
+		local shots, swing, act, dropped, casts = PlayerSim.step(r.sim, input, cfg, world, DT, objective, slows)
 		-- Back at Run it Back's mark (system 33): the snapshots start over
 		-- from there, so he's never shown, or hit, on the way.
 		if casts then
