@@ -6,9 +6,10 @@
 --     moves a cursor across it, not the view, from where you stand (ours),
 --     held on the map (Minimap.held). The cursor's a ring, violet where
 --     fire would take you, as your simulation will find it
---     (ShadowSim.place), red where it wouldn't. Fire sends its place with
---     the input (PlayerController.mapPoint). Once it's fired, where it's
---     taking you shows on the minimap until you've formed there
+--     (ShadowSim.place), red where it wouldn't, and in the buy phase
+--     everywhere. Fire sends its place with the input
+--     (PlayerController.mapPoint). Once it's fired, where it's taking you
+--     shows on the minimap until you've formed there
 --   * Your windup: shadow closing in from the screen's edges, as Shrouded
 --     Step's
 --   * You as a Shade: the world all but grey ('Omen's vision is mostly
@@ -130,7 +131,7 @@ local function mapPoint(): vector?
 end
 
 -- Finds whether fire would take you to `at` again, once the cursor's moved
--- or a moment's gone by.
+-- or a moment's gone by: never in the buy phase, as your simulation has it.
 local function judge(at: vector)
 	local last, clock = judgedAt, os.clock()
 	if last and vector.magnitude(at - last) < MOVED and clock - judgedWhen < AGAIN then
@@ -140,7 +141,7 @@ local function judge(at: vector)
 	local walls = PlayerController.barriers
 	local judged = if walls then walls(RemoteEntities.shownTime()) else nil
 	local through = if judged then BarrierSim.world(world, judged.walls, judged.time) else world
-	placeable = ShadowSim.place(through, at, PlayerController.cfg) ~= nil
+	placeable = not (judged and judged.closed) and ShadowSim.place(through, at, PlayerController.cfg) ~= nil
 end
 
 local function playerOf(id: number): Player?
