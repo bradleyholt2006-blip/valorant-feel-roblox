@@ -80,7 +80,7 @@ second; 2 m; nothing stops it; and a charge at a time, up to two.
 | Dark Cover "Cooldown decreased 40s >>> 30s"; "Cost increased 100 >>> 150"; "Projectile Speed increased 2800 >>> 6400"; "We want to increase his reliability as a Controller by rolling back a selection of early nerfs to Dark Cover" | [VALORANT Patch Notes 4.04](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-4-04/), 1 March 2022 |
 | "Dark Cover no longer plays audio in third person within 12.5 meters for opponents. This audio will still play for Allies."; in our words, a smoke no longer gives away where he is | [VALORANT Patch Notes 11.00](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-11-00/), 24 June 2025 |
 | Dark Cover "Cooldown increased from 30s → 40s" | [VALORANT Patch Notes 11.08](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-11-08/), 14 October 2025 |
-| Dark Cover: "EQUIP a shadow orb, entering a phased world to place and target the orbs."; "PRESS the ability key to throw the shadow orb to the marked location,"; "creating a long-lasting shadow sphere that blocks vision." | [Riot's agent page for Omen](https://playvalorant.com/en-us/agents/omen/) |
+| Dark Cover: "EQUIP a shadow orb, entering a phased world to place and target the orbs."; "PRESS the ability key to throw the shadow orb to the marked location,"; "creating a long-lasting shadow sphere that blocks vision."; "HOLD FIRE while targeting to move the marker further away."; "HOLD ALT FIRE while targeting to move the marker closer."; "PRESS RELOAD to toggle normal targeting view." | [Riot's agent page for Omen](https://playvalorant.com/en-us/agents/omen/) |
 
 ### From the community
 
