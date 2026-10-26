@@ -454,7 +454,7 @@ do
 	check("the teleport over, his gun drawn again", kit.shadowAt == 0 and w.equipped == 1 and near(w.equipEndTime - t, VANDAL, 1e-9))
 	local _, after = run(p, B.Forward, ticks(0.5))
 	check("and he's free from his next tick", #after == 0 and vector.magnitude(p.sim.movement.position - from) > 0.5)
-	check("once he's formed there's none either", PlayerSim.home(p.sim, cfg, now(p), look) == nil)
+	check("once he's back there's none either", PlayerSim.home(p.sim, cfg, now(p), look) == nil)
 end
 
 do
