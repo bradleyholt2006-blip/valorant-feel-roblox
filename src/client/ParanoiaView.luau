@@ -15,19 +15,20 @@
 --     warning when the projectile is fired')
 --   * Your nearsight, or the nearsight of the player you're watching
 --     (Spectate), as the server keeps it (ParanoiaSim.ATTRIBUTE): all past
---     its vision dark, a ball of shadow round the camera that far out, seen
---     from inside, as the reference's nearsight has what's past it
+--     its vision dark, a shell of shadow round the camera that far out,
+--     seen from inside, as the reference's nearsight has what's past it
 --     'replaced with dark, opaque colors' (the VALORANT Wiki's Status
 --     Effect page; community); the World and Self buses muffled
 --     (SoundEngine.setDeafened), and the minimap covered (MinimapView, by
---     ParanoiaView.dark); then all of it clearing over the fade. Yours
---     starting sounds on the UI bus (GameSounds.playNearsight)
+--     ParanoiaView.dark); then all of it clearing over the fade, the dark
+--     drawing back and thinning away. Yours starting sounds on the UI bus
+--     (GameSounds.playNearsight)
 --   * Others': a wisp of shadow round the head while it lasts. The watched
 --     player's is on your screen instead
 -- In Workspace's VFParanoia each orb in flight is an `Orb` ball with its
--- `Core` ball, the dark round the camera is `Dark`, and each wisp a `Wisp`
--- ball with its player's name as its Player attribute; PlayerGui's
--- VFParanoia has the warning, `Warn`.
+-- `Core` ball, the dark round the camera is `Dark`, a model of `Slab`s,
+-- and each wisp a `Wisp` ball with its player's name as its Player
+-- attribute; PlayerGui's VFParanoia has the warning, `Warn`.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -69,6 +70,17 @@ local WISP_MOST = 0.75 -- how solid a wisp is at its darkest (ours)
 local WARN = 0.6 -- seconds the warning shows (ours)
 local WARN_MOST = 0.35 -- how see-through it is at its strongest (ours)
 local KEEP = 5 -- seconds your sends are remembered, so the server's word on one doesn't send it again
+-- The dark's shell: how many slabs it has, how far each reaches from its
+-- middle, as an angle from the camera, and how thick it is (ours). The
+-- slabs lie on directions spread evenly round the camera, each wide
+-- enough to meet those round it.
+local SLABS = 120
+local SLAB_REACH = 1.5 * math.acos(1 - 2 / SLABS)
+local SLAB_THICK = 0.05 -- metres
+-- As the dark clears, how far it's drawn back at the most, and how much
+-- of it's left as it starts to thin away too (ours).
+local FAR = 150 -- metres
+local THIN_FROM = 0.2
 
 -- An orb in flight: when it was sent on its clock, os.clock() for yours
 -- and the render clock for others', and whether you've been warned of it.
@@ -79,7 +91,14 @@ local orbs: { [string]: Shown } = {}
 local sent: { [string]: number } = {} -- your sends, by key, at os.clock()
 local wisps: { [Player]: Part } = {}
 local folder: Folder? = nil
-local darkPart: Part? = nil
+-- The dark's shell: its slabs, the way out from the camera to each and
+-- each one's turn, and how far out and how see-through they were last.
+local darkModel: Model? = nil
+local slabs: { BasePart } = {}
+local slabWays: { Vector3 } = {}
+local slabTurns: { CFrame } = {}
+local darkRadius = -1
+local darkClear = -1
 local warnedAt = -math.huge
 -- When the nearsight on your screen started, to sound yours once.
 local heard: number? = nil
@@ -113,31 +132,85 @@ local function ball(name: string, across: number, colour: Color3): Part
 	return p
 end
 
--- The dark round the camera: a ball its vision out, turned inside out so
--- it's seen from within (a part's faces are drawn from outside only).
-local function dark(): Part
-	local had = darkPart
+-- The dark round the camera, seen from inside: a shell of thin slabs, each
+-- square to the way out to it, that closes all round it. A part's faces
+-- are drawn from outside only, and Roblox draws a sphere mesh scaled by -1
+-- as it does one scaled by 1, so a ball turned inside out isn't seen from
+-- within (the Studio checklist's PA5 found it never drawn); a slab's face
+-- towards the camera is. Spread evenly (a Fibonacci sphere), the nearest
+-- slab whichever way the camera looks is no more than about 14 degrees off
+-- it, so its face is no more than 3% further out than the vision. They're
+-- neon, so they're as dark whichever way the light falls on them.
+local function dark(): Model
+	local had = darkModel
 	if had and had.Parent then
 		return had
 	end
-	local p = Instance.new("Part")
-	p.Name = "Dark"
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.CastShadow = false
-	p.Material = Enum.Material.SmoothPlastic
-	p.Color = DARK
-	p.Transparency = 1
-	p.Size = Vector3.one * 2 * PA.vision.value * Units.STUDS_PER_METRE
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Scale = -Vector3.one
-	mesh.Parent = p
-	p.Parent = holder()
-	darkPart = p
-	return p
+	local model = Instance.new("Model")
+	model.Name = "Dark"
+	table.clear(slabs)
+	table.clear(slabWays)
+	table.clear(slabTurns)
+	local golden = math.pi * (3 - math.sqrt(5))
+	for i = 0, SLABS - 1 do
+		local y = 1 - (i + 0.5) * 2 / SLABS
+		local across = math.sqrt(1 - y * y)
+		local way = Vector3.new(math.cos(golden * i) * across, y, math.sin(golden * i) * across)
+		-- Its back faces out, so its front faces the camera.
+		local helper = if math.abs(way.Y) < 0.9 then Vector3.yAxis else Vector3.xAxis
+		local right = helper:Cross(way).Unit
+		local turn = CFrame.fromMatrix(Vector3.zero, right, way:Cross(right), way)
+		local p = Instance.new("Part")
+		p.Name = "Slab"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.Neon
+		p.Color = DARK
+		p.Transparency = 1
+		p.Parent = model
+		table.insert(slabs, p)
+		table.insert(slabWays, way)
+		table.insert(slabTurns, turn)
+	end
+	model.Parent = holder()
+	darkModel = model
+	darkRadius, darkClear = -1, -1
+	return model
+end
+
+-- The dark round the camera at `at` (studs), `amount` of it (0 to 1, as
+-- ParanoiaSim.darkAt has it): whole, its vision out; clearing, drawn back
+-- further and further, and thinning away once little's left.
+local function placeDark(at: Vector3?, amount: number)
+	dark()
+	local clear = if at and amount > 0 then 1 - math.min(amount / THIN_FROM, 1) else 1
+	if clear ~= darkClear then
+		darkClear = clear
+		for _, p in slabs do
+			p.Transparency = clear
+		end
+	end
+	if not at or clear >= 1 then
+		return
+	end
+	local vision = PA.vision.value
+	local radius = math.min(vision / amount, FAR) * Units.STUDS_PER_METRE
+	if radius ~= darkRadius then
+		darkRadius = radius
+		local side = 2 * radius * math.tan(SLAB_REACH)
+		local size = Vector3.new(side, side, SLAB_THICK * Units.STUDS_PER_METRE)
+		for _, p in slabs do
+			p.Size = size
+		end
+	end
+	local cframes = table.create(#slabs)
+	for i, way in slabWays do
+		cframes[i] = CFrame.new(at + way * radius) * slabTurns[i]
+	end
+	Workspace:BulkMoveTo(slabs, cframes, Enum.BulkMoveMode.FireCFrameChanged)
 end
 
 local function drop(key: string)
@@ -305,14 +378,8 @@ function ParanoiaView.start()
 		end
 		ParanoiaView.dark = amount
 		SoundEngine.setDeafened(amount)
-		local d = dark()
 		local camera = Workspace.CurrentCamera
-		if amount > 0 and camera then
-			d.CFrame = CFrame.new(camera.CFrame.Position)
-			d.Transparency = 1 - amount
-		else
-			d.Transparency = 1
-		end
+		placeDark(if camera then camera.CFrame.Position else nil, amount)
 
 		for _, player in Players:GetPlayers() do
 			if player ~= me then

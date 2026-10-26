@@ -2810,8 +2810,9 @@ the spike rounds. Play as Omen, as in section 44. Without keys or a mouse button
 The F3 panel's `pos` line is where you stand, in metres. Your `VFLastParanoia` attribute is whom
 your last orb touched, set once it's flown, and your `VFNearsight` is your nearsight while any of
 it's left; `Workspace.VFParanoia` holds each orb in flight, an `Orb` ball, and the dark round the
-camera, `Dark`. On the course a spent charge comes back 1.5 s after it's spent. Start at the spawn
-facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+camera, `Dark`, a model of `Slab` parts. On the course a spent charge comes back 1.5 s after it's
+spent. Start at the spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the
+Vandal in hand.
 
 - **PA1 His kit.** In agent select (T), OMEN's card has Q PARANOIA lit now, with `Q readies a shadow
   orb. Fire sends it forward through walls, nearsighting and deafening everyone it touches.`, and
@@ -2840,12 +2841,14 @@ facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in
 - **PA5 Nearsighted.** Set `VFTestPitch` to -89, looking straight down, send one, and set
   `VFTestPitch` straight back to 0: it appeared 4.5 m under your eye, inside the floor, near enough
   to your legs to touch you. At once a slowed tone, logged as `nearsight`, and the screen past about
-  7.5 m is dark: Dummy 1 and the 10 m stripe are gone in it, and the floor round you still shows.
-  The minimap is covered in dark, and `VFMinimap` reads `Dark` 1. `VFNearsight` is set, and in
-  SoundService `VFSound.world.worldMuffle` and `VFSound.self.selfMuffle` have Bypass off and
-  Frequency 400, and the `world` and `self` faders Volume 0.35. 1.25 s after the send,
-  `VFLastParanoia` reads your name. 2 s after the tone the dark starts to clear, and half a second
-  later it's gone: `Dark` 0, `VFNearsight` unset, both muffles bypassed again, and the faders at
+  7.5 m is dark: Dummy 1, the 10 m stripe, the far wall and the sky are gone in it, and the floor
+  round you still shows. Set `VFTestYaw` to 180 and back to 0: it's as dark behind you.
+  `Workspace.VFParanoia.Dark` has 120 `Slab` parts, at Transparency 0. The minimap is off on the
+  course, so it's PA6 that sees it covered. `VFNearsight` is set, and in SoundService
+  `VFSound.world.worldMuffle` and `VFSound.self.selfMuffle` have Bypass off and Frequency 400, and
+  the `world` and `self` faders Volume 0.35. 1.25 s after the send, `VFLastParanoia` reads your
+  name. 2 s after the tone the dark draws back and thins away, and half a second later it's gone:
+  the slabs at Transparency 1, `VFNearsight` unset, both muffles bypassed again, and the faders at
   full Volume again. Press F2 to close the Sound Lab. **Send:** a screenshot while it's dark.
 
 Then three players: stop the game, start a Local Server with 3 players and press P in window 1
@@ -3139,7 +3142,7 @@ PA1 anything on Omen's card or the bar that read differently: ___
 PA2 EQUIP for about ___ s; anything the Sound Lab logged differently: ___
 PA3 VFLastParanoia: ___; the orb gone after about ___ s; Q's pip back after ___ s
 PA4 VFLastParanoia: ___
-PA5 dark past about ___ m; Dark ___; the muffles' Frequency ___ and the faders' Volume ___; all clear after about ___ s
+PA5 dark past about ___ m, ahead and behind; the muffles' Frequency ___ and the faders' Volume ___; all clear after about ___ s
 PA6 window 2 warned: yes / no; windows 1 and 3 warned: yes / no; window 2 dark about ___ s after the send; its Seen while dark: ___; the wisp in windows 1 and 3: yes / no
 PA7 window 2's VFBlind after the first flare: ___; after the second: ___
 PA8 Q's pip as the round began: ___; bought for ___
@@ -3401,5 +3404,5 @@ Didn't look right (IDs and what you saw):
 | 41 | Paranoia lit on Omen's card and the bar, `Q1/1` on the course, and in hand 1.1 s after Q | PA1, PA2 |
 | 41 | Sent with fire: appearing ahead, flying 25 m down the lane in 1.25 s and gone, the gun back 0.7 s after, and whom it touched in `VFLastParanoia` | PA3 |
 | 41 | Through walls: the dummies behind the wallbang lane's walls touched | PA4 |
-| 41 | The nearsight on your own screen: dark past 7.5 m, a ball of shadow round the camera seen from inside, the tone, the muffling and the minimap covered, all clearing after 2 s | PA5 |
+| 41 | The nearsight on your own screen: dark past 7.5 m whichever way you look, the sky too, a shell of shadow round the camera seen from inside, the tone, the muffling and the minimap covered, all clearing after 2 s | PA5, PA6 |
 | 41 | With other players: the warning in its path, an enemy nearsighted and deafened, their minimap telling them of nobody, the wisp, a far flash not blinding them, and the charge bought for 250 | PA6, PA7, PA8 |

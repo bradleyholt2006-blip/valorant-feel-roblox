@@ -119,7 +119,7 @@ appears; half a second; a 400 Hz low-pass and about 9 dB down; and shadow at the
 | A flash | While it's whole, a Curveball popping further than 7.5 m from their eye doesn't blind them | Community (the wiki) |
 | What clears it | A death, a new life, and a Phoenix's body gone in Run it Back; a thrower's orbs in flight go as they start a new life | Estimate |
 | Who hears it | The orb sent: anyone near enough to hear it, out to 30 m, as other casts. The touch: a tone for whoever's touched | Estimate |
-| Its look | In hand, a dark violet orb with a flat band of shadow through it over an open hand; in flight, a see-through ball of shadow 8.6 m across with a darker core; on others nearsighted, a wisp of shadow round the head | Estimate (ours) |
+| Its look | In hand, a dark violet orb with a flat band of shadow through it over an open hand; in flight, a see-through ball of shadow 8.6 m across with a darker core; on others nearsighted, a wisp of shadow round the head; the nearsight's dark, a shell round the camera that draws back and thins away as it clears | Estimate (ours) |
 | Its sounds | A thick, low whoosh as it comes into hand; a heavy whoosh slowed right down as it's sent; a slowed tone as it touches you | Estimate (ours, from free Roblox sounds) |
 
 ## 5. Design
@@ -157,7 +157,10 @@ appears; half a second; a 400 Hz low-pass and about 9 dB down; and shadow at the
 - **`ParanoiaView`** is new. It flies your own orbs at once and others' as their send reaches your
   screen, warns you if you stand in one's path as it shows, and draws the nearsight on your screen
   or the watched player's: the dark round the camera, the deafening and the tone. Others nearsighted
-  get a wisp.
+  get a wisp. The dark is a shell of 120 thin slabs round the camera, each square to the way out to
+  it, spread evenly so that whichever way the camera looks the nearest is no more than 3% further
+  out than the vision. A ball turned inside out isn't seen from inside: Roblox draws a sphere mesh
+  scaled by -1 as an ordinary ball, as the Studio checklist's PA5 found.
 - **`SoundEngine`** gives the World and Self buses a low-pass after them, open but while you're
   deafened (`setDeafened`), and **`MinimapView`** covers the minimap and the big map in dark as the
   nearsight on your screen has it.
@@ -201,8 +204,8 @@ appears; half a second; a 400 Hz low-pass and about 9 dB down; and shadow at the
 - A player's `VFLastParanoia` is whom their last orb touched, set once it's flown: their names in
   the order it touched them, comma-separated, and empty for nobody.
 - `Workspace.VFParanoia` holds each orb in flight as an `Orb` ball with its `Core`, the dark round
-  the camera as `Dark`, and each wisp as a `Wisp` with its player's name as its `Player` attribute;
-  PlayerGui's `VFParanoia` has the warning, `Warn`.
+  the camera as `Dark`, a model of `Slab` parts, and each wisp as a `Wisp` with its player's name as
+  its `Player` attribute; PlayerGui's `VFParanoia` has the warning, `Warn`.
 - The minimap's ScreenGui, `VFMinimap`, has `Dark`: how covered it is, 0 to 1.
 - SoundService's `VFSound` has the `world` and `self` buses' low-passes, `worldMuffle` and
   `selfMuffle`, bypassed but while you're deafened, when their Frequency drops to 400 and the buses'
@@ -226,8 +229,9 @@ appears; half a second; a 400 Hz low-pass and about 9 dB down; and shadow at the
 - Sent with fire: appearing ahead, flying 25 m down the lane in 1.25 s and gone, the gun back 0.7 s
   after, and whom it touched in `VFLastParanoia`.
 - Through walls: the dummies behind the wallbang lane's walls touched.
-- The nearsight on your own screen: dark past 7.5 m, a ball of shadow round the camera seen from
-  inside, the tone, the muffling and the minimap covered, all clearing after 2 s.
+- The nearsight on your own screen: dark past 7.5 m whichever way you look, the sky too, a shell of
+  shadow round the camera seen from inside, the tone, the muffling and the minimap covered, all
+  clearing after 2 s.
 - With other players: the warning in its path, an enemy nearsighted and deafened, their minimap
   telling them of nobody, the wisp, a far flash not blinding them, and the charge bought for 250.
 
