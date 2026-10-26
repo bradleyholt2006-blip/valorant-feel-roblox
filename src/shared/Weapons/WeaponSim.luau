@@ -23,7 +23,7 @@
 -- its key again once a gun's been drawn (takeUp); with nothing left to
 -- throw it's gone, and the hand goes back to what it came from. So can an
 -- ability, while it's in hand (system 30: Phoenix's Curveball flare, which
--- PlayerSim throws).
+-- PlayerSim throws), and after, while it's steered (system 32: his Blaze).
 --
 -- Times are seconds of simulation time (tick * dt). 1/128 is exact in binary,
 -- so client and server compute bit-identical times.
@@ -355,6 +355,14 @@ end
 function WeaponSim.stow(s: State, t: number, seconds: number)
 	WeaponSim.holster(s)
 	s.equipEndTime = math.max(s.equipEndTime, t + seconds)
+end
+
+-- Keeps what's in the fifth slot in hand with nothing left to fire until
+-- `t` (system 32: Blaze's flame, held while its wall is bent), when it
+-- would otherwise go once its throw's time is up: PlayerSim puts it away
+-- itself.
+function WeaponSim.keep(s: State, t: number)
+	s.nextFireTime = math.max(s.nextFireTime, t)
 end
 
 function WeaponSim.copy(s: State): State

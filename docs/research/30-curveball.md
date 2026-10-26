@@ -184,7 +184,7 @@ shape of the falloff by angle and by distance, beyond its ends. Ours are in sect
 
 - **Blaze, Hot Hands, Run it Back and Inner Fire.** They show on the bar and the card, dimmed and
   `NOT YET`, and can't be bought or cast. Hot Hands and Inner Fire play since system 31
-  ([31-hot-hands.md](31-hot-hands.md)).
+  ([31-hot-hands.md](31-hot-hands.md)), and Blaze since system 32 ([32-blaze.md](32-blaze.md)).
 - **Flash assists.** A blind gives no assist, where the reference's give one for 3 s.
 - **Rewinding the view.** A blind is judged from where the server last had each player's view,
   which runs a little behind their screen, so a flick away at the last moment can come too late.

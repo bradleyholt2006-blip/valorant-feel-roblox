@@ -429,14 +429,27 @@ SoundConfig.Sounds = {
 	fireCrackle = sound(0.3, 0.1, 4, {
 		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
 	}, 0.4),
+	-- Blaze (system 32): its flame lit in hand is the gust again, lower
+	-- still; the wall sent out, the dash's heavy whoosh, slowed; and its
+	-- rising, the spike blast's crack slowed right down to a roar. While it
+	-- stands it crackles as Hot Hands' fire does.
+	wallEquip = sound(0.5, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 0.95),
+	wallSend = sound(0.7, 0.03, 3, {
+		asset(9120728815, "Whoosh Heavy Punches 1 (SFX)", 0.483, 0.11),
+	}, 0.8),
+	wallRise = sound(0.7, 0.03, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 0.5),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
--- cloud's burst, a flare's pop, and a fireball's burst and its fire), heard
--- as the ability curve says (systems 17 to 19, 30 and 31). Blade Storm's
--- knives drawn again sound as their draw does, and so does an ability put
--- in hand (Curveball's flare, Hot Hands' fireball), which only the one
--- drawing it hears.
+-- cloud's burst, a flare's pop, a fireball's burst and its fire, and
+-- Blaze's wall rising), heard as the ability curve says (systems 17 to 19
+-- and 30 to 32). Blade Storm's knives drawn again sound as their draw
+-- does, and so does an ability put in hand (Curveball's flare, Hot Hands'
+-- fireball, Blaze's flame), which only the one drawing it hears.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -449,6 +462,8 @@ SoundConfig.Abilities = {
 	fireball = "fireballThrow",
 	fire = "fireBurst",
 	burning = "fireCrackle",
+	flame = "wallSend",
+	wall = "wallRise",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -552,6 +567,9 @@ SoundConfig.Weapons = {
 	-- Hot Hands' fireball (system 31): the same, its throw, burst and fire
 	-- the ability's.
 	fireball = { draw = "fireballEquip", curve = "ability" },
+	-- Blaze's flame (system 32): the same, the wall sent out and rising the
+	-- ability's.
+	flamewall = { draw = "wallEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

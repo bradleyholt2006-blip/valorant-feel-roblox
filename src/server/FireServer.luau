@@ -1,12 +1,13 @@
 --!strict
--- Phoenix's Hot Hands on the server (system 31). Each fireball thrown (a
--- "fireball" cast) flies here through FireballSim at once, through the
--- level, as nothing changes its path after the throw, and bursts where it
--- lands, on the server's clock; how far its fire can spread each way round
--- is worked out with it (FireSim.reaches). Every client is told of the
--- throw (the Ability remote's "flight"): its keys, how long after the throw
--- it bursts, the floor its fire burns on and how far that fire reaches, so
--- each draws it the same way.
+-- Phoenix's fire on the server: Hot Hands' (system 31) and Blaze's wall
+-- (system 32). Each fireball thrown (a "fireball" cast) flies here through
+-- FireballSim at once, through the level, as nothing changes its path after
+-- the throw, and bursts where it lands, on the server's clock; how far its
+-- fire can spread each way round is worked out with it (FireSim.reaches).
+-- Every client is told of the throw (the Ability remote's "flight"): its
+-- keys, how long after the throw it bursts, the floor its fire burns on and
+-- how far that fire reaches, so each draws it the same way. Blaze's walls
+-- are lit here as they rise (FireServer.light, from BlazeServer).
 -- From the burst, its fire burns everyone alive standing in it
 -- (FireSim.inside, from where the server's simulation has them), as Hot
 -- Hands (FireSim.WEAPON, the fireball, for the kill feed), credited to its
@@ -14,13 +15,16 @@
 -- protection keeps shots off, and never its thrower, who heals instead
 -- (Inner Fire): his first touch of each fire starts a heal of its own,
 -- which goes on if he leaves it, until it's all given or he dies
--- (CombatServer.mend). Burns and heals go a few points at a time
--- (FireServer.EVERY), and what a burn's owed goes at once as its victim
--- leaves the fire or it goes out. Fire doesn't slow: the reference's
--- tagging is its bullets' ("Bullet tagging", Patch 3.0). A thrower's fires
--- go as they leave, and every fire with a new round (Arena). The thrower's
--- last burst is their `VFLastFire` attribute (FireSim.LAST_ATTRIBUTE, the
--- floor under it, in metres), which scripted checks read.
+-- (CombatServer.mend). A wall burns the same way, as Blaze, at its own
+-- rate, and heals at its own pace. Burns and heals go a few points at a
+-- time (FireServer.EVERY), and what a burn's owed goes at once as its
+-- victim leaves the fire or it goes out. Fire doesn't slow: the
+-- reference's tagging is its bullets' ("Bullet tagging", Patch 3.0). A
+-- thrower's fires go as they leave, and every fire with a new round
+-- (Arena), which every client is told of ("out"). The thrower's last
+-- burst is their `VFLastFire` attribute (FireSim.LAST_ATTRIBUTE, the floor
+-- under it, in metres), which scripted checks read, as their last wall's
+-- far end is their `VFLastWall` (BlazeSim.LAST_ATTRIBUTE).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -49,26 +53,51 @@ local FireServer = {}
 FireServer.EVERY = 0.1
 
 local DT = 1 / MovementConfig.TickRate.value
-local HEAL = AbilityConfig.InnerFire.heal.value
+local HH = AbilityConfig.HotHands
+local IF = AbilityConfig.InnerFire
+local HEAL = IF.heal.value
 local world = RobloxWorld.new()
 
--- A fire, from its throw: whose (their entity, for the credit), the fire
--- itself, what it owes each entity standing in it by id, and whether its
--- thrower has touched it yet.
+-- A fire: from when until when it burns (server time), whether feet stand
+-- in it (`inside`, its edge pushed out by `pad`), the health a second it
+-- takes from an enemy and an ally's share of that, as which weapon for the
+-- kill feed, how often Inner Fire gives its thrower a point from it, and
+-- the attribute the thrower is told `point` in (metres) as it starts.
+export type Spec = {
+	start: number,
+	ends: number,
+	inside: (feet: vector, now: number, pad: number) -> boolean,
+	burn: number,
+	allyShare: number,
+	weapon: string,
+	every: number,
+	attribute: string,
+	point: vector,
+}
+
+-- A fire burning: whose (their entity, for the credit), what it is, what
+-- it owes each entity standing in it by id, whether its thrower has
+-- touched it yet, and whether it has started.
 type Fire = {
 	player: Player,
 	entity: Entities.Entity,
-	pool: FireSim.Pool,
+	spec: Spec,
 	owed: { [number]: FireSim.Owed },
 	touched: boolean,
 	burst: boolean,
 }
 
--- A heal Inner Fire has under way: whose, since when, and what's given.
-type Heal = { player: Player, entity: Entities.Entity, from: number, given: number, last: number }
+-- A heal Inner Fire has under way: whose, since when, a point how often,
+-- and what's given.
+type Heal = { player: Player, entity: Entities.Entity, from: number, every: number, given: number, last: number }
 
 local fires: { Fire } = {}
 local heals: { Heal } = {}
+
+-- A fire of `player`'s (their `entity`), burning as `spec` says.
+function FireServer.light(player: Player, entity: Entities.Entity, spec: Spec)
+	table.insert(fires, { player = player, entity = entity, spec = spec, owed = {}, touched = false, burst = false })
+end
 
 local function onCast(player: Player, cast: AbilitySim.Cast)
 	if cast.kind ~= "fireball" then
@@ -105,13 +134,19 @@ local function onCast(player: Player, cast: AbilitySim.Cast)
 		local reaches = FireSim.reaches(centre, world)
 		event.point = Units.asVector3(centre)
 		event.reaches = reaches
-		table.insert(fires, {
-			player = player,
-			entity = entity,
-			pool = FireSim.new(entity.id, cast.tick, centre, now + landed, reaches),
-			owed = {},
-			touched = false,
-			burst = false,
+		local pool = FireSim.new(entity.id, cast.tick, centre, now + landed, reaches)
+		FireServer.light(player, entity, {
+			start = pool.start,
+			ends = FireSim.ends(pool),
+			inside = function(feet: vector, at: number, pad: number): boolean
+				return FireSim.inside(pool, feet, at, pad)
+			end,
+			burn = HH.burn.value,
+			allyShare = HH.allyShare.value,
+			weapon = FireSim.WEAPON,
+			every = IF.hotHandsEvery.value,
+			attribute = FireSim.LAST_ATTRIBUTE,
+			point = centre,
 		})
 	end
 	Remotes.get().Ability:FireAllClients(event)
@@ -134,7 +169,8 @@ local function touched(fire: Fire, now: number)
 	fire.touched = true
 	local sim = fire.entity.sim
 	if sim and AbilitySim.hasPassive(sim.abilities, "innerfire") then
-		table.insert(heals, { player = fire.player, entity = fire.entity, from = now, given = 0, last = -math.huge })
+		local heal = { player = fire.player, entity = fire.entity, from = now, every = fire.spec.every, given = 0, last = -math.huge }
+		table.insert(heals, heal)
 	end
 end
 
@@ -142,26 +178,26 @@ end
 local function give(fire: Fire, victim: Entities.Entity, o: FireSim.Owed, now: number, every: number)
 	local points = FireSim.owe(o, 0, now, every)
 	if points > 0 then
-		CombatServer.burn(fire.entity, victim, points, FireSim.WEAPON)
+		CombatServer.burn(fire.entity, victim, points, fire.spec.weapon)
 	end
 end
 
 -- One fire's frame, `dt` seconds after the last, at server time `now`.
 local function burn(fire: Fire, now: number, dt: number)
-	local pool = fire.pool
-	if not fire.burst and now >= pool.start then
+	local spec = fire.spec
+	if not fire.burst and now >= spec.start then
 		fire.burst = true
 		if fire.player.Parent then
-			fire.player:SetAttribute(FireSim.LAST_ATTRIBUTE, Units.asVector3(pool.centre))
+			fire.player:SetAttribute(spec.attribute, Units.asVector3(spec.point))
 		end
 	end
-	local span = math.min(dt, now - pool.start)
+	local span = math.min(dt, now - spec.start)
 	local protected = CombatServer.protected
 	local pad = Tuning.config().halfWidth
 	for id, entity in Entities.all() do
 		local feet = feetOf(entity)
 		local o = fire.owed[id]
-		if not feet or not FireSim.inside(pool, feet, now, pad) then
+		if not feet or not spec.inside(feet, now, pad) then
 			-- Out of it: what it owes them goes now.
 			if o then
 				give(fire, entity, o, now, 0)
@@ -182,22 +218,22 @@ local function burn(fire: Fire, now: number, dt: number)
 			o = FireSim.owed()
 			fire.owed[id] = o
 		end
-		local rate = FireSim.burnRate(CombatServer.teammates(fire.entity, entity))
+		local rate = spec.burn * (if CombatServer.teammates(fire.entity, entity) then spec.allyShare else 1)
 		local points = FireSim.owe(o, rate * math.max(span, 0), now, FireServer.EVERY)
 		if points > 0 then
-			CombatServer.burn(fire.entity, entity, points, FireSim.WEAPON)
+			CombatServer.burn(fire.entity, entity, points, spec.weapon)
 		end
 	end
 end
 
 -- Once a server frame, at server time `now`, `dt` seconds after the last:
--- the fires that have burst burn, those that are out go, and Inner Fire's
--- heals give what they've come to.
+-- the fires that have started burn, those that are out go, and Inner
+-- Fire's heals give what they've come to.
 function FireServer.step(now: number, dt: number)
 	local i = 1
 	while i <= #fires do
 		local fire = fires[i]
-		if now >= FireSim.ends(fire.pool) then
+		if now >= fire.spec.ends then
 			table.remove(fires, i)
 			for id, o in fire.owed do
 				local entity = Entities.get(id)
@@ -206,7 +242,7 @@ function FireServer.step(now: number, dt: number)
 				end
 			end
 		else
-			if now >= fire.pool.start then
+			if now >= fire.spec.start then
 				burn(fire, now, dt)
 			end
 			i += 1
@@ -215,7 +251,7 @@ function FireServer.step(now: number, dt: number)
 	i = 1
 	while i <= #heals do
 		local heal = heals[i]
-		local due = FireSim.healed(now - heal.from)
+		local due = FireSim.healed(now - heal.from, heal.every)
 		if due > heal.given and (due >= HEAL or now - heal.last >= FireServer.EVERY) then
 			CombatServer.mend(heal.entity, due - heal.given, 0)
 			heal.given = due
@@ -229,10 +265,12 @@ function FireServer.step(now: number, dt: number)
 	end
 end
 
--- Every fire out, and every heal over (a new round).
+-- Every fire out, and every heal over (a new round): every client is told,
+-- so none draws a fire that's gone.
 function FireServer.clear()
 	table.clear(fires)
 	table.clear(heals)
+	Remotes.get().Ability:FireAllClients({ kind = "out" })
 end
 
 -- A player's heals over (a death or a new life).

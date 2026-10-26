@@ -32,8 +32,8 @@ export type CurveParam = { points: Curve, status: Status, source: string }
 -- "ultimate" is an ultimate's weapon (system 19: Jett's Blade Storm knives),
 -- in the fifth slot while the ultimate lasts, and never sold either.
 -- "ability" is an ability's (system 30: Phoenix's Curveball flare; system
--- 31: his Hot Hands fireball), in the fifth slot while it's in hand, and
--- never sold.
+-- 31: his Hot Hands fireball; system 32: his Blaze flame), in the fifth slot
+-- while it's in hand, and never sold.
 export type Category = "sidearm" | "smg" | "shotgun" | "rifle" | "sniper" | "heavy" | "melee" | "spike" | "ultimate" | "ability"
 
 export type AccuracyDef = {
@@ -153,9 +153,9 @@ export type WeaponDef = {
 	-- bought, dropped or reloaded (WeaponSim.arm).
 	ultimate: boolean?,
 	-- An ability's weapon (system 30: Curveball's flare; system 31: Hot Hands'
-	-- fireball): the AbilityConfig id whose cast puts it in hand in the fifth
-	-- slot. Like an ultimate's, never bought, dropped or reloaded, and gone
-	-- once it's out of hand.
+	-- fireball; system 32: Blaze's flame): the AbilityConfig id whose cast
+	-- puts it in hand in the fifth slot. Like an ultimate's, never bought,
+	-- dropped or reloaded, and gone once it's out of hand.
 	ability: string?,
 	accuracy: AccuracyDef,
 	recoil: RecoilDef,
@@ -646,6 +646,28 @@ local fireballLob: AltDef = {
 	accuracy = fireballExact,
 	recoil = FIREBALL_KICK,
 }
+
+-- Phoenix's Blaze flame (system 32): sent out along the floor from his feet
+-- and run by BlazeSim, as the fireball is flown by FireballSim, so no spread
+-- or kick moves it either. It has no alt fire.
+local BLAZE = "VALORANT Wiki, Blaze"
+local RUN = "n/a: BlazeSim runs it from where he faces"
+local WALL_NA = p(0, "estimate", RUN)
+local flameExact = accuracy(
+	c({ { 1, 0 } }, "estimate", RUN),
+	p(1, "estimate", RUN),
+	p(0.1, "estimate", RUN),
+	p(1, "estimate", RUN),
+	{ crouch = WALL_NA, walk = WALL_NA, run = WALL_NA, air = WALL_NA }
+)
+flameExact.landError = WALL_NA
+local FLAME_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a wall sent out doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = WALL_NA,
+	adsCamera = WALL_NA,
+})
 
 WeaponConfig.Defs = {
 	classic = {
@@ -1492,12 +1514,41 @@ WeaponConfig.Defs = {
 		accuracy = fireballExact,
 		recoil = FIREBALL_KICK,
 	},
+	-- Phoenix's Blaze flame (system 32): put in hand in the fifth slot by C
+	-- (AbilityConfig.Blaze), as the fireball is by Q. Fire sends the wall out;
+	-- PlayerSim turns it into the ability's cast, which BlazeSim runs over
+	-- the floor, and keeps the flame in hand while fire's held, bending it.
+	-- Where the wall stands it burns (BlazeSim), as this weapon for the kill
+	-- feed; the flame itself hurts nobody.
+	flamewall = {
+		id = "flamewall",
+		name = "Blaze",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought: C puts it in hand, the charge of Blaze (" .. BLAZE .. ")"),
+		-- Held, it goes as soon as it's in hand (ours, as the flare).
+		fireMode = "auto",
+		fireRate = ONE_THROW,
+		magazine = p(1, "community", BLAZE .. ": 1 use, a wall"),
+		reserve = p(0, "community", "None: another wall is another charge (" .. BLAZE .. ": 1 use)"),
+		reloadTime = WALL_NA,
+		equipTime = p(0.8, "community", BLAZE .. ": 'Equip time' 0.8 s (game files)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: its wall burns (" .. BLAZE .. "), and the flame in hand hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "blaze",
+		accuracy = flameExact,
+		recoil = FLAME_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
 -- they always were, the rest in alphabetical order after them, the spike
 -- after those, then Blade Storm's knives (system 19), Curveball's flare
--- (system 30) and Hot Hands' fireball (system 31) last.
+-- (system 30), Hot Hands' fireball (system 31) and Blaze's flame (system
+-- 32) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1524,6 +1575,7 @@ WeaponConfig.Ids = {
 	"kunai",
 	"flare",
 	"fireball",
+	"flamewall",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

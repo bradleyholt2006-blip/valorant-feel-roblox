@@ -13,7 +13,8 @@
 --   * its thrower, Phoenix, heals instead (his passive, Inner Fire): his
 --     first touch of each fire starts a heal of its own, a point at a time
 --     until it's all given, which goes on if he leaves the fire
---     (FireSim.healed)
+--     (FireSim.healed). His Blaze's wall (system 32, BlazeSim) heals him
+--     the same way, at its own pace
 -- The server keeps the fires and burns with them, and tells every client of
 -- each as it's thrown, which draws it the same way (FireSim.edge).
 --
@@ -162,15 +163,16 @@ function FireSim.burnRate(ally: boolean): number
 end
 
 -- The points Inner Fire has given `elapsed` seconds after Phoenix first
--- touched a fire: one at the end of each of its intervals, all of them by
--- the end of the last.
-function FireSim.healed(elapsed: number): number
-	return math.clamp(math.floor(elapsed / IF.hotHandsEvery.value + 1e-6), 0, IF.heal.value)
+-- touched a fire: one at the end of each of its intervals (`every`
+-- seconds, Hot Hands' by default), all of them by the end of the last.
+function FireSim.healed(elapsed: number, every: number?): number
+	return math.clamp(math.floor(elapsed / (every or IF.hotHandsEvery.value) + 1e-6), 0, IF.heal.value)
 end
 
--- How long a heal takes to give all of it.
-function FireSim.healTime(): number
-	return IF.heal.value * IF.hotHandsEvery.value
+-- How long a heal takes to give all of it, a point every `every` seconds
+-- (Hot Hands' by default).
+function FireSim.healTime(every: number?): number
+	return IF.heal.value * (every or IF.hotHandsEvery.value)
 end
 
 function FireSim.owed(): Owed

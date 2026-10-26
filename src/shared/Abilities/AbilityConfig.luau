@@ -15,8 +15,8 @@
 -- takes no slot or key of its own: Jett's Drift (system 20). Team Deathmatch
 -- has a kit of its own (system 28): abilities that recharge over time, and
 -- ultimates that cost more, from kills and Ultimate Orbs. Phoenix is the
--- second agent (system 30): his Curveball and Hot Hands (system 31) can be
--- played, and his passive, Inner Fire, works.
+-- second agent (system 30): his Curveball, Hot Hands (system 31) and Blaze
+-- (system 32) can be played, and his passive, Inner Fire, works.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -149,6 +149,7 @@ local FANDOM = "Fandom wiki, Cloudburst"
 local MOBALYTICS = "Mobalytics, Jett"
 local BLADE = "VALORANT Wiki, Blade Storm"
 local P501 = "Patch 5.01"
+local P512 = "Patch 5.12"
 local P910 = "Patch 9.10"
 local P1100 = "Patch 11.00"
 local P1302 = "Patch 13.02"
@@ -160,6 +161,9 @@ local STATUS = "VALORANT Wiki, 'Status Effect'"
 local HOT = "VALORANT Wiki, Hot Hands"
 local PROJECTILE = "VALORANT Wiki, Projectile"
 local INCENDIARY = "VALORANT Wiki, Incendiary"
+local BLAZE = "VALORANT Wiki, Blaze"
+local TIDE = "VALORANT Wiki, High Tide"
+local SCREEN = "VALORANT Wiki, Toxic Screen"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -200,16 +204,18 @@ AbilityConfig.Defs = {
 		description = "Five throwing knives. Fire throws one, and a kill brings them all back; alt fire throws all that are left.",
 	},
 	-- Phoenix's (system 30): his kit as the VALORANT Wiki lists it since
-	-- Patch 9.10 moved Curveball to E and Hot Hands to Q. Curveball and Hot
-	-- Hands (system 31) are the ones that can be played.
+	-- Patch 9.10 moved Curveball to E and Hot Hands to Q. Curveball, Hot
+	-- Hands (system 31) and Blaze (system 32) are the ones that can be
+	-- played.
 	blaze = {
 		id = "blaze",
 		name = "Blaze",
 		slot = AbilityConfig.C,
 		kind = "basic",
-		cost = p(150, "community", PHOENIX .. ": Blaze, 150"),
+		cost = p(150, "confirmed", P512 .. ": 'Blaze (C) Cost decreased 200 >>> 150' (" .. PHOENIX .. ": 150 still)"),
 		charges = p(1, "community", PHOENIX .. ": Blaze, 1 use"),
-		description = "A wall of fire that blocks sight and burns whoever walks through it.",
+		weapon = "flamewall",
+		description = "C readies a wall of fire. Fire sends it along the floor, held fire bends it; it blocks sight, burns enemies and heals you.",
 	},
 	hothands = {
 		id = "hothands",
@@ -480,18 +486,73 @@ AbilityConfig.HotHands = {
 	allyShare = p(1 / 3, "estimate", "Ours: " .. HOT .. ": 'Yes (damage reduced for allies)', with no number"),
 }
 
+-- Phoenix's Blaze (system 32): C puts a flame in hand (WeaponConfig's
+-- flamewall, in the fifth slot, as the fireball is), and fire sends it out
+-- from his feet along the floor the way he's facing, at its speed, for its
+-- flight. While fire is held from then on it bends towards the crosshair,
+-- and once it's let go it runs straight on; the gun's back a moment after
+-- he lets go, or the run's over (Patch 5.01). It runs through walls (Patch
+-- 9.10), up and down whatever's lower than its hover, and stops where it
+-- finds no floor below (BlazeSim). Then a wall of fire rises from where he
+-- cast it and spreads along the run to its end, blocking sight but not
+-- bullets, and stands for its duration from rising: whoever stands in it
+-- burns, allies less, and Phoenix heals instead (InnerFire). Riot gives
+-- its duration and burn; the wiki its timings and length; the rest is ours
+-- (32-blaze.md, section 2).
+AbilityConfig.Blaze = {
+	-- From the run's end, or fire let go, until the gun's back in hand.
+	unequip = p(0.5, "community", BLAZE .. ": 'Unequip time' 0.5 s (estimated there)"),
+	-- The run: this long at most, this far at most, so this fast; bending
+	-- towards the crosshair this fast while fire's held.
+	flight = p(0.75, "community", BLAZE .. ": 'Deploy time' 0.125-0.75 s 'depending on distance' (estimated there)"),
+	length = p(21, "community", BLAZE .. ": 'Length' 1-21 m (estimated there)"),
+	turnRate = p(
+		180,
+		"estimate",
+		"Ours: High Tide's, the wall it's likened to in Patch 9.10 (" .. TIDE .. ": 'Maximum bend' 180 degrees/second)"
+	),
+	-- How far over the floor it runs, so it climbs what's lower and goes
+	-- through what's taller; and how far below that it looks for floor.
+	hover = p(0.9, "estimate", "Ours: over a step or a box, under a low wall; " .. BLAZE .. ": it leaves a path 'on the ground' below it"),
+	drop = p(10, "estimate", "Ours: down a ledge to the floor below; past that it has no floor and stops"),
+	-- The wall: spreading from his end this fast, standing for its duration
+	-- from rising, then falling; this tall, this thick, and reaching this
+	-- far below its floor (a step down from it).
+	spreadSpeed = p(
+		42,
+		"estimate",
+		"Ours: " .. BLAZE .. "'s '225-240' total at 30 a second has the far end of the longest (21 m) burn 0.5 s less"
+	),
+	duration = p(8, "confirmed", P100 .. ": 'Blaze duration increased 6 >>> 8 seconds'"),
+	height = p(4, "estimate", "Ours, over a head and a jump; " .. SCREEN .. ", a wall like it: a '4-meter height' (estimated there)"),
+	thickness = p(1, "estimate", "Ours: about a stride; time a run through it in a public clip"),
+	depth = p(0.5, "estimate", "Ours: down a slope or a step from it, as Hot Hands' fire"),
+	-- Health a second it takes from an enemy standing in it, and an ally's
+	-- share of that.
+	burn = p(30, "confirmed", P100 .. ": 'Blaze damage: 15 every 0.25s >>> 1 every 0.033 seconds'"),
+	allyShare = p(1 / 3, "estimate", "Ours, as Hot Hands': " .. BLAZE .. ": 'Yes (damage reduced for allies)', with no number"),
+}
+
 -- Phoenix's Inner Fire (system 31), his passive: touching his own fire
 -- heals him instead of burning him. Since Patch 9.10 the first touch of
 -- each fire starts the heal, a point at a time, and it keeps on after he
--- leaves it. It mends health alone, up to his most.
+-- leaves it. It mends health alone, up to his most. Blaze's wall (system
+-- 32) gives the same, at half the pace.
 AbilityConfig.InnerFire = {
 	heal = p(50, "confirmed", P100 .. ": 'the total healing output of these two abilities is at parity (50 health each)'"),
 	hotHandsEvery = p(0.08, "confirmed", P100 .. ": 'Hot Hands healing: 3 every 0.25s >>> 1 every 0.08s.'"),
+	blazeEvery = p(0.16, "confirmed", P100 .. ": 'Blaze healing: 3 every 0.25s >>> 1 every 0.16 seconds'"),
 }
 
--- How long after a throw the gun's back in hand, by the ability thrown.
+-- How long after a throw the gun's back in hand, by the ability thrown (and
+-- for Blaze, after its run's let go).
 function AbilityConfig.unequip(id: string): number
-	return if id == "hothands" then AbilityConfig.HotHands.unequip.value else AbilityConfig.Curveball.unequip.value
+	if id == "hothands" then
+		return AbilityConfig.HotHands.unequip.value
+	elseif id == "blaze" then
+		return AbilityConfig.Blaze.unequip.value
+	end
+	return AbilityConfig.Curveball.unequip.value
 end
 
 return AbilityConfig

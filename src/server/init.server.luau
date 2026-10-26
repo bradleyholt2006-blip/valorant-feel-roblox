@@ -9,8 +9,8 @@
 -- moves that walked over them.
 -- Ability kits refill on the course after the moves that cast from them,
 -- thrown clouds whose thrower is dead fly on, flares pop, blinding whoever
--- the moves left looking at them, and fires burn whoever the moves left
--- standing in them.
+-- the moves left looking at them, walls of fire whose caster is dead run
+-- on, and fires burn whoever the moves left standing in them.
 -- Regen Shields refill after the shots. The arena's rounds move on last, so
 -- a round that ends in this frame's shots respawns its players after the
 -- frame's snapshot, and agent select after them, as the rounds have it.
@@ -37,6 +37,7 @@ local AgentServer = require(script.AgentServer)
 local CloudServer = require(script.CloudServer)
 local FlareServer = require(script.FlareServer)
 local FireServer = require(script.FireServer)
+local BlazeServer = require(script.BlazeServer)
 local PickupsServer = require(script.PickupsServer)
 local ModeServers = require(script.ModeServers)
 
@@ -50,6 +51,7 @@ AgentServer.start()
 CloudServer.start()
 FlareServer.start()
 FireServer.start()
+BlazeServer.start()
 GroundGunsServer.start()
 PickupsServer.start()
 SettingsServer.start()
@@ -69,6 +71,7 @@ RunService.Heartbeat:Connect(function(dt)
 	AbilityServer.step(now)
 	CloudServer.step(now)
 	FlareServer.step(now)
+	BlazeServer.step(now)
 	FireServer.step(now, dt)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)

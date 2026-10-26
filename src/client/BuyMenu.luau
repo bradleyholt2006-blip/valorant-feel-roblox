@@ -277,6 +277,12 @@ local function abilityLines(def: AbilityConfig.AbilityDef): { string }
 		table.insert(lines, row("Burn", string.format("%s a second", num(HH.burn.value))))
 		local healTime = IF.heal.value * IF.hotHandsEvery.value
 		table.insert(lines, row("Heals you", string.format("%s over %s s, Inner Fire", num(IF.heal.value), num(healTime))))
+	elseif def.id == "blaze" then
+		local BZ, IF = AbilityConfig.Blaze, AbilityConfig.InnerFire
+		table.insert(lines, row("Wall", string.format("up to %s m, for %s s", num(BZ.length.value), num(BZ.duration.value))))
+		table.insert(lines, row("Burn", string.format("%s a second", num(BZ.burn.value))))
+		local healTime = IF.heal.value * IF.blazeEvery.value
+		table.insert(lines, row("Heals you", string.format("%s over %s s, Inner Fire", num(IF.heal.value), num(healTime))))
 	end
 	local recharge = def.recharge
 	if recharge and recharge.kind == "kills" then

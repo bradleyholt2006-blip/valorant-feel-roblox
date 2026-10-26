@@ -11,6 +11,8 @@
 --     the air and its pop, and BlindView the blind (system 30)
 --   * Hot Hands: only its throw heard here; FireView draws the fireball in
 --     the air, its burst and its fire (system 31)
+--   * Blaze: only heard here, as it's sent out and, for others, as its
+--     wall rises; BlazeView draws it on its way and its wall (system 32)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -199,7 +201,7 @@ local function onCast(event: any)
 		return -- predicted already
 	end
 	if event.kind == "flight" then
-		return -- a throw on its way: CloudView's, FlareView's or FireView's
+		return -- a throw on its way: CloudView's, FlareView's, FireView's or BlazeView's
 	end
 	table.insert(due, {
 		kind = event.kind,

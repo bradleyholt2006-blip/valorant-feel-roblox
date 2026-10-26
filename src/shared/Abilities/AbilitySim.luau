@@ -30,8 +30,11 @@
 -- unthrown. FlareSim flies it. His Hot Hands (Q, system 31) puts its
 -- fireball in hand the same way, in place of the flare if that's there:
 -- fire throws it and alt fire lobs it, FireballSim flies it and FireSim
--- burns where it bursts. And his passive, Inner Fire, has that fire heal
--- him (FireSim too).
+-- burns where it bursts. His Blaze (C, system 32) puts its flame in hand
+-- the same way, and fire sends its wall out (thrown): the flame stays in
+-- hand while fire's held, bending the wall, until PlayerSim lets it go
+-- (steering), and BlazeSim runs it and stands the wall where it ends. And
+-- his passive, Inner Fire, has their fire heal him (FireSim too).
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -76,16 +79,21 @@ export type State = {
 	-- Hot Hands' fireball, system 31), 0 for none. PlayerSim puts it away
 	-- when the hand goes elsewhere.
 	holding: number,
+	-- The slot whose wall is being bent (Blaze, system 32), 0 for none, and
+	-- when its run's over, the longest it's bent for: its flame stays in
+	-- hand until then, or until fire's let go (PlayerSim).
+	steering: number,
+	steerUntil: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
 -- "ready", "dash", "throw", "storm" (Blade Storm cast), "draw" (its knives
 -- drawn again), "equip" (an ability put in hand), "flare" (Curveball's
--- thrown) or "fireball" (Hot Hands' thrown), where the player's feet and
--- eye were, and the way it goes (the dash's way, up for a lift, the way
--- they faced for a readied gust, the way they looked for the rest). A
--- flare's says which way round it curves, and a fireball's whether it was
--- lobbed.
+-- thrown), "fireball" (Hot Hands' thrown) or "flame" (Blaze's sent out),
+-- where the player's feet and eye were, and the way it goes (the dash's
+-- way, up for a lift, the way they faced for a readied gust, the way they
+-- looked for the rest). A flare's says which way round it curves, and a
+-- fireball's whether it was lobbed.
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -121,6 +129,7 @@ local PLAYABLE: { [string]: boolean } = {
 	drift = true,
 	curveball = true,
 	hothands = true,
+	blaze = true,
 	innerfire = true,
 }
 
@@ -129,8 +138,8 @@ function AbilitySim.playable(id: string): boolean
 end
 
 -- Whether an ability is one its key puts in hand, to be thrown from there
--- (Curveball's flare, Hot Hands' fireball): a weapon of its own, outside
--- the ultimate.
+-- (Curveball's flare, Hot Hands' fireball, Blaze's flame): a weapon of its
+-- own, outside the ultimate.
 local function held(def: AbilityConfig.AbilityDef?): boolean
 	return def ~= nil and def.weapon ~= nil and def.kind ~= "ultimate" and PLAYABLE[def.id] == true
 end
@@ -154,6 +163,8 @@ function AbilitySim.new(agent: string?): State
 		dashZ = 0,
 		storm = false,
 		holding = 0,
+		steering = 0,
+		steerUntil = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -203,14 +214,15 @@ function AbilitySim.pointsNeeded(s: State): number
 end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
--- ultimate, an ability in hand. Nothing carries into a new life or a new
--- round.
+-- ultimate, an ability in hand, a wall being bent. Nothing carries into a
+-- new life or a new round.
 function AbilitySim.settle(s: State)
 	s.readyFrom, s.readyUntil = 0, 0
 	s.liftUntil = 0
 	s.dashUntil, s.dashX, s.dashZ = 0, 0, 0
 	s.storm = false
 	s.holding = 0
+	s.steering, s.steerUntil = 0, 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -358,8 +370,9 @@ end
 -- checks read it): each slot's charges and most, the ultimate's points and
 -- what they need, and what's under way at `t`, as "C0/2 Q1/1 E0/1 X3/8
 -- ready", or "X0/8 storm" in Blade Storm, "equip" with an ability in hand
--- (Curveball's flare, Hot Hands' fireball), and "glide" while `gliding`
--- (the movement's, for Drift).
+-- (Curveball's flare, Hot Hands' fireball, Blaze's flame), "bend" while a
+-- wall is being bent (Blaze), and "glide" while `gliding` (the
+-- movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -371,6 +384,9 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	end
 	if s.holding ~= 0 then
 		table.insert(parts, "equip")
+	end
+	if s.steering ~= 0 then
+		table.insert(parts, "bend")
 	end
 	if AbilitySim.dashing(s, t) then
 		table.insert(parts, "dash")
@@ -402,9 +418,10 @@ function AbilitySim.ready(s: State, t: number): boolean
 end
 
 -- The weapon the kit has in WeaponSim's fifth slot now, "" for none:
--- Blade Storm's knives while it lasts, or the ability in hand's.
+-- Blade Storm's knives while it lasts, the ability in hand's, or the flame
+-- of a wall being bent (Blaze).
 function AbilitySim.carried(s: State): string
-	local slot = if s.storm then X elseif s.holding ~= 0 then s.holding else 0
+	local slot = if s.storm then X elseif s.holding ~= 0 then s.holding elseif s.steering ~= 0 then s.steering else 0
 	local def = if slot ~= 0 then AbilitySim.def(s, slot) else nil
 	return if def and def.weapon then def.weapon else ""
 end
@@ -412,8 +429,9 @@ end
 -- The ability in hand thrown (WeaponSim fires it as PlayerSim has it): its
 -- charge spent, and its cast, from `origin` (the eye) the way `aim` points.
 -- `alt` says alt fire threw it: Curveball's flare goes round to the right
--- then, and to the left otherwise, and Hot Hands' fireball is lobbed. Nil
--- with nothing in hand to throw.
+-- then, and to the left otherwise, and Hot Hands' fireball is lobbed.
+-- Blaze's wall is sent out from `feet`, and is bent from then until its
+-- run's over, if fire's held that long. Nil with nothing in hand to throw.
 function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, origin: vector, aim: vector, alt: boolean): Cast?
 	local slot = s.holding
 	s.holding = 0
@@ -435,6 +453,10 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 	if def.id == "hothands" then
 		cast.kind = "fireball"
 		cast.lob = alt
+	elseif def.id == "blaze" then
+		cast.kind = "flame"
+		s.steering = slot
+		s.steerUntil = t + AbilityConfig.Blaze.flight.value
 	else
 		cast.curve = if alt then 1 else -1
 	end
@@ -584,9 +606,11 @@ function AbilitySim.step(
 				-- Its key again: what's in hand goes away unthrown (PlayerSim).
 				s.holding = 0
 			elseif held(def) and not s.storm and s.charges[slot] > 0 then
-				-- In hand (PlayerSim), in place of any other ability there; its
-				-- charge goes as it's thrown.
+				-- In hand (PlayerSim), in place of any other ability there, and
+				-- of a wall being bent, which runs straight on; its charge goes
+				-- as it's thrown.
 				s.holding = slot
+				s.steering, s.steerUntil = 0, 0
 				local aim = Accuracy.aim(input.yaw, input.pitch)
 				started({
 					slot = slot,

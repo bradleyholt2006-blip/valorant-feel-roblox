@@ -104,8 +104,9 @@ do
 	check("the buy menu lists all 20 guns once each, in their slots", ok and guns == 20, tostring(guns))
 	local ids = WeaponConfig.Ids
 	check(
-		"wire ids: the first six as they always were, then the rest, the spike, Blade Storm's knives, Curveball's flare, then Hot Hands' fireball",
-		#ids == 25
+		"wire ids: the first six as they always were, then the rest, the spike, Blade Storm's knives, Curveball's flare, Hot Hands' fireball,"
+			.. " then Blaze's flame",
+		#ids == 26
 			and ids[1] == "classic"
 			and ids[2] == "knife"
 			and ids[3] == "operator"
@@ -116,6 +117,7 @@ do
 			and ids[23] == "kunai"
 			and ids[24] == "flare"
 			and ids[25] == "fireball"
+			and ids[26] == "flamewall"
 	)
 	local quiet = {}
 	for _, id in ids do

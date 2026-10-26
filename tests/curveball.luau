@@ -167,11 +167,11 @@ do
 			and d.blaze.cost.value == 150
 	)
 	check(
-		"Curveball and Hot Hands (system 31) are the ones of his that can be played, and Inner Fire works",
+		"Curveball, Hot Hands (system 31) and Blaze (system 32) are the ones of his that can be played, and Inner Fire works",
 		AbilitySim.playable("curveball")
 			and AbilitySim.playable("hothands")
+			and AbilitySim.playable("blaze")
 			and AbilitySim.playable("innerfire")
-			and not AbilitySim.playable("blaze")
 			and not AbilitySim.playable("runitback")
 			and AbilitySim.playable("drift")
 	)
@@ -248,7 +248,7 @@ do
 	check("a new kit: Curveball's free charge and nothing else", k.charges[C] == 0 and k.charges[Q] == 0 and k.charges[E] == 1)
 	check("a second can be bought", AbilitySim.canBuy(k, "curveball") and AbilitySim.buy(k, "curveball") and k.charges[E] == 2)
 	check("but not a third", not AbilitySim.buy(k, "curveball") and k.charges[E] == 2)
-	check("nor Blaze yet", not AbilitySim.buy(k, "blaze") and k.charges[C] == 0)
+	check("and Blaze's one, once", AbilitySim.buy(k, "blaze") and not AbilitySim.buy(k, "blaze") and k.charges[C] == 1)
 	AbilitySim.newRound(k)
 	check("both carry into the next round", k.charges[E] == 2)
 	k.charges[E] = 0

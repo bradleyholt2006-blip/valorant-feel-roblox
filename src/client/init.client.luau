@@ -33,6 +33,7 @@ local AbilityEffects = require(script.AbilityEffects)
 local CloudView = require(script.CloudView)
 local FlareView = require(script.FlareView)
 local FireView = require(script.FireView)
+local BlazeView = require(script.BlazeView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
@@ -102,14 +103,15 @@ DefaultSounds.start()
 GameSounds.start()
 -- The ability kit (system 17): C, Q, E and X on the bar at the bottom, and
 -- each cast's look and sound; Cloudburst's throws and clouds (system 18),
--- Curveball's flares and blinds (system 30), and Hot Hands' fireballs and
--- fire (system 31).
+-- Curveball's flares and blinds (system 30), Hot Hands' fireballs and fire
+-- (system 31), and Blaze's walls of fire (system 32).
 AbilityHud.start()
 AbilityEffects.start()
 CloudView.start()
 FlareView.start()
 BlindView.start()
 FireView.start()
+BlazeView.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

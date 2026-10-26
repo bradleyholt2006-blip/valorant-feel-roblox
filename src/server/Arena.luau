@@ -170,6 +170,7 @@ local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
 local FireServer = require(script.Parent.FireServer)
+local BlazeServer = require(script.Parent.BlazeServer)
 local AbilityServer = require(script.Parent.AbilityServer)
 local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
@@ -732,9 +733,9 @@ local function publish()
 end
 
 -- A round has started since this last looked: the ground cleared of guns
--- and fire (system 31), and in the spike rounds a new spike in front of the
--- attackers, each kit's round (system 17) and, at the start of each half,
--- everyone back on the starting kit.
+-- and fire (systems 31 and 32), and in the spike rounds a new spike in
+-- front of the attackers, each kit's round (system 17) and, at the start of
+-- each half, everyone back on the starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -746,6 +747,7 @@ local function roundStarted()
 	seenMatch, seenRound = matchNumber, round
 	GroundGunsServer.clear()
 	FireServer.clear()
+	BlazeServer.clear()
 	if not m then
 		return
 	end
@@ -857,6 +859,7 @@ local function stop()
 	GroundGunsServer.drops = true
 	GroundGunsServer.clear()
 	FireServer.clear()
+	BlazeServer.clear()
 	AbilityServer.economy = false
 	AbilityServer.refill = true
 	AbilityServer.off = false
@@ -901,6 +904,7 @@ local function begin(wanted: Mode, format: string)
 	seenMatch, seenRound = 0, 0
 	GroundGunsServer.clear()
 	FireServer.clear()
+	BlazeServer.clear()
 	-- Deathmatch has no teams: everyone can hurt everyone.
 	if wanted ~= "deathmatch" then
 		for side, info in SIDES do

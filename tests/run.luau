@@ -40,5 +40,6 @@ require("./tdmpickups")
 require("./agentselect")
 require("./curveball")
 require("./hothands")
+require("./blaze")
 
 H.finish()
