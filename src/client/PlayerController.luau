@@ -26,7 +26,11 @@
 -- Slow Orb's field (system 37) slows you here as it does on the server, and
 -- a Barrier Orb's wall (system 38) stands in your way and lifts you as it
 -- does there: both judge them, as the server told of them (SlowView,
--- BarrierView), at the time each input's frame showed.
+-- BarrierView), at the time each input's frame showed. From the Shadows
+-- (system 43) takes the place its map's cursor is on (mapPoint) with each
+-- input that fires, puts the view where the Shade is at once, and where
+-- he's sent back, and while it's under way, or as the server sends him back
+-- (an enemy's hit on the Shade), a correction isn't blended either.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -139,6 +143,10 @@ PlayerController.fields = nil :: (() -> { SlowSim.Field })?
 -- The Barrier Orbs' walls in play, judged at a server time, and whether a
 -- wall can go up then (system 38, BarrierView); none without.
 PlayerController.barriers = nil :: ((number) -> BarrierSim.Walls)?
+-- The place on the map From the Shadows' cursor is on (system 43,
+-- ShadowView), metres, while its map's up: sent with each input that fires.
+-- Nil without.
+PlayerController.mapPoint = nil :: (() -> vector?)?
 -- Called when the local player (re)spawns with a fresh simulation.
 PlayerController.spawnListeners = {} :: { (PlayerSim.State) -> () }
 -- Increments on every spawn; shot numbers restart each life.
@@ -222,6 +230,11 @@ local function tick()
 		-- What the player was looking at: the frame on screen.
 		viewTime = RemoteEntities.shownTime(),
 	}
+	local mapPoint = PlayerController.mapPoint
+	local point = if mapPoint and bit32.band(input.buttons, PlayerSim.Buttons.Fire) ~= 0 then mapPoint() else nil
+	if point then
+		input.point = PlayerCodec.quantizePoint(point)
+	end
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
 	local shots, swing, act, _, casts =
@@ -230,7 +243,8 @@ local function tick()
 	PlayerController.buttons = input.buttons
 	-- Back at Run it Back's mark (system 33): the view's there at once,
 	-- turned the way he faced as he cast it. Gone by Shrouded Step (system
-	-- 42), it's where he's going at once, turned as it was.
+	-- 42), it's where he's going at once, turned as it was, and so it is
+	-- as a Shade, and sent back, in From the Shadows (system 43).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "rise" then
@@ -238,7 +252,7 @@ local function tick()
 				visualOffset = vector.create(0, 0, 0)
 				CameraController.yaw = s.abilities.markYaw
 				CameraController.pitch = 0
-			elseif cast.kind == "vanish" then
+			elseif cast.kind == "vanish" or cast.kind == "shade" or cast.kind == "home" then
 				prevPosition = s.movement.position
 				visualOffset = vector.create(0, 0, 0)
 			end
@@ -397,6 +411,9 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or ga.markYaw ~= sa.markYaw
 		or ga.markGrounded ~= sa.markGrounded
 		or ga.markCrouched ~= sa.markCrouched
+		or ga.shadowAt ~= sa.shadowAt
+		or ga.shadowFrom ~= sa.shadowFrom
+		or ga.shadowTo ~= sa.shadowTo
 	then
 		return true, posErr
 	end
@@ -474,11 +491,17 @@ local function onAck(payload: buffer)
 		end
 		visualOffset += before - corrected.movement.position
 		prevPosition += corrected.movement.position - before
-		-- Held through Run it Back's return (system 33), or gone by Shrouded
-		-- Step (system 42), he's where the server has him at once, the blend
+		-- Held through Run it Back's return (system 33), gone by Shrouded
+		-- Step (system 42), or in From the Shadows or just sent back from it
+		-- (system 43), he's where the server has him at once, the blend
 		-- left out.
 		local last = corrected.movement.tick * DT
-		if AbilitySim.returning(corrected.abilities, last) or AbilitySim.shrouded(corrected.abilities, last) then
+		if
+			AbilitySim.returning(corrected.abilities, last)
+			or AbilitySim.shrouded(corrected.abilities, last)
+			or AbilitySim.shadowing(corrected.abilities, last)
+			or AbilitySim.shadowing(s.abilities, s.movement.tick * DT)
+		then
 			visualOffset = vector.create(0, 0, 0)
 			prevPosition = corrected.movement.position
 		end

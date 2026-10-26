@@ -33,7 +33,9 @@
 -- the Hit Reg Lab's motion line.
 --
 -- A player whose spawn protection is on in gun game (system 23) is drawn as
--- a force field, since shots go through them.
+-- a force field, since shots go through them. An Omen who's a Shade in From
+-- the Shadows (system 43, his pose's shade) is drawn dark and see-through
+-- (ours: the reference's Shade is a shadowy figure of him).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -121,6 +123,8 @@ local PLAYER_COLORS: { [string]: Color3 } = {
 
 local FLASH_COLOR = Color3.new(1, 1, 1)
 local FLASH_TIME = 0.08
+local SHADE_COLOR = Color3.fromRGB(40, 26, 64) -- a Shade (system 43)
+local SHADE_CLEAR = 0.35 -- and how see-through it is
 
 type Visual = {
 	model: Model,
@@ -416,10 +420,18 @@ local function onRender()
 			RemoteEntities.placeBoxes(visual.parts, pose)
 			local protected = player ~= nil and player:GetAttribute(GunGameConfig.PROTECTED) == true
 			local material = if protected then Enum.Material.ForceField else Enum.Material.SmoothPlastic
+			local shade = pose.shade == true
+			local clear = if shade then SHADE_CLEAR else 0
 			for region, part in visual.parts do
-				part.Color = if (visual.flashUntil[region] or 0) > now then FLASH_COLOR else visual.colors[region]
+				part.Color = if (visual.flashUntil[region] or 0) > now
+					then FLASH_COLOR
+					elseif shade then SHADE_COLOR
+					else visual.colors[region]
 				if part.Material ~= material then
 					part.Material = material
+				end
+				if part.Transparency ~= clear then
+					part.Transparency = clear
 				end
 			end
 			local hp = RemoteEntities.healthOf(id)

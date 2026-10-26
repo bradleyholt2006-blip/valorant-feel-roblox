@@ -19,8 +19,10 @@
 --     you're there, and clearing as you are
 --   * His arrival ("arrive"): for others, shadow drawn in round him as he
 --     forms there, and his shadow gone
--- Each is heard as AbilityEffects hears every cast. In Workspace's VFStep
--- the targeter is a `StepMark` part with its `Ring` and `Ghost`
+-- Each is heard as AbilityEffects hears every cast. From the Shadows'
+-- windup, its Shade going and arriving, and its forming are drawn the same
+-- (system 43, ShadowView: StepView.swirl, puff and form). In Workspace's
+-- VFStep the targeter is a `StepMark` part with its `Ring` and `Ghost`
 -- adornments, others' windups `Swirl` parts, their going a `Puff`, the
 -- floor they're going to a `Shadow` model, its `Entity` attribute whose it
 -- is, and their arrival a `Form`. They go when the server says every
@@ -69,8 +71,9 @@ local CLEAR = 0.25 -- seconds your screen takes to clear as you're there (ours)
 local STALE = 1 -- seconds: a step the screen is this far past isn't shown
 
 -- Another's step on its way: whose, when (server time) its windup
--- started, and once the frame on your screen reaches it, its swirl.
-type Winding = { entity: number, at: number, wisps: { Part }? }
+-- started, how long it lasts, and once the frame on your screen reaches
+-- it, its swirl.
+type Winding = { entity: number, at: number, length: number, wisps: { Part }? }
 -- Another's going: whose, when (server time), where from and to (metres),
 -- and once reached, the shadow where they're going.
 type Going = { entity: number, at: number, from: vector, to: vector, shadow: Model? }
@@ -225,7 +228,7 @@ end
 -- Another's windup, swirling round them where they're drawn at `render`:
 -- false once it's over.
 local function swirl(wd: Winding, render: number): boolean
-	local k = (render - wd.at) / SS.windup.value
+	local k = (render - wd.at) / wd.length
 	local pose = if RemoteEntities.isPresent(wd.entity) then RemoteEntities.sample(wd.entity, render) else nil
 	if k >= 1 or not pose or not pose.alive then
 		if wd.wisps then
@@ -350,7 +353,7 @@ local function onEvent(event: any)
 	end
 	local feet = Units.toMetres(event.position)
 	if event.kind == "step" then
-		table.insert(winding, { entity = event.entity, at = event.at })
+		table.insert(winding, { entity = event.entity, at = event.at, length = SS.windup.value })
 	elseif event.kind == "vanish" and typeof(event.to) == "Vector3" then
 		table.insert(going, { entity = event.entity, at = event.at, from = feet, to = Units.toMetres(event.to) })
 	elseif event.kind == "arrive" then
@@ -363,6 +366,17 @@ end
 function StepView.aimed(): vector?
 	return aimedAt
 end
+
+-- Another's windup of `length` seconds from server time `at`, swirling
+-- round them as they're drawn (From the Shadows', system 43).
+function StepView.swirl(entity: number, at: number, length: number)
+	table.insert(winding, { entity = entity, at = at, length = length })
+end
+
+-- A puff of shadow where someone went from, and shadow drawn in round
+-- someone forming, at `feet` (metres), now.
+StepView.puff = puff
+StepView.form = form
 
 function StepView.start()
 	-- Your windup's shadow closing in from the screen's edges (a stroke

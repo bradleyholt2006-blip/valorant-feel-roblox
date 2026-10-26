@@ -35,6 +35,11 @@
 --   * Shrouded Step: only heard here, as it's fired and as he arrives;
 --     StepView draws its targeter, his windup, his going, the shadow where
 --     he's going and his arrival (system 42)
+--   * From the Shadows: only heard here, yours as you cast it, become a
+--     Shade, form or are sent back, and others' as it's fired and as they
+--     form; ShadowView draws its map, the windup, the Shade and its
+--     arrival, forming and being sent back, and sounds others' Shades
+--     arriving and being sent back, and yours sent back by a hit (system 43)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -230,6 +235,8 @@ local function onCast(event: any)
 		return -- a return: ReviveView's
 	elseif event.kind == "vanish" then
 		return -- a step's going: StepView's
+	elseif event.kind == "shade" or event.kind == "home" then
+		return -- a Shade's: ShadowView's
 	end
 	table.insert(due, {
 		kind = event.kind,

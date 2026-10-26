@@ -39,14 +39,18 @@
 -- Hands' fireball, system 31; Blaze's flame, system 32), which others see
 -- in hand, the Healing Orb's tries (system 36), which HealServer judges
 -- and tells of as one heals, the Barrier Orb's wall (system 38), which
--- BarrierServer tells of as it rises, and Omen going in his Shrouded Step
--- (system 42), which StepServer tells of with where he's going: Run it
+-- BarrierServer tells of as it rises, Omen going in his Shrouded Step
+-- (system 42), which StepServer tells of with where he's going, and his
+-- Shade and his being sent back in From the Shadows (system 43), which
+-- ShadowServer tells of with the places each client would hear: Run it
 -- Back's mark and rising to every client, as the mark's drawn for
--- everyone, Dark Cover's orb sent (system 40) to the caster's side alone
--- (Patch 11.00: 'Dark Cover no longer plays audio in third person within
--- 12.5 meters for opponents. This audio will still play for Allies.'), and
--- any other to those who'd hear it or have the caster in their snapshots
--- (the fog of war, system 35), Omen's arrival as far as its own curve goes.
+-- everyone, and From the Shadows fired, heard across the map, Dark Cover's
+-- orb sent (system 40) to the caster's side alone (Patch 11.00: 'Dark
+-- Cover no longer plays audio in third person within 12.5 meters for
+-- opponents. This audio will still play for Allies.'), and any other to
+-- those who'd hear it or have the caster in their snapshots (the fog of
+-- war, system 35), Omen's arrival and his forming from a Shade as far as
+-- their own curves go.
 -- The caster's own client has predicted it already. Each kit
 -- is a player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
 -- writes it), which scripted checks read.
@@ -102,8 +106,9 @@ export type CastEvent = {
 }
 
 -- The casts every client is told of: Run it Back's mark, a flame on the
--- floor for everyone (system 33), and his rising at it.
-local EVERYONE: { [string]: boolean } = { mark = true, rise = true }
+-- floor for everyone (system 33), and his rising at it, and From the
+-- Shadows fired, which darkens every enemy's minimap (system 43).
+local EVERYONE: { [string]: boolean } = { mark = true, rise = true, shadows = true }
 
 -- Since when each kit has been short of a charge with nothing under way.
 local shortSince: { [Player]: number } = {}
@@ -355,6 +360,8 @@ function AbilityServer.start()
 			or cast.kind == "selfheal"
 			or cast.kind == "barrier"
 			or cast.kind == "vanish"
+			or cast.kind == "shade"
+			or cast.kind == "home"
 		then
 			return
 		end
@@ -380,7 +387,10 @@ function AbilityServer.start()
 			end
 			return
 		end
-		local edge = if cast.kind == "arrive" then FogOfWar.Edges.arrive else FogOfWar.Edges.cast
+		local edge = if cast.kind == "arrive"
+			then FogOfWar.Edges.arrive
+			elseif cast.kind == "form" then FogOfWar.Edges.shade
+			else FogOfWar.Edges.cast
 		for _, other in Players:GetPlayers() do
 			if FogServer.hears(other, cast.position, edge, entity.id) then
 				remote:FireClient(other, event)

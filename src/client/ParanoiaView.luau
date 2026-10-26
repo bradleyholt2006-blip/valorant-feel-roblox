@@ -25,6 +25,9 @@
 --     (GameSounds.playNearsight)
 --   * Others': a wisp of shadow round the head while it lasts. The watched
 --     player's is on your screen instead
+--   * How far you see as a Shade in From the Shadows (system 43,
+--     ShadowView, ParanoiaView.cap): the same dark, whole, that far out,
+--     wherever a nearsight's is further
 -- In Workspace's VFParanoia each orb in flight is an `Orb` ball with its
 -- `Core` ball, the dark round the camera is `Dark`, a model of `Slab`s,
 -- and each wisp a `Wisp` ball with its player's name as its Player
@@ -57,6 +60,10 @@ local ParanoiaView = {}
 
 -- How dark the nearsight on your screen is now, 0 to 1, for the minimap.
 ParanoiaView.dark = 0
+-- How far you see, metres, while something else keeps you from seeing
+-- further (Omen's Shade, system 43, ShadowView): the dark's whole past it.
+-- Nil without.
+ParanoiaView.cap = nil :: number?
 
 local PA = AbilityConfig.Paranoia
 local SHADOW = Color3.fromRGB(46, 26, 72)
@@ -183,10 +190,14 @@ end
 
 -- The dark round the camera at `at` (studs), `amount` of it (0 to 1, as
 -- ParanoiaSim.darkAt has it): whole, its vision out; clearing, drawn back
--- further and further, and thinning away once little's left.
-local function placeDark(at: Vector3?, amount: number)
+-- further and further, and thinning away once little's left. With a cap on
+-- how far you see (metres) nearer than that, whole at the cap.
+local function placeDark(at: Vector3?, amount: number, cap: number?)
 	dark()
-	local clear = if at and amount > 0 then 1 - math.min(amount / THIN_FROM, 1) else 1
+	local vision = PA.vision.value
+	local out = if amount > 0 then math.min(vision / amount, FAR) else math.huge
+	local capped = cap ~= nil and cap < out
+	local clear = if not at then 1 elseif capped then 0 elseif amount > 0 then 1 - math.min(amount / THIN_FROM, 1) else 1
 	if clear ~= darkClear then
 		darkClear = clear
 		for _, p in slabs do
@@ -196,8 +207,7 @@ local function placeDark(at: Vector3?, amount: number)
 	if not at or clear >= 1 then
 		return
 	end
-	local vision = PA.vision.value
-	local radius = math.min(vision / amount, FAR) * Units.STUDS_PER_METRE
+	local radius = (if cap and capped then cap else out) * Units.STUDS_PER_METRE
 	if radius ~= darkRadius then
 		darkRadius = radius
 		local side = 2 * radius * math.tan(SLAB_REACH)
@@ -379,7 +389,7 @@ function ParanoiaView.start()
 		ParanoiaView.dark = amount
 		SoundEngine.setDeafened(amount)
 		local camera = Workspace.CurrentCamera
-		placeDark(if camera then camera.CFrame.Position else nil, amount)
+		placeDark(if camera then camera.CFrame.Position else nil, amount, ParanoiaView.cap)
 
 		for _, player in Players:GetPlayers() do
 			if player ~= me then

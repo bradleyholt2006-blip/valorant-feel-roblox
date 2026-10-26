@@ -35,6 +35,10 @@ CameraController.zoom = 1
 -- While set (the buy menu or the settings menu is open), the mouse moves a
 -- cursor instead of the view.
 CameraController.cursorFree = false
+-- While set (Omen's From the Shadows' map is up, system 43, ShadowView),
+-- the mouse moves its cursor across the map instead of the view: called
+-- with each frame's movement, in counts, as the view would turn by.
+CameraController.mapCursor = nil :: ((Vector2) -> ())?
 
 local MAX_PITCH = math.rad(89)
 
@@ -75,6 +79,11 @@ function CameraController.updateLook()
 	-- GetMouseDelta includes Roblox's own sensitivity slider; divide it out so
 	-- our sensitivity is the only scale applied.
 	local delta = UserInputService:GetMouseDelta() / userSensitivity()
+	local mapCursor = CameraController.mapCursor
+	if mapCursor then
+		mapCursor(delta)
+		return
+	end
 	CameraController.countsX += delta.X
 	local radPerCount = math.rad(PlayerSettings.degreesPerCount(CameraController.sensitivity, CameraController.scopedMultiplier, CameraController.zoom))
 	CameraController.yaw -= delta.X * radPerCount

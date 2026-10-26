@@ -28,6 +28,11 @@
 --   * where your Shrouded Step would take you, or is taking you (system 42,
 --     StepView.aimed; Patch 1.0: 'Omen can now see his teleport location on
 --     the map')
+--   * with From the Shadows' map in hand (system 43, ShadowView), the big
+--     map, the course's too, drawn from its parts (PartsPlan), though it
+--     has no minimap, and on it the cursor, a ring, violet where fire would
+--     take you and red where it wouldn't; once it's fired, where it's
+--     taking you, until you've formed there
 --   * the sites' letters, and on the big map the places' names
 --   * a white circle round you as you make a sound, as far as it's heard
 --     (the minimap's sound circle: "Anyone outside of this white circle
@@ -37,14 +42,16 @@
 -- While you're nearsighted by Omen's Paranoia (system 41), or whoever you
 -- look out of is, all of it's covered in dark (ParanoiaView.dark), as the
 -- reference's minimap 'will become obscured' (the VALORANT Wiki's Status
--- Effect page; community).
+-- Effect page; community), and so it is while an enemy's From the Shadows
+-- runs (system 43, ShadowView.dark).
 --
 -- For scripted checks, the minimap's ScreenGui (VFMinimap) carries what it
 -- shows as attributes: Plan (the plan's key), Seen (the entity ids of the
 -- enemies shown, "3,7"), Spike (whether the spike is), Turn (degrees the
 -- map's turned), Big (whether the big map's open) and Dark (how covered it
 -- is, 0 to 1). Its icons are named Self, Ally_<id>, Enemy_<id>, Seen_<id>,
--- Pulse_<id>, Dead_<id>, Spike, Step and Ring.
+-- Pulse_<id>, Dead_<id>, Spike, Step, Shadow (From the Shadows' cursor),
+-- Shade (where it's taking you) and Ring.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -55,6 +62,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local Minimap = require(Shared.Match.Minimap)
+local PartsPlan = require(Shared.Match.PartsPlan)
 local FogOfWar = require(Shared.Combat.FogOfWar)
 local Sight = require(Shared.Combat.Sight)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
@@ -81,6 +89,7 @@ local Spectate = require(script.Parent.Spectate)
 local Visuals = require(script.Parent.Visuals)
 local ParanoiaView = require(script.Parent.ParanoiaView)
 local StepView = require(script.Parent.StepView)
+local ShadowView = require(script.Parent.ShadowView)
 
 local MinimapView = {}
 
@@ -108,6 +117,7 @@ local TEXT = Color3.fromRGB(235, 238, 244)
 local DEAD = Color3.fromRGB(235, 72, 72)
 local SHADOW = Color3.fromRGB(18, 12, 28) -- Paranoia's dark over it all (system 41)
 local STEP = Color3.fromRGB(160, 120, 240) -- where your Shrouded Step takes you (system 42)
+local REFUSED = Color3.fromRGB(230, 70, 70) -- From the Shadows' cursor where it wouldn't (system 43)
 
 type Keyed = { parent: Instance, items: { [string]: GuiObject }, touched: { [string]: boolean } }
 
@@ -132,12 +142,13 @@ type Layer = {
 
 type Icon = {
 	name: string,
-	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead", "spike" or "step"
+	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead", "spike", "step" or "cursor"
 	position: vector,
 	yaw: number?,
 	fade: number, -- 0 solid, 1 gone
 	carrier: boolean,
 	edge: boolean, -- held on the minimap's edge while off it
+	refused: boolean?, -- From the Shadows' cursor: where fire wouldn't take you
 }
 
 type Round = { centre: vector, radius: number, colour: Color3 }
@@ -344,6 +355,17 @@ local function newIcon(kind: string): GuiObject
 		d.BackgroundTransparency = 0.55
 		stroke(d, STEP, 1.5)
 		return d
+	elseif kind == "cursor" then
+		-- From the Shadows' cursor: a ring with a dot in it.
+		local r = disc(STEP, 8)
+		r.BackgroundTransparency = 1
+		stroke(r, STEP, 2.5)
+		local dot = disc(STEP, 8)
+		dot.Name = "Dot"
+		dot.Position = UDim2.fromScale(0.5, 0.5)
+		dot.Size = UDim2.fromScale(0.22, 0.22)
+		dot.Parent = r
+		return r
 	end
 	-- "ring": the sound circle round you.
 	local r = disc(Color3.new(1, 1, 1), 1)
@@ -683,6 +705,24 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	if step then
 		table.insert(icons, { name = "Step", kind = "step", position = step, fade = 0, carrier = false, edge = false })
 	end
+	-- From the Shadows' cursor while its map's up, and where it's taking
+	-- you once it's fired (system 43).
+	local cursor = ShadowView.cursor()
+	if cursor then
+		table.insert(icons, {
+			name = "Shadow",
+			kind = "cursor",
+			position = cursor,
+			fade = 0,
+			carrier = false,
+			edge = false,
+			refused = not ShadowView.placeable(),
+		})
+	end
+	local going = ShadowView.going()
+	if going then
+		table.insert(icons, { name = "Shade", kind = "step", position = going, fade = 0, carrier = false, edge = false })
+	end
 
 	-- What's been thrown.
 	local clouds: { Round } = {}
@@ -830,7 +870,11 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 			return newIcon(kind)
 		end)
 		f.Position = UDim2.fromOffset(half + x, half + y)
-		local across = if kind == "spike" then size * 1.1 elseif kind == "self" then size * 1.15 else size
+		local across = if kind == "spike"
+			then size * 1.1
+			elseif kind == "self" then size * 1.15
+			elseif kind == "cursor" then size * 1.8
+			else size
 		f.Size = UDim2.fromOffset(across, across)
 		if icon.yaw then
 			f.Rotation = math.deg(Minimap.facing(view, icon.yaw))
@@ -839,6 +883,16 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 			local mark = f:FindFirstChild("Spike") :: GuiObject?
 			if mark then
 				mark.Visible = icon.carrier
+			end
+		elseif kind == "cursor" then
+			local colour = if icon.refused then REFUSED else STEP
+			local edge = f:FindFirstChildOfClass("UIStroke")
+			if edge then
+				edge.Color = colour
+			end
+			local dot = f:FindFirstChild("Dot") :: GuiObject?
+			if dot then
+				dot.BackgroundColor3 = colour
 			end
 		elseif kind == "enemy" or kind == "seen" or kind == "pulse" then
 			f.BackgroundColor3 = enemy
@@ -897,13 +951,22 @@ local function step()
 	local mode = Workspace:GetAttribute(ArenaConfig.MODE)
 	local side = me:GetAttribute(ArenaConfig.SIDE)
 	local plan = if model and Workspace:GetAttribute(ArenaConfig.ON) == true then Minimap.planFor(mode, model:GetAttribute("Map")) else nil
-	if not model or not plan or typeof(side) ~= "number" then
+	local played = model ~= nil and plan ~= nil and typeof(side) == "number"
+	-- Off the arena's maps there's no minimap, but From the Shadows' map
+	-- shows the course's (system 43), with nobody on your side.
+	local shadows = ShadowView.mapUp()
+	if not played then
+		plan = if shadows then PartsPlan.inPlay() else nil
+		side = 0
+	end
+	ShadowView.view = nil
+	if not plan then
 		hide()
 		mLayer.gui:SetAttribute("Plan", nil)
 		return
 	end
 	-- A new map or round: the marks of the last go.
-	local round = model:GetAttribute("Round")
+	local round = if model then model:GetAttribute("Round") else nil
 	if plan.key ~= lastPlan or round ~= lastRound then
 		lastPlan = plan.key
 		lastRound = round
@@ -912,31 +975,40 @@ local function step()
 	local s = ClientSettings.current
 	local camera = Workspace.CurrentCamera
 	local screen = if camera then camera.ViewportSize.Y else 720
-	local scene = sceneOf(plan, mode, side, model:GetAttribute("Attackers"))
+	local scene = sceneOf(plan, mode, side, if model then model:GetAttribute("Attackers") else nil)
 	local now = os.clock()
 	if now - castAt >= P.coneEvery.value then
 		castAt = now
 		cast(scene)
 	end
 
-	local box = math.floor(screen * P.size.value * s.mapSize + 0.5)
-	mLayer.box.Size = UDim2.fromOffset(box, box)
-	mLayer.gui.Enabled = true
-	shownBottom = MARGIN + box
-	local view = Minimap.miniView(plan, s, scene.me, box, scene.turn)
-	build(mLayer, plan, box, view.scale, false)
-	draw(mLayer, plan, view, scene)
+	local turn = 0
+	if played then
+		local box = math.floor(screen * P.size.value * s.mapSize + 0.5)
+		mLayer.box.Size = UDim2.fromOffset(box, box)
+		shownBottom = MARGIN + box
+		local view = Minimap.miniView(plan, s, scene.me, box, scene.turn)
+		build(mLayer, plan, box, view.scale, false)
+		draw(mLayer, plan, view, scene)
+		turn = view.turn
+	else
+		shownBottom = 0
+	end
+	mLayer.gui.Enabled = played
 
-	local big = held or testBig
+	local big = held or testBig or shadows
 	if big then
 		local bigBox = math.floor(screen * P.bigSize.value + 0.5)
 		bLayer.box.Size = UDim2.fromOffset(bigBox, bigBox)
 		local bigView = Minimap.bigView(plan, s, bigBox, scene.turn)
-		build(bLayer, plan, bigBox, bigView.scale, Minimap.namesShown(s.mapNames, model:GetAttribute("Phase")))
+		build(bLayer, plan, bigBox, bigView.scale, Minimap.namesShown(s.mapNames, if model then model:GetAttribute("Phase") else nil))
 		draw(bLayer, plan, bigView, scene)
+		if shadows then
+			ShadowView.view = bigView
+		end
 	end
 	bLayer.gui.Enabled = big
-	local covered = ParanoiaView.dark
+	local covered = math.max(ParanoiaView.dark, ShadowView.dark())
 	mLayer.cover.BackgroundTransparency = 1 - covered
 	bLayer.cover.BackgroundTransparency = 1 - covered
 
@@ -952,7 +1024,7 @@ local function step()
 	gui:SetAttribute("Plan", plan.key)
 	gui:SetAttribute("Seen", table.concat(shown, ","))
 	gui:SetAttribute("Spike", if mLayer.icons.items.Spike then true else false)
-	gui:SetAttribute("Turn", math.floor(math.deg(view.turn) * 10 + 0.5) / 10)
+	gui:SetAttribute("Turn", math.floor(math.deg(turn) * 10 + 0.5) / 10)
 	gui:SetAttribute("Big", big)
 	gui:SetAttribute("Dark", math.floor(covered * 100 + 0.5) / 100)
 end

@@ -607,8 +607,23 @@ do
 				and not Minimap.holds(plan, vector.create(-40 - m - 0.01, 0, 0))
 				and not Minimap.holds(plan, vector.create(0, 0, 40 + m + 0.01))
 		)
+		local held = Minimap.held(plan, vector.create(-100, 7, 100))
+		check(
+			"the cursor pushed off the map is held at its edge, on the floor",
+			near(held.x, -40 - m, 1e-9) and near(held.z, 40 + m, 1e-9) and held.y == 0
+		)
+		local on = Minimap.held(plan, vector.create(5, 0, -5))
+		check("and on it, it's where it is", near(on.x, 5, 1e-6) and near(on.z, -5, 1e-6))
 	end
 	check("with no floor, no map", Minimap.planOf("none", { shapes[3] }) == nil)
+	-- The cursor: where on the screen it's moved to, back to the floor,
+	-- however the map's turned.
+	local view: Minimap.View = { centre = vector.create(3, 0, -4), turn = 0.7, scale = 6, half = 300 }
+	local x, y = Minimap.toView(view, vector.create(10, 0, 12))
+	local under = Minimap.fromView(view, x, y)
+	check("the place under a point on a turned map is the place shown there", near(under.x, 10, 1e-4) and near(under.z, 12, 1e-4))
+	local up = Minimap.fromView({ centre = vector.zero, turn = 0, scale = 2, half = 100 }, 0, -10)
+	check("up an unturned map is -z, 2 pixels a metre", near(up.x, 0, 1e-9) and near(up.z, -5, 1e-9))
 	local quarry = Minimap.planFor("spike", "quarry")
 	check(
 		"and a match's map holds its own floor but not the course",

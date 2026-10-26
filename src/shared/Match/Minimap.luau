@@ -328,6 +328,13 @@ function Minimap.holds(plan: Plan, point: vector): boolean
 	return point.x >= plan.x0 - m and point.x <= plan.x1 + m and point.z >= plan.z0 - m and point.z <= plan.z1 + m
 end
 
+-- The point on a plan's map nearest `point` (metres), on the floor: where
+-- From the Shadows' cursor is held as it's pushed off the map.
+function Minimap.held(plan: Plan, point: vector): vector
+	local m = Minimap.Params.margin.value
+	return vector.create(math.clamp(point.x, plan.x0 - m, plan.x1 + m), 0, math.clamp(point.z, plan.z0 - m, plan.z1 + m))
+end
+
 -- The middle of a plan's floor, and the longer side of it with the margin
 -- round it, in metres.
 function Minimap.middle(plan: Plan): vector
@@ -404,6 +411,15 @@ function Minimap.toView(view: View, point: vector): (number, number)
 	local dx, dz = (point.x - view.centre.x) * view.scale, (point.z - view.centre.z) * view.scale
 	local c, sn = math.cos(view.turn), math.sin(view.turn)
 	return dx * c - dz * sn, dx * sn + dz * c
+end
+
+-- The point on the floor `x`, `y` pixels right and down from a view's
+-- middle shows: toView the other way, for From the Shadows' cursor
+-- (system 43).
+function Minimap.fromView(view: View, x: number, y: number): vector
+	local c, sn = math.cos(view.turn), math.sin(view.turn)
+	local dx, dz = x * c + y * sn, y * c - x * sn
+	return vector.create(view.centre.x + dx / view.scale, 0, view.centre.z + dz / view.scale)
 end
 
 -- Which way someone looking along `yaw` faces in a view: radians clockwise

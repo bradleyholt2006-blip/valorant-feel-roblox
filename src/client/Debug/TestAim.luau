@@ -66,6 +66,9 @@
 --                  clears itself
 --   VFTestMap      true opens the big map as holding Caps Lock does
 --                  (system 34), false closes it; then clears itself
+--   VFTestMapPoint Vector3 in metres: puts From the Shadows' cursor on its
+--                  map nearest that place (system 43), as the mouse could,
+--                  once its map's up; then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -90,6 +93,7 @@ local LoadoutMenu = require(script.Parent.Parent.LoadoutMenu)
 local AgentMenu = require(script.Parent.Parent.AgentMenu)
 local PlayMenu = require(script.Parent.Parent.PlayMenu)
 local MinimapView = require(script.Parent.Parent.MinimapView)
+local ShadowView = require(script.Parent.Parent.ShadowView)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
 local TestAim = {}
@@ -230,6 +234,10 @@ function TestAim.start(controller: any)
 		if typeof(map) == "boolean" then
 			player:SetAttribute("VFTestMap", nil)
 			MinimapView.setBig(map)
+		end
+		local mapPoint = player:GetAttribute("VFTestMapPoint")
+		if typeof(mapPoint) == "Vector3" and ShadowView.setCursor(Units.asVector(mapPoint)) then
+			player:SetAttribute("VFTestMapPoint", nil)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then
