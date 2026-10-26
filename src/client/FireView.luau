@@ -13,9 +13,11 @@
 --     as the server's does, no further than its walls (FireSim.edge), with
 --     flames on it, its glow and its crackle until it's out. The burn and
 --     the heal are the server's, and an orange glow round the screen's edge
---     says you're burning
+--     says you're burning, in this fire or in Blaze's wall (system 32,
+--     BlazeView)
 -- In Workspace's VFFires each fireball in the air is a `Fireball` ball, and
--- each fire a `Fire` model while it burns.
+-- each fire a `Fire` model while it burns. They all go when the server says
+-- every fire's out (a new round, "out").
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -23,6 +25,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local BlazeSim = require(Shared.Abilities.BlazeSim)
 local FireballSim = require(Shared.Abilities.FireballSim)
 local FireSim = require(Shared.Abilities.FireSim)
 local MovementConfig = require(Shared.Movement.MovementConfig)
@@ -334,6 +337,13 @@ local function reachesOf(sent: any): { number }?
 end
 
 local function onEvent(event: any)
+	if typeof(event) == "table" and event.kind == "out" then
+		for key, s in shown do
+			forget(s)
+			shown[key] = nil
+		end
+		return
+	end
 	if typeof(event) ~= "table" or event.ability ~= "hothands" or event.kind ~= "flight" then
 		return
 	end
@@ -442,10 +452,11 @@ function FireView.start()
 	local remotes = Remotes.get()
 	NetSim.on(remotes.Ability, onEvent)
 	NetSim.on(remotes.Combat, function(event: any)
-		if typeof(event) == "table" and event.kind == "damage" and event.weapon == FireSim.WEAPON then
-			if event.target == PlayerController.entityId then
-				glowUntil = os.clock() + GLOW
-			end
+		if typeof(event) ~= "table" or event.kind ~= "damage" or event.target ~= PlayerController.entityId then
+			return
+		end
+		if event.weapon == FireSim.WEAPON or event.weapon == BlazeSim.WEAPON then
+			glowUntil = os.clock() + GLOW
 		end
 	end)
 	RunService.RenderStepped:Connect(function()

@@ -211,6 +211,14 @@ Built one system at a time:
     Phoenix heals in his own fire instead, which is his passive, Inner Fire: 50 health over 4 s
     from his first touch of each fire, going on if he leaves it. Since Patch 9.10 it's one charge
     at 200 credits, with none free - [research and design](docs/research/31-hot-hands.md)
+32. **Blaze**, Phoenix's wall of fire: C readies a flame in 0.8 s; mouse 1 sends a line of fire out
+    along the floor from your feet, 21 m in 0.75 s, up steps and boxes and through walls, and while
+    it's held the line bends towards your crosshair, at up to 180 degrees a second; your gun is back
+    0.5 s after you let go, or once its run's over. Where it ends, a wall of fire 4 m tall rises
+    from your end and spreads to the far end in half a second, and stands for 8 s: nobody sees
+    through it, enemies standing in it burn 30 a second and allies a third of that, and Phoenix
+    heals in it instead, 50 over 8 s (Inner Fire). One charge at 150 credits, with none free -
+    [research and design](docs/research/32-blaze.md)
 
 ## Running it
 
@@ -250,7 +258,9 @@ and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife 
 that are left; with a gun drawn, X draws the knives again). Space held in the air glides (Jett's
 Drift). As Phoenix, E readies Curveball's flare: mouse 1 throws it curving left, mouse 2 curving
 right, and E again puts it away; Q readies Hot Hands' fireball: mouse 1 throws it, mouse 2 lobs it,
-and Q again puts it away. The spike rounds charge credits; the course and the arena are free.
+and Q again puts it away; C readies Blaze's flame: mouse 1 sends its wall, held it bends the wall
+towards your crosshair, and C again puts it away. The spike rounds charge credits; the course and
+the arena are free.
 On the course a spent charge comes back 1.5 s after it's done, and the ultimate's points are full at
 every life and fill again 1.5 s after Blade Storm ends; in the arena every life starts with every
 charge, in Team Deathmatch spent charges come back over time, and gun game and deathmatch have no
@@ -320,7 +330,8 @@ their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`,
 line while both sides are full. Each player's ability kit is their
 `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
 what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide, `equip`
-while Curveball's flare or Hot Hands' fireball is in hand), and
+while Curveball's flare, Hot Hands' fireball or Blaze's flame is in hand, `bend` while a Blaze
+wall is bent), and
 `VFTestBuy` set to `updraft` buys a charge. A player's agent is their `VFAgent` attribute, what
 they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
 `open` or `locked`, unset where nobody picks), and while their window's open, when it closes
@@ -330,7 +341,9 @@ cloud as parts. Where a player's last Curveball popped is their `VFLastFlare` at
 and their blind their `VFBlind` (when it began, when its white ends and when it's gone, in server
 time); `Workspace.VFFlares` holds each flare in the air and each pop as parts. Where a player's
 last Hot Hands burst is their `VFLastFire` attribute (the floor under it, in metres), and
-`Workspace.VFFires` holds each fireball in the air, each burst and each fire as parts. Workspace's
+`Workspace.VFFires` holds each fireball in the air, each burst and each fire as parts. The far end
+of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Workspace.VFWalls`
+holds each wall's run on its way and each wall as models. Workspace's
 `VFPlayMenu` is whether players start in the Play menu (always on a
 live server; in Studio, tick it in the place before you press Play), and `VFModeCounts` how many
 are in servers playing each mode (`skirmish=6,gungame=0,...`). A player's `VFPlaying` is true once
@@ -359,9 +372,11 @@ burst, the kills that bring the knives back, swapping, and what ends it), Drift 
 jump, a ledge and Updraft, a press in a fall, landing with jump held, and what it leaves alone),
 agent select (where each player picks, the window, locking in, the time running out, a swap at
 once or with the next life, and what's sold back), Curveball (Phoenix's kit, the flare in hand, its
-throw and flight, the blind, and the kit on the wire) and Hot Hands (the fireball in hand, its
+throw and flight, the blind, and the kit on the wire), Hot Hands (the fireball in hand, its
 flight off walls and ceilings to the floor, its fire and who stands in it, the burn, Inner Fire's
-heal, and the wire) are pure Luau and run outside Roblox:
+heal, and the wire) and Blaze (the flame in hand, sending and bending the wall, its run up boxes,
+through walls and down ledges, the wall and who stands in it, the burn, Inner Fire's heal, and the
+wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

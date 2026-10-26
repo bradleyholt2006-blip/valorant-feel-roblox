@@ -131,6 +131,16 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.045, 0.06, 0.07), offset = vector.create(0, -0.01, -0.03) }, -- hand
 		},
 	},
+	-- Blaze's flame (system 32): a tongue of fire standing up off the open
+	-- hand, its tip on top.
+	flamewall = {
+		muzzle = vector.create(0, 0.08, -0.12),
+		pieces = {
+			{ size = vector.create(0.08, 0.1, 0.03), offset = vector.create(0, 0.06, -0.08), accent = true }, -- flame
+			{ size = vector.create(0.04, 0.06, 0.02), offset = vector.create(0, 0.13, -0.08), accent = true }, -- tip
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -160,6 +170,7 @@ local SHAPE_OF: { [string]: string } = {
 	kunai = "kunai",
 	flare = "flare",
 	fireball = "fireball",
+	flamewall = "flamewall",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -188,6 +199,7 @@ local ACCENT: { [string]: Color3 } = {
 	kunai = Color3.fromRGB(150, 230, 255),
 	flare = Color3.fromRGB(255, 176, 80),
 	fireball = Color3.fromRGB(255, 110, 30),
+	flamewall = Color3.fromRGB(255, 90, 20),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

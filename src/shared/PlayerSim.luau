@@ -2,8 +2,8 @@
 -- One player's full deterministic simulation: movement + weapons + hit slow,
 -- the spike's plant and defuse (system 12), and the ability kit (system 17),
 -- whose Blade Storm puts its knives in the weapons' hand (system 19), as
--- Curveball does its flare (system 30) and Hot Hands its fireball (system
--- 31).
+-- Curveball does its flare (system 30), Hot Hands its fireball (system 31)
+-- and Blaze its flame (system 32).
 --
 -- This is the unit that client prediction and server authority both step,
 -- once per 128 Hz tick, from the same input. Anything that changes a
@@ -179,7 +179,7 @@ function PlayerSim.step(
 	-- A throw puts the gun away for a moment (system 18). Blade Storm's cast
 	-- puts its knives in hand, and X draws them again (system 19). An
 	-- ability's key puts what it throws in hand: Curveball's flare (system
-	-- 30), Hot Hands' fireball (system 31).
+	-- 30), Hot Hands' fireball (system 31), Blaze's flame (system 32).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -199,16 +199,32 @@ function PlayerSim.step(
 			end
 		end
 	end
-	-- A plant or a defuse puts an ability in hand away.
+	-- A plant or a defuse puts an ability in hand away, and lets go of a
+	-- wall being bent.
+	local kit = s.abilities
 	if PlayerSim.rooted(s) then
-		s.abilities.holding = 0
+		kit.holding = 0
+		kit.steering, kit.steerUntil = 0, 0
 	end
 	-- What's in the fifth slot goes once what put it there is over: Blade
 	-- Storm's knives as the server ends it between ticks (a death, a new
 	-- round or a new kit), and an ability's once it's put away.
 	local carried = s.weapons.loadout[WeaponSim.ULT]
-	if carried ~= "" and carried ~= AbilitySim.carried(s.abilities) then
+	if carried ~= "" and carried ~= AbilitySim.carried(kit) then
 		WeaponSim.putAway(s.weapons, t)
+	end
+	-- A wall being bent (Blaze, system 32): its flame stays in hand while
+	-- fire's held, until its run's over, and the gun's back a moment after
+	-- it's let go (Patch 5.01). Anything else drawn lets go of it too.
+	if kit.steering ~= 0 then
+		if s.weapons.loadout[WeaponSim.ULT] == "" or s.weapons.equipped ~= WeaponSim.ULT then
+			kit.steering, kit.steerUntil = 0, 0
+			WeaponSim.putAway(s.weapons, t)
+		elseif not MovementSim.has(input.buttons, PlayerSim.Buttons.Fire) or t >= kit.steerUntil - 1e-9 then
+			local def = AbilitySim.def(kit, kit.steering)
+			kit.steering, kit.steerUntil = 0, 0
+			WeaponSim.putAway(s.weapons, t, AbilityConfig.unequip(if def then def.id else ""))
+		end
 	end
 	local tick = s.movement.tick
 	-- A defuse has the weapon put away.
@@ -234,22 +250,27 @@ function PlayerSim.step(
 	end
 	-- An ability in hand (system 30): what it fires is its throw, the
 	-- ability's cast and no bullet, and the gun's back in hand a moment
-	-- after. Anything else drawn puts it away unthrown.
-	if s.abilities.holding ~= 0 then
+	-- after, or once the wall it sent out is let go (Blaze, system 32).
+	-- Anything else drawn puts it away unthrown.
+	if kit.holding ~= 0 then
 		local held = s.weapons.loadout[WeaponSim.ULT]
 		local shot = if shots and held ~= "" and shots[1].weapon == held then shots[1] else nil
 		if shot then
 			shots = nil
-			local def = AbilitySim.def(s.abilities, s.abilities.holding)
-			local cast = AbilitySim.thrown(s.abilities, tick, t, s.movement.position, shot.origin, shot.aim, shot.mode == "alt")
+			local def = AbilitySim.def(kit, kit.holding)
+			local cast = AbilitySim.thrown(kit, tick, t, s.movement.position, shot.origin, shot.aim, shot.mode == "alt")
 			if cast then
 				local list = casts or {}
 				table.insert(list, cast)
 				casts = list
 			end
-			WeaponSim.putAway(s.weapons, t, AbilityConfig.unequip(if def then def.id else ""))
+			if kit.steering ~= 0 then
+				WeaponSim.keep(s.weapons, kit.steerUntil)
+			else
+				WeaponSim.putAway(s.weapons, t, AbilityConfig.unequip(if def then def.id else ""))
+			end
 		elseif held == "" or s.weapons.equipped ~= WeaponSim.ULT then
-			s.abilities.holding = 0
+			kit.holding = 0
 			WeaponSim.putAway(s.weapons, t)
 		end
 	end

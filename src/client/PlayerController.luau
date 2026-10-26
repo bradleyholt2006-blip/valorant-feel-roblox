@@ -346,6 +346,8 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or ga.dashZ ~= sa.dashZ
 		or ga.storm ~= sa.storm
 		or ga.holding ~= sa.holding
+		or ga.steering ~= sa.steering
+		or ga.steerUntil ~= sa.steerUntil
 	then
 		return true, posErr
 	end

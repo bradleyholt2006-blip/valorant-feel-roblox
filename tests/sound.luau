@@ -392,7 +392,7 @@ do
 		local reloads = def.fireMode ~= "none" and not def.ultimate and not def.ability
 		if reloads ~= (sounds.reload ~= nil) then
 			local why = if sounds.reload
-				then "the knife, the spike, Blade Storm's knives and Phoenix's flare and fireball don't reload"
+				then "the knife, the spike, Blade Storm's knives and Phoenix's flare, fireball and flame don't reload"
 				else "no reload"
 			table.insert(missing, id .. ": " .. why)
 		end

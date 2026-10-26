@@ -159,7 +159,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 7 + 8 * 6 -- the ability kit
+	+ 1 + 3 + 8 + 8 * 7 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -241,12 +241,14 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, bit32.rshift(a.held, 12))
 	w8(c, if a.storm then 1 else 0)
 	w8(c, a.holding)
+	w8(c, a.steering)
 	wf64(c, a.readyFrom)
 	wf64(c, a.readyUntil)
 	wf64(c, a.liftUntil)
 	wf64(c, a.dashUntil)
 	wf64(c, a.dashX)
 	wf64(c, a.dashZ)
+	wf64(c, a.steerUntil)
 
 	w32(c, math.clamp(s.tagUntilTick, 0, 2 ^ 32 - 1))
 	wf64(c, s.tagMultiplier)
@@ -365,12 +367,14 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local held = bit32.lshift(r8(c), 12)
 	local storm = r8(c) ~= 0
 	local holding = r8(c)
+	local steering = r8(c)
 	local readyFrom = rf64(c)
 	local readyUntil = rf64(c)
 	local liftUntil = rf64(c)
 	local dashUntil = rf64(c)
 	local dashX = rf64(c)
 	local dashZ = rf64(c)
+	local steerUntil = rf64(c)
 	local abilities = {
 		agent = agent,
 		charges = charges,
@@ -387,6 +391,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		dashZ = dashZ,
 		storm = storm,
 		holding = holding,
+		steering = steering,
+		steerUntil = steerUntil,
 	}
 
 	local tagUntilTick = r32(c)
