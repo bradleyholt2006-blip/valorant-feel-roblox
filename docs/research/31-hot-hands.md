@@ -110,7 +110,7 @@ burst about 18 m ahead; that reading is ours.
 | Its fire | On the floor under the burst, out to 4.5 m, spreading evenly over 0.75 s, burning for 4 s from the burst, then gone at once | Community |
 | Walls | Each way round (24 of them, with a straight edge between each two) it reaches no further than the first wall 0.5 m up; a ramp up doesn't stop it, nor a kerb under 0.5 m | Estimate |
 | Who stands in it | Feet over it, its edge pushed out by the body's half width (0.34 m), no more than 1.2 m above its floor and no more than 0.5 m below. A standing jump peaks at 0.85 m, so none gets out of it | Confirmed (1.2 m); estimate (the rest) |
-| The burn | 60 a second to an enemy wherever in it they stand, through the shield as any hit, credited to the thrower for the kill feed (`HOT HANDS`), the kit's points and the score; a third of that to an ally; spawn protection keeps it off; it doesn't slow | Community (60, allies less); estimate (a third, no slow, as Riot calls its tagging "Bullet tagging") |
+| The burn | 60 a second to an enemy wherever in it they stand, through the shield as any hit, credited to the thrower for the kill feed (`Hot Hands`), the kit's points and the score; a third of that to an ally; spawn protection keeps it off; it doesn't slow | Community (60, allies less); estimate (a third, no slow, as Riot calls its tagging "Bullet tagging") |
 | How it's given | Whole points, every 0.1 s, and what's left as they leave it or it goes out | Estimate (ours: the reference gives a point a tick) |
 | Inner Fire | Phoenix never burns in his own fire. His first touch of each starts a heal of 50, a point every 0.08 s for 4 s, which goes on if he leaves it; health alone, up to his most; it ends with his death or a new life. Two fires, two heals | Confirmed (50, 0.08 s, going on after); community (the first touch); estimate (health alone, two at once) |
 | Its look | The fireball a glowing orange ball; its burst a flash; its fire a glowing orange floor as far as it has spread, with flames on it and its light; your screen's edge glowing orange as you burn | Estimate (ours) |
@@ -199,7 +199,7 @@ burst about 18 m ahead; that reading is ours.
 - `Workspace.VFFires` holds a `Fireball` ball for each fireball in the air, a `Burst` for each
   burst while it flashes, and a `Fire` model for each fire while it burns: its `Floor` wedges, its
   `Glow` and its `Flame`s.
-- The kill feed names a kill by fire `HOT HANDS`.
+- The kill feed names a kill by fire `Hot Hands`, between the thrower and whoever it killed.
 - `VFTestButtons` 8192 presses Q, 128 the left button and 256 the right, so a fireball can be
   readied and thrown without a key or a mouse button; `VFTestPitch` aims it up or down.
 
@@ -223,7 +223,7 @@ burst about 18 m ahead; that reading is ours.
 - The flight: a level throw bursting about 18 m ahead on the course, a lob about 6.4 m; one into a
   wall coming back off it; one thrown up dropping straight down once its 1.5 s are up.
 - The fire: spreading to 9 m across over 0.75 s, stopped by a crate but not by a kerb, out after
-  4 s; a dummy standing in it burns and dies, `HOT HANDS` in the kill feed.
+  4 s; a dummy standing in it burns and dies, `Hot Hands` in the kill feed.
 - Inner Fire: Phoenix hurt, then standing in his own fire, heals 50 over 4 s and takes no damage.
 - A second player: the throw heard and seen, the fire burning them as an enemy, a third as fast
   on Phoenix's side, and the orange glow at their screen's edge.

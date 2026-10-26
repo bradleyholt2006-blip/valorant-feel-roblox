@@ -1907,7 +1907,7 @@ spawn, facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Va
   gone at once. `VFLastFire` reads about `(0.00, 0.00, -18.30)`. The Vandal is back in hand 0.7 s
   after the throw, and Q's pip goes dark (`Q0/1`) and lights again 1.5 s later. 0.4 s after the
   burst the fire reaches Dummy 3: its label counts down from `100 + 50`, 60 a second in all, and it
-  dies about 2.5 s later, the kill feed reading `<your name>   HOT HANDS   Dummy 3`. Dummy 2,
+  dies about 2.5 s later, the kill feed reading `<your name>   Hot Hands   Dummy 3`. Dummy 2,
   strafing at 15 m, is at the fire's edge and burns only while it's in it. **Send:** a screenshot of
   the fire at its full size.
 - **HH4 Lobbed.** Q, then the right button: an underhand lob, slower, bursting about 6.4 m ahead a
@@ -1946,7 +1946,7 @@ PHOENIX in window 1 (T). Everyone on the course is everyone else's enemy.
   player 2's feet with a thump, and the fire spread round them. Window 2's screen's edge glows
   orange, and its health and shield fall together, 60 a second in all. Jump in it: the burn and the
   glow go on, as no jump clears it. Stand still, and player 2 dies about 2.5 s after the burst; both
-  kill feeds read `Player1   HOT HANDS   Player2`. Once player 2 is back, do it again and walk out
+  kill feeds read `Player1   Hot Hands   Player2`. Once player 2 is back, do it again and walk out
   of the fire: the burn and the glow stop as they leave it. Then player 2 stands in the middle of
   the 0.35 m step, the middle of the three behind the spawn on the left. In window 1, at the spawn,
   set `VFTestYaw` to 120 and `VFTestPitch` to -10 and throw with the left button: it bursts about
@@ -2316,6 +2316,6 @@ Didn't look right (IDs and what you saw):
 | 31 | Hot Hands and Inner Fire lit on Phoenix's card, the bar and the buy menu, Hot Hands for sale at 200 | HH1, HH12, CB1, CB12 |
 | 31 | Q draws the fireball in 0.8 s, `EQUIP` on the bar; the left button throws it and the right lobs it, and the gun is back 0.7 s later; Q again, or a number key, puts it away, and E swaps it for the flare | HH2, HH3, HH4, HH8 |
 | 31 | The flight: a level throw bursting about 18 m ahead on the course, a lob about 6.4 m; one into a wall coming back off it; one thrown up dropping straight down once its 1.5 s are up | HH3, HH4, HH5, HH7 |
-| 31 | The fire: spreading to 9 m across over 0.75 s, stopped by a crate but not by a kerb, out after 4 s; a dummy standing in it burns and dies, `HOT HANDS` in the kill feed | HH3, HH7, HH10 |
+| 31 | The fire: spreading to 9 m across over 0.75 s, stopped by a crate but not by a kerb, out after 4 s; a dummy standing in it burns and dies, `Hot Hands` in the kill feed | HH3, HH7, HH10 |
 | 31 | Inner Fire: Phoenix hurt, then standing in his own fire, heals 50 over 4 s and takes no damage | HH6, HH11 |
 | 31 | A second player: the throw heard and seen, the fire burning them as an enemy, a third as fast on Phoenix's side, and the orange glow at their screen's edge | HH10, HH13 |
