@@ -498,19 +498,33 @@ SoundConfig.Sounds = {
 	barrierBreak = sound(0.7, 0.04, 4, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 1.55),
+	-- The Resurrection (system 39): the orb lit in hand is the gust again,
+	-- the lowest of hers; a body starting to rise, the heal's bell slowed
+	-- further and louder; and the crystal bursting as they're back, the
+	-- spike blast's crack sped up past the Barrier Orb's breaking.
+	reviveEquip = sound(0.5, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.3),
+	reviveChime = sound(0.8, 0.02, 3, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 0.45),
+	reviveBurst = sound(0.7, 0.04, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 1.75),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
 -- cloud's burst, a flare's pop, a fireball's burst and its fire, Blaze's
 -- wall rising, a Phoenix's body going in Run it Back, a heal of the
 -- Healing Orb's starting, a Slow Orb's burst, a run or a jump through its
--- field, and Sage's wall rising, fortifying and a piece of it breaking),
--- heard as the ability curve says (systems 17 to 19, 30 to 33 and 36 to
--- 38). Blade Storm's knives drawn again sound as their draw does, and so
--- does an ability put in hand (Curveball's flare, Hot Hands' fireball,
--- Blaze's flame, the Healing Orb, the Slow Orb, the Barrier Orb), which
--- only the one drawing it hears. The orb's tries make no sound: only a heal
--- does.
+-- field, Sage's wall rising, fortifying and a piece of it breaking, and a
+-- body she brings back rising and bursting out), heard as the ability
+-- curve says (systems 17 to 19, 30 to 33 and 36 to 39). Blade Storm's
+-- knives drawn again sound as their draw does, and so does an ability put
+-- in hand (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
+-- Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb),
+-- which only the one drawing it hears. The orbs' tries make no sound: only
+-- a heal or a return does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -535,6 +549,8 @@ SoundConfig.Abilities = {
 	barrier = "barrierRise",
 	fortify = "barrierFortify",
 	shatter = "barrierBreak",
+	reviving = "reviveChime",
+	revived = "reviveBurst",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -649,6 +665,9 @@ SoundConfig.Weapons = {
 	-- The Barrier Orb (system 38): the same, its wall rising, fortifying
 	-- and breaking the ability's.
 	wallorb = { draw = "barrierEquip", curve = "ability" },
+	-- The Resurrection's orb (system 39): the same, a body rising and
+	-- bursting out the ability's.
+	revive = { draw = "reviveEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

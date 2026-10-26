@@ -174,6 +174,7 @@ local BlazeServer = require(script.Parent.BlazeServer)
 local HealServer = require(script.Parent.HealServer)
 local SlowServer = require(script.Parent.SlowServer)
 local BarrierServer = require(script.Parent.BarrierServer)
+local ReviveServer = require(script.Parent.ReviveServer)
 local AbilityServer = require(script.Parent.AbilityServer)
 local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
@@ -756,6 +757,7 @@ local function roundStarted()
 	HealServer.clear()
 	SlowServer.clear()
 	BarrierServer.clear()
+	ReviveServer.clear()
 	if not m then
 		return
 	end
@@ -871,6 +873,7 @@ local function stop()
 	HealServer.clear()
 	SlowServer.clear()
 	BarrierServer.clear()
+	ReviveServer.clear()
 	AbilityServer.economy = false
 	AbilityServer.refill = true
 	AbilityServer.off = false
@@ -919,6 +922,7 @@ local function begin(wanted: Mode, format: string)
 	HealServer.clear()
 	SlowServer.clear()
 	BarrierServer.clear()
+	ReviveServer.clear()
 	-- Deathmatch has no teams: everyone can hurt everyone.
 	if wanted ~= "deathmatch" then
 		for side, info in SIDES do
@@ -1449,6 +1453,37 @@ function Arena.start()
 		local player = victim.player
 		if player and gun then
 			killedWith[player] = weapon
+		end
+	end)
+	-- Sage's Resurrection (system 39): in Skirmish and the spike rounds,
+	-- whoever's on the caster's side and down, while the round's played,
+	-- and alive again as they burst out; in the other modes, nobody.
+	ReviveServer.canRevive = function(by, owner): boolean?
+		local a, b = by.player, owner.player
+		local s, m = skirmish, match
+		if mode == nil then
+			return nil
+		elseif not a or not b then
+			return false
+		elseif s then
+			return ArenaRules.canRevive(s, a.UserId, b.UserId)
+		elseif m then
+			return MatchRules.canRevive(m, a.UserId, b.UserId)
+		end
+		return false
+	end
+	table.insert(ReviveServer.reviveListeners, function(owner)
+		local player = owner.player
+		local s, m = skirmish, match
+		if not player then
+			return
+		end
+		if s then
+			ArenaRules.revived(s, player.UserId)
+			publish()
+		elseif m then
+			MatchRules.revived(m, player.UserId)
+			publish()
 		end
 	end)
 	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)

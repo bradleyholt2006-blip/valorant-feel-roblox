@@ -47,5 +47,6 @@ require("./fogofwar")
 require("./healingorb")
 require("./sloworb")
 require("./barrierorb")
+require("./resurrection")
 
 H.finish()

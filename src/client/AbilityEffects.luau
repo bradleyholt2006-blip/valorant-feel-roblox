@@ -23,6 +23,9 @@
 --   * the Barrier Orb: only its wall rising heard here, yours as you raise
 --     it and others' as it rises; BarrierView draws its targeter and the
 --     wall, and sounds it fortifying and breaking (system 38)
+--   * the Resurrection: neither here; ReviveView draws the bodies, marks
+--     the one it would bring back, and draws and sounds each return
+--     (system 39)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -214,6 +217,8 @@ local function onCast(event: any)
 		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's or SlowView's
 	elseif event.kind == "healing" then
 		return -- a heal: HealView's
+	elseif event.kind == "reviving" or event.kind == "revived" then
+		return -- a return: ReviveView's
 	end
 	table.insert(due, {
 		kind = event.kind,

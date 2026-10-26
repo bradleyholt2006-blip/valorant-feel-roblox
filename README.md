@@ -272,6 +272,16 @@ Built one system at a time:
     knives break it, one over the planted spike breaks at once, and in its last 5 s it wears away.
     One charge at 300 credits, none raised in the buy phase, and the gun's back 0.7 s after -
     [research and design](docs/research/38-barrier-orb.md)
+39. **Sage's Resurrection**: with its 7 points full, X puts Sage's Resurrection in hand, ready in
+    0.8 s, and mouse 1 with the crosshair over a fallen ally's body, up to 12 m away, brings them
+    back where they lie. Everyone who's killed leaves a body on the floor, over a disc glowing in
+    their side's colour, and the one your try would bring back is marked in green. Their body rises
+    in a shell of crystal for 2 s, out of harm's way, and they burst out at its top with full health
+    and no shield, breaking any wall of ice they're in, then fall to the floor for 1.3 s, held and
+    in harm's way, before they've control back. The kill feed shows it. In Skirmish and the spike
+    rounds it brings back allies; on the course, practice dummies, which stay down while it's in
+    hand. The gun's back 1 s after the cast -
+    [research and design](docs/research/39-resurrection.md)
 
 ## Running it
 
@@ -457,9 +467,11 @@ from an eye to a body, both carried ahead, corner peeks, what's heard, the hold 
 skips), Sage's Healing Orb (her kit, the orb in hand and its tries, whom a try heals, the heal
 and its pauses, and the wire), her Slow Orb (its charges, the orb in hand, its flight and its
 field, the slow on the ground, in the air, on a jump and on a dash, judged as a screen showed it,
-and the wire) and her Barrier Orb (its charge, the orb in hand and its targeter's turns, where its
-wall goes, the wall rising, standing and breaking, what it does to steps, shots and sight, its
-health, and the wire) are pure Luau and run outside Roblox:
+and the wire), her Barrier Orb (its charge, the orb in hand and its targeter's turns, where its wall
+goes, the wall rising, standing and breaking, what it does to steps, shots and sight, its health,
+and the wire) and her Resurrection (its points, the orb in hand and its tries, where bodies lie and
+the aim along them, the return's times and hold, who can be brought back, and the wire) are pure
+Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

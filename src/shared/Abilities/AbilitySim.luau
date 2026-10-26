@@ -54,7 +54,15 @@
 -- targeter a quarter rather than putting it away, alt fire held keeps it
 -- facing the way it did as she turns, and the turn's kept for the next
 -- time it's in hand, until a new life or round. Fire raises the wall
--- where the targeter shows it, if it shows it anywhere (PlayerSim).
+-- where the targeter shows it, if it shows it anywhere (PlayerSim). Her
+-- Resurrection (X, system 39) puts its orb in hand as the Healing Orb's
+-- once the ultimate's points are full, and X again puts it away: fire
+-- tries it on the fallen ally whose body is under the crosshair, and it
+-- stays in hand until the server finds a try brings someone back
+-- (ReviveServer), spends the points and puts it away (used). A life it
+-- brings back starts held (revived): rising with the body, out of harm's
+-- way, until they burst out, then falling to the floor, until they've
+-- control back. Nothing they press does anything meanwhile.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -122,6 +130,11 @@ export type State = {
 	turn: number,
 	turning: boolean,
 	fixed: number,
+	-- A life the Resurrection brought back (system 39): until when it rises
+	-- with the body, and until when it's held, 0 for none. The server sets
+	-- them as the life starts.
+	floatUntil: number,
+	heldUntil: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -130,9 +143,9 @@ export type State = {
 -- thrown), "fireball" (Hot Hands' thrown), "flame" (Blaze's sent out),
 -- "mark" (Run it Back cast), "fizzle" (his body gone as it runs out),
 -- "rise" (back at its mark), "heal" (the Healing Orb tried on an ally),
--- "selfheal" (tried on herself), "slow" (the Slow Orb thrown) or
--- "barrier" (the Barrier Orb's wall raised), where the player's feet and
--- eye were, and
+-- "selfheal" (tried on herself), "slow" (the Slow Orb thrown),
+-- "barrier" (the Barrier Orb's wall raised) or "revive" (the Resurrection
+-- tried on a body), where the player's feet and eye were, and
 -- the way it goes (the dash's way, up for a lift, the way they faced for a
 -- readied gust and for Run it Back's, the way they looked for the rest). A
 -- flare's says which way round it curves, a fireball's whether it was
@@ -181,6 +194,7 @@ local PLAYABLE: { [string]: boolean } = {
 	healingorb = true,
 	sloworb = true,
 	barrierorb = true,
+	resurrection = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -190,9 +204,9 @@ end
 -- Whether an ability is one its key puts in hand, to be thrown or tried
 -- from there (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
 -- Healing Orb, the Slow Orb, the Barrier Orb): a weapon of its own, outside
--- the ultimate.
+-- the ultimate, but for the Resurrection's orb (system 39).
 local function held(def: AbilityConfig.AbilityDef?): boolean
-	return def ~= nil and def.weapon ~= nil and def.kind ~= "ultimate" and PLAYABLE[def.id] == true
+	return def ~= nil and def.weapon ~= nil and (def.kind ~= "ultimate" or def.id == "resurrection") and PLAYABLE[def.id] == true
 end
 
 -- A new kit for `agent` (by default AbilityConfig.DEFAULT_AGENT): the
@@ -225,6 +239,8 @@ function AbilitySim.new(agent: string?): State
 		turn = 0,
 		turning = false,
 		fixed = 0,
+		floatUntil = 0,
+		heldUntil = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -275,10 +291,10 @@ end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
 -- ultimate (Blade Storm, or Run it Back and the return it brings), an
--- ability in hand, a wall being bent; and the Barrier Orb's targeter is
--- across the view again (the VALORANT Wiki has it across the view when
--- it's first equipped in a round). Nothing carries into a new life or a
--- new round.
+-- ability in hand, a wall being bent, a return from the Resurrection; and
+-- the Barrier Orb's targeter is across the view again (the VALORANT Wiki
+-- has it across the view when it's first equipped in a round). Nothing
+-- carries into a new life or a new round.
 function AbilitySim.settle(s: State)
 	s.readyFrom, s.readyUntil = 0, 0
 	s.liftUntil = 0
@@ -289,6 +305,7 @@ function AbilitySim.settle(s: State)
 	s.backUntil, s.returnAt = 0, 0
 	s.mark, s.markYaw, s.markGrounded, s.markCrouched = ZERO, 0, false, false
 	s.turn, s.turning, s.fixed = 0, false, 0
+	s.floatUntil, s.heldUntil = 0, 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -334,6 +351,12 @@ end
 function AbilitySim.charged(s: State): boolean
 	local needed = AbilitySim.pointsNeeded(s)
 	return needed > 0 and s.points >= needed
+end
+
+-- Whether the ability in `slot` has what it takes to be in hand: a charge,
+-- or for the ultimate (the Resurrection's orb, system 39) its points full.
+local function stocked(s: State, slot: number): boolean
+	return if slot == X then AbilitySim.charged(s) else s.charges[slot] > 0
 end
 
 -- Whether the ultimate is one that can be played.
@@ -444,10 +467,11 @@ end
 -- ready", or "X0/8 storm" in Blade Storm, "back" while Run it Back runs,
 -- "away" while his body's gone and "rise" as he rises at its mark, "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
--- flame, the Healing Orb, the Slow Orb, the Barrier Orb), "bend" while a
--- wall is being bent (Blaze), "turn" while the Barrier Orb's targeter is
--- turned from across the view, and "glide" while `gliding` (the
--- movement's, for Drift).
+-- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
+-- Resurrection's orb), "bend" while a wall is being bent (Blaze), "turn"
+-- while the Barrier Orb's targeter is turned from across the view,
+-- "revived" while a life the Resurrection brought back is held, and
+-- "glide" while `gliding` (the movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -472,6 +496,9 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	end
 	if math.abs(s.turn) > 1e-6 then
 		table.insert(parts, "turn")
+	end
+	if AbilitySim.reviving(s, t) then
+		table.insert(parts, "revived")
 	end
 	if AbilitySim.dashing(s, t) then
 		table.insert(parts, "dash")
@@ -528,6 +555,17 @@ end
 -- mark. He's held through all of it.
 function AbilitySim.returning(s: State, t: number): boolean
 	return s.returnAt > 0 and t < AbilitySim.risen(s) - EPS
+end
+
+-- Whether a life the Resurrection brought back is held at `t` (system 39):
+-- rising with the body, or falling once they've burst out.
+function AbilitySim.reviving(s: State, t: number): boolean
+	return t < s.heldUntil - EPS
+end
+
+-- Whether it's still rising with the body at `t`, out of harm's way.
+function AbilitySim.floating(s: State, t: number): boolean
+	return t < s.floatUntil - EPS
 end
 
 -- His body gone at `t`, a tick's time (system 33): Run it Back's over and
@@ -609,16 +647,18 @@ end
 -- Blaze's wall is sent out from `feet`, and is bent from then until its
 -- run's over, if fire's held that long. The Healing Orb is only tried, on
 -- the ally the crosshair's over or with `alt` on herself: it stays in hand
--- with its charge until the server finds the try heals (used). Nil with
--- nothing in hand to throw.
+-- with its charge until the server finds the try heals (used). So is the
+-- Resurrection's orb, on the body the crosshair's over, with its points
+-- (system 39). Nil with nothing in hand to throw.
 function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, origin: vector, aim: vector, alt: boolean): Cast?
 	local slot = s.holding
 	local def = if slot ~= 0 then AbilitySim.def(s, slot) else nil
-	if def and def.id == "healingorb" and s.charges[slot] > 0 then
+	local tried = def ~= nil and (def.id == "healingorb" or def.id == "resurrection")
+	if def and tried and stocked(s, slot) then
 		local try: Cast = {
 			slot = slot,
 			ability = def.id,
-			kind = if alt then "selfheal" else "heal",
+			kind = if def.id == "resurrection" then "revive" elseif alt then "selfheal" else "heal",
 			tick = tick,
 			time = t,
 			position = feet,
@@ -628,7 +668,7 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		return try
 	end
 	s.holding = 0
-	if not def or s.charges[slot] <= 0 then
+	if not def or tried or s.charges[slot] <= 0 then
 		return nil
 	end
 	s.charges[slot] -= 1
@@ -660,10 +700,15 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 end
 
 -- The ability in `slot` used, between ticks, as the server finds a try of
--- it heals (the Healing Orb, system 36): its charge spent and, if it's in
--- hand, out of it. The ack takes it to its owner.
+-- it heals (the Healing Orb, system 36) or brings someone back (the
+-- Resurrection, system 39): its charge spent, or the ultimate's points,
+-- and, if it's in hand, out of it. The ack takes it to its owner.
 function AbilitySim.used(s: State, slot: number)
-	s.charges[slot] = math.max(s.charges[slot] - 1, 0)
+	if slot == X then
+		s.points = 0
+	else
+		s.charges[slot] = math.max(s.charges[slot] - 1, 0)
+	end
 	if s.holding == slot then
 		s.holding = 0
 	end
@@ -722,8 +767,9 @@ function AbilitySim.step(
 	if s.readyUntil > 0 and t >= s.readyUntil - EPS then
 		s.readyFrom, s.readyUntil = 0, 0
 	end
-	-- An ability in hand with no charge left to throw goes (one sold back).
-	if s.holding ~= 0 and s.charges[s.holding] <= 0 then
+	-- An ability in hand with no charge left to throw goes (one sold back),
+	-- and the Resurrection's orb with its points short (system 39).
+	if s.holding ~= 0 and not stocked(s, s.holding) then
 		s.holding = 0
 	end
 
@@ -838,10 +884,11 @@ function AbilitySim.step(
 			elseif held(def) and s.holding == slot then
 				-- Its key again: what's in hand goes away unthrown (PlayerSim).
 				s.holding = 0
-			elseif held(def) and not s.storm and s.charges[slot] > 0 then
+			elseif held(def) and not s.storm and stocked(s, slot) then
 				-- In hand (PlayerSim), in place of any other ability there, and
 				-- of a wall being bent, which runs straight on; its charge goes
-				-- as it's thrown.
+				-- as it's thrown (the Resurrection's points, as it brings
+				-- someone back).
 				s.holding = slot
 				s.steering, s.steerUntil = 0, 0
 				local aim = Accuracy.aim(input.yaw, input.pitch)

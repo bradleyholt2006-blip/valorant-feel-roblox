@@ -86,6 +86,8 @@ local function closest(p1: vector, q1: vector, p2: vector, q2: vector): (number,
 	end
 	return s, vector.magnitude((p1 + d1 * s) - (p2 + d2 * t))
 end
+-- For the Resurrection's aim along a body lying down (ReviveSim, system 39).
+HealSim.closest = closest
 
 -- How far along the crosshair from `eye` (`aim` a unit vector) it's over
 -- `pose`'s body, within the orb's width and reach; nil if it isn't.

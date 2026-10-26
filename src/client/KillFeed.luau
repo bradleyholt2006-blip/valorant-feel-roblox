@@ -7,10 +7,13 @@
 -- on the course, everyone else) in the enemy colour. A row you're in, as
 -- the killer or the one killed, is outlined in gold. A death nobody caused
 -- has what caused it for its killer: the spike's blast, or a spawn room's
--- burn (Team Deathmatch, system 27).
+-- burn (Team Deathmatch, system 27). Someone Sage's Resurrection brings
+-- back has a row too (system 39): who brought them back, the
+-- Resurrection in its green, then who's back (Patch 3.0 has the feed
+-- show a revive).
 --
--- It reads the server's damage events (the Combat remote), which every
--- client gets.
+-- It reads the server's damage events and returns (the Combat remote's
+-- "damage" and "revived"), which every client gets.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,9 +39,10 @@ local ROW_H = 24
 local GOLD = Color3.fromRGB(230, 200, 120)
 local HEAD = Color3.fromRGB(255, 210, 90)
 local SPIKE_RED = Color3.fromRGB(235, 70, 60)
+local REVIVE_GREEN = Color3.fromRGB(90, 230, 210)
 
 type Row = { frame: Frame, label: TextLabel, stroke: UIStroke }
-type Kill = { attacker: number?, target: number, weapon: string, head: boolean, wall: boolean, at: number }
+type Kill = { attacker: number?, target: number, weapon: string, head: boolean, wall: boolean, revived: boolean, at: number }
 
 local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
@@ -83,7 +87,10 @@ local function describe(kill: Kill): string
 	local def = WeaponConfig.Defs[kill.weapon]
 	local parts = {}
 	local attacker = kill.attacker
-	if attacker then
+	if attacker and kill.revived then
+		table.insert(parts, tinted(nameOf(attacker), colourOf(attacker)))
+		table.insert(parts, tinted(if def then def.name else "?", REVIVE_GREEN))
+	elseif attacker then
 		table.insert(parts, tinted(nameOf(attacker), colourOf(attacker)))
 		table.insert(parts, if def then def.name else "?")
 	else
@@ -133,7 +140,11 @@ function KillFeed.start()
 
 	local kills: { Kill } = {} -- newest first
 	NetSim.on(Remotes.get().Combat, function(event: any)
-		if typeof(event) ~= "table" or event.kind ~= "damage" or not event.killed or typeof(event.target) ~= "number" then
+		if typeof(event) ~= "table" or typeof(event.target) ~= "number" then
+			return
+		end
+		local revived = event.kind == "revived"
+		if not revived and (event.kind ~= "damage" or not event.killed) then
 			return
 		end
 		local kill: Kill = {
@@ -142,6 +153,7 @@ function KillFeed.start()
 			weapon = if typeof(event.weapon) == "string" then event.weapon else "",
 			head = event.region == "head",
 			wall = event.wallbang == true,
+			revived = revived,
 			at = os.clock(),
 		}
 		table.insert(kills, 1, kill)

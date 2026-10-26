@@ -18,7 +18,8 @@
 -- second agent (system 30): his Curveball, Hot Hands (system 31), Blaze
 -- (system 32) and Run it Back (system 33) can be played, and his passive,
 -- Inner Fire, works. Sage is the third (system 36), with her Healing Orb,
--- her Slow Orb (system 37) and her Barrier Orb (system 38).
+-- her Slow Orb (system 37), her Barrier Orb (system 38) and her
+-- Resurrection (system 39).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -182,6 +183,8 @@ local P1104 = "Patch 11.04"
 local P1108 = "Patch 11.08"
 local BARRIER = "VALORANT Wiki, Barrier Orb"
 local DIGNITAS = "Dignitas, 'Tips and Tricks Using Sage Effectively'"
+local RES = "VALORANT Wiki, Resurrection"
+local ESPORTS = "esports.net's Sage guide"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -266,9 +269,9 @@ AbilityConfig.Defs = {
 		points = p(7, "confirmed", P1302 .. ": 'Ultimate points increased from 6 to 7.'"),
 		description = "Marks where you stand. Die before it's over, or let it run out, and you're back at the mark with full health.",
 	},
-	-- Sage's (system 36): her kit as the VALORANT Wiki lists it. Her Healing
-	-- Orb, her Slow Orb (system 37) and her Barrier Orb (system 38) can be
-	-- played.
+	-- Sage's (system 36): her kit as the VALORANT Wiki lists it. All of it
+	-- can be played: her Healing Orb, her Slow Orb (system 37), her Barrier
+	-- Orb (system 38) and her Resurrection (system 39).
 	barrierorb = {
 		id = "barrierorb",
 		name = "Barrier Orb",
@@ -306,7 +309,8 @@ AbilityConfig.Defs = {
 		slot = AbilityConfig.X,
 		kind = "ultimate",
 		points = p(7, "confirmed", P910 .. ": Resurrection 'Ult Cost 8 >>> 7'"),
-		description = "Brings a fallen ally you can see back to life, with full health.",
+		weapon = "revive",
+		description = "X readies it. Fire on a fallen ally's body brings them back where they lie, with full health and no shield.",
 	},
 } :: { [string]: AbilityDef }
 
@@ -769,9 +773,40 @@ AbilityConfig.BarrierOrb = {
 	fortified = p(600, "confirmed", P1108 .. ": 'Health of Barrier segments decreased from 800 to 600'"),
 }
 
+-- Sage's Resurrection (system 39), her ultimate: X with the points full
+-- puts it in hand (WeaponConfig's revive, in the fifth slot, as the Healing
+-- Orb is). Fire with the crosshair over a dead ally's body, within its
+-- reach, brings them back: the points are spent and it's put away at once.
+-- A try that finds no body leaves it in hand. The server judges each try
+-- from what her screen showed (ReviveServer). The body rises in its
+-- crystals over the rise, out of harm's way, and then they burst out at
+-- its top, with full health and no shield, and fall to the floor, held,
+-- in harm's way, until control's back at the end of the fall. A wall of
+-- ice they'd come back inside breaks (Patch 3.0). Riot gives the reach;
+-- the wiki the times (39-resurrection.md, section 2).
+AbilityConfig.Resurrection = {
+	-- From the cast until the gun's back in hand.
+	unequip = p(1, "community", RES .. ": unequip time 1 s (game files)"),
+	-- How far away a body can be along the crosshair, and how far off its
+	-- length the crosshair can be and still be over it.
+	reach = p(12, "confirmed", P1104 .. ": 'Sage resurrection range has increased from 6m >>> 12m'"),
+	width = p(
+		0.5,
+		"estimate",
+		"Ours, metres: about the body's width, so the crosshair needn't be on it exactly (Patch 11.10 has its indicator snap to allies)"
+	),
+	-- The return: the body rising this long, out of harm's way, then they
+	-- fall, held and in harm's way, this long.
+	rise = p(2, "community", RES .. ": windup time 2 s (game files); " .. ESPORTS .. ": '2s invulnerability'"),
+	fall = p(1.3, "community", RES .. ": revive duration 1.3 s (game files); " .. ESPORTS .. ": '1.3s vulnerability'"),
+	-- How high over its floor the body rises, where they burst out.
+	height = p(0.5, "estimate", "Ours: " .. RES .. " has the body rise up and them fall down to the ground, with no height"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
--- and for the Barrier Orb, after its wall's raised).
+-- for the Barrier Orb, after its wall's raised, and for the Resurrection,
+-- after it's cast).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -783,6 +818,8 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.SlowOrb.unequip.value
 	elseif id == "barrierorb" then
 		return AbilityConfig.BarrierOrb.unequip.value
+	elseif id == "resurrection" then
+		return AbilityConfig.Resurrection.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

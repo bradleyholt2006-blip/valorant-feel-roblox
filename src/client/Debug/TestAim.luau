@@ -25,7 +25,8 @@
 --                  the abilities' C 4096, Q 8192, E 16384 and X 32768;
 --                  MovementSim.Buttons has the rest)
 --   VFTestGive     a weapon id: asks for it as the debug give does, then
---                  clears itself ("spike" hands over the course's spike)
+--                  clears itself ("spike" hands over the course's spike,
+--                  and in Studio "ultimate" fills the ultimate's points)
 --   VFTestBuy      an item id ("odin", "regen"): buys it as a click in the
 --                  buy menu would, or with a "-" in front sells it back;
 --                  then clears itself
@@ -76,6 +77,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local PlayerSim = require(Shared.PlayerSim)
 local Units = require(Shared.Units)
+local Remotes = require(Shared.Net.Remotes)
 
 local CameraController = require(script.Parent.Parent.CameraController)
 local BuyMenu = require(script.Parent.Parent.BuyMenu)
@@ -135,7 +137,11 @@ function TestAim.start(controller: any)
 		local give = player:GetAttribute("VFTestGive")
 		if typeof(give) == "string" and give ~= "" then
 			player:SetAttribute("VFTestGive", nil)
-			controller.requestWeapon(give)
+			if give == "ultimate" then
+				Remotes.get().Loadout:FireServer(0, give)
+			else
+				controller.requestWeapon(give)
+			end
 		end
 		local buy = player:GetAttribute("VFTestBuy")
 		if typeof(buy) == "string" and buy ~= "" then

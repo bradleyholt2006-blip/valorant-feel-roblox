@@ -45,6 +45,7 @@ local Accuracy = require(Shared.Weapons.Accuracy)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local SlowSim = require(Shared.Abilities.SlowSim)
 local BarrierSim = require(Shared.Abilities.BarrierSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
@@ -595,6 +596,13 @@ local function onCharacter(character: Model)
 	if last then
 		fresh.abilities = AbilitySim.copy(last.abilities)
 		AbilitySim.settle(fresh.abilities)
+	end
+	-- A life the Resurrection brought back starts held, rising with the body
+	-- and then falling, as the server has it (system 39).
+	local floatFor = character:GetAttribute(CharacterRig.REVIVED)
+	if typeof(floatFor) == "number" then
+		fresh.abilities.floatUntil = floatFor
+		fresh.abilities.heldUntil = floatFor + AbilityConfig.Resurrection.fall.value
 	end
 	sim = fresh
 	PlayerController.sim = sim
