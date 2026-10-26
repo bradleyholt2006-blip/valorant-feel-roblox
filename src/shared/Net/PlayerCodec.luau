@@ -159,7 +159,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 9 + 8 * 16 + 4 * 6 -- the ability kit
+	+ 1 + 3 + 3 + 9 + 8 * 16 + 4 * 6 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -233,6 +233,9 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, AbilityConfig.AgentIndex[a.agent] or 0)
 	for slot = 1, 3 do
 		w8(c, math.clamp(a.charges[slot], 0, 255))
+	end
+	for slot = 1, 3 do
+		w8(c, math.clamp(a.owned[slot], 0, 255))
 	end
 	w8(c, math.clamp(a.regained, 0, 255))
 	w8(c, math.clamp(a.kills, 0, 255))
@@ -379,6 +382,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local agentIndex = r8(c)
 	local agent = if agentIndex == 0 then AbilityConfig.NO_AGENT else AbilityConfig.AgentIds[agentIndex] or AbilityConfig.DEFAULT_AGENT
 	local charges = { r8(c), r8(c), r8(c), 0 }
+	local owned = { r8(c), r8(c), r8(c), 0 }
 	local regained = r8(c)
 	local kills = r8(c)
 	local points = r8(c)
@@ -413,6 +417,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local abilities = {
 		agent = agent,
 		charges = charges,
+		owned = owned,
 		regained = regained,
 		kills = kills,
 		points = points,

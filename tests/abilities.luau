@@ -496,7 +496,7 @@ do
 
 	local function same(a: AbilitySim.State, b: AbilitySim.State): boolean
 		for slot = 1, AbilityConfig.SLOTS do
-			if a.charges[slot] ~= b.charges[slot] then
+			if a.charges[slot] ~= b.charges[slot] or a.owned[slot] ~= b.owned[slot] then
 				return false
 			end
 		end
