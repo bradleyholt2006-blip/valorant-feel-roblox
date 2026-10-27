@@ -342,11 +342,15 @@ end
 -- Players on the same team (the arena's sides) can't shoot each other: the
 -- reference has no friendly fire for guns, and here the bullet passes
 -- through them. Fire burns them less (FireServer).
-local function teammates(a: Entities.Entity, b: Entities.Entity): boolean
-	local pa, pb = a.player, b.player
+local function allies(pa: Player?, pb: Player?): boolean
 	return pa ~= nil and pb ~= nil and not pa.Neutral and not pb.Neutral and (pa.Team :: Team?) ~= nil and pa.Team == pb.Team
 end
+local function teammates(a: Entities.Entity, b: Entities.Entity): boolean
+	return allies(a.player, b.player)
+end
 CombatServer.teammates = teammates
+-- The same of two players (AbilityServer's points, system 50).
+CombatServer.allies = allies
 
 -- Positions go as metres in a Vector3 (the wire keeps float32 exactly), so
 -- the client can compare them with its own bit for bit.

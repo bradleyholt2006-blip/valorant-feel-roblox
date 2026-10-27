@@ -28,10 +28,10 @@
 --     Orb, system 36) brings a spent charge back once it's run, the same
 --     way
 --   * the ultimate's points: one for a kill (a dummy's too), a death, a
---     plant and a defuse. In the spike rounds a death's comes as the next
---     round starts, and a death nobody else caused (the spike's blast, or
---     one's own hand) has none (system 50). And kills bring the signature's
---     charge back
+--     plant and a defuse. A death earns its point only at an enemy's hands,
+--     not the spike's blast, a teammate's or one's own (Patch 1.0), and in
+--     the spike rounds it comes as the next round starts (system 50); nor is
+--     a teammate's death a kill. And kills bring the signature's charge back
 --     (Jett's: two). A kill with a single Blade Storm knife brings all its
 --     knives back (PlayerSim.killedWith, system 19)
 --   * in gun game (system 23) there are none: every life starts with an
@@ -447,28 +447,32 @@ function AbilityServer.start()
 			end
 		end)
 	end)
+	-- A teammate's death is no kill: no point, nor a charge back (system 50,
+	-- as a kill's credits, MatchRules.died).
 	table.insert(CombatServer.killListeners, function(attacker, victim, weapon, mode)
 		local by = if attacker then attacker.player else nil
-		local sim = if by and by ~= victim.player then PlayerSimServer.getSim(by) else nil
+		local sim = if by and by ~= victim.player and not CombatServer.allies(by, victim.player) then PlayerSimServer.getSim(by) else nil
 		local rules = AbilityServer.rules
 		if by and sim and not AbilityServer.off then
 			PlayerSim.killedWith(sim, weapon, mode, if rules then rules.kill.value else nil)
 			PlayerSimServer.markDirty(by)
 		end
 	end)
-	-- In the spike rounds a death's point waits for the next round, and only
-	-- someone else's doing earns one (system 50).
+	-- A death earns its point only at an enemy's hands (Patch 1.0: 'Dying to
+	-- a non-enemy player will no longer grant ultimate points'), and in the
+	-- spike rounds it waits for the next round (system 50).
 	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
 		local rules = AbilityServer.rules
 		local later = AbilityServer.economy
-		if later and killer and not AbilityServer.off then
+		local earned = killer ~= nil and not CombatServer.allies(player, killer)
+		if later and earned and not AbilityServer.off then
 			owed[player] = (owed[player] or 0) + AbilityConfig.Points.death.value
 		end
 		change(player, function(kit)
 			if AbilityServer.off then
 				AbilitySim.empty(kit)
 			else
-				AbilitySim.died(kit, if later then 0 elseif rules then rules.death.value else nil)
+				AbilitySim.died(kit, if later or not earned then 0 elseif rules then rules.death.value else nil)
 			end
 		end)
 	end)

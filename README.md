@@ -386,8 +386,8 @@ Built one system at a time:
     [research and design](docs/research/49-ultimate-orbs.md)
 50. **The ultimate's points across a match**: in the spike rounds the half wipes everyone's ultimate
     points (Swiftplay starts each half on 2), each overtime round puts everyone 3 short of full
-    whatever they had, and a death's point comes as the next round starts. A death to the spike's
-    blast, or by your own hand, earns none -
+    whatever they had, and a death's point comes as the next round starts. Only a death at an
+    enemy's hands earns one, not the spike's blast, a teammate's ability or your own -
     [research and design](docs/research/50-ultimate-points.md)
 
 ## Running it

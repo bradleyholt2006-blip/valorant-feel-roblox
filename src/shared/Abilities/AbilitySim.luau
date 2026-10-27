@@ -628,8 +628,8 @@ function AbilitySim.killed(s: State, points: number?)
 end
 
 -- A death: its point, or `points` where the mode has its own (none in the
--- spike rounds, where roundPoints pays it, system 50), and whatever was
--- under way ends. Charges are kept.
+-- spike rounds, where roundPoints pays it, nor for a death no enemy caused,
+-- system 50), and whatever was under way ends. Charges are kept.
 function AbilitySim.died(s: State, points: number?)
 	AbilitySim.addPoints(s, points or AbilityConfig.Points.death.value)
 	AbilitySim.settle(s)

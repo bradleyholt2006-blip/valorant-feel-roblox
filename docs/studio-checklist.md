@@ -33,7 +33,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
-   sections 44 to 51 one and then three, section 52 three, and sections 53 and 54 two.
+   sections 44 to 51 one and then three, section 52 three, section 53 two, and section 54 two and
+   then three.
 
 | Key | What it does |
 | --- | --- |
@@ -3723,23 +3724,27 @@ that round's checks again in the next.
 ## 54. The ultimate's points across a match
 
 From [50-ultimate-points.md](research/50-ultimate-points.md). Two players in the spike rounds, in
-Swiftplay's format and then the standard one. A player's `VFKit` ends with the ultimate's points and
-what it needs, as `X2/8` for Jett and `X2/7` for Sage, and the ability bar's X has a pip for each
-point it needs, lit for each it has, in gold once it's full. `VFTestGive` set to `ultimate` fills
-the points, and `VFTestAgent` set to an agent's id selects it, or set to `lock` locks in
-(section 52). `VFMatchSkip` skips a buy phase, what's left of a round, which the defenders win, or
-the wait after it (section 17), but never a planted spike's countdown. In Swiftplay the sides swap
-after round 4, and a 4-4 score goes to a sudden death in round 9; in the standard format, after
-round 12, and 12-12 to round 25.
+Swiftplay's format and then the standard one, then three. A player's `VFKit` ends with the
+ultimate's points and what it needs, as `X2/8` for Sova and `X2/7` for Sage, and the ability bar's X
+has a pip for each point it needs, lit for each it has, in gold once it's full. `VFTestGive` set to
+`ultimate` fills the points, and `VFTestAgent` set to an agent's id selects it, or set to `lock`
+locks in (section 52). `VFMatchSkip` skips a buy phase, what's left of a round, which the defenders
+win, or the wait after it (section 17), but never a planted spike's countdown. In Swiftplay the
+sides swap after round 4, and a 4-4 score goes to a sudden death in round 9; in the standard format,
+after round 12, and 12-12 to round 25. Sova's Shock Bolt goes as in section 49: `VFTestButtons` 8192
+presses Q and 128 the left button, `VFTestPitch` -90 looks at your feet, and a Vector3
+`VFTestAimPoint`, in metres, aims at that place until it's cleared. `VFTestBuy` set to `shockbolt`
+buys a charge of it, as a click in the buy menu would.
 
 Start a Local Server with 2 players, as in section 9, and press P four times in window 1 (Skirmish,
 gun game, the spike rounds, then the spike rounds in Swiftplay's format). Player 1 attacks the first
 half, with the spike in front of them, and player 2 defends.
 
 - **UP1 Swiftplay's two.** As round 1's buy phase starts, agent select comes up by itself in both
-  windows. In window 2 click SAGE and LOCK IN (or set `VFTestAgent` to `sage` and then to `lock`),
-  and let window 1's 10 s run out. Player 1's `VFKit` ends `X2/8`, two of the X's eight pips lit,
-  and player 2's `X2/7`: Sage's kit, still with the two points the match started on.
+  windows. Click SOVA and LOCK IN in window 1, and SAGE and LOCK IN in window 2 (or set
+  `VFTestAgent` to the agent's id and then to `lock`). Player 1's `VFKit` ends `X2/8`, two of the
+  X's eight pips lit, and player 2's `X2/7`: each kit started over for its agent, still with the two
+  points the match started on.
 - **UP2 A death's point waits.** Skip the buy phase. Player 2 kills player 1 with the Classic: at
   once player 2's `VFKit` ends `X3/7`, while player 1's stays at `X2/8`, and player 2's side wins
   the round. As round 2's buy phase starts, player 1's ends `X3/8`, and player 2's is still `X3/7`.
@@ -3748,19 +3753,23 @@ half, with the spike in front of them, and player 2 defends.
   it, and player 2 leaves it alone. 45 s later it goes off: player 1's screen shows `ROUND WON` with
   `Spike detonated`, and the blast kills player 1. As round 3's buy phase starts, player 1's `VFKit`
   still ends `X4/8`, and player 2's `X3/7`.
-- **UP4 The half.** In round 3's buy phase set `VFTestGive` to `ultimate` in window 1: player 1's
-  `VFKit` ends `X8/8`, every pip lit in gold. Skip the buy phase and then the round, which
-  player 2's side wins. Round 4's buy phase line adds `LAST ROUND OF THE HALF`. Skip it, and
-  player 2 kills player 1, who neither shoots back nor uses the ultimate: player 2's `VFKit` ends
-  `X4/7`. As round 5's buy phase starts, with the sides swapped, player 1's ends `X2/8`, the full
-  ultimate and the death's point both gone, and player 2's `X2/7`.
-- **UP5 Sudden death.** Skip rounds 5, 6 and 7, the buy phase and then the round each time:
+- **UP4 Not your own.** In round 3's buy phase player 1 buys two Shock Bolts: `VFKit` reads `Q2/2`.
+  Skip the buy phase. Player 1 sets `VFTestPitch` to -90 and looses a Shock Bolt at their feet, as
+  in SB6: their HUD reads `25`. Once the gun's back, the second: it kills them, and the round goes
+  to player 2's side. Player 1's `VFKit` still ends `X4/8`, and as round 4's buy phase starts it
+  still does; player 2's ends `X3/7`.
+- **UP5 The half.** Round 4's buy phase line adds `LAST ROUND OF THE HALF`. Set `VFTestGive` to
+  `ultimate` in window 1: player 1's `VFKit` ends `X8/8`, every pip lit in gold. Skip the buy phase,
+  and player 2 kills player 1, who neither shoots back nor uses the ultimate: player 2's `VFKit`
+  ends `X4/7`. As round 5's buy phase starts, with the sides swapped, player 1's ends `X2/8`, the
+  full ultimate and the death's point both gone, and player 2's `X2/7`.
+- **UP6 Sudden death.** Skip rounds 5, 6 and 7, the buy phase and then the round each time:
   player 1's side defends now and wins each, to 4-3. In round 8's buy phase set `VFTestGive` to
   `ultimate` in window 1 (`X8/8`). Skip the buy phase, and player 2 kills player 1, who doesn't
   shoot back: player 2's `VFKit` ends `X3/7`, and it's 4-4. Round 9's buy phase line adds
   `SUDDEN DEATH`, and player 1's `VFKit` ends `X5/8`, three short of full and down from 8, and
   player 2's `X4/7`, up from 3.
-- **UP6 The standard format.** Press P in window 1 for off, then three more times (Skirmish, gun
+- **UP7 The standard format.** Press P in window 1 for off, then three more times (Skirmish, gun
   game, the spike rounds), and let round 1's agent select run out in both windows: player 1's
   `VFKit` ends `X0/8`. Set `VFTestGive` to `ultimate` in window 1 (`X8/8`), then in the server's
   command bar run this, which skips to round 13's buy phase, the defenders winning every round.
@@ -3774,8 +3783,20 @@ half, with the spike in front of them, and player 2 defends.
   end
   ```
 
-- **UP7 Its sudden death.** Run it again with 25 in place of 13. At 12-12 round 25's buy phase line
+- **UP8 Its sudden death.** Run it again with 25 in place of 13. At 12-12 round 25's buy phase line
   adds `SUDDEN DEATH`, and player 1's `VFKit` ends `X5/8`.
+
+Then three players: stop the game and start a Local Server with 3 players, as in section 9, and
+press P three times in window 1 (the spike rounds). Players 1 and 3 share a side, as in section 52,
+and attack first. As round 1's buy phase starts, agent select comes up by itself: click SOVA and
+LOCK IN in window 1, and let the other windows' 10 s run out.
+
+- **UP9 A teammate's.** In the buy phase player 1 buys two Shock Bolts (`Q2/2`). Skip the buy phase.
+  Player 3 stands still about 8 m in front of player 1, who sets `VFTestAimPoint` to player 3's feet
+  (their `pos` in window 3's F3 panel) and looses both Shock Bolts at them, one after the other, as
+  in SB4: the first leaves player 3 on `25`, and the second kills them. Player 1's `VFKit` still
+  ends `X0/8`, with no kill's point, and player 3's `X0/8`. Clear `VFTestAimPoint`, and skip what's
+  left of round 1: as round 2's buy phase starts, player 3's `VFKit` still ends `X0/8`.
 
 ## Results
 
@@ -4127,10 +4148,12 @@ UO9 VFOrbs in Swiftplay's round 1: ___; after off: ___
 UP1 player 1's VFKit: ___; player 2's, on Sage: ___
 UP2 right after the kill, player 2's VFKit: ___, player 1's: ___; in round 2's buy phase, player 1's: ___
 UP3 player 1's VFKit after the plant: ___; the blast killed player 1: yes / no; in round 3's buy phase, player 1's: ___, player 2's: ___
-UP4 player 2's VFKit after the kill: ___; in round 5's buy phase, player 1's: ___, player 2's: ___
-UP5 the score before round 9: ___; round 9's line: ___; VFKit then, player 1's: ___, player 2's: ___
-UP6 player 1's VFKit in round 1: ___; in round 13: ___
-UP7 the score before round 25: ___; round 25's line: ___; player 1's VFKit: ___
+UP4 player 1's health after the first bolt: ___; killed by the second: yes / no; VFKit in round 4's buy phase: ___
+UP5 player 2's VFKit after the kill: ___; in round 5's buy phase, player 1's: ___, player 2's: ___
+UP6 the score before round 9: ___; round 9's line: ___; VFKit then, player 1's: ___, player 2's: ___
+UP7 player 1's VFKit in round 1: ___; in round 13: ___
+UP8 the score before round 25: ___; round 25's line: ___; player 1's VFKit: ___
+UP9 player 3's health after the first bolt: ___; player 1's VFKit after the kill: ___; player 3's in round 2's buy phase: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4443,7 +4466,7 @@ Didn't look right (IDs and what you saw):
 | 49 | None after the spike rounds | UO9 |
 | 50 | Swiftplay's 2 points at the start, kept through an agent picked in the first buy phase | UP1 |
 | 50 | A death's point paid as the next round starts, and a kill's at once | UP2 |
-| 50 | No point for a death to the spike's blast | UP3 |
-| 50 | The half wiping a full ultimate, and a death in its last round earning nothing across it | UP4 |
-| 50 | A sudden death's start 3 short of full, whatever was had | UP5, UP7 |
-| 50 | The standard format: none at the start, none after the half, and 3 short in its sudden death | UP6, UP7 |
+| 50 | No point for a death to the spike's blast, to one's own Shock Bolt or to a teammate's, nor for the teammate | UP3, UP4, UP9 |
+| 50 | The half wiping a full ultimate, and a death in its last round earning nothing across it | UP5 |
+| 50 | A sudden death's start 3 short of full, whatever was had | UP6, UP8 |
+| 50 | The standard format: none at the start, none after the half, and 3 short in its sudden death | UP7, UP8 |
