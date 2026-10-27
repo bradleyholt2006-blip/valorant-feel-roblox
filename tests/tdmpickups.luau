@@ -232,7 +232,7 @@ local ALL = 7
 local speed = MovementConfig.resolve().baseRunSpeed
 
 do
-	local onFloor, inRooms, apart, even, overall = true, true, true, true, true
+	local onFloor, inRooms, apart, even, overall, leans = true, true, true, true, true, true
 	local worst = { each = 0, all = 0 }
 	for _, key in SpikeMaps.MAPS do
 		local map = SpikeMaps.Maps[key]
@@ -287,6 +287,10 @@ do
 			table.insert(lines, string.format("%+.1f", lean))
 		end
 		overall = overall and math.abs(sum) <= ALL
+		-- The Ultimate Orbs, which the spike rounds have too (system 49).
+		for _, at in plan.ultimate do
+			leans = leans and fromAttack(at.x, at.z) < fromDefend(at.x, at.z)
+		end
 		worst.all = math.max(worst.all, math.abs(sum))
 		print(
 			string.format(
@@ -310,6 +314,7 @@ do
 		overall,
 		string.format("%.1f m at worst", worst.all)
 	)
+	check("each map's Ultimate Orbs a shorter run from the attackers' spawn than the defenders' (system 49)", leans)
 end
 
 -- Weapon spawners --------------------------------------------------------------------------

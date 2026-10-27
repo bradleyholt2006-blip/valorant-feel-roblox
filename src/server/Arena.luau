@@ -64,6 +64,8 @@
 -- the first at random, and after each match's victory screen everyone votes
 -- for the next, as in Skirmish; a new map is where everyone spawns, which
 -- barriers go up, and the spike's sites and start (SpikeServer.setMap).
+-- Each round starts with the map's Ultimate Orbs all up (system 49,
+-- OrbServer).
 --
 -- Gun game (system 23, GunGameRules) is played in the arena too, on the
 -- same maps and with the same vote between matches: each player's level
@@ -183,6 +185,7 @@ local CloudServer = require(script.Parent.CloudServer)
 local AbilityServer = require(script.Parent.AbilityServer)
 local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
+local OrbServer = require(script.Parent.OrbServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -747,8 +750,9 @@ end
 -- recon bolts (system 44) and shock bolts in the air (system 45), every
 -- heal over (system 36), every Owl Drone's flight and its darts' pings
 -- (system 47), and in the spike rounds a new spike in front of
--- the attackers, each kit's round (system 17) and, at the start of each
--- half, everyone back on the starting kit.
+-- the attackers, the map's Ultimate Orbs all up (system 49), each kit's
+-- round (system 17) and, at the start of each half, everyone back on the
+-- starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -773,6 +777,7 @@ local function roundStarted()
 		return
 	end
 	SpikeServer.reset()
+	OrbServer.roundStarted(m.map)
 	local half = MatchRules.startsHalf(m)
 	for id in m.members do
 		local player = playerFor(id)
@@ -876,6 +881,7 @@ local function stop()
 	end
 	PlayerSimServer.keepShields = false
 	PickupsServer.stop()
+	OrbServer.stop()
 	GroundGunsServer.dropOnDeath = false
 	GroundGunsServer.drops = true
 	GroundGunsServer.clear()

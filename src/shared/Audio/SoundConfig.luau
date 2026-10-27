@@ -376,6 +376,15 @@ SoundConfig.Sounds = {
 	spikePickup = sound(0.6, 0.03, 2, {
 		asset(9116722545, "Metal Latches 1 (SFX)", 0.334),
 	}),
+	-- An Ultimate Orb (system 49): the abilities' thick whoosh, a little
+	-- high, as F starts to take one, and the Healing Orb's ding, lower, as
+	-- it's taken.
+	orbGrab = sound(0.6, 0.03, 4, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.3),
+	orbTaken = sound(0.7, 0.02, 2, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 0.8),
 	-- Abilities (system 17), from the knife's measured whooshes: Updraft's
 	-- gust low and heavy, Tailwind's dash quick, and its gust readying a
 	-- thin swish, slowed.
@@ -769,6 +778,17 @@ SoundConfig.Spike = {
 	-- Once its half is saved, a defuse sounds higher: 'the audio cue given
 	-- when defusing changes to a higher pitch' (the VALORANT Wiki).
 	halfPitch = p(1.25, "estimate", "A defuse from the half, times its pitch before"),
+}
+
+-- The Ultimate Orbs' sounds (system 49): taking one, from whoever holds F
+-- at it, heard as far as a plant or a defuse is ('a short audio cue when
+-- the revive has started, matching a similar gameplay pattern to playing
+-- around ultimate orbs or tapping the bomb', Patch 5.01), theirs on the
+-- Self bus and others' out in the world; and the chime as it's taken,
+-- theirs alone.
+SoundConfig.Orbs = {
+	grab = "orbGrab",
+	taken = "orbTaken",
 }
 
 -- Jett's glide (Drift, system 20). The reference's has a sound of its own,

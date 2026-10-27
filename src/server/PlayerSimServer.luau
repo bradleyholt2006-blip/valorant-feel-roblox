@@ -238,10 +238,9 @@ local function currentPose(r: Record): PlayerCodec.Pose
 		-- A dash makes no steps (system 17).
 		quiet = StepTracker.isQuiet(r.buttons, m.crouched) or AbilitySim.dashing(r.sim.abilities, m.tick * DT),
 		reloading = WeaponSim.isReloading(w),
-		-- Defusing, or flying the Owl Drone, the weapon is put away.
-		weapon = if r.sim.spike.channel == SpikeSim.DEFUSING or AbilitySim.droning(kit)
-			then 0
-			else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		-- Defusing, taking an Ultimate Orb (system 49) or flying the Owl
+		-- Drone, the weapon is put away.
+		weapon = if SpikeSim.stowed(r.sim.spike) or AbilitySim.droning(kit) then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 		channel = r.sim.spike.channel,
 		gliding = m.gliding,
 		shade = AbilitySim.shaded(r.sim.abilities, m.tick * DT),

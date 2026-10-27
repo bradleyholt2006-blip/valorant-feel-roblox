@@ -377,6 +377,13 @@ Built one system at a time:
     on the server keeps it; the other side can play it too. Someone moved across to even the sides
     has a window for their new side, and someone back in a match to find their agent taken has
     another - [research and design](docs/research/48-one-of-each.md)
+49. **Ultimate Orbs in the spike rounds**: two on each map, one in each site's main, both up as each
+    round starts. Hold F on the ground at one for 2 s to take it, rooted with the gun away as in a
+    defuse, for a point of your ultimate; let go, or have someone else take it first, and you get
+    nothing. Taken, it's gone until the next round. A gold bar shows the taking, a prompt asks for F
+    within reach of one, enemies hear its whoosh as far as a plant, a chime marks it yours, and the
+    minimap shows the orbs up as gold dots. F defuses the spike too -
+    [research and design](docs/research/49-ultimate-orbs.md)
 
 ## Running it
 
@@ -403,7 +410,8 @@ Built one system at a time:
 Controls: WASD, Shift walk, Ctrl crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
-in hand, F picks up the gun on the ground you're looking at, B buy menu (on the course at any time; in the arena
+in hand, F picks up the gun on the ground you're looking at (held, it takes an Ultimate Orb in
+the spike rounds, or defuses the spike), B buy menu (on the course at any time; in the arena
 during the buy phase and while waiting for an opponent; in deathmatch any time, guns alone; in
 Team Deathmatch B is the loadout menu, before the match or in your spawn room), Tab
 held the scoreboard (the arena and the spike rounds), mouse 1 and 2, while you're down in either,
@@ -456,7 +464,7 @@ Scripted playtests (Studio only): a tool that can press keys but can't move the 
 setting attributes on the local player, `VFTestYaw` / `VFTestPitch`, `VFTestAimPoint` or
 `VFTestAimEntity` with `VFTestAimRegion` ([TestAim](src/client/Debug/TestAim.luau)). `VFTestButtons`
 holds input flags on top of the real ones (128 fire or slash, 256 right click or stab, 512 reload,
-1024 the spike's 4 held, 2048 G, and the ability keys: 4096 C, 8192 Q, 16384 E and 32768 X),
+1024 4 and 65536 F held, 2048 G, and the ability keys: 4096 C, 8192 Q, 16384 E and 32768 X),
 `VFTestGive` set to a weapon id gives that weapon as 5-9 would (`spike` hands over the course's
 spike), `VFTestBuy` set to an id buys it as the menu would (`-` and the id sells it back),
 `VFTestMenu` set to true or false opens or closes the menu, `VFTestSlot` set to 1, 2, 3, 4 or 5
@@ -546,11 +554,13 @@ dart ended is their `VFLastDart` (metres), and whom it struck their `VFDartHit`.
 `VFDrone` carries whether they fly it (`Flying`), the seconds it has left (`Left`), the seconds
 until a dart can go (`DartIn`), whether `[Target Hit]` shows (`TargetHit`), whether a dart's pings
 are on them (`Tagged`) and the drones drawn (`Drones`), and `Workspace.VFDrone` holds each drone,
-their body while they fly it, each dart's streak and each burst's pieces. The minimap's ScreenGui,
-`VFMinimap`, carries what it shows: the
-plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the
-spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big map's open (`Big`) and
-how covered it is by a nearsight's dark (`Dark`, 0 to 1), or by an enemy's From the Shadows.
+their body while they fly it, each dart's streak and each burst's pieces. Workspace's `VFOrbs` is
+which of the spike rounds' Ultimate Orbs are up, by number (`1,2`), and `Workspace.VFUltimateOrbs`
+holds each orb and its mark. The minimap's ScreenGui, `VFMinimap`, carries what it shows: the plan
+drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the spike
+is (`Spike`), the Ultimate Orbs on it (`Orbs`, as `1,2`), how far it's turned (`Turn`, degrees),
+whether the big map's open (`Big`) and how covered it is by a nearsight's dark (`Dark`, 0 to 1), or
+by an enemy's From the Shadows.
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -609,9 +619,10 @@ the draw and the loose, its burst, how much it does at each distance and whom it
 wire), his Hunter's Fury (its bow in hand, a blast's windup and the blast, the knockback, the
 blasts' rate, how it ends, whom a blast catches, and the wire), his Owl Drone (its numbers, in hand,
 sent out, its flight, its ceiling, walls, Sova held, its darts, how it ends, the level with drones
-in it, its ids, and the wire) and one of each agent on a side (what's taken, a selection moved off
-it, the time running out, the other side, a key for each side, back in a match, fewer agents than
-places, and halftime) are pure Luau and run outside Roblox:
+in it, its ids, and the wire), one of each agent on a side (what's taken, a selection moved off it,
+the time running out, the other side, a key for each side, back in a match, fewer agents than
+places, and halftime) and the spike rounds' Ultimate Orbs (where they stand, which are up, whose
+feet reach one, the taking, a defuse first, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

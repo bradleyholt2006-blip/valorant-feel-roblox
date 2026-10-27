@@ -74,7 +74,11 @@ local function spikeLine(sim: PlayerSim.State?): string
 	end
 	if sim and sim.spike.channel ~= SpikeSim.NONE then
 		local t = sim.movement.tick / MovementConfig.TickRate.value
-		local doing = if sim.spike.channel == SpikeSim.PLANTING then "planting" else "defusing"
+		local channel = sim.spike.channel
+		local doing = if channel == SpikeSim.PLANTING
+			then "planting"
+			elseif channel == SpikeSim.COLLECTING then "taking an orb"
+			else "defusing"
 		text ..= string.format("  %s %.0f%%", doing, SpikeSim.fraction(sim.spike, t) * 100)
 	end
 	return text

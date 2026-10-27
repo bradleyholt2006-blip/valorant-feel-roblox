@@ -117,6 +117,9 @@ local INPUT_SIZE = 19
 -- A place on the map takes the slot byte's top bit and two floats after.
 local POINT_FLAG = 128
 local POINT_SIZE = 8
+-- The seventeenth button (F's, system 49) takes the slot byte's next bit.
+local HIGH_BUTTON = 65536
+local HIGH_FLAG = 64
 -- Further from the place's middle than any map goes, metres.
 local POINT_MOST = 1e6
 local MAX_INPUTS_PER_PACKET = 256
@@ -138,9 +141,10 @@ function PlayerCodec.encodeInputs(inputs: { WireInput }, first: number, last: nu
 	for i = first, last do
 		local input = inputs[i]
 		local point = input.point
+		local high = bit32.band(input.buttons, HIGH_BUTTON) ~= 0
 		w32(c, input.seq)
-		w16(c, input.buttons)
-		w8(c, input.slot + (if point then POINT_FLAG else 0))
+		w16(c, bit32.band(input.buttons, HIGH_BUTTON - 1))
+		w8(c, input.slot + (if point then POINT_FLAG else 0) + (if high then HIGH_FLAG else 0))
 		w16(c, packAngle(input.yaw))
 		wi16(c, packPitch(input.pitch))
 		wf64(c, input.viewTime)
@@ -173,7 +177,10 @@ function PlayerCodec.decodeInputs(b: any): { WireInput }?
 		local yaw = unpackAngle(r16(c))
 		local pitch = ri16(c) / 10000
 		local viewTime = rf64(c)
-		local slot = bit32.band(slotByte, POINT_FLAG - 1)
+		local slot = bit32.band(slotByte, HIGH_FLAG - 1)
+		if bit32.band(slotByte, HIGH_FLAG) ~= 0 then
+			buttons += HIGH_BUTTON
+		end
 		if slot < 1 or slot > SLOTS or viewTime ~= viewTime then
 			return nil
 		end
@@ -199,7 +206,7 @@ end
 local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
-	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
+	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse, or an Ultimate Orb taken
 	+ 1 + 3 + 3 + 10 + 8 * 27 + 4 * 18 -- the ability kit
 	+ 4 + 8 -- tag
 
@@ -267,7 +274,8 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, k.channel)
 	wf64(c, k.channelStart)
 	wf64(c, k.channelEnd)
-	w8(c, (if k.halfStart then 1 else 0) + (if k.dropHeld then 2 else 0) + (if k.holdOver then 4 else 0))
+	-- The Ultimate Orb being taken (system 49) in the flags' top bits.
+	w8(c, (if k.halfStart then 1 else 0) + (if k.dropHeld then 2 else 0) + (if k.holdOver then 4 else 0) + 8 * math.clamp(k.orb, 0, 31))
 	w8(c, k.lastSlot)
 
 	local a = s.abilities
@@ -436,6 +444,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		dropHeld = bit32.band(kflags, 2) ~= 0,
 		holdOver = bit32.band(kflags, 4) ~= 0,
 		lastSlot = lastSlot,
+		orb = bit32.rshift(kflags, 3),
 	}
 
 	local agentIndex = r8(c)
@@ -572,8 +581,8 @@ export type Pose = {
 	quiet: boolean,
 	reloading: boolean,
 	weapon: number,
-	-- Planting (1) or defusing (2) the spike, or neither (0), for the sounds
-	-- and the look (system 12).
+	-- Planting (1) or defusing (2) the spike, taking an Ultimate Orb (3,
+	-- system 49), or none (0), for the sounds and the look (system 12).
 	channel: number,
 	-- Gliding (Jett's Drift, system 20), for the sound and the look.
 	gliding: boolean,

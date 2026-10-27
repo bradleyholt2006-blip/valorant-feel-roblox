@@ -4,7 +4,9 @@
 -- the spike's model and sounds, and what the local player may do with it,
 -- for PlayerController's prediction of the plant and the defuse: in the
 -- spike rounds (system 13), plant it only while a round is live, and defuse
--- it only on the defending side.
+-- it only on the defending side. With it, the spike rounds' Ultimate Orbs
+-- up (system 49, Workspace's UltimateOrbs.UP), for the prediction of their
+-- taking, the HUD and the minimap.
 --
 -- A defuse of ours let go of past the half is saved straight away here, as
 -- the server saves it when it runs the same tick, so the next defuse is
@@ -19,6 +21,7 @@ local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local RobloxSpike = require(Shared.Spike.RobloxSpike)
+local UltimateOrbs = require(Shared.Spike.UltimateOrbs)
 local Units = require(Shared.Units)
 
 export type View = {
@@ -45,10 +48,12 @@ local ATTRIBUTES = {
 	Spike.ENDED_AT,
 	Spike.PLANT_OPEN,
 	Spike.DEFUSERS,
+	UltimateOrbs.UP,
 }
 
 local view: View = { layout = "", state = "none", carrier = 0, position = nil, plantedAt = 0, halfSaved = false, site = "", endedAt = 0 }
 local context: Spike.Context = Spike.NONE
+local orbs: { [number]: vector } = {}
 -- Our own defuse let go of past the half, for the plant at this time.
 local halfOf: number? = nil
 
@@ -67,6 +72,7 @@ local function rebuild()
 		site = if typeof(site) == "string" then site else "",
 		endedAt = tonumber(Workspace:GetAttribute(Spike.ENDED_AT)) or 0,
 	}
+	orbs = UltimateOrbs.decode(view.layout, Workspace:GetAttribute(UltimateOrbs.UP))
 	local zones = Spike.Layouts[view.layout]
 	if not zones then
 		context = Spike.NONE
@@ -82,6 +88,7 @@ local function rebuild()
 		planted = planted,
 		halfSaved = view.halfSaved or (halfOf ~= nil and halfOf == view.plantedAt),
 		sees = RobloxSpike.sees,
+		orbs = if next(orbs) then orbs else nil,
 	}
 end
 
@@ -93,6 +100,11 @@ end
 -- What the local player may do with the spike now (PlayerController.objective).
 function ClientSpike.context(): Spike.Context
 	return context
+end
+
+-- The Ultimate Orbs up, by number, where each stands (system 49).
+function ClientSpike.orbs(): { [number]: vector }
+	return orbs
 end
 
 -- Whether the local player's side carries the spike: anyone's on the course,

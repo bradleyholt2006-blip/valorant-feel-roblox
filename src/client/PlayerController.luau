@@ -395,6 +395,7 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or gs.lastSlot ~= ss.lastSlot
 		or gs.dropHeld ~= ss.dropHeld
 		or gs.holdOver ~= ss.holdOver
+		or gs.orb ~= ss.orb
 	then
 		return true, posErr
 	end

@@ -42,6 +42,9 @@ export type Context = {
 	halfSaved: boolean,
 	-- Whether the eye can see the spike (a defuse needs it); nil sees always.
 	sees: ((eye: vector, spike: vector) -> boolean)?,
+	-- The Ultimate Orbs up, by number, where each stands (system 49,
+	-- UltimateOrbs); nil for none.
+	orbs: { [number]: vector }?,
 }
 
 local SpikeMaps = require("../Match/SpikeMaps")
