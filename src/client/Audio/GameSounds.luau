@@ -288,6 +288,10 @@ type WeaponState = { equipped: number, equipEndTime: number, reloadEndTime: numb
 local lastWeapons: WeaponState? = nil
 local ownReload: Reload? = nil
 local lastDrawAt = -math.huge -- simulation time of the last draw sound
+-- Whether the gun in hand's been drawn and not yet heard to be, and
+-- whether it was switched to.
+local drawPending = false
+local drawSwitched = false
 local kills = 0
 local ownChannel: Channel? = nil
 local carried = false -- the spike, as of the last tick
@@ -329,18 +333,26 @@ local function onTick(info: any)
 	local was = lastWeapons
 	if was then
 		local switched = w.equipped ~= was.equipped
-		if switched or w.equipEndTime > was.equipEndTime then
-			-- Switching cancels a reload, and its sound with it.
+		if switched or w.equipEndTime ~= was.equipEndTime then
+			-- Switching cancels a reload, and its sound with it. The draw's
+			-- heard at once, but through Omen's teleports not till he's
+			-- there or sent back.
 			cancelReload(ownReload)
 			ownReload = nil
-			if sounds and SoundMath.drawHeard(switched, now - lastDrawAt) then
-				own(sounds.draw)
-				lastDrawAt = now
-			end
+			drawPending = true
+			drawSwitched = drawSwitched or switched
 		elseif w.reloadEndTime > 0 and w.reloadEndTime ~= was.reloadEndTime then
 			-- A reload starts, or one that loads a round at a time starts
 			-- the next round.
 			ownReload = newReload(id, now, w.reloadEndTime - now)
+		end
+		local kit = s.abilities
+		if drawPending and not (AbilitySim.shadowing(kit, now) or AbilitySim.stepping(kit, now)) then
+			if sounds and SoundMath.drawHeard(drawSwitched, now - lastDrawAt) then
+				own(sounds.draw)
+				lastDrawAt = now
+			end
+			drawPending, drawSwitched = false, false
 		end
 		local def = WeaponConfig.get(id)
 		local ready = def.fireMode ~= "none" and w.reloadEndTime == 0 and now >= w.equipEndTime
@@ -426,6 +438,7 @@ local function onSpawn()
 	cancelReload(ownReload)
 	ownReload = nil
 	lastDrawAt = -math.huge
+	drawPending, drawSwitched = false, false
 	kills = 0
 	stopCue(ownChannel)
 	ownChannel = nil

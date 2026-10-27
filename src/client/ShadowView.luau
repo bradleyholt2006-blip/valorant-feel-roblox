@@ -99,9 +99,11 @@ local covering: { [number]: { at: number, ends: number } } = {}
 local up = false
 local cursorAt: vector? = nil
 -- Where the cursor was when it was last found whether fire would take you
--- there, when (os.clock()), and whether it would.
+-- there, when (os.clock()), whether it was the buy phase then, and whether
+-- it would.
 local judgedAt: vector? = nil
 local judgedWhen = -math.huge
+local judgedClosed = false
 local placeable = false
 local darkNow = 0
 local grey: ColorCorrectionEffect? = nil
@@ -130,18 +132,20 @@ local function mapPoint(): vector?
 	return if up then cursorAt else nil
 end
 
--- Finds whether fire would take you to `at` again, once the cursor's moved
--- or a moment's gone by: never in the buy phase, as your simulation has it.
+-- Finds whether fire would take you to `at` again, once the cursor's moved,
+-- the buy phase has begun or ended, or a moment's gone by: never in the buy
+-- phase, as your simulation has it.
 local function judge(at: vector)
-	local last, clock = judgedAt, os.clock()
-	if last and vector.magnitude(at - last) < MOVED and clock - judgedWhen < AGAIN then
-		return
-	end
-	judgedAt, judgedWhen = at, clock
 	local walls = PlayerController.barriers
 	local judged = if walls then walls(RemoteEntities.shownTime()) else nil
+	local closed = judged ~= nil and judged.closed == true
+	local last, clock = judgedAt, os.clock()
+	if last and vector.magnitude(at - last) < MOVED and clock - judgedWhen < AGAIN and closed == judgedClosed then
+		return
+	end
+	judgedAt, judgedWhen, judgedClosed = at, clock, closed
 	local through = if judged then BarrierSim.world(world, judged.walls, judged.time) else world
-	placeable = not (judged and judged.closed) and ShadowSim.place(through, at, PlayerController.cfg) ~= nil
+	placeable = not closed and ShadowSim.place(through, at, PlayerController.cfg) ~= nil
 end
 
 local function playerOf(id: number): Player?
