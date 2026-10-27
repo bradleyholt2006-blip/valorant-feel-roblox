@@ -36,8 +36,9 @@
 --
 -- Abilities (system 17, AbilityServer): in the spike rounds charges are
 -- bought, a new match starts everyone on a new kit, each half takes away
--- what was bought, and each round gives the signature its free charge. In
--- Skirmish every life has every charge.
+-- what was bought, and each round gives the signature its free charge and
+-- sets the ultimate's points (system 50). In Skirmish every life has every
+-- charge.
 --
 -- Matches that never stop (system 21): a live server plays from the moment
 -- it starts, Skirmish unless the place's VFArenaMode says otherwise, so
@@ -751,8 +752,8 @@ end
 -- heal over (system 36), every Owl Drone's flight and its darts' pings
 -- (system 47), and in the spike rounds a new spike in front of
 -- the attackers, the map's Ultimate Orbs all up (system 49), each kit's
--- round (system 17) and, at the start of each half, everyone back on the
--- starting kit.
+-- round (system 17) with its ultimate's points (system 50) and, at the
+-- start of each half, everyone back on the starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -779,6 +780,8 @@ local function roundStarted()
 	SpikeServer.reset()
 	OrbServer.roundStarted(m.map)
 	local half = MatchRules.startsHalf(m)
+	local kind: MatchRules.RoundKind = MatchRules.roundKind(m.format, m.round)
+	local swiftplay = m.formatKey == "swiftplay"
 	for id in m.members do
 		local player = playerFor(id)
 		if not player then
@@ -788,7 +791,7 @@ local function roundStarted()
 			kitMatch[player] = m.match
 			startingKit(player)
 		end
-		AbilityServer.roundStarted(player, if m.round == 1 then "match" elseif half then "half" else "round")
+		AbilityServer.roundStarted(player, kind, swiftplay)
 	end
 end
 

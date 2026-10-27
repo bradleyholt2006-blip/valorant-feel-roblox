@@ -58,5 +58,6 @@ require("./huntersfury")
 require("./owldrone")
 require("./oneofeach")
 require("./ultorbs")
+require("./ultpoints")
 
 H.finish()
