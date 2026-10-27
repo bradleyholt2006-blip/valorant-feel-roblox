@@ -11,9 +11,11 @@
 -- its note EQUIP until it can be thrown or drawn, and Blaze's while its
 -- wall's being bent; Run it Back's while it runs, its note the seconds
 -- left, and through his return, BACK (system 33); Shrouded Step's through
--- its windup and his time gone, STEP (system 42); and From the Shadows'
--- while its map's in hand, EQUIP until it can be fired and then MAP,
--- through its windup the seconds left, and as a Shade, SHADE (system 43).
+-- its windup and his time gone, STEP (system 42); From the Shadows' while
+-- its map's in hand, EQUIP until it can be fired and then MAP, through its
+-- windup the seconds left, and as a Shade, SHADE (system 43); and Hunter's
+-- Fury's while its bow's in hand, EQUIP until it's drawn and then the
+-- seconds left (system 46).
 -- What can't be played yet is dimmed.
 -- It reads the local player's predicted kit (PlayerController.sim), so a
 -- cast shows on the tick it's pressed. A kit of no agent's, as deathmatch's
@@ -192,6 +194,15 @@ function AbilityHud.start()
 					lit = true
 					note = string.format("x%d", s.weapons.ammo[WeaponSim.ULT])
 					slot.note.TextColor3 = LIT
+				elseif kit.furyUntil > 0 then
+					lit = true
+					if t < s.weapons.equipEndTime then
+						note = "EQUIP"
+						slot.note.TextColor3 = Ui.DIM
+					else
+						note = string.format("%.1f", math.max(kit.furyUntil - t, 0))
+						slot.note.TextColor3 = LIT
+					end
 				elseif AbilitySim.runningBack(kit) then
 					lit = true
 					note = string.format("%.1f", math.max(kit.backUntil - t, 0))

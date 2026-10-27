@@ -106,8 +106,8 @@ do
 	check(
 		"wire ids: the first six as they always were, then the rest, the spike, Blade Storm's knives, Curveball's flare, Hot Hands' fireball,"
 			.. " Blaze's flame, the Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb, Dark Cover's, Paranoia's,"
-			.. " Shrouded Step's, From the Shadows' map, the Recon Bolt's bow, then the Shock Bolt's",
-		#ids == 36
+			.. " Shrouded Step's, From the Shadows' map, the Recon Bolt's bow, the Shock Bolt's, then Hunter's Fury's",
+		#ids == 37
 			and ids[1] == "classic"
 			and ids[2] == "knife"
 			and ids[3] == "operator"
@@ -129,6 +129,7 @@ do
 			and ids[34] == "shadowmap"
 			and ids[35] == "bow"
 			and ids[36] == "shockbow"
+			and ids[37] == "furybow"
 	)
 	local quiet = {}
 	for _, id in ids do
@@ -488,9 +489,12 @@ do
 	for _, id in WeaponConfig.Ids do
 		local sounds = SoundConfig.Weapons[id]
 		local def = WeaponConfig.get(id)
+		-- Hunter's Fury's bow fires no round: its fire starts a blast's
+		-- windup, which sounds as the cast does (system 46).
+		local fires = def.fireMode ~= "none" and not def.ability and id ~= "furybow"
 		if not sounds then
 			table.insert(missing, id)
-		elseif def.fireMode ~= "none" and not def.ability and not (sounds.shot and sounds.pitch and sounds.pitch > 0) then
+		elseif fires and not (sounds.shot and sounds.pitch and sounds.pitch > 0) then
 			table.insert(missing, id .. " shot")
 		elseif def.suppressed ~= (sounds.curve == "suppressed") then
 			table.insert(missing, id .. " curve")

@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-three
+Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-six
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about six and a half hours. Doing it in parts is fine; keep the order.
@@ -33,7 +33,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three, and
-   sections 44 to 47 one and then three.
+   sections 44 to 50 one and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -3117,19 +3117,20 @@ down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 
 - **RC1 His kit.** In agent select (T), the cards are JETT, PHOENIX, SAGE, OMEN and SOVA, and SOVA's
   reads INITIATOR. Click it: his kit, headed `SOVA   INITIATOR`, with Q SHOCK BOLT lit (section 49),
-  and E RECON BOLT lit, with `E readies the bow. Hold fire to draw it further and alt fire to add
-  bounces; it sticks where it lands and pulses, revealing enemies it sees.`, and C OWL DRONE and X
-  HUNTER'S FURY each with `NOT YET` after it; nothing under them, as he has no passive. Click PICK
-  SOVA: the button reads `PLAYING SOVA`, and `VFAgent` reads `sova`. Close it with T. On the ability
-  bar RECON BOLT has its one pip lit and SHOCK BOLT its two, and the rest are dimmed, and `VFKit`
-  reads `C0/1 Q2/2 E1/1 X0/8`. **Send:** a screenshot of Sova's card.
+  X HUNTER'S FURY lit (section 50), and E RECON BOLT lit, with `E readies the bow. Hold fire to draw
+  it further and alt fire to add bounces; it sticks where it lands and pulses, revealing enemies it
+  sees.`, and C OWL DRONE with `NOT YET` after it; nothing under them, as he has no passive. Click
+  PICK SOVA: the button reads `PLAYING SOVA`, and `VFAgent` reads `sova`. Close it with T. On the
+  ability bar RECON BOLT has its one pip lit, SHOCK BOLT its two and HUNTER'S FURY its eight, gold,
+  and OWL DRONE is dimmed, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`. **Send:** a screenshot of Sova's
+  card.
 - **RC2 In hand.** Open the Sound Lab (F2 four times), and keep it open to RC8. Press E: a quick,
   light rattle, logged as `boltEquip`, `yours`; the Vandal goes, and a short dark bow comes up, held
   upright, with a bolt of light blue beside its grip. E's square lights, with `EQUIP` under it for
   0.8 s; the HUD reads `Recon Bolt   [E]`, with no ammo; and `VFKit` ends in `equip`. Under the
   crosshair are three dark bars with two dark diamonds under them (`VFRecon`'s `Bow` true, `Bars` 0
   and `Bounces` 0). Press E again: the bow and the bars go, the Vandal's back, and `VFKit` reads
-  `C0/1 Q2/2 E1/1 X0/8`, nothing spent.
+  `C0/1 Q2/2 E1/1 X8/8`, nothing spent.
 - **RC3 The draw.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and keep it: a slow,
   low scrape, logged as `boltNock`, `yours`, and the bars light blue one by one, a third of a second
   apart, and stay at three (`Bars` 3); `VFKit` ends in `equip draw 3`. Set it to 384 and back to
@@ -3137,7 +3138,7 @@ down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
   and `bounce 2`. Again: neither, `Bounces` 0, and no `bounce` in `VFKit`. Set it to 16512 (E and
   the left button) and back to 128: the bars go dark (`Bars` 0), `draw` goes from `VFKit` and the
   bow stays in hand, its bars dark while the button's held. Clear it: nothing's loosed or heard, and
-  `VFKit` reads `C0/1 Q2/2 E1/1 X0/8 equip`. Press E to put the bow away.
+  `VFKit` reads `C0/1 Q2/2 E1/1 X8/8 equip`. Press E to put the bow away.
 - **RC4 The loose.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
   once: a thin swish, logged as `boltLoose`, `yours`, and a quick, quiet whoosh, `boltFlight`; a
   thin shaft of light flies down the lane, dropping as it goes, and about 1 s later sticks in the
@@ -3172,9 +3173,9 @@ down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 - **RC7 Walls in the way.** Walk to the wallbang lane's 10 m line, in front of the concrete 0.10 m
   wall (`pos` about `-26.00 0.00 -10.00`, `VFTestYaw` 0, `VFTestPitch` 0), and loose a tap: it
   sticks in the wall's face about 1.2 m up, `VFLastBolt` about `-26, 1.17, -19.95`. At its pulses
-  `VFLastRecon` has Dummy 1 and Dummy 3, 28 m and 24 m away in the open, and Dummy 2 at times as it
-  strafes in and out of reach, but none of the dummies behind the walls, not even Dummy 11, 1.6 m
-  behind the wall the bolt's in.
+  `VFLastRecon` has Dummy 1 and Dummy 3, 28 m and 24 m away in the open, but not Dummy 2, strafing
+  more than 30 m away, nor any of the dummies behind the walls, not even Dummy 11, 1.6 m behind the
+  wall the bolt's in.
 - **RC8 Shot to pieces.** Back at the spawn, loose a tap as in RC4. As soon as the first ping's
   heard, set `VFTestAimPoint` to `0, 0.3, -18.6`, the shaft's middle, and fire one shot (128, then
   clear it): a sharp crack, logged as `boltBreak`, `yours`, a flash where the shaft stood, and it's
@@ -3244,10 +3245,10 @@ Vandal in hand.
 
 - **SB1 His kit.** In agent select (T), click SOVA's card: Q SHOCK BOLT is lit now, with `Q readies
   the bow with a shock bolt. Hold fire to draw it further and alt fire to add bounces; it bursts
-  where it lands, hurting those near it.`, and C OWL DRONE and X HUNTER'S FURY still read `NOT YET`.
-  Click PICK SOVA and close it with T. On the ability bar SHOCK BOLT has its two pips lit, and
-  `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`. Press B: under the shields Shock Bolt (`Q`, 150) has its two
-  pips lit and reads `FULL`. Hover it: `Ability, on Q`, the line on his card, and its rows,
+  where it lands, hurting those near it.`, and C OWL DRONE still reads `NOT YET` (X HUNTER'S FURY is
+  section 50's). Click PICK SOVA and close it with T. On the ability bar SHOCK BOLT has its two pips
+  lit, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`. Press B: under the shields Shock Bolt (`Q`, 150) has
+  its two pips lit and reads `FULL`. Hover it: `Ability, on Q`, the line on his card, and its rows,
   `Charges` up to 2, `A charge` 150 credits and `Burst` `75 within 1 m, 1 at 5 m`. Close the menu
   (B). **Send:** a screenshot of the hover.
 - **SB2 In hand.** Open the Sound Lab (F2 four times), and keep it open to SB8. Press Q: a quick,
@@ -3260,7 +3261,7 @@ Vandal in hand.
   and back to 128: the first diamond lights, and `VFKit` ends in `draw 3 bounce 1`. Set it to 8320
   (Q and the left button) and back to 128: the bars go dark and `draw` goes from `VFKit`, the bow
   still in hand. Clear it: nothing's loosed or heard. Press Q again: the bow and the bars go, the
-  Vandal's back, and `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`, nothing spent.
+  Vandal's back, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`, nothing spent.
 - **SB3 The burst.** Press Q, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
   once: a thin swish, logged as `boltLoose`, `yours`, and a quick, quiet whoosh, `boltFlight`; a
   thin shaft of pale yellow light flies down the lane, dropping as it goes (`Workspace.VFShock`'s
@@ -3269,9 +3270,9 @@ Vandal in hand.
   crack, louder and deeper than a recon bolt's breaking, logged as `shockBurst`, `yours` (`Bolts` 0,
   `Bursts` 1). `VFLastShock` reads about `0, 0.05, -18.6`, and `VFShockHits` has
   `Dummy 3 (crouch) 48`, crouched 2.4 m from it, whose label reads `84 + 19` (83.68 and 18.32,
-  rounded up), and Dummy 2 at times, for a few points, as it strafes in and out of reach. The bow
-  goes and the Vandal's back 0.7 s after the swish; one of Q's pips goes dark, and lights again
-  1.5 s later. **Send:** a screenshot as it bursts.
+  rounded up), and nobody else: Dummy 2, strafing 4 m to 6 m right of the lane's middle, stays out
+  of its reach. The bow goes and the Vandal's back 0.7 s after the swish; one of Q's pips goes dark,
+  and lights again 1.5 s later. **Send:** a screenshot as it bursts.
 - **SB4 At a dummy's feet.** Walk 4 m down the lane (`pos` about `0.00 0.00 -4.00`, and no closer,
   or the burst reaches you too), set `VFTestAimPoint` to `0, 0.1, -10`, Dummy 1's feet, and loose a
   tap: it bursts just short of them about a third of a second later, `VFLastShock` about
@@ -3332,6 +3333,125 @@ round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in wi
   `VFKit` reads `Q1/2`; click again: `Q2/2`, and the tile reads `FULL`, and a third click buys
   nothing. Close the menu (B). Once the round's live, loose one: `Q1/2`, and the spent pip stays
   dark for the rest of the round.
+
+## 50. Sova's Hunter's Fury
+
+From [46-hunters-fury.md](research/46-hunters-fury.md). One player on the course, then three there
+and in Skirmish. Play as Sova, as in section 48. Without keys or a mouse button, `VFTestButtons`
+32768 presses X, 128 the left button, 8192 Q, 1 W and 64 jump: set it and clear it again each time,
+and leave a button set for as long as it's held. `VFTestYaw` and `VFTestPitch` aim, in degrees:
+positive yaw turns left, and positive pitch looks up; a Vector3 `VFTestAimPoint`, in metres, aims at
+that place instead until it's cleared, and `VFTestSlot` set to 1 draws the Vandal as 1 does. The F3
+panel's `pos` line is where you stand, in metres. Your `VFLastFury` attribute is where your last
+blast went from, in metres, and `VFFuryHits` whom it caught, their names in order and joined by
+commas, or nothing. PlayerGui's `VFFury` carries `Bow` (whether its bow's in hand), `Left` (the
+seconds it has left), `Charging` (whether a blast charges), `Turn` (how fast the mouse turns the
+view, as a share of its usual) and `Blasts` (the blasts drawn), and `Workspace.VFFury` holds each
+blast while it fades (`Blast`) and each blast of someone else's while it charges (`Charge`). Whom a
+blast reveals lights up as a Recon Bolt's pulse does (section 48: `VFRecon`'s `Revealed`, and
+`Reveal_` and the entity's id in `Workspace.VFRecon`). You and the dummies wear Heavy Armor, their
+labels reading `100 + 50`, and a dummy comes back 2 s after it dies; Dummy 18 stands 30 m behind the
+spawn. On the course the ultimate's 8 points are full every life, and full again 1.5 s after
+Hunter's Fury is over. Start each check at the spawn facing down the target lane (`VFTestYaw` 0,
+`VFTestPitch` 0), with the Vandal in hand.
+
+- **HF1 His kit.** In agent select (T), click SOVA's card: X HUNTER'S FURY is lit now, with `X
+  readies the bow with three energy blasts for 6 s. Fire charges one, then sends it in a long line
+  through walls, hurting and revealing enemies in it.`, and C OWL DRONE still reads `NOT YET`. Click
+  PICK SOVA and close it with T. On the ability bar X's square has eight gold pips and reads `8/8`
+  in gold, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`. **Send:** a screenshot of Sova's card.
+- **HF2 In hand.** Open the Sound Lab (F2 four times), and keep it open to HF8. Press X: a low
+  chime, a bell slowed right down, logged as `furyCast`, `yours`, and a quick, light rattle,
+  `boltEquip`; the Vandal goes, and the Recon Bolt's bow comes up with a bolt of bright cyan beside
+  its grip, the bar labelled `drawing` filling over half a second. X's square is outlined in teal,
+  its pips dark, with `EQUIP` under it for 0.5 s and then the seconds left, counting down from
+  `6.0`; the ammo box reads `3`, with `Hunter's Fury   [X]` under it; and `VFKit` reads
+  `C0/1 Q2/2 E1/1 X0/8 fury`. Under the crosshair are two bars (`VFFury`'s `Bow` true): the upper
+  one full, dim until the bow's drawn and then bright, emptying as the seconds run down (`Left`),
+  and a dark one under it. On the minimap a cyan band runs from you the way you face, out past the
+  lane's end (`Fury`, in `VFMinimap`'s `Utility`), and turns as you turn. Fire nothing: as X's note
+  reaches 0 the bow, the bars and the band go, and the Vandal comes back up over its 1 s draw;
+  `VFKit` reads `X0/8`, and about 1.5 s later `X8/8`, the pips gold again. **Send:** a screenshot
+  with the bow up and the minimap.
+- **HF3 A blast.** Press X, and once X's note shows its seconds set `VFTestButtons` to 128 and clear
+  it at once: no shot, but a swelling hum, logged as `furyCharge`, `yours`; the lower bar fills over
+  1 s (`Charging` true, `Turn` 0.15), and `VFKit` ends in `fury charge`. As it fills, a deep boom,
+  logged as `furyBlast`, `yours`: a band of cyan light 4 m across, with a bright line down its
+  middle, runs from just under your eye straight down the lane and on through the backstop, and
+  fades in about half a second (`Blast` in `Workspace.VFFury`, `Blasts` 1), and you slide 1.5 m back
+  (`pos` about `0.00 0.00 1.50`; `Turn` 1 again). The ammo box reads `2`. `VFLastFury` reads
+  `0, 1.62, 0`, and `VFFuryHits` reads `Dummy 1 (static),Dummy 3 (crouch),Dummy 4 (static),Dummy 6
+  (static)`: each one's label reads `70 + 0`, and each lights up red through anything in the way for
+  1 s (`Revealed` 4). Dummy 2 and Dummy 5, strafing 4 m to 6 m right of the line, Dummy 7 behind its
+  cover and Dummy 18 behind you are untouched, their labels still `100 + 50`. **Send:** a screenshot
+  as the band goes.
+- **HF4 Two to kill.** Once X's note has dropped 2.2 since your first click, fire again as in HF3:
+  after the hum and the windup, the band and the boom go again from 1.5 m further back (`VFLastFury`
+  `0, 1.62, 1.5`), and the four dummies die; the kill feed reads
+  `<your name>   Hunter's Fury   Dummy 1`, and the same for Dummy 3, Dummy 4 and Dummy 6. You slide
+  back to `pos` about `0.00 0.00 3.00`, the ammo box reads `1`, and `VFKit` reads `X4/8 fury`, a
+  point for each kill. Fire no more: as X's note reaches 0 the bow goes and the Vandal comes back,
+  `VFKit` reads `X4/8`, and about 1.5 s later `X8/8`.
+- **HF5 Rooted.** Walk back to the spawn. Press X, and once X's note shows its seconds set
+  `VFTestButtons` to 128, and as `Charging` reads true set it to 129 (W and the left button) and
+  keep it: through the windup `pos` doesn't change. As the blast goes you slide back 1.5 m, and then
+  you walk forward down the lane. Clear it, and at once click again (128, then clear it), less than
+  2.125 s after your first click: nothing happens (`Charging` stays false, and nothing's heard).
+  Once X's note has dropped 2.2 since your first click, click again: the hum, and a blast 1 s later.
+  Leave the last blast unfired.
+- **HF6 Cut short.** Back at the spawn, once `X8/8`'s back, press X and fire as in HF3, and as
+  `Charging` reads true clear `VFTestButtons` and set `VFTestSlot` to 1: the bow and the bars go at
+  once, the Vandal comes up, and no blast comes (no `furyBlast`, `Blasts` 0); `VFKit` reads `X0/8`,
+  without `fury`. Once `X8/8`'s back, the same, but press Q (8192, then clear it) as it charges: the
+  Shock Bolt's bow comes up in its place (`VFKit` ends in `equip`), and no blast comes; press Q to
+  put it away. Once `X8/8`'s back, press X, wait until X's note reads 0.6, and fire: the lower bar
+  fills a little over half way, and as the note reaches 0 the bow goes with no blast.
+- **HF7 Through walls.** Walk to the wallbang lane's 10 m line, in front of the concrete 0.10 m wall
+  (`pos` within 0.2 m of `-26.00 0.00 -10.00`, `VFTestYaw` 0, `VFTestPitch` 0), press X, and fire
+  once it's drawn: the band runs through the wall and the backstop behind it, and `VFFuryHits` reads
+  `Dummy 10 (static),Dummy 11 (static),Dummy 12 (static)`: Dummy 11, 1.5 m behind the wall in front
+  of you, and the two 2 m either side of it, behind theirs, each `70 + 0`; Dummy 9 and Dummy 13, 4 m
+  either side, are untouched.
+- **HF8 Its reach.** Walk back to the target lane, 17 m behind the spawn (`pos` about
+  `0.00 0.00 17.00`, `VFTestYaw` 0), press X, and fire once it's drawn: `VFFuryHits` reads `Dummy 1
+  (static),Dummy 3 (crouch),Dummy 4 (static)`, 27 m to 47 m away; Dummy 6, 67 m away, is past its
+  66 m, and its label doesn't change. Press F2 to close the Sound Lab.
+
+Then three players: stop the game and start a Local Server with 3 players, as in section 9. In
+window 1 play as Sova, as before, and open the Sound Lab in windows 2 and 3.
+
+- **HF9 Seen, heard and caught.** Player 1 stands at the spawn facing down the target lane
+  (`VFTestYaw` 0, `VFTestPitch` 0), player 2 down it at `pos` about `0.00 0.00 -25.00`, and player 3
+  3 m to player 1's left (`pos` about `-3.00 0.00 0.00`). In window 1 press X: windows 2 and 3 log
+  `furyCast`. Once X's note shows its seconds, fire: windows 2 and 3 log `furyCharge`, and in
+  window 3 a ball of light grows in front of player 1 for 1 s (`Charge` in `Workspace.VFFury`). Then
+  all three log `furyBlast`, and windows 2 and 3 show the band from player 1 down the lane, in the
+  enemy colour; window 2's screen flashes white for a moment, and its HUD reads `70` and `+0`, while
+  window 3's still reads `100` and `+50`. Window 1's `VFFuryHits` reads `Dummy 1 (static),Dummy 3
+  (crouch),Dummy 4 (static),Dummy 6 (static),Player2`, and in window 1 player 2 lights up red
+  through anything in the way for 1 s (`Reveal_4294967294`), but not in window 3 (`Revealed` 0):
+  with no sides on the course, whom it reveals is its owner's alone. **Send:** a screenshot of
+  window 3 as the band goes.
+
+Then Skirmish: press P in window 1. Players 1 and 3 share a side, as in F1. As round 1's buy phase
+starts, agent select comes up by itself: pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2
+and 3. In Studio, setting `VFTestGive` to `ultimate` fills the ultimate's points.
+
+- **HF10 The buy phase.** In round 1's buy phase set `VFTestGive` to `ultimate` in window 1: X's
+  eight pips light, and `VFKit` reads `X8/8`. Set window 1's `VFTestAimPoint` to window 2's `pos`,
+  1 m up, press X, and fire once it's drawn: windows 1 and 3 log `furyBlast`, and window 2 logs it
+  as `not heard: buy phase`; the band runs through the barriers toward player 2, but `VFFuryHits` is
+  empty, window 2's health doesn't change, and nobody lights up red. Clear `VFTestAimPoint`.
+- **HF11 Friend and foe.** Once the round's live, player 2 goes behind cover, out of sight of
+  players 1 and 3, and player 3 stands in the open between them, on the line from player 1 to
+  player 2 and at least 5 m from each. Set `VFTestGive` to `ultimate` in window 1 again, set its
+  `VFTestAimPoint` to window 2's `pos`, 1 m up, press X, and fire once it's drawn: window 2 takes
+  80, its health and shield together, and its screen flashes white, and window 3 takes nothing,
+  though the band runs through player 3; window 1's `VFFuryHits` reads `Player2`. For 1 s player 2
+  lights up red through the cover in windows 1 and 3 (`Reveal_4294967294`), and a red dot shows them
+  on both their minimaps, then a `?` where they were (`VFMinimap`'s `Seen` reads `4294967294` while
+  it lasts); nobody lights up in window 2. Clear `VFTestAimPoint`. **Send:** a screenshot of
+  window 3 as player 2 lights up, with its minimap.
 
 ## Results
 
@@ -3639,6 +3759,17 @@ SB8 VFLastShock: ___; VFShockHits: ___
 SB9 what windows 2 and 3 logged: ___; window 2's HUD: ___; window 3's: ___; VFShockHits: ___
 SB10 VFKit as the round began: ___; windows 2 and 3 after the burst: ___; VFShockHits: ___
 SB11 VFKit as the round began: ___; bought for ___ each; a third bought: yes / no; Q after the loose: ___
+HF1 anything on Sova's card or the bar that read differently: ___
+HF2 EQUIP for about ___ s; the seconds from: ___; the ammo box: ___; the minimap's band: yes / no; the bow gone at 0: yes / no; X8/8 back after ___ s; anything the Sound Lab logged differently: ___
+HF3 the windup about ___ s; Turn while it charged: ___; VFLastFury: ___; VFFuryHits: ___; the labels after: ___; pos after: ___; Revealed: ___
+HF4 VFLastFury: ___; the kill feed: ___; pos after: ___; VFKit after: ___; the bow gone at 0: yes / no
+HF5 pos through the windup: ___; anything from the early click: yes / no; the third blast after ___ s
+HF6 a blast after 1: yes / no; after Q: yes / no; with 0.6 s left: yes / no; how full the lower bar got: ___
+HF7 VFFuryHits: ___; the labels after: ___
+HF8 VFFuryHits: ___; Dummy 6's label: ___
+HF9 what windows 2 and 3 logged: ___; the charge's ball in window 3: yes / no; window 2's HUD: ___; window 3's: ___; VFFuryHits: ___; player 2 red in window 1: yes / no, window 3: yes / no
+HF10 VFKit after VFTestGive: ___; what each window logged: ___; VFFuryHits: ___; window 2's health after: ___
+HF11 what window 2 took: ___; window 3's: ___; VFFuryHits: ___; player 2 red in window 1: yes / no, window 3: yes / no, window 2: yes / no; Seen while it lasted: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -3925,3 +4056,8 @@ Didn't look right (IDs and what you saw):
 | 45 | Its owner hurt by his own burst | SB6 |
 | 45 | Nobody hurt behind the wall it bursts on, even right behind it | SB8 |
 | 45 | With other players: seen and heard; hurting anyone near it, an ally as much as an enemy; both charges there each round in Skirmish; and bought at 150 a charge in the spike rounds, two at most, nothing bringing a spent one back | SB9, SB10, SB11 |
+| 46 | Hunter's Fury lit on Sova's card and the bar, `X8/8` on the course, and its bow in hand 0.5 s after X, with three blasts and its 6 s running from then | HF1, HF2 |
+| 46 | A blast: its windup, rooted and the view slowed, then the band of light 66 m down the lane through the backstop, its crack, and the knockback | HF3, HF5 |
+| 46 | Whom it catches: the four dummies on its line, 80 each through their Heavy Armor, none beside it more than 2 m off its line, and none behind; two blasts killing them, the kill feed naming Hunter's Fury; and through walls | HF3, HF4, HF7, HF8 |
+| 46 | Its end: as its time's up, a blast charging going with it, and as anything else is drawn | HF2, HF4, HF6 |
+| 46 | With other players: seen and heard; on the course, catching everyone but its owner, revealed to its owner alone; in Skirmish, its allies spared, its enemies revealed to its side through walls and on the minimap; and nobody caught while the barriers are up | HF9, HF10, HF11 |

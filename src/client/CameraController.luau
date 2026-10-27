@@ -39,6 +39,9 @@ CameraController.cursorFree = false
 -- the mouse moves its cursor across the map instead of the view: called
 -- with each frame's movement, in counts, as the view would turn by.
 CameraController.mapCursor = nil :: ((Vector2) -> ())?
+-- How fast the view turns, as a share of its usual: less while a blast of
+-- Sova's Hunter's Fury charges (system 46, FuryView).
+CameraController.turnScale = 1
 
 local MAX_PITCH = math.rad(89)
 
@@ -85,7 +88,9 @@ function CameraController.updateLook()
 		return
 	end
 	CameraController.countsX += delta.X
-	local radPerCount = math.rad(PlayerSettings.degreesPerCount(CameraController.sensitivity, CameraController.scopedMultiplier, CameraController.zoom))
+	local radPerCount = math.rad(
+		PlayerSettings.degreesPerCount(CameraController.sensitivity, CameraController.scopedMultiplier, CameraController.zoom)
+	) * CameraController.turnScale
 	CameraController.yaw -= delta.X * radPerCount
 	CameraController.pitch = math.clamp(CameraController.pitch - delta.Y * radPerCount, -MAX_PITCH, MAX_PITCH)
 end

@@ -17,7 +17,8 @@
 -- left slowed, Paranoia's orbs touch whoever the moves left in their way,
 -- the Recon Bolt's pulses reveal whoever the moves left in their sight,
 -- and Shock Bolts burst on whoever the moves left near them, before the
--- minimap's spotting goes by what they see and what they reveal.
+-- minimap's spotting goes by what they see and what they reveal, and by
+-- whom Hunter's Fury's blasts revealed as the moves sent them.
 -- Regen Shields refill after the shots, and the minimap's spotting looks
 -- after them, so nobody they killed is seen; the fog of war's looks come
 -- after that, with what each side spots, and each player's snapshot goes
@@ -54,6 +55,7 @@ local ReviveServer = require(script.ReviveServer)
 local ParanoiaServer = require(script.ParanoiaServer)
 local ReconServer = require(script.ReconServer)
 local ShockServer = require(script.ShockServer)
+local FuryServer = require(script.FuryServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
 local StepServer = require(script.StepServer)
@@ -80,6 +82,7 @@ BarrierServer.start()
 -- through before the Recon Bolt's shafts.
 ReconServer.start()
 ShockServer.start()
+FuryServer.start()
 ReviveServer.start()
 ParanoiaServer.start()
 BlazeServer.start()

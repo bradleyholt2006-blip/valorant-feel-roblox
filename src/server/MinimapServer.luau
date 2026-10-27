@@ -20,8 +20,9 @@
 -- standing (CloudServer), the walls of fire (BlazeServer) and the walls of
 -- ice (BarrierServer, system 38).
 --
--- Whom Sova's Recon Bolt reveals to a side (system 44, ReconServer) is on
--- its minimap too while the reveal lasts, as if spotted.
+-- Whom Sova's Recon Bolt reveals to a side (system 44, ReconServer), or
+-- his Hunter's Fury's blasts do (system 46, FuryServer), is on its minimap
+-- too while the reveal lasts, as if spotted.
 --
 -- Who each side spots goes to the fog of war too (FogServer, system 35),
 -- so their snapshots carry whoever their minimap shows.

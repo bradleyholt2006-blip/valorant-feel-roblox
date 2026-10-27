@@ -19,7 +19,8 @@
 -- course, is told whom it revealed and where they stood, so their clients
 -- draw their silhouettes through walls while the reveal lasts (ReconView);
 -- for as long, that side's minimap shows them, and so the fog of war sends
--- them (ReconServer.revealed, MinimapServer).
+-- them (ReconServer.revealed, MinimapServer), as it does whom Hunter's
+-- Fury's blasts reveal (ReconServer.reveal, system 46).
 --
 -- Stuck, its shaft stands in the level shots and swings are traced
 -- through, as the attacker's screen showed it (CombatServer.levelAt): a
@@ -166,6 +167,14 @@ local function targetsFor(k: Kept): ({ BoltSim.Target }, { [number]: PlayerCodec
 	return out, poses
 end
 
+-- `id` (an entity) revealed to `side` until `untilAt` (server time): by a
+-- pulse, or a blast of Hunter's Fury's (system 46, FuryServer).
+function ReconServer.reveal(side: number, id: number, untilAt: number)
+	local to = revealedTo[side] or {}
+	revealedTo[side] = to
+	to[id] = math.max(to[id] or 0, untilAt)
+end
+
 -- A pulse of `k`'s bolt at `now`: whom it reveals, told to its owner's
 -- side, and the pulse itself to everyone else.
 local function pulse(k: Kept, now: number)
@@ -192,9 +201,7 @@ local function pulse(k: Kept, now: number)
 		table.insert(poses, { id = id, position = Units.asVector3(pose.position), yaw = pose.yaw, crouch = pose.crouchAlpha })
 		local side = k.side
 		if side ~= nil then
-			local to = revealedTo[side] or {}
-			revealedTo[side] = to
-			to[id] = math.max(to[id] or 0, now + RC.reveal.value)
+			ReconServer.reveal(side, id, now + RC.reveal.value)
 		end
 	end
 	if k.player.Parent then

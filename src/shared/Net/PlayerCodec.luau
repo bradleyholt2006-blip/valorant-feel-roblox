@@ -200,7 +200,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 3 + 10 + 8 * 18 + 4 * 12 -- the ability kit
+	+ 1 + 3 + 3 + 10 + 8 * 22 + 4 * 12 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -314,6 +314,10 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.stepAt)
 	wf64(c, a.shadowAt)
 	wf64(c, a.drawFrom)
+	wf64(c, a.furyUntil)
+	wf64(c, a.chargeAt)
+	wf64(c, a.kickFrom)
+	wf64(c, a.kickYaw)
 	-- Exact: a vector's components are single precision.
 	for _, v in { a.mark, a.stepTo, a.shadowFrom, a.shadowTo } do
 		wf32(c, v.x)
@@ -461,6 +465,10 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local stepAt = rf64(c)
 	local shadowAt = rf64(c)
 	local drawFrom = rf64(c)
+	local furyUntil = rf64(c)
+	local chargeAt = rf64(c)
+	local kickFrom = rf64(c)
+	local kickYaw = rf64(c)
 	local function point(): vector
 		local x = rf32(c)
 		local y = rf32(c)
@@ -511,6 +519,10 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		letDown = bit32.band(markFlags, 8) ~= 0,
 		altDown = bit32.band(markFlags, 16) ~= 0,
 		bounces = bounces,
+		furyUntil = furyUntil,
+		chargeAt = chargeAt,
+		kickFrom = kickFrom,
+		kickYaw = kickYaw,
 	}
 
 	local tagUntilTick = r32(c)

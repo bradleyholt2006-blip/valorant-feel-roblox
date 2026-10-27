@@ -33,6 +33,10 @@
 --     has no minimap, and on it the cursor, a ring, violet where fire would
 --     take you and red where it wouldn't; once it's fired, where it's
 --     taking you, until you've formed there
+--   * with Hunter's Fury's bow in hand (system 46, FuryView.aimed), where a
+--     blast would go, a band as wide as it reaches, as far as its range
+--     ('a range indicator on your minimap to help you guide your aim',
+--     Mobalytics' Sova page)
 --   * the sites' letters, and on the big map the places' names
 --   * a white circle round you as you make a sound, as far as it's heard
 --     (the minimap's sound circle: "Anyone outside of this white circle
@@ -51,7 +55,7 @@
 -- map's turned), Big (whether the big map's open) and Dark (how covered it
 -- is, 0 to 1). Its icons are named Self, Ally_<id>, Enemy_<id>, Seen_<id>,
 -- Pulse_<id>, Dead_<id>, Spike, Step, Shadow (From the Shadows' cursor),
--- Shade (where it's taking you) and Ring.
+-- Shade (where it's taking you), Fury (where a blast would go) and Ring.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -60,6 +64,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local Minimap = require(Shared.Match.Minimap)
 local PartsPlan = require(Shared.Match.PartsPlan)
@@ -90,10 +95,12 @@ local Visuals = require(script.Parent.Visuals)
 local ParanoiaView = require(script.Parent.ParanoiaView)
 local StepView = require(script.Parent.StepView)
 local ShadowView = require(script.Parent.ShadowView)
+local FuryView = require(script.Parent.FuryView)
 
 local MinimapView = {}
 
 local P = Minimap.Params
+local HF = AbilityConfig.HuntersFury
 local S = Units.STUDS_PER_METRE
 local MARGIN = 12 -- pixels from the screen's corner to the minimap
 local EDGE = 3 -- pixels an ally held on the minimap's edge sits in from it
@@ -118,6 +125,7 @@ local DEAD = Color3.fromRGB(235, 72, 72)
 local SHADOW = Color3.fromRGB(18, 12, 28) -- Paranoia's dark over it all (system 41)
 local STEP = Color3.fromRGB(160, 120, 240) -- where your Shrouded Step takes you (system 42)
 local REFUSED = Color3.fromRGB(230, 70, 70) -- From the Shadows' cursor where it wouldn't (system 43)
+local FURY = Color3.fromRGB(80, 235, 255) -- where a blast of your Hunter's Fury would go (system 46)
 
 type Keyed = { parent: Instance, items: { [string]: GuiObject }, touched: { [string]: boolean } }
 
@@ -165,6 +173,7 @@ type Scene = {
 	walls: { { points: { vector }, colour: Color3, fill: Color3 } },
 	cones: { Cone },
 	ring: { radius: number, fade: number }?,
+	fury: { from: vector, to: vector }?, -- where a blast of yours would go (system 46)
 	home: Minimap.Shape?,
 	turn: number, -- the turn that puts your spawn at the bottom
 }
@@ -745,6 +754,10 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 		table.insert(walls, { points = w.points, colour = ownerColour(w.entity, side), fill = ICE })
 	end
 
+	-- Where a blast of your Hunter's Fury would go (system 46).
+	local aimed = FuryView.aimed()
+	local fury = if aimed then { from = aimed.origin, to = aimed.origin + aimed.direction * HF.range.value } else nil
+
 	local r = ring
 	local fade = if r then (now - r.at) / P.ring.value else 1
 	local home = Minimap.homeOf(plan, mode, side, attackers)
@@ -757,6 +770,7 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 		walls = walls,
 		cones = if ClientSettings.current.mapCones then cones else {},
 		ring = if r and fade < 1 and you then { radius = r.radius, fade = fade } else nil,
+		fury = fury,
 		home = home,
 		turn = Minimap.homeTurn(plan, home),
 	}
@@ -829,6 +843,21 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 				edge.Color = w.colour
 			end
 		end
+	end
+	-- Where a blast of your Hunter's Fury would go (system 46): a band as
+	-- wide as it reaches either side, from your eye as far as its range.
+	local fury = scene.fury
+	if fury then
+		local dx, dz = (fury.to.x - fury.from.x) * scale, (fury.to.z - fury.from.z) * scale
+		local length = math.sqrt(dx * dx + dz * dz)
+		local f = get(layer.utility, "Fury", function()
+			local band = plainFrame(FURY, 2)
+			band.BackgroundTransparency = 0.6
+			return band
+		end)
+		f.Position = UDim2.fromOffset(((fury.from.x + fury.to.x) / 2 - mid.x) * scale, ((fury.from.z + fury.to.z) / 2 - mid.z) * scale)
+		f.Size = UDim2.fromOffset(math.max(2 * HF.radius.value * scale, 2), length)
+		f.Rotation = math.deg(math.atan2(dx, -dz))
 	end
 	sweep(layer.utility)
 

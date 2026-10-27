@@ -45,6 +45,10 @@
 --     reveal, and sounds its flight, sticking, pulses and breaking
 --     (system 44). The Shock Bolt the same, ShockView drawing its bolt in
 --     the air and its burst, and sounding them (system 45)
+--   * Hunter's Fury: only heard here, as it's cast, as a blast charges and
+--     as one goes, which the server tells of (FuryServer); FuryView draws
+--     its bow's time, the blasts charging and going, and whom they reveal
+--     (system 46)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws

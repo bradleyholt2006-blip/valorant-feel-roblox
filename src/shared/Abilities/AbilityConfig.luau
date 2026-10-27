@@ -22,7 +22,7 @@
 -- Resurrection (system 39). Omen is the fourth (system 40), with his Dark
 -- Cover, his Paranoia (system 41), his Shrouded Step (system 42) and his
 -- From the Shadows (system 43). Sova is the fifth (system 44), with his
--- Recon Bolt and his Shock Bolt (system 45).
+-- Recon Bolt, his Shock Bolt (system 45) and his Hunter's Fury (system 46).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -208,6 +208,10 @@ local RECON = "VALORANT Wiki, Recon Bolt"
 local SOVA_PAGE = "playvalorant.com's page for Sova"
 local DRIVEN = "esportsdriven.com's Sova guide"
 local SOVA_TRACKER = "valoranttracker.org, Sova"
+local SOVA_SPIKE = "THESPIKE.GG's Sova guide"
+local SOVA_ESPORTS = "esports.net's Sova guide"
+local BOOSTING = "Boosting Ground's Sova guide"
+local SOVA_DIGNITAS = "Dignitas' Sova guide"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -381,7 +385,8 @@ AbilityConfig.Defs = {
 		description = "X brings up the map. Fire on a place in it sends you there as a Shade, which an enemy's shot or X again sends back before you form.",
 	},
 	-- Sova's (system 44): his kit as the VALORANT Wiki lists it. His Recon
-	-- Bolt and his Shock Bolt (system 45) can be played.
+	-- Bolt, his Shock Bolt (system 45) and his Hunter's Fury (system 46) can
+	-- be played.
 	owldrone = {
 		id = "owldrone",
 		name = "Owl Drone",
@@ -425,7 +430,8 @@ AbilityConfig.Defs = {
 		slot = AbilityConfig.X,
 		kind = "ultimate",
 		points = p(8, "confirmed", P300 .. ": Hunter's Fury 'Ultimate points required increased 7 >>> 8' (" .. SOVA .. ": 8 still)"),
-		description = "X readies the bow with three energy blasts. Fire sends one in a long line through walls, hurting and revealing enemies in it.",
+		weapon = "furybow",
+		description = "X readies the bow with three energy blasts for 6 s. Fire charges one, then sends it in a long line through walls, hurting and revealing enemies in it.",
 	},
 } :: { [string]: AbilityDef }
 
@@ -1156,6 +1162,68 @@ AbilityConfig.ShockBolt = {
 	-- What its owner and his side take of it, as shares of an enemy's.
 	selfShare = p(1, "estimate", "Ours: all of it; nothing public we could read says less"),
 	allyShare = p(1, "estimate", "Ours: all of it; nothing public we could read says less"),
+}
+
+-- Sova's Hunter's Fury (system 46), his ultimate: X, once its points are
+-- full, spends them and puts its bow in hand (WeaponConfig's furybow, in
+-- the fifth slot) with its three blasts, its time running from once it's
+-- drawn. Fire, once it's drawn, charges a blast: through its windup he's
+-- rooted where he is, his view turning only slowly, and as it ends the
+-- blast goes from his eye along the crosshair, through everything, as far
+-- as its range, and he's knocked back from the way he faces. Everyone but
+-- his side within its radius of its line, ahead of him, takes its damage,
+-- the same however far, and is revealed to his side for a moment, as the
+-- Recon Bolt's pulses reveal (FurySim). The blasts come no closer
+-- together than its fire rate (WeaponConfig). It's over, the gun back in
+-- hand, once its time's up, its last blast's recovery is over, or
+-- anything else is drawn, a weapon, an ability or the spike, and a blast
+-- charging goes with it (Patch 3.0 fixed 'cancelling Sova's Hunter's Fury
+-- while charging the shot' by 'equipping a weapon, ability, or Spike').
+-- Riot gives the points; the wiki and the guides the rest they give
+-- (46-hunters-fury.md, section 2).
+AbilityConfig.HuntersFury = {
+	-- From the cast until its bow's drawn, and its time from then.
+	equip = p(
+		0.5,
+		"estimate",
+		"Ours: the gap between the 6.5 s "
+			.. BOOSTING
+			.. " and "
+			.. SOVA_ESPORTS
+			.. " give it and "
+			.. DRIVEN
+			.. "'s 'Max duration: 6 seconds (Not including equip time)'"
+	),
+	duration = p(6, "community", SOVA .. ": Hunter's Fury 6 s; " .. DRIVEN .. ": 'Max duration: 6 seconds (Not including equip time)'"),
+	-- A blast's windup, from fire until it goes, and how fast the view
+	-- turns meanwhile, as a share of its usual.
+	windup = p(1, "community", DRIVEN .. ": 'Windup time per charge: 1 second'"),
+	turn = p(
+		0.15,
+		"estimate",
+		"Ours: " .. SOVA_DIGNITAS .. ", once a shot's charging: 'you can only move your crosshair around ever so slightly'"
+	),
+	-- What a blast does to everyone it catches, the same however far.
+	damage = p(80, "community", SOVA .. ": 80 a blast; " .. BOOSTING .. ": 'There is no damage falloff based on distance.'"),
+	-- How far its line goes from his eye, and how far either side of it
+	-- (metres), ahead of him alone (Patch 13.09: 'Fixed an issue where
+	-- Sova's Hunter's Fury could affect players positioned behind him').
+	range = p(
+		66,
+		"community",
+		SOVA_ESPORTS .. ": 'Range: 66m'; " .. DRIVEN .. ": '66 meters in length'; " .. SOVA_TRACKER .. ": 'Range | 66m'"
+	),
+	radius = p(
+		2,
+		"community",
+		DRIVEN .. ": 'a 2-meter radius' (EarlyGame's Sova guide's '2 by 66-meter range' may mean 2 m across, half as wide)"
+	),
+	-- How long each one it catches is revealed for.
+	reveal = p(1, "community", SOVA .. ": a 1 s real-time Reveal (" .. SOVA_ESPORTS .. " and " .. SOVA_TRACKER .. ": 1.2 s)"),
+	-- How far a blast knocks him back, and over how long (seconds), its
+	-- speed falling to nothing.
+	kick = p(1.5, "community", SOVA_SPIKE .. ": 'Self-knockback distance: 1.5 meters' (" .. DRIVEN .. " the same)"),
+	kickTime = p(0.25, "estimate", "Ours: nothing public says how long the knockback takes"),
 }
 
 -- How long after a throw the gun's back in hand, by the ability thrown (and
