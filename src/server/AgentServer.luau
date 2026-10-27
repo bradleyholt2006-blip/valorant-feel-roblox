@@ -7,6 +7,10 @@
 --     window from the match's start or from when they join it under way,
 --     what's selected locked in as it closes, and the agent theirs until
 --     the match is over
+--   * one of each agent on a side (system 48): an agent a teammate has
+--     locked in is taken, first come first served in the server's order
+--     of players, and each side of a match has windows of its own, so
+--     someone moved across to even the sides picks again
 --   * on the course and while a mode waits for players, an agent locked in
 --     is theirs at once, as often as they like
 --   * nobody picks in gun game or deathmatch, which have no abilities
@@ -87,16 +91,24 @@ local function onPick(player: Player, action: any, agent: any)
 	publish(player)
 end
 
--- Once a server frame, after the arena's rounds have moved on: each pick as
--- where its player is says, a window opening or closing, and an agent
+-- Once a server frame, after the arena's rounds have moved on: every pick
+-- as where its player is says, all together and in the server's order of
+-- players (AgentSelect.step), a window opening or closing, and an agent
 -- locked in as one closes put on their kit.
 function AgentServer.step(time: number)
 	local momentOf = AgentServer.momentOf
-	for _, player in Players:GetPlayers() do
-		local moment = if momentOf then momentOf(player) else AgentSelect.FREE
-		local changed = AgentSelect.update(state, player.UserId, moment, time)
-		if changed then
-			apply(player, changed, time)
+	local players = Players:GetPlayers()
+	local ids: { number } = {}
+	local moments: { [number]: string? } = {}
+	for _, player in players do
+		table.insert(ids, player.UserId)
+		moments[player.UserId] = if momentOf then momentOf(player) else AgentSelect.FREE
+	end
+	local changed = AgentSelect.step(state, ids, moments, time)
+	for _, player in players do
+		local agent = changed[player.UserId]
+		if agent then
+			apply(player, agent, time)
 		end
 		publish(player)
 	end

@@ -14,10 +14,14 @@
 -- it's open the mouse moves a cursor and its buttons are the menu's, and
 -- you can still move.
 --
+-- One of each agent on a side (system 48): an agent a teammate has locked
+-- in is taken, its card dimmed and tagged TAKEN, and a click on it does
+-- nothing; under the cursor, the menu says so.
+--
 -- Everything comes from player attributes (AgentSelect's, from
--- AgentServer): your own, and your teammates' for what they've selected. An
--- agent locked in where it can't go on your kit at once comes with your
--- next life, and the menu says so.
+-- AgentServer): your own, and your teammates' for what they've selected and
+-- locked in. An agent locked in where it can't go on your kit at once
+-- comes with your next life, and the menu says so.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -124,6 +128,22 @@ local function teammates(): { Player }
 	return out
 end
 
+-- Of `agents`, those taken from you while you're in a match: what your
+-- teammates have locked in, as the server has it (AgentSelect.taken).
+local function takenFrom(team: { Player }, agents: { string }): { [string]: boolean }
+	local status = statusOf(me)
+	local locked = {}
+	if status == "open" or status == "locked" then
+		for _, mate in team do
+			local agent = text(mate, AgentSelect.AGENT)
+			if agent and statusOf(mate) == "locked" then
+				table.insert(locked, agent)
+			end
+		end
+	end
+	return AgentSelect.takenOf(agents, locked)
+end
+
 function AgentMenu.start()
 	local agents = AgentSelect.pickable()
 	-- Under the settings menu, which can open over it.
@@ -177,6 +197,8 @@ function AgentMenu.start()
 	-- A card for each agent.
 	local cards: { Card } = {}
 	local hovered: string? = nil
+	-- What your teammates have taken, as the menu last showed it.
+	local taken: { [string]: boolean } = {}
 	for i, id in agents do
 		local agent = AbilityConfig.Agents[id]
 		local column, row = (i - 1) % PER_ROW, (i - 1) // PER_ROW
@@ -229,7 +251,9 @@ function AgentMenu.start()
 			end
 		end)
 		button.MouseButton1Click:Connect(function()
-			AgentMenu.select(id)
+			if not taken[id] then
+				AgentMenu.select(id)
+			end
 		end)
 		table.insert(cards, { agent = id, button = button, stroke = stroke, tag = tag })
 	end
@@ -438,8 +462,14 @@ function AgentMenu.start()
 		local yours = text(me, AgentSelect.AGENT) or AbilityConfig.DEFAULT_AGENT
 		local picking = status == "open" or status == "free"
 		local selected = if picking then text(me, AgentSelect.SELECTED) or yours else yours
+		local team = teammates()
+		taken = takenFrom(team, agents)
+		-- Taken, as a card shows it: not the one you've locked in.
+		local function gone(agent: string): boolean
+			return taken[agent] == true and not (agent == yours and status == "locked")
+		end
 		local click = clicked
-		if click and picking and os.clock() - click.at < CLICK_HOLD then
+		if click and picking and os.clock() - click.at < CLICK_HOLD and not taken[click.agent] then
 			selected = click.agent
 		end
 		local left = if window then math.max(window - Workspace:GetServerTimeNow(), 0) else 0
@@ -455,14 +485,15 @@ function AgentMenu.start()
 		end
 		for _, card in cards do
 			local mine = card.agent == selected
+			local out = gone(card.agent)
 			card.stroke.Transparency = if mine then 0 else 1
-			card.button.BackgroundColor3 = if card.agent == hovered or mine then TILE_HOVER else TILE
-			card.button.BackgroundTransparency = if picking or card.agent == yours then 0.1 else 0.55
-			card.tag.Text = if card.agent == yours then (if status == "locked" then "LOCKED IN" else "YOURS") else ""
+			card.button.BackgroundColor3 = if (card.agent == hovered and not out) or mine then TILE_HOVER else TILE
+			card.button.BackgroundTransparency = if not out and (picking or card.agent == yours) then 0.1 else 0.55
+			card.tag.Text = if out then "TAKEN" elseif card.agent == yours then (if status == "locked" then "LOCKED IN" else "YOURS") else ""
+			card.tag.TextColor3 = if out then Ui.DIM else GOLD
 		end
 		showKit(hovered or selected)
 
-		local team = teammates()
 		nobody.Visible = #team == 0
 		for i, row in mateRows do
 			local mate = team[i]
@@ -488,7 +519,12 @@ function AgentMenu.start()
 		local sim = PlayerController.sim
 		local kitAgent = if sim then sim.abilities.agent else nil
 		local later = PlayerController.alive and kitAgent ~= nil and kitAgent ~= yours
-		note.Text = if later then string.format("%s from your next life", nameOf(yours)) else ""
+		local over = hovered
+		if over and gone(over) then
+			note.Text = string.format("%s is taken: a teammate has locked it in", nameOf(over))
+		else
+			note.Text = if later then string.format("%s from your next life", nameOf(yours)) else ""
+		end
 	end)
 end
 

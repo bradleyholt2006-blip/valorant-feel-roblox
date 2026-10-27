@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-seven
+Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-eight
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -32,8 +32,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    three, section 33 one and then three, section 34 one and then two, sections 35 and 36 one,
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
-   and 42 one, then two, then two in the spike rounds, section 43 one and then three, and
-   sections 44 to 51 one and then three.
+   and 42 one, then two, then two in the spike rounds, section 43 one and then three,
+   sections 44 to 51 one and then three, and section 52 three.
 
 | Key | What it does |
 | --- | --- |
@@ -1784,8 +1784,10 @@ Press Play (F5), with one player.
 - **AS4 Locked in, and the time running out.** Press T in window 1 again: `LOCKED IN` at the top
   right, `Locked in until the match is over; you pick again as the next one starts.` under the
   title, the card tagged `LOCKED IN`, and the button `LOCKED IN`, dimmed. Player 3 never clicks:
-  10 s after the buy phase started, their row reads `JETT` and `LOCKED IN` in gold, and their
-  `VFAgentPick` reads `locked`. **Send:** a screenshot of window 1's screen.
+  with Jett locked in by player 1, their row reads `PHOENIX`, dimmed, and `SELECTING`, their
+  selection moved off Jett (section 52); 10 s after the buy phase started it reads `PHOENIX` and
+  `LOCKED IN` in gold, their `VFAgentPick` reads `locked`, and PHOENIX's card reads `TAKEN`.
+  **Send:** a screenshot of window 1's screen.
 - **AS5 Nobody picks in gun game.** Press P in window 1 (gun game). T does nothing, and
   `VFAgentPick` is unset. Space held in the air still glides, as Jett's Drift does. Run
   `VFMatchSkip` once: on the victory screen and in the vote after it, T does nothing either.
@@ -3620,6 +3622,45 @@ round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in wi
   and the tile reads `FULL`; another click buys nothing. Close the menu (B). Once the round's live,
   send it out: `C0/1`, and the pip stays dark for the rest of the round.
 
+## 52. One of each agent on a side
+
+From [48-one-of-each.md](research/48-one-of-each.md). Three players, in Skirmish and then in the
+spike rounds; players 1 and 3 share a side in both, as in F1. Everyone plays Jett as the server
+starts, and agent select comes up by itself as each match's window opens, as in section 33: your
+player's `VFAgent` is the agent you play, `VFAgentSelected` what you've selected and `VFAgentPick`
+where you stand. A window lasts 10 s. Without a mouse, `VFTestAgents` set to true opens agent
+select, and `VFTestAgent` set to an agent's id selects it as a click on its card would, or set to
+`lock` locks in. Someone moved across to even the sides, and someone back in a match to find their
+agent taken, are the offline tests'.
+
+Start a Local Server with 3 players, as in section 9, and press P once in window 1 (Skirmish).
+
+- **OE1 Nothing's taken yet.** As round 1's buy phase starts, agent select comes up by itself in all
+  three windows, every card lit and none reading `TAKEN`. Click SOVA in window 1 and then in
+  window 3: in both, SOVA's card is outlined in gold, and both players' `VFAgentSelected` read
+  `sova`. Window 1's `YOUR TEAM` reads `PLAYER3` with `SOVA`, dimmed, and `SELECTING`.
+- **OE2 Taken.** Click LOCK IN in window 1: window 1's screen goes, and player 1's `VFAgent` reads
+  `sova`. At once in window 3, SOVA's card dims and reads `TAKEN` in grey, the gold outline goes
+  back to JETT's card, tagged `YOURS`, and `VFAgentSelected` reads `jett`; under `YOUR TEAM`,
+  `PLAYER1` reads `SOVA` and `LOCKED IN` in gold. Put the cursor on SOVA's card: it doesn't light,
+  and under the button is `SOVA is taken: a teammate has locked it in`. Click it: nothing changes,
+  and `VFAgentSelected` still reads `jett`. **Send:** a screenshot of window 3's screen with the
+  cursor on SOVA.
+- **OE3 The other side.** In window 2 no card reads `TAKEN`: click SOVA and LOCK IN. Window 2's
+  screen goes, and player 2's `VFAgent` reads `sova`, as player 1's does.
+- **OE4 The time running out.** Leave window 3 alone: 10 s after the buy phase started its screen
+  goes by itself, and player 3's `VFAgent` reads `jett` and `VFAgentPick` `locked`. T in window 1
+  shows `PLAYER3` with `JETT` and `LOCKED IN`, and JETT's card reads `TAKEN`.
+
+Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds).
+
+- **OE5 At once.** As round 1's buy phase starts, agent select comes up by itself in all three
+  windows: window 1's on SOVA, window 3's on JETT, and no card reads `TAKEN`. Click OMEN in
+  windows 1 and 3, and lock in neither. 10 s after the buy phase started both screens go by
+  themselves: player 1, first on the server, plays Omen (`VFAgent` reads `omen`), and player 3 is
+  back on Jett (`jett`), their selection moved off Omen as player 1's window locked it in.
+  Window 1's `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, as in DC11.
+
 ## Results
 
 ```
@@ -3740,7 +3781,7 @@ TP8 the next pre-game's counts: C ___, Q ___; X ___
 AS1 anything on the screen that read differently: ___; a click fired a shot: yes / no
 AS2 T over the buy menu or the settings menu: did nothing / opened (which); after O closed, the cursor stayed the screen's: yes / no
 AS3 the count started at ___; PLAYER3 under YOUR TEAM with SELECTING: yes / no
-AS4 player 3's row read LOCKED IN ___ s after the buy phase started; their VFAgentPick: ___
+AS4 player 3's row read LOCKED IN ___ s after the buy phase started, on ___; their VFAgentPick: ___
 AS5 T did anything in gun game, on its victory screen or in the vote: yes / no (what); the glide: yes / no
 AS6 window 2's screen went by itself at 0: yes / no; Updraft bought and sold back: 800 > ___ > ___
 AS7 T did anything in deathmatch: yes / no (what)
@@ -3953,6 +3994,11 @@ OD13 VFKit as the round began: ___; Owl Drone and Shock Bolt FULL: yes / no; a R
 OD14 Drones in window 2 before it came near: ___, after: ___; in window 3: ___; player 2 red in window 1: yes / no, window 3: yes / no, window 2: yes / no; Seen while it lasted: ___
 OD15 VFKit in round 2's buy phase: ___; VFDroneHealth after player 3's shots: ___; after player 2's: ___
 OD16 VFKit as the round began: ___; bought for ___; a second bought: yes / no; C after the launch: ___
+OE1 a card read TAKEN before anyone locked in: yes / no; SOVA outlined in both windows: yes / no; PLAYER3 on SOVA, SELECTING, in window 1: yes / no
+OE2 window 3's SOVA card read TAKEN: yes / no; VFAgentSelected after the lock: ___, after a click on SOVA: ___; under the button: ___
+OE3 player 2's VFAgent: ___
+OE4 player 3's VFAgent: ___, VFAgentPick: ___; JETT TAKEN in window 1: yes / no
+OE5 player 1's VFAgent: ___, player 3's: ___; window 1's VFKit: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4250,3 +4296,8 @@ Didn't look right (IDs and what you saw):
 | 47 | Its darts: one every 5 s; a dummy struck, `[Target Hit]` for 2 s, and its pings 1.6 s and 2.8 s after, revealing it for 0.6 s each; none past 40 m or through a wall | OD6, OD7 |
 | 47 | Its end: C again, its pings going on after, and as its time's up | OD3, OD9 |
 | 47 | With other players: seen and heard; another player tagged, revealed to its owner alone on the course; shot down by an enemy's three hits; in Skirmish, its charge each round, hidden from enemies until they could see it or it's within 15 m, his side's shots doing nothing, and its darts revealing enemies to his side through walls and on the minimap; and bought for 400 in the spike rounds | OD10, OD11, OD12, OD13, OD14, OD15, OD16 |
+| 48 | Before anyone locks in, teammates both selecting one agent; once one locks it in, `TAKEN` on its card for the other, dimmed and doing nothing when clicked, the line under the button with the cursor on it, and their selection back on the agent they play | OE1, OE2 |
+| 48 | The other side locking in the same agent | OE3 |
+| 48 | The time running out on what a selection moved to | OE4 |
+| 48 | In the spike rounds, teammates' windows closing at once on one agent: the first player on the server keeps it, and the other goes back to the agent they play | OE5 |
+| 48 | System 29's time running out, with player 1 on Jett: player 3 now ends on Phoenix | AS4 |

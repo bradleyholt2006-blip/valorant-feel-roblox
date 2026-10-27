@@ -20,14 +20,24 @@
 -- nothing's at stake (the course, a mode waiting for players), an agent
 -- locked in is theirs at once, as often as they like.
 --
--- The reference's 'Each player within a team must select a unique agent'
--- (the same page) isn't ours yet: with fewer agents than a side has
--- players, some couldn't pick at all (29-agent-select.md).
+-- One of each agent on a side (system 48), as the same page has it: 'Each
+-- player within a team must select a unique agent'. An agent a teammate
+-- has locked in is taken: it can't be selected or locked in, and a
+-- selection it's taken from moves back to the agent the player plays, or
+-- else to the first that's free, so the time running out never locks in a
+-- taken one. First come, first served, as the reference's locking in is:
+-- of windows closing at once on one agent, the first player on the server
+-- keeps it. The two sides can both play an agent, as the reference's can.
+-- A window is for a side of a match, so someone moved across to even the
+-- sides has another for their new side, and so does someone back in a
+-- match to find their agent taken meanwhile. With fewer agents than a side
+-- has players, once every agent is taken none is, and any can be played
+-- twice.
 --
--- Where a player is, for picking: FREE, a match's key (any string that's
--- the match's alone, from the server), or nil where nobody picks (gun game
--- and deathmatch, which have no abilities, between matches, and outside
--- what's played).
+-- Where a player is, for picking: FREE, a key for their side of a match
+-- (any string that's that side's alone, from the server), or nil where
+-- nobody picks (gun game and deathmatch, which have no abilities, between
+-- matches, and outside what's played).
 --
 -- No Roblox APIs here.
 
@@ -44,7 +54,7 @@ export type Pick = {
 	selected: string, -- what locking in would make theirs, which teammates see
 	status: Status,
 	closesAt: number, -- while open: when the window closes, in server time
-	match: string?, -- the match their last window was for
+	match: string?, -- the side of a match their last window was for
 }
 
 export type State = {
@@ -116,20 +126,73 @@ function AgentSelect.agentOf(s: State, id: number): string
 	return AgentSelect.pickOf(s, id).agent
 end
 
+-- Of `agents`, those taken by `locked`, the agents a player's teammates
+-- have locked in; but once every one of `agents` is taken none is, as with
+-- fewer agents than a side has players some must be played twice. The
+-- server's rule (AgentSelect.taken), and the menu's from attributes.
+function AgentSelect.takenOf(agents: { string }, locked: { string }): { [string]: boolean }
+	local taken = {}
+	for _, agent in locked do
+		taken[agent] = true
+	end
+	for _, agent in agents do
+		if not taken[agent] then
+			return taken
+		end
+	end
+	return {}
+end
+
+-- The agents taken from a player while they're in a match (their window
+-- open, or locked in): those their teammates have locked in, a teammate
+-- being anyone else locked in on the same side of the same match now.
+function AgentSelect.taken(s: State, id: number): { [string]: boolean }
+	local pick = s.picks[id]
+	local locked = {}
+	if pick and (pick.status == "open" or pick.status == "locked") then
+		for other, mate in s.picks do
+			if other ~= id and mate.status == "locked" and mate.match == pick.match then
+				table.insert(locked, mate.agent)
+			end
+		end
+	end
+	return AgentSelect.takenOf(s.agents, locked)
+end
+
+-- What a player has selected in place of a taken agent: the one they play
+-- if it's free, or else the first that's free.
+local function fallback(s: State, pick: Pick, taken: { [string]: boolean }): string
+	if not taken[pick.agent] and AgentSelect.canPick(s, pick.agent) then
+		return pick.agent
+	end
+	for _, agent in s.agents do
+		if not taken[agent] then
+			return agent
+		end
+	end
+	return pick.agent
+end
+
 -- What's selected becomes theirs.
 local function lockIn(pick: Pick)
 	pick.agent = pick.selected
 	pick.closesAt = 0
 end
 
--- Where a player is for picking at `now` (FREE, a match's key, or nil),
--- once a server frame: a window opens the first time they're in a match,
--- and closes once its time is up or once they're out of that match, what's
--- selected locked in. Returns the agent they play, if that's changed.
-function AgentSelect.update(s: State, id: number, moment: string?, now: number): string?
-	local pick = AgentSelect.pickOf(s, id)
-	local before = pick.agent
-	if pick.status == "open" and (moment ~= pick.match or now >= pick.closesAt) then
+-- A window opens, with `agent` selected.
+local function open(pick: Pick, agent: string, now: number)
+	pick.status = "open"
+	pick.selected = agent
+	pick.closesAt = now + AbilityConfig.Select.time.value
+end
+
+-- A pick moves on to where its player is (FREE, a key for their side of a
+-- match, or nil): a window that's open closes once they're out of its side
+-- of the match, what's selected locked in, and one opens the first time
+-- they're on another. Returns whether they're back on the side of a match
+-- they've had their window in, which waits until every pick has moved on.
+local function move(pick: Pick, moment: string?, now: number): boolean
+	if pick.status == "open" and moment ~= pick.match then
 		lockIn(pick)
 		pick.status = "locked"
 	end
@@ -142,21 +205,92 @@ function AgentSelect.update(s: State, id: number, moment: string?, now: number):
 		pick.status = "none"
 	elseif moment ~= pick.match then
 		pick.match = moment
-		pick.status = "open"
-		pick.selected = pick.agent
-		pick.closesAt = now + AbilityConfig.Select.time.value
-	elseif pick.status ~= "open" then
-		-- Back in a match they've had their window in.
+		open(pick, pick.agent, now)
+	elseif pick.status == "none" or pick.status == "free" then
+		return true
+	end
+	return false
+end
+
+-- Back on the side of a match they've had their window in: the agent they
+-- play is theirs again, unless a teammate has locked it in meanwhile, when
+-- they've another window, on one that's free.
+local function comeBack(s: State, id: number, now: number)
+	local pick = s.picks[id]
+	pick.status = "locked"
+	local taken = AgentSelect.taken(s, id)
+	if taken[pick.agent] then
+		open(pick, fallback(s, pick, taken), now)
+	end
+end
+
+-- A window that's open keeps what's selected free, and closes once its
+-- time is up, what's selected locked in.
+local function settle(s: State, id: number, now: number)
+	local pick = s.picks[id]
+	if pick.status ~= "open" then
+		return
+	end
+	local taken = AgentSelect.taken(s, id)
+	if taken[pick.selected] then
+		pick.selected = fallback(s, pick, taken)
+	end
+	if now >= pick.closesAt then
+		lockIn(pick)
 		pick.status = "locked"
 	end
-	return if pick.agent ~= before then pick.agent else nil
+end
+
+-- Every player's pick moved on at `now`, once a server frame: `ids` are the
+-- players, in the server's order, and `moments` where each is for picking
+-- (FREE, a key for their side of a match, or nil). First every pick moves
+-- on; then, in order, whoever's back in a match keeps their agent if it
+-- isn't taken; then each window that's open keeps what's selected free and
+-- closes once its time is up, so of windows closing at once on one agent,
+-- the first player keeps it. Returns the agents they play now, by id, for
+-- those that changed.
+function AgentSelect.step(s: State, ids: { number }, moments: { [number]: string? }, now: number): { [number]: string }
+	local before: { [number]: string } = {}
+	local back: { number } = {}
+	for _, id in ids do
+		local pick = AgentSelect.pickOf(s, id)
+		before[id] = pick.agent
+		if move(pick, moments[id], now) then
+			table.insert(back, id)
+		end
+	end
+	for _, id in back do
+		comeBack(s, id, now)
+	end
+	for _, id in ids do
+		settle(s, id, now)
+	end
+	local changed: { [number]: string } = {}
+	for _, id in ids do
+		local agent = s.picks[id].agent
+		if agent ~= before[id] then
+			changed[id] = agent
+		end
+	end
+	return changed
+end
+
+-- One player's pick moved on at `now`, as `step` moves everyone's. Returns
+-- the agent they play, if that's changed.
+function AgentSelect.update(s: State, id: number, moment: string?, now: number): string?
+	local moments: { [number]: string? } = {}
+	moments[id] = moment
+	return AgentSelect.step(s, { id }, moments, now)[id]
 end
 
 -- A player selects `agent`, where they can pick: in their window, or where
--- it's free. Returns whether it's selected.
+-- it's free; not one that's taken from them. Returns whether it's selected.
 function AgentSelect.select(s: State, id: number, agent: string): boolean
 	local pick = AgentSelect.pickOf(s, id)
 	if not AgentSelect.canPick(s, agent) or (pick.status ~= "open" and pick.status ~= "free") then
+		return false
+	end
+	if AgentSelect.taken(s, id)[agent] then
 		return false
 	end
 	pick.selected = agent
@@ -164,13 +298,13 @@ function AgentSelect.select(s: State, id: number, agent: string): boolean
 end
 
 -- A player locks in what they've selected: in their window, theirs until
--- the match is over, and the window closes; where it's free, theirs at
--- once, and they can pick again. Returns the agent they play, if that's
--- changed.
+-- the match is over, and the window closes, unless a teammate has locked
+-- it in first, when it stays open; where it's free, theirs at once, and
+-- they can pick again. Returns the agent they play, if that's changed.
 function AgentSelect.lock(s: State, id: number): string?
 	local pick = AgentSelect.pickOf(s, id)
 	local before = pick.agent
-	if pick.status == "open" then
+	if pick.status == "open" and not AgentSelect.taken(s, id)[pick.selected] then
 		lockIn(pick)
 		pick.status = "locked"
 	elseif pick.status == "free" then
@@ -187,19 +321,20 @@ end
 -- Where a player is for picking, from what's played: `mode` (an Arena mode,
 -- nil on the course), its phase, the match's number, the server's count of
 -- modes started (so a match's key is its own after the mode starts over),
--- and whether they're on a side. Free on the course and while a mode waits
--- for players; once a match in Skirmish, the spike rounds and Team
--- Deathmatch; and nobody picks in gun game or deathmatch, between matches,
--- or off a side.
-function AgentSelect.moment(mode: string?, phase: string, match: number, run: number, onSide: boolean): string?
+-- and the side they're on, if any. Free on the course and while a mode
+-- waits for players; once a match in Skirmish, the spike rounds and Team
+-- Deathmatch, each side of a match with its own key (halftime swaps which
+-- side attacks, not who's on it); and nobody picks in gun game or
+-- deathmatch, between matches, or off a side.
+function AgentSelect.moment(mode: string?, phase: string, match: number, run: number, side: number?): string?
 	if mode == nil then
 		return AgentSelect.FREE
-	elseif mode == "gungame" or mode == "deathmatch" or not onSide or phase == "matchOver" or phase == "vote" then
+	elseif mode == "gungame" or mode == "deathmatch" or side == nil or phase == "matchOver" or phase == "vote" then
 		return nil
 	elseif phase == "waiting" then
 		return AgentSelect.FREE
 	end
-	return string.format("%s:%d:%d", mode, run, match)
+	return string.format("%s:%d:%d:%d", mode, run, match, side)
 end
 
 -- Whether an agent locked in goes on the kit at once, or with the next

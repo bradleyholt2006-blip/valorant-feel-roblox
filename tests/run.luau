@@ -56,5 +56,6 @@ require("./reconbolt")
 require("./shockbolt")
 require("./huntersfury")
 require("./owldrone")
+require("./oneofeach")
 
 H.finish()
