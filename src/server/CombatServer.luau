@@ -223,9 +223,9 @@ function CombatServer.burn(attacker: Entities.Entity?, victim: Entities.Entity, 
 end
 
 -- Hurts an entity by `amount` in a burst, through its shield as any hit,
--- as `weapon` (Sova's Shock Bolt, system 45), credited to `attacker` for
--- the kill feed and the kit's points. A burst doesn't slow, as fire
--- doesn't.
+-- as `weapon` (Sova's Shock Bolt, system 45, and his Hunter's Fury's
+-- blasts, system 46), credited to `attacker` for the kill feed and the
+-- kit's points. A burst doesn't slow, as fire doesn't.
 function CombatServer.blast(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string)
 	if victim.health.alive then
 		damage(attacker, victim, amount, "body", weapon, nil, nil, true)

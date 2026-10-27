@@ -20,7 +20,8 @@
 --     the frame on your screen reaches it; and to its owner's side, whom it
 --     revealed: each one's silhouette, their body's boxes lit in the enemy
 --     colour through walls (a Highlight), where the snapshots have them or
---     else where the server said they stood, for the reveal's time
+--     else where the server said they stood, for the reveal's time, as
+--     for whom Hunter's Fury's blasts reveal (system 46, FuryView)
 -- The shafts stuck are in the level your shots are traced through
 -- (ClientShots.bolts), as the server's are in its own. In Workspace's
 -- VFRecon each bolt is a `Bolt` part, each pulse a `Pulse` ball and each
@@ -232,6 +233,10 @@ local function poseOf(sent: any): Hitboxes.Pose?
 	}
 end
 
+-- A pose the server sent with whom it revealed, if it's whole (a pulse's,
+-- or a blast's of Hunter's Fury's, system 46).
+ReconView.poseOf = poseOf
+
 local function onFlight(event: any)
 	local keys = FireView.keysOf(event.keys)
 	if not keys then
@@ -412,6 +417,20 @@ local function silhouette(id: number): (Model, { [string]: BasePart })
 	return model, parts
 end
 
+-- `id` revealed until `untilAt` (the render clock), where the server said
+-- they stood (`pose`): their silhouette shown, a pulse's or a blast's of
+-- Hunter's Fury's (system 46, FuryView).
+function ReconView.reveal(id: number, pose: Hitboxes.Pose, untilAt: number)
+	local r = reveals[id]
+	if not r then
+		local model, parts = silhouette(id)
+		r = { untilAt = 0, pose = pose, model = model, parts = parts }
+		reveals[id] = r
+	end
+	r.untilAt = math.max(r.untilAt, untilAt)
+	r.pose = pose
+end
+
 -- A pulse or a break, as the frame on your screen reaches it.
 local function happen(d: Due)
 	local own = d.entity == PlayerController.entityId
@@ -432,14 +451,7 @@ local function happen(d: Due)
 	sweep(d.point)
 	play("pulse", d.point, own, d.entity)
 	for _, id in d.ids do
-		local r = reveals[id]
-		if not r then
-			local model, parts = silhouette(id)
-			r = { untilAt = 0, pose = d.poses[id], model = model, parts = parts }
-			reveals[id] = r
-		end
-		r.untilAt = math.max(r.untilAt, d.at + RC.reveal.value)
-		r.pose = d.poses[id]
+		ReconView.reveal(id, d.poses[id], d.at + RC.reveal.value)
 	end
 end
 

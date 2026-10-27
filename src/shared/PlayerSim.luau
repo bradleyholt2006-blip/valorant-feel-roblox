@@ -8,7 +8,8 @@
 -- Resurrection its own (system 39), Dark Cover its own (system 40),
 -- Shrouded Step its own (system 42), From the Shadows its map (system 43)
 -- and the Recon Bolt its bow, drawn and loosed by the kit (system 44), as
--- the Shock Bolt does (system 45), and
+-- the Shock Bolt does (system 45), and Hunter's Fury its own, whose fire
+-- charges a blast, rooting him through its windup (system 46), and
 -- whose Run it Back holds the player through his return and puts
 -- him back at its mark (system 33), as the Resurrection holds a life it
 -- brings back, rising with the body and then falling to the floor (system
@@ -162,6 +163,12 @@ end
 
 -- Buttons that start a plant or a defuse, which a dash doesn't.
 local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire)
+
+-- What movement sees of the buttons while a blast of Hunter's Fury's
+-- charges (system 46): none of the moving ones, as with a plant (SpikeSim).
+local B = PlayerSim.Buttons
+local CHARGE_MASK = bit32.bnot(bit32.bor(B.Forward, B.Back, B.Left, B.Right, B.Jump))
+local HF = AbilityConfig.HuntersFury
 
 local HOLD: MovementSim.Motion = { hold = true }
 local RES = AbilityConfig.Resurrection
@@ -365,6 +372,13 @@ function PlayerSim.step(
 		moveInput = table.clone(input)
 		moveInput.buttons = SpikeSim.movementButtons(s.spike, input.buttons)
 	end
+	-- A blast of Hunter's Fury's charging roots him (system 46: 'once you
+	-- start charging a blast Sova stays stationary', esports.net's Sova
+	-- guide), until the tick it goes.
+	if AbilitySim.charging(kit, t) then
+		moveInput = table.clone(moveInput)
+		moveInput.buttons = bit32.band(moveInput.buttons, CHARGE_MASK)
+	end
 	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
 	local grounded, crouched = s.movement.grounded, s.movement.crouched
 	local motion, casts = AbilitySim.step(kit, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
@@ -410,7 +424,8 @@ function PlayerSim.step(
 	-- ability's key puts what it throws in hand: Curveball's flare (system
 	-- 30), Hot Hands' fireball (system 31), Blaze's flame (system 32). Run
 	-- it Back's cast puts away what's in the fifth slot, and the gun through
-	-- its activation, and its mark keeps how he stood (system 33).
+	-- its activation, and its mark keeps how he stood (system 33). Hunter's
+	-- Fury's puts its bow in hand, drawn over its equip (system 46).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -422,6 +437,11 @@ function PlayerSim.step(
 				end
 			elseif cast.kind == "draw" then
 				WeaponSim.takeUp(s.weapons, t, input.slot)
+			elseif cast.kind == "fury" then
+				local weapon = AbilityConfig.Defs[cast.ability].weapon
+				if weapon then
+					WeaponSim.arm(s.weapons, weapon, t, HF.equip.value, input.slot)
+				end
 			elseif cast.kind == "equip" then
 				local weapon = AbilityConfig.Defs[cast.ability].weapon
 				if weapon then
@@ -440,11 +460,12 @@ function PlayerSim.step(
 			end
 		end
 	end
-	-- A plant or a defuse puts an ability in hand away, and lets go of a
-	-- wall being bent.
+	-- A plant or a defuse puts an ability in hand away, lets go of a wall
+	-- being bent, and ends Hunter's Fury (system 46: the spike drawn).
 	if PlayerSim.rooted(s) then
 		kit.holding = 0
 		kit.steering, kit.steerUntil = 0, 0
+		AbilitySim.calm(kit)
 	end
 	-- What's in the fifth slot goes once what put it there is over: Blade
 	-- Storm's knives as the server ends it between ticks (a death, a new
@@ -472,8 +493,9 @@ function PlayerSim.step(
 		return nil, nil, act, nil, casts
 	end
 	-- Nothing fires in a dash, which takes the zoom off and stops a burst
-	-- (ours).
-	if motion.dash then
+	-- (ours); a blast's knockback, which moves him as one does, stops
+	-- nothing (system 46).
+	if AbilitySim.dashing(kit, t) then
 		s.weapons.scoped = 0
 		s.weapons.burstLeft = 0
 		return nil, nil, act, nil, casts
@@ -567,6 +589,27 @@ function PlayerSim.step(
 		elseif held == "" or s.weapons.equipped ~= WeaponSim.ULT then
 			kit.holding = 0
 			WeaponSim.putAway(s.weapons, t)
+		end
+	end
+	-- Hunter's Fury's bow in hand (system 46): what it fires is a blast's
+	-- windup, the ultimate's cast and no bullet, and AbilitySim sends the
+	-- blast as it ends. It's over once its time's up, or its bow's gone,
+	-- its last blast's recovery over, or anything else is drawn, and a
+	-- blast charging goes with it (Patch 3.0).
+	if kit.furyUntil > 0 then
+		local bow = AbilitySim.carried(kit)
+		local shot = if shots and shots[1].weapon == bow then shots[1] else nil
+		if shot then
+			shots = nil
+			local list = casts or {}
+			table.insert(list, AbilitySim.charge(kit, t, tick, s.movement.position, shot.origin, shot.aim))
+			casts = list
+		end
+		if w.loadout[WeaponSim.ULT] ~= bow or w.equipped ~= WeaponSim.ULT or t >= kit.furyUntil - 1e-9 then
+			AbilitySim.calm(kit)
+			if w.loadout[WeaponSim.ULT] ~= "" then
+				WeaponSim.putAway(w, t)
+			end
 		end
 	end
 	return shots, swing, act, dropped, casts

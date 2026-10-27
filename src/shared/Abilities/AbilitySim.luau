@@ -99,7 +99,16 @@
 -- drawn again until fire's let go. BoltSim flies it. His Shock Bolt (Q,
 -- system 45) puts the same bow in hand with a shock bolt, drawn, given
 -- bounces and loosed the same way (a "bolt" cast too), and it bursts where
--- it lands (ShockSim).
+-- it lands (ShockSim). His Hunter's Fury (X, system 46) spends the
+-- ultimate's points once they're full and puts its bow in hand for its
+-- time, from once it's drawn (a "fury" cast, which PlayerSim arms). Fire,
+-- once it's drawn, starts a blast's windup (charge, which PlayerSim does),
+-- through which he's rooted; as it ends the blast goes from his eye along
+-- the crosshair (a "blast" cast, which FurySim judges), and a knockback
+-- pushes him level from the way he faces, its speed falling to nothing
+-- over its time. It's over (calm) once its time's up, its bow's gone or
+-- anything else is drawn, a blast charging with it, and an ability put in
+-- hand ends it too.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -199,6 +208,14 @@ export type State = {
 	letDown: boolean,
 	altDown: boolean,
 	bounces: number,
+	-- Hunter's Fury (system 46): when its time's up, 0 when it isn't under
+	-- way; when the blast charging goes, 0 with none charging; and a blast's
+	-- knockback: when it started, 0 with none, and the way he faced as the
+	-- blast went, which it pushes him back from.
+	furyUntil: number,
+	chargeAt: number,
+	kickFrom: number,
+	kickYaw: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -213,7 +230,9 @@ export type State = {
 -- (Paranoia's orb sent), "step" (Shrouded Step fired), "vanish" (gone as
 -- its windup ends), "arrive" (there), "shadows" (From the Shadows fired),
 -- "shade" (a Shade as its windup ends), "form" (there for good), "home"
--- (sent back) or "bolt" (a bolt of Sova's loosed), where the player's feet
+-- (sent back), "bolt" (a bolt of Sova's loosed), "fury" (Hunter's Fury
+-- cast), "charge" (a blast's windup started) or "blast" (a blast gone as
+-- its windup ends), where the player's feet
 -- and eye were (for "home", where they are back), and the way it goes (the
 -- dash's way, up for a lift, the way they faced for a readied gust and for
 -- Run it Back's, the way they looked for the rest). A flare's says which
@@ -249,6 +268,7 @@ local RB = AbilityConfig.RunItBack
 local SS = AbilityConfig.ShroudedStep
 local FS = AbilityConfig.FromTheShadows
 local RC = AbilityConfig.ReconBolt
+local HF = AbilityConfig.HuntersFury
 local B = MovementSim.Buttons
 local EPS = 1e-9
 local UP = vector.create(0, 1, 0)
@@ -281,6 +301,7 @@ local PLAYABLE: { [string]: boolean } = {
 	fromtheshadows = true,
 	reconbolt = true,
 	shockbolt = true,
+	huntersfury = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -348,6 +369,10 @@ function AbilitySim.new(agent: string?): State
 		letDown = false,
 		altDown = false,
 		bounces = 0,
+		furyUntil = 0,
+		chargeAt = 0,
+		kickFrom = 0,
+		kickYaw = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -404,10 +429,11 @@ function AbilitySim.pointsNeeded(s: State): number
 end
 
 -- Ends whatever's under way: a readied window, a lift, a dash, the
--- ultimate (Blade Storm, Run it Back and the return it brings, or From the
--- Shadows), an ability in hand, a wall being bent, a return from the
--- Resurrection, a step (Shrouded Step), a bolt drawn and its bounces (the
--- Recon Bolt); and the Barrier Orb's targeter is across the view again
+-- ultimate (Blade Storm, Run it Back and the return it brings, From the
+-- Shadows, or Hunter's Fury and a blast's knockback), an ability in hand,
+-- a wall being bent, a return from the Resurrection, a step (Shrouded
+-- Step), a bolt drawn and its bounces (the Recon Bolt); and the Barrier
+-- Orb's targeter is across the view again
 -- (the VALORANT Wiki has it across the view when it's first equipped in a
 -- round). Nothing carries into a new life or a new round.
 function AbilitySim.settle(s: State)
@@ -425,6 +451,8 @@ function AbilitySim.settle(s: State)
 	s.stepAt, s.stepTo = 0, ZERO
 	s.shadowAt, s.shadowFrom, s.shadowTo = 0, ZERO, ZERO
 	s.drawFrom, s.letDown, s.bounces = 0, false, 0
+	s.furyUntil, s.chargeAt = 0, 0
+	s.kickFrom, s.kickYaw = 0, 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -490,9 +518,10 @@ local function ultimatePlayable(s: State): boolean
 end
 
 -- Whether the ultimate's under way: Blade Storm's knives carried, Run it
--- Back running or bringing him back, or From the Shadows taking him.
+-- Back running or bringing him back, From the Shadows taking him, or
+-- Hunter's Fury's bow in hand.
 function AbilitySim.ultimateOn(s: State): boolean
-	return s.storm or s.backUntil > 0 or s.returnAt > 0 or s.shadowAt > 0
+	return s.storm or s.backUntil > 0 or s.returnAt > 0 or s.shadowAt > 0 or s.furyUntil > 0
 end
 
 -- Every charge the kit can hold, for the course and Skirmish, where nothing
@@ -600,7 +629,9 @@ end
 -- ready", or "X0/8 storm" in Blade Storm, "back" while Run it Back runs,
 -- "away" while his body's gone and "rise" as he rises at its mark, "step"
 -- through Shrouded Step's windup and "shroud" while he's gone, "shadows"
--- through From the Shadows' windup and "shade" while he's a Shade, "equip"
+-- through From the Shadows' windup and "shade" while he's a Shade, "fury"
+-- while Hunter's Fury's bow is in hand and "charge" while a blast charges,
+-- "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
 -- Resurrection's orb, Dark Cover's orb, Paranoia's orb, Shrouded Step's
@@ -619,6 +650,12 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	table.insert(parts, string.format("X%d/%d", s.points, AbilitySim.pointsNeeded(s)))
 	if s.storm then
 		table.insert(parts, "storm")
+	end
+	if s.furyUntil > 0 then
+		table.insert(parts, "fury")
+	end
+	if AbilitySim.charging(s, t) then
+		table.insert(parts, "charge")
 	end
 	if s.backUntil > 0 then
 		table.insert(parts, "back")
@@ -979,10 +1016,10 @@ function AbilitySim.comeBack(s: State, t: number, dt: number, tick: number, feet
 end
 
 -- The weapon the kit has in WeaponSim's fifth slot now, "" for none:
--- Blade Storm's knives while it lasts, the ability in hand's, or the flame
--- of a wall being bent (Blaze).
+-- Blade Storm's knives or Hunter's Fury's bow while it lasts, the ability
+-- in hand's, or the flame of a wall being bent (Blaze).
 function AbilitySim.carried(s: State): string
-	local slot = if s.storm then X elseif s.holding ~= 0 then s.holding elseif s.steering ~= 0 then s.steering else 0
+	local slot = if s.storm or s.furyUntil > 0 then X elseif s.holding ~= 0 then s.holding elseif s.steering ~= 0 then s.steering else 0
 	local def = if slot ~= 0 then AbilitySim.def(s, slot) else nil
 	return if def and def.weapon then def.weapon else ""
 end
@@ -1128,6 +1165,52 @@ function AbilitySim.bars(s: State, t: number): number
 	return math.clamp(math.floor((t - s.drawFrom) / RC.bar.value + 1e-6), 0, RC.bars.value)
 end
 
+-- Whether a blast of Hunter's Fury's is charging at `t` (system 46): he's
+-- rooted where he is until it goes.
+function AbilitySim.charging(s: State, t: number): boolean
+	return s.chargeAt > 0 and t < s.chargeAt - EPS
+end
+
+-- A blast's windup started at `t` (system 46), as fire with its bow ready
+-- starts one (PlayerSim): it goes its windup on. Returns its "charge"
+-- cast, from his feet and eye, along `aim`.
+function AbilitySim.charge(s: State, t: number, tick: number, feet: vector, eye: vector, aim: vector): Cast
+	s.chargeAt = t + HF.windup.value
+	return {
+		slot = AbilitySim.slotOf(s, "huntersfury") or X,
+		ability = "huntersfury",
+		kind = "charge",
+		tick = tick,
+		time = t,
+		position = feet,
+		origin = eye,
+		direction = aim,
+	}
+end
+
+-- Hunter's Fury over (system 46): its time up, its bow gone, or anything
+-- else drawn. A blast charging goes with it; a knockback under way runs on.
+function AbilitySim.calm(s: State)
+	s.furyUntil, s.chargeAt = 0, 0
+end
+
+-- Whether a blast's knockback is pushing him at `t` (system 46).
+function AbilitySim.kicked(s: State, t: number): boolean
+	return s.kickFrom > 0 and t < s.kickFrom + HF.kickTime.value - EPS
+end
+
+-- A blast's knockback, its velocity for the tick at `t` (system 46):
+-- level, back from the way he faced as the blast went, its speed falling
+-- in a straight line to nothing over its ticks, so that it covers its
+-- distance over them.
+function AbilitySim.kickVelocity(s: State, t: number, dt: number): vector
+	local n = AbilitySim.ticks(HF.kickTime.value, dt)
+	local k = math.floor((t - s.kickFrom) / dt + 0.5)
+	local top = 2 * HF.kick.value / (n * dt)
+	local speed = math.max(top * (1 - (k + 0.5) / n), 0)
+	return facing(s.kickYaw) * -speed
+end
+
 -- The ability in `slot` used, between ticks, as the server finds a try of
 -- it heals (the Healing Orb, system 36) or brings someone back (the
 -- Resurrection, system 39): its charge spent, or the ultimate's points,
@@ -1215,6 +1298,27 @@ function AbilitySim.step(
 		table.insert(list, cast)
 		casts = list
 	end
+	-- A blast of Hunter's Fury's whose windup is over goes (system 46), from
+	-- the eye along the crosshair, and its knockback starts; one that's run
+	-- its time is over.
+	if s.kickFrom > 0 and not AbilitySim.kicked(s, t) then
+		s.kickFrom, s.kickYaw = 0, 0
+	end
+	if s.chargeAt > 0 and t >= s.chargeAt - EPS then
+		s.chargeAt = 0
+		s.kickFrom = t
+		s.kickYaw = input.yaw
+		started({
+			slot = AbilitySim.slotOf(s, "huntersfury") or X,
+			ability = "huntersfury",
+			kind = "blast",
+			tick = tick,
+			time = t,
+			position = feet,
+			origin = eye,
+			direction = Accuracy.aim(input.yaw, input.pitch),
+		})
+	end
 	if pressed ~= 0 and not rooted and not AbilitySim.dashing(s, t) and not AbilitySim.marking(s, t) then
 		for slot = C, X do
 			if bit32.band(pressed, AbilitySim.BUTTONS[slot]) == 0 then
@@ -1301,6 +1405,26 @@ function AbilitySim.step(
 					origin = eye,
 					direction = facing(input.yaw),
 				})
+			elseif id == "huntersfury" and AbilitySim.charged(s) and not AbilitySim.ultimateOn(s) then
+				-- Its bow in hand (PlayerSim), in place of an ability in hand
+				-- and of a wall being bent, which runs straight on: the points
+				-- spent, and its time running from once the bow's drawn.
+				s.points = 0
+				s.furyUntil = t + HF.equip.value + HF.duration.value
+				s.holding = 0
+				s.steering, s.steerUntil = 0, 0
+				s.drawFrom, s.letDown, s.bounces = 0, false, 0
+				local aim = Accuracy.aim(input.yaw, input.pitch)
+				started({
+					slot = slot,
+					ability = id,
+					kind = "fury",
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = aim,
+				})
 			elseif held(def) and s.holding == slot and id == "barrierorb" then
 				-- The Barrier Orb's key again turns its targeter (BarrierSim's
 				-- quarter, or back across the view), and it stays in hand: a
@@ -1339,11 +1463,13 @@ function AbilitySim.step(
 				s.holding = 0
 			elseif held(def) and not s.storm and stocked(s, slot) then
 				-- In hand (PlayerSim), in place of any other ability there, and
-				-- of a wall being bent, which runs straight on; its charge goes
-				-- as it's thrown (the Resurrection's points, as it brings
-				-- someone back).
+				-- of a wall being bent, which runs straight on, and Hunter's
+				-- Fury's over (system 46: Patch 3.0's 'equipping a weapon,
+				-- ability, or Spike' cancels it); its charge goes as it's
+				-- thrown (the Resurrection's points, as it brings someone back).
 				s.holding = slot
 				s.steering, s.steerUntil = 0, 0
+				AbilitySim.calm(s)
 				-- Nothing drawn or added yet (Sova's bow), and alt fire held as
 				-- it comes isn't a press.
 				s.drawFrom, s.letDown, s.bounces = 0, false, 0
@@ -1389,6 +1515,9 @@ function AbilitySim.step(
 
 	if AbilitySim.dashing(s, t) then
 		motion.dash = vector.create(s.dashX, 0, s.dashZ)
+	elseif AbilitySim.kicked(s, t) then
+		-- A blast's knockback (system 46) moves him as a dash would.
+		motion.dash = AbilitySim.kickVelocity(s, t, dt)
 	elseif AbilitySim.lifting(s, t) then
 		motion.lift = AbilitySim.liftSpeed(cfg.gravity, dt)
 	elseif MovementSim.has(buttons, B.Jump) and AbilitySim.hasPassive(s, "drift") then

@@ -852,6 +852,28 @@ local BOW_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a loosed bolt doesn't
 	adsCamera = BOW_NA,
 })
 
+-- Sova's Hunter's Fury (system 46): its bow fires no bullet either. Fire
+-- starts a blast's windup (AbilitySim) and the blast goes along the
+-- crosshair as it ends (FurySim), so no spread or kick moves it.
+local DRIVEN = "esportsdriven.com's Sova guide"
+local BLASTED = "n/a: FurySim sends its blast along the crosshair"
+local FURY_NA = p(0, "estimate", BLASTED)
+local furyExact = accuracy(
+	c({ { 1, 0 } }, "estimate", BLASTED),
+	p(1, "estimate", BLASTED),
+	p(0.1, "estimate", BLASTED),
+	p(1, "estimate", BLASTED),
+	{ crouch = FURY_NA, walk = FURY_NA, run = FURY_NA, air = FURY_NA }
+)
+furyExact.landError = FURY_NA
+local FURY_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a blast's knockback moves him, not his aim (AbilitySim)"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = FURY_NA,
+	adsCamera = FURY_NA,
+})
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -1987,6 +2009,38 @@ WeaponConfig.Defs = {
 		accuracy = bowExact,
 		recoil = BOW_KICK,
 	},
+	-- Sova's Hunter's Fury (system 46): put in hand in the fifth slot by X
+	-- once the ultimate's points are full (AbilityConfig.HuntersFury), with
+	-- its three blasts. Fire starts a blast's windup, no closer to the last
+	-- than its fire rate; PlayerSim turns it into the ultimate's cast, so it
+	-- fires no bullet, and the blast does the damage (FurySim), credited to
+	-- it. It's gone once its time's up, or its last blast's recovery is over.
+	furybow = {
+		id = "furybow",
+		name = "Hunter's Fury",
+		category = "ultimate",
+		slot = 5,
+		price = p(0, "community", "Not bought: Hunter's Fury's 8 ultimate points put it in hand (" .. SOVA .. ")"),
+		-- A click a blast (ours: no source says whether holding fire charges on).
+		fireMode = "semi",
+		fireRate = p(1 / 2.125, "community", DRIVEN .. ": 'Fire rate: 1 every 2.125 seconds'"),
+		magazine = p(
+			3,
+			"community",
+			"THESPIKE.GG's Sova guide: 'Ammo: 3 charges'; Riot's text there: 'three long-range wall-piercing energy blasts'"
+		),
+		reserve = p(0, "community", SOVA .. ": none to reload, 'RE-USED up to two more times while the ability timer is active'"),
+		reloadTime = FURY_NA,
+		equipTime = p(0.5, "estimate", "Ours, as AbilityConfig.HuntersFury's equip: nothing public gives its draw"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None from the bow: its blasts do the damage (FurySim)"),
+		penetration = "none",
+		suppressed = false,
+		ultimate = true,
+		accuracy = furyExact,
+		recoil = FURY_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -1996,8 +2050,8 @@ WeaponConfig.Defs = {
 -- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
 -- (system 38), the Resurrection (system 39), Dark Cover (system 40),
 -- Paranoia (system 41), Shrouded Step (system 42), From the Shadows
--- (system 43), the Recon Bolt's bow (system 44) and the Shock Bolt's
--- (system 45) last.
+-- (system 43), the Recon Bolt's bow (system 44), the Shock Bolt's
+-- (system 45) and Hunter's Fury's (system 46) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -2035,6 +2089,7 @@ WeaponConfig.Ids = {
 	"shadowmap",
 	"bow",
 	"shockbow",
+	"furybow",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

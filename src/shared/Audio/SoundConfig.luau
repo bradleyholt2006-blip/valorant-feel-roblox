@@ -619,22 +619,36 @@ SoundConfig.Sounds = {
 	shockBurst = sound(0.9, 0.04, 4, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 1.5),
+	-- Hunter's Fury (system 46): its bow readied, the bell slowed right
+	-- down, as its blasts gather; a blast charging, the transporter's swell
+	-- at its own pitch; and a blast going, the spike blast's crack slowed,
+	-- heard across the map as the spike's blast is.
+	furyCast = sound(0.9, 0.02, 2, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 0.45),
+	furyCharge = sound(0.8, 0.03, 3, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 1),
+	furyBlast = sound(1, 0.03, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 0.8),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
 -- cloud's burst, a flare's pop, a fireball's burst and its fire, Blaze's
--- wall rising, a Phoenix's body going in Run it Back, a heal of the
--- Healing Orb's starting, a Slow Orb's burst, a run or a jump through its
--- field, Sage's wall rising, fortifying and a piece of it breaking, a body
--- she brings back rising and bursting out, Omen's orb sent, its smoke
--- forming and warning that it's going, his Paranoia sent, his Shrouded
--- Step fired and his arrival, which is heard only as far as the arrival
--- curve says, and his From the Shadows fired, heard across the map, and
--- his Shade arriving, forming and sent back, heard only as far as the
--- shade curve says, and Sova's Recon Bolt's string drawn back, which only
--- the one drawing it hears, and its bolt in the air, stuck, pulsing and
--- shot to pieces, and his Shock Bolt's bursting), heard as the ability
--- curve says (systems 17 to 19, 30 to 33 and 36 to 45). Blade Storm's
+-- wall rising, a Phoenix's body going in Run it Back, a heal of the Healing
+-- Orb's starting, a Slow Orb's burst, a run or a jump through its field,
+-- Sage's wall rising, fortifying and a piece of it breaking, a body she
+-- brings back rising and bursting out, Omen's orb sent, its smoke forming
+-- and warning that it's going, his Paranoia sent, his Shrouded Step fired
+-- and his arrival, which is heard only as far as the arrival curve says,
+-- and his From the Shadows fired, heard across the map, and his Shade
+-- arriving, forming and sent back, heard only as far as the shade curve
+-- says, and Sova's Recon Bolt's string drawn back, which only the one
+-- drawing it hears, and its bolt in the air, stuck, pulsing and shot to
+-- pieces, his Shock Bolt's bursting, and his Hunter's Fury cast, a blast of
+-- it charging, and one going, heard across the map), heard as the ability
+-- curve says (systems 17 to 19, 30 to 33 and 36 to 46). Blade Storm's
 -- knives drawn again sound as their draw does, and so does an ability put
 -- in hand (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
 -- Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb),
@@ -683,18 +697,23 @@ SoundConfig.Abilities = {
 	pulse = "reconPulse",
 	boltbreak = "boltBreak",
 	shockburst = "shockBurst",
+	fury = "furyCast",
+	charge = "furyCharge",
+	blast = "furyBlast",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and
--- the curve (SoundConfig.Curves): Shrouded Step's arrival (system 42), and
+-- the curve (SoundConfig.Curves): Shrouded Step's arrival (system 42),
 -- From the Shadows fired, as far as the spike's blast, and its Shade
--- arriving, forming and sent back (system 43).
+-- arriving, forming and sent back (system 43), and a blast of Hunter's
+-- Fury's going, as far as the spike's blast too (system 46).
 SoundConfig.CastCurves = {
 	arrive = "arrival",
 	shadows = "blast",
 	shade = "shade",
 	form = "shade",
 	home = "shade",
+	blast = "blast",
 } :: { [string]: string }
 
 -- The spike's sounds (system 12): its beeps, its defuse, its blast and its
@@ -841,6 +860,9 @@ SoundConfig.Weapons = {
 	-- The Shock Bolt's (system 45): the same, its bolt bursting the
 	-- ability's.
 	shockbow = { draw = "boltEquip", curve = "ability" },
+	-- Hunter's Fury's (system 46): the same, its cast and its blasts
+	-- charging and going the ability's.
+	furybow = { draw = "boltEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

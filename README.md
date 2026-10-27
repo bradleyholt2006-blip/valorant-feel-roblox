@@ -347,6 +347,16 @@ Built one system at a time:
     enemies; the level and walls of ice shelter them. Two charges at 150 credits (in Team
     Deathmatch one comes back 26 s after it's spent), and the gun's back 0.7 s after a loose -
     [research and design](docs/research/45-shock-bolt.md)
+46. **Sova's Hunter's Fury**: once its 8 points are full, X puts Sova's bow in hand with three
+    energy blasts, drawn in 0.5 s, and its 6 s run from then. Mouse 1 charges a blast: through its
+    1 s windup he's rooted where he stands, his view turning slowly, and then it goes from his eye
+    along the crosshair, 66 m, through walls and everything else, and knocks him 1.5 m back. Every
+    enemy within 2 m of its line, ahead of him, takes 80 however far away, through their shield,
+    and is revealed to his side for 1 s, through walls and on its minimap. A blast at the most
+    every 2.125 s; it's over once its time's up or anything else is drawn, a blast charging going
+    with it, and it catches nobody while the spawns' barriers are up. His minimap shows where a
+    blast would go; in Team Deathmatch it takes 70 points -
+    [research and design](docs/research/46-hunters-fury.md)
 
 ## Running it
 
@@ -504,11 +514,15 @@ hand (`Bow`), the bars it's drawn (`Bars`), its bounces (`Bounces`), the bolts d
 the silhouettes shown (`Revealed`), and `Workspace.VFRecon` holds each bolt, each pulse and each
 silhouette. Where a player's last Shock Bolt burst is their `VFLastShock` attribute (metres), and
 whom it hurt and how much their `VFShockHits` (each a name and its damage, joined by commas);
-`Workspace.VFShock` holds each bolt in the air and each burst. The minimap's ScreenGui, `VFMinimap`,
-carries what it shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on
-it (`Seen`), whether the spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big
-map's open (`Big`) and how covered it is by a nearsight's dark (`Dark`, 0 to 1), or by an enemy's
-From the Shadows.
+`Workspace.VFShock` holds each bolt in the air and each burst. Where a player's last blast of
+Hunter's Fury went from is their `VFLastFury` attribute (metres), and whom it caught their
+`VFFuryHits` (names joined by commas); PlayerGui's `VFFury` carries whether its bow's in hand
+(`Bow`), the seconds it has left (`Left`), whether a blast charges (`Charging`), how fast the view
+turns (`Turn`, a share of its usual) and the blasts drawn (`Blasts`), and `Workspace.VFFury` holds
+each blast and each one charging. The minimap's ScreenGui, `VFMinimap`, carries what it shows: the
+plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the
+spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big map's open (`Big`) and
+how covered it is by a nearsight's dark (`Dark`, 0 to 1), or by an enemy's From the Shadows.
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -562,9 +576,10 @@ and who's warned, the nearsight, how far the nearsighted see and how the deafene
 Shrouded Step (its charges, its mark in hand, the step, where it takes him, and the wire), his
 From the Shadows (its map in hand, the teleport, being sent back, where it takes him, the course's
 map, and the wire), Sova's Recon Bolt (the bow in hand, the draw, the bounces and the loose, its
-flight, its pulses and whom they reveal, its shaft, and the wire) and his Shock Bolt (the bow in
-hand, the draw and the loose, its burst, how much it does at each distance and whom it reaches, and
-the wire) are pure Luau and run outside Roblox:
+flight, its pulses and whom they reveal, its shaft, and the wire), his Shock Bolt (the bow in hand,
+the draw and the loose, its burst, how much it does at each distance and whom it reaches, and the
+wire) and his Hunter's Fury (its bow in hand, a blast's windup and the blast, the knockback, the
+blasts' rate, how it ends, whom a blast catches, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

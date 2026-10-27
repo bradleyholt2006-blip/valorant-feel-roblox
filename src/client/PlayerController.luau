@@ -418,6 +418,10 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or ga.letDown ~= sa.letDown
 		or ga.altDown ~= sa.altDown
 		or ga.bounces ~= sa.bounces
+		or ga.furyUntil ~= sa.furyUntil
+		or ga.chargeAt ~= sa.chargeAt
+		or ga.kickFrom ~= sa.kickFrom
+		or ga.kickYaw ~= sa.kickYaw
 	then
 		return true, posErr
 	end
