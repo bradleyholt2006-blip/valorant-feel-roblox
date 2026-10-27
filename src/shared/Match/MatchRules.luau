@@ -154,6 +154,22 @@ function MatchRules.overtime(format: MatchConfig.Format, round: number): boolean
 	return round > 2 * format.halfRounds.value
 end
 
+-- How round `round` starts the ultimate's points (system 50,
+-- AbilitySim.roundPoints): "match" for the first, "half" for the first of
+-- the second half, "overtime" for one past regulation (a sudden death's
+-- too), and "round" for any other.
+export type RoundKind = "match" | "half" | "overtime" | "round"
+function MatchRules.roundKind(format: MatchConfig.Format, round: number): RoundKind
+	if round <= 1 then
+		return "match"
+	elseif round == format.halfRounds.value + 1 then
+		return "half"
+	elseif MatchRules.overtime(format, round) then
+		return "overtime"
+	end
+	return "round"
+end
+
 local count, manned = Roster.count, Roster.manned
 
 -- Whether the sides swap after round `round`: at the half, and after each

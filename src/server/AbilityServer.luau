@@ -6,7 +6,11 @@
 --   * in the spike rounds (Arena says when), a new match starts everyone on
 --     a new kit, each half takes away what was bought, and each round gives
 --     the signature its free charge and takes back the charges kills brought
---     back. Charges are bought in the buy menu (ShopServer), one at a time
+--     back. Charges are bought in the buy menu (ShopServer), one at a time.
+--     Each round's start sets the ultimate's points too (system 50,
+--     AbilitySim.roundPoints): each half starts them over (Swiftplay's with
+--     two), each overtime round puts them three short of full, and any other
+--     pays a point for a death in the last
 --   * on the course and in Skirmish, where nothing is bought, every life
 --     starts with every charge, and on the course a spent charge comes back
 --     a moment after, so it can be practised (ours). So does the ultimate on
@@ -24,7 +28,10 @@
 --     Orb, system 36) brings a spent charge back once it's run, the same
 --     way
 --   * the ultimate's points: one for a kill (a dummy's too), a death, a
---     plant and a defuse; and kills bring the signature's charge back
+--     plant and a defuse. In the spike rounds a death's comes as the next
+--     round starts, and a death nobody else caused (the spike's blast, or
+--     one's own hand) has none (system 50). And kills bring the signature's
+--     charge back
 --     (Jett's: two). A kill with a single Blade Storm knife brings all its
 --     knives back (PlayerSim.killedWith, system 19)
 --   * in gun game (system 23) there are none: every life starts with an
@@ -120,6 +127,9 @@ local due: { [Player]: { number } } = {}
 local shownDue: { [Player]: string? } = {}
 -- Each player's own agent, as they last picked it (system 29).
 local chosen: { [Player]: string } = {}
+-- In the spike rounds, the points each player's deaths this round have
+-- earned, paid as the next starts (system 50).
+local owed: { [Player]: number } = {}
 
 -- Changes a player's kit, if they're playing, and sends them the change.
 local function change(player: Player, apply: (AbilitySim.State) -> ())
@@ -169,15 +179,28 @@ local function recharges(kit: AbilitySim.State): boolean
 	return false
 end
 
--- As a round of the spike rounds starts: "match" for the first of a match,
--- "half" for the first of the second half, "round" for any other.
-function AbilityServer.roundStarted(player: Player, kind: "match" | "half" | "round")
-	change(player, if kind == "match" then AbilitySim.reset elseif kind == "half" then AbilitySim.newHalf else AbilitySim.newRound)
+-- As a round of the spike rounds starts, of the kind MatchRules.roundKind
+-- says, in Swiftplay or not: the kit's round, and the ultimate's points for
+-- it, with what last round's deaths are owed (system 50).
+function AbilityServer.roundStarted(player: Player, kind: AbilitySim.RoundKind, swiftplay: boolean)
+	local debt = owed[player] or 0
+	owed[player] = nil
+	change(player, function(kit)
+		if kind == "match" then
+			AbilitySim.reset(kit)
+		elseif kind == "half" then
+			AbilitySim.newHalf(kit)
+		else
+			AbilitySim.newRound(kit)
+		end
+		AbilitySim.roundPoints(kit, kind, debt, swiftplay)
+	end)
 end
 
 -- A new kit, as the spike rounds or the course start: the agent's.
 function AbilityServer.reset(player: Player)
 	due[player] = nil
+	owed[player] = nil
 	change(player, function(kit)
 		kit.agent = AbilityServer.agentOf(player)
 		kit.need = needOf(kit.agent)
@@ -227,10 +250,15 @@ end
 -- where nothing's bought (and on the course the ultimate's points too).
 local function newAgent(player: Player, kit: AbilitySim.State, now: number)
 	due[player] = nil
+	local points = kit.points
 	startOver(player, kit, now)
 	if AbilityServer.off then
 		AbilitySim.empty(kit)
-	elseif not AbilityServer.economy and not AbilityServer.rules then
+	elseif AbilityServer.economy then
+		-- The spike rounds' points are the match's (system 50): Swiftplay's
+		-- first two outlast the pick in its first buy phase.
+		AbilitySim.addPoints(kit, points)
+	elseif not AbilityServer.rules then
 		AbilitySim.fill(kit, AbilityServer.refill)
 	end
 end
@@ -428,13 +456,19 @@ function AbilityServer.start()
 			PlayerSimServer.markDirty(by)
 		end
 	end)
-	table.insert(PlayerSimServer.deathListeners, function(player: Player)
+	-- In the spike rounds a death's point waits for the next round, and only
+	-- someone else's doing earns one (system 50).
+	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
 		local rules = AbilityServer.rules
+		local later = AbilityServer.economy
+		if later and killer and not AbilityServer.off then
+			owed[player] = (owed[player] or 0) + AbilityConfig.Points.death.value
+		end
 		change(player, function(kit)
 			if AbilityServer.off then
 				AbilitySim.empty(kit)
 			else
-				AbilitySim.died(kit, if rules then rules.death.value else nil)
+				AbilitySim.died(kit, if later then 0 elseif rules then rules.death.value else nil)
 			end
 		end)
 	end)
@@ -450,6 +484,7 @@ function AbilityServer.start()
 		due[player] = nil
 		shownDue[player] = nil
 		chosen[player] = nil
+		owed[player] = nil
 	end)
 end
 

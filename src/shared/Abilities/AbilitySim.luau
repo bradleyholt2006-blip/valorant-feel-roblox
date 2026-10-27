@@ -124,8 +124,10 @@
 -- bought and sold, the signature's free charge each round, ultimate points
 -- for kills, deaths, plants and defuses, and a signature charge back for
 -- kills; and in Team Deathmatch (system 28) charges back over time, and
--- what the ultimate needs. The ack carries the kit, so the owner's
--- prediction agrees.
+-- what the ultimate needs. In the spike rounds each round's start sets the
+-- points too (system 50, roundPoints): a half's starts them over, an
+-- overtime round's a few short of full, and any other's pays the deaths
+-- of the last. The ack carries the kit, so the owner's prediction agrees.
 --
 -- No Roblox APIs here.
 
@@ -529,7 +531,7 @@ function AbilitySim.newRound(s: State)
 end
 
 -- A new half: nothing bought is kept, and the signature has its free
--- charges. The ultimate's points are kept.
+-- charges. The ultimate's points are roundPoints' (system 50).
 function AbilitySim.newHalf(s: State)
 	for slot = C, X do
 		s.charges[slot] = 0
@@ -625,11 +627,36 @@ function AbilitySim.killed(s: State, points: number?)
 	end
 end
 
--- A death: its point, or `points` where the mode has its own, and whatever
--- was under way ends. Charges are kept.
+-- A death: its point, or `points` where the mode has its own (none in the
+-- spike rounds, where roundPoints pays it, system 50), and whatever was
+-- under way ends. Charges are kept.
 function AbilitySim.died(s: State, points: number?)
 	AbilitySim.addPoints(s, points or AbilityConfig.Points.death.value)
 	AbilitySim.settle(s)
+end
+
+-- How a round of the spike rounds starts (system 50): "match" for a match's
+-- first, "half" for the second half's first, "overtime" for one past
+-- regulation and "round" for any other.
+export type RoundKind = "match" | "half" | "overtime" | "round"
+
+-- The ultimate's points as a round of the spike rounds starts, after the
+-- kit's own start (reset, newHalf or newRound). A match's or a half's first
+-- starts them over: at none, or in Swiftplay at Points.swiftplay, or
+-- Points.swiftplayNine for an ultimate of 9 points. An overtime round puts
+-- everyone Points.overtimeShort short of what the ultimate needs, whatever
+-- they had. Any other pays `owed`, the points for deaths in the last round.
+function AbilitySim.roundPoints(s: State, kind: RoundKind, owed: number, swiftplay: boolean)
+	local P = AbilityConfig.Points
+	local needed = AbilitySim.pointsNeeded(s)
+	if kind == "match" or kind == "half" then
+		local start = if not swiftplay then 0 elseif needed >= 9 then P.swiftplayNine.value else P.swiftplay.value
+		s.points = math.min(start, needed)
+	elseif kind == "overtime" then
+		s.points = math.max(needed - P.overtimeShort.value, 0)
+	else
+		AbilitySim.addPoints(s, owed)
+	end
 end
 
 -- Whether a charge of the ability `id` can be bought into the kit: one it

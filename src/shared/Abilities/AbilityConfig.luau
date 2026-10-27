@@ -90,7 +90,10 @@ AbilityConfig.KeySources = {
 }
 
 -- Ultimate points, each worth one (Gfinity: "Every kill you get will get you
--- one Ultimate Point", and so on for each).
+-- one Ultimate Point", and so on for each). And how a round of the spike
+-- rounds starts them (system 50): each half of Swiftplay with some, more
+-- for an ultimate of 9 points, and each overtime round this far short of
+-- what the ultimate needs.
 local GFINITY = "Gfinity's ultimate points guide"
 AbilityConfig.Points = {
 	kill = p(1, "community", GFINITY .. ": 'Every kill you get will get you one Ultimate Point'"),
@@ -98,6 +101,21 @@ AbilityConfig.Points = {
 	plant = p(1, "community", GFINITY .. ": 'Planting the spike will get you one Ultimate Point'"),
 	defuse = p(1, "community", GFINITY .. ": 'Defusing the spike will get you one Ultimate Point'"),
 	orb = p(1, "community", GFINITY .. ": 'Collecting an Ultimate Orb will get you one Ultimate Point'"),
+	swiftplay = p(
+		2,
+		"confirmed",
+		"Patch 5.12, Swiftplay: '2 Ult points granted at the start of each half'; Patch 10.10: 'instead of 2 in Swiftplay'"
+	),
+	swiftplayNine = p(
+		3,
+		"confirmed",
+		"Patch 10.10: Tejo's ultimate 'will start at 3 points instead of 2 in Swiftplay', and 'Ultimates at 9 points in the future will be automatically updated to scale'"
+	),
+	overtimeShort = p(
+		3,
+		"community",
+		"Dot Esports (September 2023): 'all agents need just three points to charge up their ultimates in overtime'; Turbosmurfs: 'ultimate points set three short of full'. Patch 1.03 (2020) had them '4 points short of their ultimate'"
+	),
 }
 
 -- A mode's own kit (system 28): what a kill, a death and an Ultimate Orb are

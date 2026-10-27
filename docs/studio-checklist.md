@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-nine
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -33,7 +33,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
-   sections 44 to 51 one and then three, section 52 three, and section 53 two.
+   sections 44 to 51 one and then three, section 52 three, and sections 53 and 54 two.
 
 | Key | What it does |
 | --- | --- |
@@ -3720,6 +3720,63 @@ that round's checks again in the next.
   the three maps, and as its round 1 starts `VFOrbs` reads `1,2`, the orbs on that map's places.
   Press P again, for off: `VFOrbs` is gone and `Workspace.VFUltimateOrbs` is empty.
 
+## 54. The ultimate's points across a match
+
+From [50-ultimate-points.md](research/50-ultimate-points.md). Two players in the spike rounds, in
+Swiftplay's format and then the standard one. A player's `VFKit` ends with the ultimate's points and
+what it needs, as `X2/8` for Jett and `X2/7` for Sage, and the ability bar's X has a pip for each
+point it needs, lit for each it has, in gold once it's full. `VFTestGive` set to `ultimate` fills
+the points, and `VFTestAgent` set to an agent's id selects it, or set to `lock` locks in
+(section 52). `VFMatchSkip` skips a buy phase, what's left of a round, which the defenders win, or
+the wait after it (section 17), but never a planted spike's countdown. In Swiftplay the sides swap
+after round 4, and a 4-4 score goes to a sudden death in round 9; in the standard format, after
+round 12, and 12-12 to round 25.
+
+Start a Local Server with 2 players, as in section 9, and press P four times in window 1 (Skirmish,
+gun game, the spike rounds, then the spike rounds in Swiftplay's format). Player 1 attacks the first
+half, with the spike in front of them, and player 2 defends.
+
+- **UP1 Swiftplay's two.** As round 1's buy phase starts, agent select comes up by itself in both
+  windows. In window 2 click SAGE and LOCK IN (or set `VFTestAgent` to `sage` and then to `lock`),
+  and let window 1's 10 s run out. Player 1's `VFKit` ends `X2/8`, two of the X's eight pips lit,
+  and player 2's `X2/7`: Sage's kit, still with the two points the match started on.
+- **UP2 A death's point waits.** Skip the buy phase. Player 2 kills player 1 with the Classic: at
+  once player 2's `VFKit` ends `X3/7`, while player 1's stays at `X2/8`, and player 2's side wins
+  the round. As round 2's buy phase starts, player 1's ends `X3/8`, and player 2's is still `X3/7`.
+- **UP3 Not the spike's.** Skip the buy phase. Player 1 picks up the spike in front of them, takes
+  it to site A and plants it (section 17): their `VFKit` ends `X4/8` at once. Player 1 stays beside
+  it, and player 2 leaves it alone. 45 s later it goes off: player 1's screen shows `ROUND WON` with
+  `Spike detonated`, and the blast kills player 1. As round 3's buy phase starts, player 1's `VFKit`
+  still ends `X4/8`, and player 2's `X3/7`.
+- **UP4 The half.** In round 3's buy phase set `VFTestGive` to `ultimate` in window 1: player 1's
+  `VFKit` ends `X8/8`, every pip lit in gold. Skip the buy phase and then the round, which
+  player 2's side wins. Round 4's buy phase line adds `LAST ROUND OF THE HALF`. Skip it, and
+  player 2 kills player 1, who neither shoots back nor uses the ultimate: player 2's `VFKit` ends
+  `X4/7`. As round 5's buy phase starts, with the sides swapped, player 1's ends `X2/8`, the full
+  ultimate and the death's point both gone, and player 2's `X2/7`.
+- **UP5 Sudden death.** Skip rounds 5, 6 and 7, the buy phase and then the round each time:
+  player 1's side defends now and wins each, to 4-3. In round 8's buy phase set `VFTestGive` to
+  `ultimate` in window 1 (`X8/8`). Skip the buy phase, and player 2 kills player 1, who doesn't
+  shoot back: player 2's `VFKit` ends `X3/7`, and it's 4-4. Round 9's buy phase line adds
+  `SUDDEN DEATH`, and player 1's `VFKit` ends `X5/8`, three short of full and down from 8, and
+  player 2's `X4/7`, up from 3.
+- **UP6 The standard format.** Press P in window 1 for off, then three more times (Skirmish, gun
+  game, the spike rounds), and let round 1's agent select run out in both windows: player 1's
+  `VFKit` ends `X0/8`. Set `VFTestGive` to `ultimate` in window 1 (`X8/8`), then in the server's
+  command bar run this, which skips to round 13's buy phase, the defenders winning every round.
+  There player 1's `VFKit` ends `X0/8`.
+
+  ```lua
+  for _ = 1, 80 do
+  	if workspace.VFArena:GetAttribute("Round") == 13 then break end
+  	workspace:SetAttribute("VFMatchSkip", true)
+  	task.wait(0.3)
+  end
+  ```
+
+- **UP7 Its sudden death.** Run it again with 25 in place of 13. At 12-12 round 25's buy phase line
+  adds `SUDDEN DEATH`, and player 1's `VFKit` ends `X5/8`.
+
 ## Results
 
 ```
@@ -4067,6 +4124,13 @@ UO6 VFOrbs in round 2: ___; VFKit: ___
 UO7 the defuse with F: started / didn't; the result: ___
 UO8 VFKit after VFTestGive: ___; VFOrbs after: ___; VFKit after: ___
 UO9 VFOrbs in Swiftplay's round 1: ___; after off: ___
+UP1 player 1's VFKit: ___; player 2's, on Sage: ___
+UP2 right after the kill, player 2's VFKit: ___, player 1's: ___; in round 2's buy phase, player 1's: ___
+UP3 player 1's VFKit after the plant: ___; the blast killed player 1: yes / no; in round 3's buy phase, player 1's: ___, player 2's: ___
+UP4 player 2's VFKit after the kill: ___; in round 5's buy phase, player 1's: ___, player 2's: ___
+UP5 the score before round 9: ___; round 9's line: ___; VFKit then, player 1's: ___, player 2's: ___
+UP6 player 1's VFKit in round 1: ___; in round 13: ___
+UP7 the score before round 25: ___; round 25's line: ___; player 1's VFKit: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4377,3 +4441,9 @@ Didn't look right (IDs and what you saw):
 | 49 | F defusing the planted spike | UO7 |
 | 49 | A full ultimate taking one: the orb gone, the points still full | UO8 |
 | 49 | None after the spike rounds | UO9 |
+| 50 | Swiftplay's 2 points at the start, kept through an agent picked in the first buy phase | UP1 |
+| 50 | A death's point paid as the next round starts, and a kill's at once | UP2 |
+| 50 | No point for a death to the spike's blast | UP3 |
+| 50 | The half wiping a full ultimate, and a death in its last round earning nothing across it | UP4 |
+| 50 | A sudden death's start 3 short of full, whatever was had | UP5, UP7 |
+| 50 | The standard format: none at the start, none after the half, and 3 short in its sudden death | UP6, UP7 |

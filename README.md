@@ -384,6 +384,11 @@ Built one system at a time:
     within reach of one, enemies hear its whoosh as far as a plant, a chime marks it yours, and the
     minimap shows the orbs up as gold dots. F defuses the spike too -
     [research and design](docs/research/49-ultimate-orbs.md)
+50. **The ultimate's points across a match**: in the spike rounds the half wipes everyone's ultimate
+    points (Swiftplay starts each half on 2), each overtime round puts everyone 3 short of full
+    whatever they had, and a death's point comes as the next round starts. A death to the spike's
+    blast, or by your own hand, earns none -
+    [research and design](docs/research/50-ultimate-points.md)
 
 ## Running it
 
@@ -621,8 +626,10 @@ blasts' rate, how it ends, whom a blast catches, and the wire), his Owl Drone (i
 sent out, its flight, its ceiling, walls, Sova held, its darts, how it ends, the level with drones
 in it, its ids, and the wire), one of each agent on a side (what's taken, a selection moved off it,
 the time running out, the other side, a key for each side, back in a match, fewer agents than
-places, and halftime) and the spike rounds' Ultimate Orbs (where they stand, which are up, whose
-feet reach one, the taking, a defuse first, and the wire) are pure Luau and run outside Roblox:
+places, and halftime), the spike rounds' Ultimate Orbs (where they stand, which are up, whose feet
+reach one, the taking, a defuse first, and the wire) and the ultimate's points across a match (each
+round's kind, a match's, a half's and an overtime round's start, and a death's point paid) are pure
+Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
