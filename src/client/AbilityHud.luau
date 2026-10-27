@@ -7,7 +7,7 @@
 -- while its knives last (system 19), its note the knives left, and an
 -- ability's while it's in hand (Curveball's flare, system 30; Hot Hands'
 -- fireball, system 31; Blaze's flame, system 32; the Healing Orb, system
--- 36; the Resurrection's orb, system 39; the Recon Bolt's bow, system 44),
+-- 36; the Resurrection's orb, system 39; Sova's bow, systems 44 and 45),
 -- its note EQUIP until it can be thrown or drawn, and Blaze's while its
 -- wall's being bent; Run it Back's while it runs, its note the seconds
 -- left, and through his return, BACK (system 33); Shrouded Step's through

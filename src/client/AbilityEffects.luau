@@ -43,7 +43,8 @@
 --   * the Recon Bolt: only heard here, as it's loosed; ReconView draws the
 --     bow's draw, the bolt in the air and stuck, its pulses and whom they
 --     reveal, and sounds its flight, sticking, pulses and breaking
---     (system 44)
+--     (system 44). The Shock Bolt the same, ShockView drawing its bolt in
+--     the air and its burst, and sounding them (system 45)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws

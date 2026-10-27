@@ -43,6 +43,7 @@ local ParanoiaView = require(script.ParanoiaView)
 local StepView = require(script.StepView)
 local ShadowView = require(script.ShadowView)
 local ReconView = require(script.ReconView)
+local ShockView = require(script.ShockView)
 local MinimapView = require(script.MinimapView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
@@ -119,8 +120,9 @@ GameSounds.start()
 -- fields of ice (system 37), the Barrier Orb's walls (system 38), the
 -- Resurrection's returns (system 39), Paranoia's orbs and nearsights
 -- (system 41), Shrouded Step's targeter and steps (system 42), From the
--- Shadows' map and shades (system 43), and the Recon Bolt's bow, bolts,
--- pulses and reveals (system 44).
+-- Shadows' map and shades (system 43), the Recon Bolt's bow, bolts,
+-- pulses and reveals (system 44), and the Shock Bolt's bolts and bursts
+-- (system 45).
 AbilityHud.start()
 AbilityEffects.start()
 CloudView.start()
@@ -137,6 +139,7 @@ ParanoiaView.start()
 StepView.start()
 ShadowView.start()
 ReconView.start()
+ShockView.start()
 -- The minimap at the top left (system 34), and the big map while Caps Lock
 -- is held: the map, your side and the enemies it sees, the spike, what's
 -- been thrown, and the sounds you make.

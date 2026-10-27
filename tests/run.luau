@@ -53,5 +53,6 @@ require("./paranoia")
 require("./shroudedstep")
 require("./fromtheshadows")
 require("./reconbolt")
+require("./shockbolt")
 
 H.finish()
