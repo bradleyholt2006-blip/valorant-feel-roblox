@@ -2922,8 +2922,9 @@ charge comes back 1.5 s after you're there. Start at the spawn facing down the t
   stays lit with `STEP` under it, and C has one pip lit (`VFKit` `C1/2 Q1/1 E2/2 X7/7 step`). Then
   the screen goes dark (`VFKit` ends in `shroud`), and half a second later it clears as you're
   there: a quicker tone, logged as `stepArrive`, `yours`, and `pos` reads about `0.00 0.00 -4.99`.
-  `VFLastStep` reads about `0, 0, -4.99`. The Vandal's back 0.7 s after you're there, and C's second
-  pip lights again 1.5 s after you're there. Walk back to the spawn.
+  `VFLastStep` reads about `0, 0, -4.99`. The Vandal comes up as you're there, with its draw
+  (`drawRifle`, `yours`), ready 0.7 s later, and C's second pip lights again 1.5 s after you're
+  there. Walk back to the spawn.
 - **SS4 Held.** Press C, and once it's ready click the left button and at once set `VFTestButtons`
   to 65 (W and Space), and keep it: through the windup and while you're gone you neither move nor
   jump, `pos` changing only as you're put 5 m ahead, and once you're there you jump and walk on down
@@ -3023,17 +3024,18 @@ among its `Box`'s `Icons`. On the course the ultimate's points are full every li
   `C2/2 Q1/1 E2/2 X7/7 equip`.
 - **FS4 The teleport.** Set `VFTestMapPoint` to `0, 0, -25`, half way from the 20 m stripe to the
   30 m one: the ring's violet there (`Cursor` `0, 0, -25`, `Placeable` true). Click the left button:
-  a heavy whoosh slowed right down, logged as `shadowGo`, `yours`; the map and the slate go, and
-  shadow closes in from the screen's edges for 1.5 s, X's square lit with the seconds left under it,
-  `1.5` down to `0.0`. X's pips are dark, `VFKit` reads `C2/2 Q1/1 E2/2 X0/7 shadows`, and
-  `VFLastShadow` reads `0, 0, -25`. Then a deep, slow tone, logged as `shadowArrive`, `yours`: the
-  edges clear, and you're a Shade 25 m down the lane, `pos` about `0.00 0.00 -25.00`. The world's
-  nearly grey (`Grey` true, and a `VFShade` ColorCorrectionEffect under the camera), and dark close
-  round you, the dark drawing back slowly and then faster: `Sight` reads `0.2` at first, about `2.5`
-  half way, and nearly `10` at the last. X reads `SHADE`, and `VFKit` ends in `shade`. 2.5 s after
-  you arrived, a quicker tone, logged as `shadowForm`, `yours`: the grey and the dark are gone
-  (`Grey` false, `Sight` -1), and the Vandal comes up, ready 1 s later. X's pips light again 1.5 s
-  after you formed. **Send:** a screenshot as a Shade, half way through.
+  a heavy whoosh slowed right down, logged as `shadowGo`, `yours`, and no draw; the map and the
+  slate go, and shadow closes in from the screen's edges for 1.5 s, X's square lit with the seconds
+  left under it, `1.5` down to `0.0`. X's pips are dark, `VFKit` reads
+  `C2/2 Q1/1 E2/2 X0/7 shadows`, and `VFLastShadow` reads `0, 0, -25`. Then a deep, slow tone,
+  logged as `shadowArrive`, `yours`: the edges clear, and you're a Shade 25 m down the lane, `pos`
+  about `0.00 0.00 -25.00`. The world's nearly grey (`Grey` true, and a `VFShade`
+  ColorCorrectionEffect under the camera), and dark close round you, the dark drawing back slowly
+  and then faster: `Sight` reads `0.2` at first, about `2.5` half way, and nearly `10` at the last.
+  X reads `SHADE`, and `VFKit` ends in `shade`. 2.5 s after you arrived, a quicker tone, logged as
+  `shadowForm`, `yours`: the grey and the dark are gone (`Grey` false, `Sight` -1), and the Vandal
+  comes up with its draw, logged as `drawRifle`, `yours`, ready 1 s later. X's pips light again
+  1.5 s after you formed. **Send:** a screenshot as a Shade, half way through.
 - **FS5 Held.** Once X's pips are lit again, press X, set `VFTestMapPoint` to `0, 0, 0`, the spawn,
   click the left button, and at once set `VFTestButtons` to 65 (W and Space) and keep it. Through
   the windup and as a Shade you neither move nor jump, `pos` changing only as you're put at the
@@ -3043,9 +3045,9 @@ among its `Box`'s `Icons`. On the course the ultimate's points are full every li
   click the left button. In the windup press X: nothing changes, and 1.5 s after the click you're a
   Shade 25 m down the lane, as in FS4. Then press X again: a thin, slowed swish, logged as
   `shadowBreak`, `yours`; at once you're back at the spawn, `pos` about `0.00 0.00 0.00`, the grey
-  and the dark gone (`Grey` false), and the Vandal comes up, ready 1 s later. `VFKit` reads `X0/7`,
-  the points spent all the same, and X's pips light again 1.5 s later. Press F2 to close the Sound
-  Lab.
+  and the dark gone (`Grey` false), and the Vandal comes up with its draw (`drawRifle`, `yours`),
+  ready 1 s later. `VFKit` reads `X0/7`, the points spent all the same, and X's pips light again
+  1.5 s later. Press F2 to close the Sound Lab.
 - **FS7 Where it takes you.** Once X's pips are lit again, press X, set `VFTestMapPoint` to
   `-13.5, 0, -10`, the top of the red 1.00 m jump box, and click the left button: as a Shade you
   stand on the box, `pos` about `-13.50 1.00 -10.00`. Once they're lit again, the same with
@@ -3085,14 +3087,15 @@ and 3. In Studio, setting `VFTestGive` to `ultimate` fills the ultimate's points
   pips light, and `VFKit` reads `X7/7`. Press X: the big map comes up with the cursor on you
   (`VFMinimap`'s `Big` reads true), and the ring's red (`Placeable` false). Click the left button:
   nothing's fired or heard, and `VFKit` still reads `X7/7`. Press X to put it away.
-- **FS11 Their minimaps.** Once the round's live, press X in window 1 and click the left button with
-  the cursor where it starts, on you: windows 2 and 3 log `shadowGo`. From then until player 1 has
-  formed, 4 s later, window 2's minimap at the top left is covered in dark, and its big map too
-  while Caps Lock is held (`VFMinimap`'s `Dark` reads 1); window 3's isn't (`Dark` 0). In window 1 a
-  violet disc on the minimap shows where you're going, on you, until you've formed (`VFMinimap`'s
-  `Icons` has `Shade`). Set `VFTestGive` to `ultimate` in window 1 again, fire again where you
-  stand, and press X as soon as you're a Shade: window 2's minimap clears as player 1's sent back,
-  before the 4 s are up. **Send:** a screenshot of window 2's dark minimap.
+- **FS11 Their minimaps.** In window 1 press X a moment before the round goes live, and keep the map
+  up: as it goes live the ring turns from red to violet at once (`Placeable` true). Then click the
+  left button with the cursor where it starts, on you: windows 2 and 3 log `shadowGo`. From then
+  until player 1 has formed, 4 s later, window 2's minimap at the top left is covered in dark, and
+  its big map too while Caps Lock is held (`VFMinimap`'s `Dark` reads 1); window 3's isn't (`Dark`
+  0). In window 1 a violet disc on the minimap shows where you're going, on you, until you've formed
+  (`VFMinimap`'s `Icons` has `Shade`). Set `VFTestGive` to `ultimate` in window 1 again, fire again
+  where you stand, and press X as soon as you're a Shade: window 2's minimap clears as player 1's
+  sent back, before the 4 s are up. **Send:** a screenshot of window 2's dark minimap.
 
 ## Results
 
@@ -3357,7 +3360,7 @@ PA7 window 2's VFBlind after the first flare: ___; after the second: ___
 PA8 Q's pip as the round began: ___; bought for ___; E 40 s into the round: ___; E once the smoke came back, and 40 s after: ___
 SS1 anything on Omen's card or the bar that read differently: ___
 SS2 EQUIP for about ___ s; the ring about ___ m out, and ___ m at pitch 20; anything the Sound Lab logged differently: ___
-SS3 pos after the step: ___; VFLastStep: ___; dark for about ___ s; the Vandal back after ___ s; C's pip back after ___ s
+SS3 pos after the step: ___; VFLastStep: ___; dark for about ___ s; drawRifle heard as you arrived: yes / no; the Vandal back after ___ s; C's pip back after ___ s
 SS4 moved or jumped before you were there: yes / no; walked on after: yes / no
 SS5 the ring at pitch -18: ___; pos after the step at pitch -30: ___
 SS6 pos after the step onto the box: ___
@@ -3368,14 +3371,14 @@ SS10 C's pips as the round began: ___; bought for ___ each; the minimap's Step: 
 FS1 anything on Omen's card or the bar that read differently: ___
 FS2 EQUIP for about ___ s, then: ___; the Plan: ___; Cursor: ___; the cursor moved with the mouse: yes / no; anything the Sound Lab logged differently: ___
 FS3 Cursor pushed off the map: ___; red there and at the corner: yes / no; anything fired: yes / no
-FS4 VFLastShadow: ___; pos as a Shade: ___; the windup about ___ s; Sight at first ___, half way ___, at the last ___; the Vandal ready after ___ s; X's pips back after ___ s
+FS4 VFLastShadow: ___; pos as a Shade: ___; the windup about ___ s; Sight at first ___, half way ___, at the last ___; drawRifle heard at the click: yes / no, and as you formed: yes / no; the Vandal ready after ___ s; X's pips back after ___ s
 FS5 moved or jumped before you formed: yes / no; the view turned: yes / no; walked on after: yes / no
-FS6 X in the windup did anything: yes / no; pos after X as a Shade: ___; VFKit after: ___
+FS6 X in the windup did anything: yes / no; pos after X as a Shade: ___; drawRifle heard as you were sent back: yes / no; VFKit after: ___
 FS7 pos on the box: ___; on the tunnel's roof: ___; by the backstop: ___
 FS8 the windows that logged shadowGo: ___; shadowArrive in window 2: ___; in window 3: ___; the swirl, puff, Shade and form: yes / no
 FS9 player 1's pos after the shot: ___; their health after: ___; what each window logged: ___
 FS10 the big map up: yes / no; the cursor red in the buy phase: yes / no; anything fired: yes / no
-FS11 window 2's Dark while it ran: ___, for about ___ s; window 3's: ___; the minimap's Shade in window 1: yes / no; window 2's cleared as player 1 was sent back: yes / no
+FS11 Placeable as the round went live: ___, after about ___ s; window 2's Dark while it ran: ___, for about ___ s; window 3's: ___; the minimap's Shade in window 1: yes / no; window 2's cleared as player 1 was sent back: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
