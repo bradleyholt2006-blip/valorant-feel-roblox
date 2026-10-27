@@ -40,18 +40,14 @@ local function dice(...: number): MapVote.Roll
 end
 
 -- Each of `ids`' picks moved on at `now`, as Skirmish's rules `s` have them
--- (the server's first mode started): the agents they play now, by id, for
--- those that changed.
+-- (the server's first mode started), all together as the server moves them:
+-- the agents they play now, by id, for those that changed.
 local function stepAll(a: AgentSelect.State, s: ArenaRules.State, ids: { number }, now: number): { [number]: string }
-	local changed = {}
+	local moments: { [number]: string? } = {}
 	for _, id in ids do
-		local moment = AgentSelect.moment("skirmish", s.phase, s.match, 1, s.members[id] ~= nil)
-		local agent = AgentSelect.update(a, id, moment, now)
-		if agent then
-			changed[id] = agent
-		end
+		moments[id] = AgentSelect.moment("skirmish", s.phase, s.match, 1, ArenaRules.sideOf(s, id))
 	end
-	return changed
+	return AgentSelect.step(a, ids, moments, now)
 end
 
 local function count(t: { [number]: string }): number
@@ -114,29 +110,29 @@ end
 -- Where a player is -------------------------------------------------------------------------
 
 do
-	check("the course is free", AgentSelect.moment(nil, "", 0, 0, false) == FREE)
-	check("so is a mode waiting for players", AgentSelect.moment("skirmish", "waiting", 3, 1, true) == FREE)
-	local key = AgentSelect.moment("skirmish", "buy", 3, 1, true)
+	check("the course is free", AgentSelect.moment(nil, "", 0, 0, nil) == FREE)
+	check("so is a mode waiting for players", AgentSelect.moment("skirmish", "waiting", 3, 1, 1) == FREE)
+	local key = AgentSelect.moment("skirmish", "buy", 3, 1, 1)
 	check("a match under way has its key", key ~= nil and key ~= FREE)
 	local same = true
 	for _, phase in { "live", "roundOver" } do
-		same = same and AgentSelect.moment("skirmish", phase, 3, 1, true) == key
+		same = same and AgentSelect.moment("skirmish", phase, 3, 1, 1) == key
 	end
 	check("through every phase of it", same)
-	check("the next match has another", AgentSelect.moment("skirmish", "buy", 4, 1, true) ~= key)
-	check("and so does the same match once the mode starts over", AgentSelect.moment("skirmish", "buy", 3, 2, true) ~= key)
-	check("as does another mode's", AgentSelect.moment("spike", "buy", 3, 1, true) ~= key)
-	local spike = AgentSelect.moment("spike", "planted", 1, 1, true)
-	local tdm = AgentSelect.moment("teamdeathmatch", "pregame", 1, 1, true)
+	check("the next match has another", AgentSelect.moment("skirmish", "buy", 4, 1, 1) ~= key)
+	check("and so does the same match once the mode starts over", AgentSelect.moment("skirmish", "buy", 3, 2, 1) ~= key)
+	check("as does another mode's", AgentSelect.moment("spike", "buy", 3, 1, 1) ~= key)
+	local spike = AgentSelect.moment("spike", "planted", 1, 1, 1)
+	local tdm = AgentSelect.moment("teamdeathmatch", "pregame", 1, 1, 2)
 	check("the spike rounds and Team Deathmatch pick too", spike ~= nil and spike ~= FREE and tdm ~= nil and tdm ~= FREE)
 	check(
 		"but nobody between matches",
-		AgentSelect.moment("skirmish", "matchOver", 3, 1, true) == nil and AgentSelect.moment("skirmish", "vote", 3, 1, true) == nil
+		AgentSelect.moment("skirmish", "matchOver", 3, 1, 1) == nil and AgentSelect.moment("skirmish", "vote", 3, 1, 1) == nil
 	)
-	check("nor off a side, in line or in the Play menu", AgentSelect.moment("skirmish", "buy", 3, 1, false) == nil)
+	check("nor off a side, in line or in the Play menu", AgentSelect.moment("skirmish", "buy", 3, 1, nil) == nil)
 	check(
 		"nor in gun game or deathmatch, with no abilities",
-		AgentSelect.moment("gungame", "live", 1, 1, true) == nil and AgentSelect.moment("deathmatch", "waiting", 1, 1, true) == nil
+		AgentSelect.moment("gungame", "live", 1, 1, 1) == nil and AgentSelect.moment("deathmatch", "waiting", 1, 1, 1) == nil
 	)
 end
 
@@ -306,7 +302,8 @@ do
 		"the next match opens everyone's window again",
 		s.match == before + 1 and s.phase == "buy" and p1.status == "open" and p2.status == "open" and p3.status == "open"
 	)
-	check("each on the agent they played", p1.selected == JETT and p2.selected == OTHER and p3.selected == JETT)
+	-- Player 3's window opened with player 1's Jett taken (system 48).
+	check("each on the agent they played", p1.selected == JETT and p2.selected == OTHER and p3.selected == OTHER)
 	changed = stepAll(a, s, everyone, t + TIME)
 	check("and nobody picking, they play on as before", count(changed) == 0 and p1.agent == JETT and p2.agent == OTHER)
 

@@ -368,6 +368,15 @@ Built one system at a time:
     knives, and enemies see and hear it only within 15 m or in their sight. One charge at 400
     credits (in Team Deathmatch back 51 s after it's spent); with it, all of Sova's kit is played -
     [research and design](docs/research/47-owl-drone.md)
+48. **One of each agent on a side**: with five agents, everyone on a side of five can play one of
+    their own, as in the reference, where each player on a team picks a different agent. An agent a
+    teammate has locked in this match is taken: its card in agent select is dimmed and reads TAKEN,
+    it can't be selected or locked in, and a selection it's taken from moves back to the agent you
+    play, or else to the first that's free, so the time running out never locks in a taken one. The
+    first to lock an agent in has it, and of windows closing at once on one agent the first player
+    on the server keeps it; the other side can play it too. Someone moved across to even the sides
+    has a window for their new side, and someone back in a match to find their agent taken has
+    another - [research and design](docs/research/48-one-of-each.md)
 
 ## Running it
 
@@ -493,12 +502,13 @@ back over time, when each of C, Q and E next has one is the player's `VFRecharge
 (server time, 0 for none coming). A player's agent is their `VFAgent` attribute, what
 they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
 `open` or `locked`, unset where nobody picks), and while their window's open, when it closes
-(server time) `VFAgentCloses`. Where a player's last Cloudburst burst is their
-`VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the air and each
-cloud as parts. Where a player's last Curveball popped is their `VFLastFlare` attribute (metres),
-and their blind their `VFBlind` (when it began, when its white ends and when it's gone, in server
-time); `Workspace.VFFlares` holds each flare in the air and each pop as parts. Where a player's
-last Hot Hands burst is their `VFLastFire` attribute (the floor under it, in metres), and
+(server time) `VFAgentCloses`. A teammate's `locked` agent is taken from the rest of their side
+(system 48), and `VFTestAgent` set to a taken agent is refused. Where a player's last Cloudburst
+burst is their `VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the
+air and each cloud as parts. Where a player's last Curveball popped is their `VFLastFlare` attribute
+(metres), and their blind their `VFBlind` (when it began, when its white ends and when it's gone, in
+server time); `Workspace.VFFlares` holds each flare in the air and each pop as parts. Where a
+player's last Hot Hands burst is their `VFLastFire` attribute (the floor under it, in metres), and
 `Workspace.VFFires` holds each fireball in the air, each burst and each fire as parts. The far end
 of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Workspace.VFWalls`
 holds each wall's run on its way and each wall as models. Where a player last cast Run it Back is
@@ -597,9 +607,11 @@ map, and the wire), Sova's Recon Bolt (the bow in hand, the draw, the bounces an
 flight, its pulses and whom they reveal, its shaft, and the wire), his Shock Bolt (the bow in hand,
 the draw and the loose, its burst, how much it does at each distance and whom it reaches, and the
 wire), his Hunter's Fury (its bow in hand, a blast's windup and the blast, the knockback, the
-blasts' rate, how it ends, whom a blast catches, and the wire) and his Owl Drone (its numbers, in
-hand, sent out, its flight, its ceiling, walls, Sova held, its darts, how it ends, the level with
-drones in it, its ids, and the wire) are pure Luau and run outside Roblox:
+blasts' rate, how it ends, whom a blast catches, and the wire), his Owl Drone (its numbers, in hand,
+sent out, its flight, its ceiling, walls, Sova held, its darts, how it ends, the level with drones
+in it, its ids, and the wire) and one of each agent on a side (what's taken, a selection moved off
+it, the time running out, the other side, a key for each side, back in a match, fewer agents than
+places, and halftime) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

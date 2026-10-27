@@ -119,10 +119,11 @@
 --
 -- Agent select (system 29, AgentServer) asks here where each player is for
 -- picking: free on the course and while a mode waits for players, once a
--- match by its key in Skirmish, the spike rounds and Team Deathmatch, and
--- nowhere else; and whether an agent locked in goes on their kit at once:
--- while they're down, in a buy phase, Team Deathmatch's pre-game and their
--- own spawn room there, and wherever picking is free (AgentSelect).
+-- match by its key in Skirmish, the spike rounds and Team Deathmatch, each
+-- side with its own (system 48), and nowhere else; and whether an agent
+-- locked in goes on their kit at once: while they're down, in a buy phase,
+-- Team Deathmatch's pre-game and their own spawn room there, and wherever
+-- picking is free (AgentSelect).
 --
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
@@ -1414,14 +1415,16 @@ function Arena.start()
 		end
 		return nil
 	end
-	-- Where each player is for picking an agent, and whether one locked in
-	-- goes on their kit at once (system 29).
+	-- Where each player is for picking an agent, by the side they're on
+	-- (system 48), and whether one locked in goes on their kit at once
+	-- (system 29).
 	AgentServer.momentOf = function(player: Player): string?
 		local s, m, t = skirmish, match, tdm
 		local sides: Roster.Sides? = if s then s elseif m then m elseif t then t else nil
 		local phase: string = if s then s.phase elseif m then m.phase elseif t then t.phase else ""
 		local number = if s then s.match elseif m then m.match elseif t then t.match else 0
-		return AgentSelect.moment(mode, phase, number, begun, sides ~= nil and sides.members[player.UserId] ~= nil)
+		local side = if sides then Roster.sideOf(sides, player.UserId) else nil
+		return AgentSelect.moment(mode, phase, number, begun, side)
 	end
 	AgentServer.swapsNow = function(player: Player): boolean
 		local s, m, t = skirmish, match, tdm
