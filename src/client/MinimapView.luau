@@ -19,6 +19,9 @@
 --     each where they are as the fog of war sends them for it (system 35)
 --   * the spike planted, and dropped while it's shown to you
 --     (Minimap.spikeShown); carried, a mark on its carrier for their side
+--   * the Ultimate Orbs up (system 49), gold dots, for everyone, as the
+--     reference's Spike Rush orbs are 'perfectly visible on the radar'
+--     (gamepressure.com; community)
 --   * vision cones, yours and your side's, each ray as far as it goes from
 --     the eye before the level, a cloud or a wall of fire or of ice stops
 --     it (Patch 6.07 fixed cones flickering at walls of fire)
@@ -51,11 +54,12 @@
 --
 -- For scripted checks, the minimap's ScreenGui (VFMinimap) carries what it
 -- shows as attributes: Plan (the plan's key), Seen (the entity ids of the
--- enemies shown, "3,7"), Spike (whether the spike is), Turn (degrees the
--- map's turned), Big (whether the big map's open) and Dark (how covered it
--- is, 0 to 1). Its icons are named Self, Ally_<id>, Enemy_<id>, Seen_<id>,
--- Pulse_<id>, Dead_<id>, Spike, Step, Shadow (From the Shadows' cursor),
--- Shade (where it's taking you), Fury (where a blast would go) and Ring.
+-- enemies shown, "3,7"), Spike (whether the spike is), Orbs (the Ultimate
+-- Orbs', "1,2"), Turn (degrees the map's turned), Big (whether the big
+-- map's open) and Dark (how covered it is, 0 to 1). Its icons are named
+-- Self, Ally_<id>, Enemy_<id>, Seen_<id>, Pulse_<id>, Dead_<id>, Spike,
+-- Orb_<n>, Step, Shadow (From the Shadows' cursor), Shade (where it's
+-- taking you), Fury (where a blast would go) and Ring.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -117,6 +121,7 @@ local SPAWN = Color3.fromRGB(66, 74, 86)
 local DARK = Color3.fromRGB(10, 10, 14)
 local SELF = Color3.fromRGB(255, 236, 140)
 local SPIKE = Color3.fromRGB(255, 150, 40)
+local ORB = Color3.fromRGB(230, 200, 120) -- an Ultimate Orb's gold (system 49)
 local SMOKE = Color3.fromRGB(196, 214, 228)
 local FIRE = Color3.fromRGB(255, 128, 40)
 local ICE = Color3.fromRGB(110, 205, 235)
@@ -150,7 +155,7 @@ type Layer = {
 
 type Icon = {
 	name: string,
-	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead", "spike", "step" or "cursor"
+	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead", "spike", "orb", "step" or "cursor"
 	position: vector,
 	yaw: number?,
 	fade: number, -- 0 solid, 1 gone
@@ -358,6 +363,10 @@ local function newIcon(kind: string): GuiObject
 		local d = plainFrame(SPIKE, 4)
 		d.Rotation = 45
 		stroke(d, DARK, 2)
+		return d
+	elseif kind == "orb" then
+		local d = disc(ORB, 3)
+		stroke(d, DARK, 1.5)
 		return d
 	elseif kind == "step" then
 		local d = disc(STEP, 4)
@@ -709,6 +718,10 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	if at and spike.state ~= "carried" and Minimap.spikeShown(spike.state, ours, spikeSeen) then
 		table.insert(icons, { name = "Spike", kind = "spike", position = at, fade = 0, carrier = false, edge = false })
 	end
+	-- The Ultimate Orbs up (system 49).
+	for i, orb in ClientSpike.orbs() do
+		table.insert(icons, { name = "Orb_" .. i, kind = "orb", position = orb, fade = 0, carrier = false, edge = false })
+	end
 	-- Where your Shrouded Step would take you, or is taking you (system 42).
 	local step = StepView.aimed()
 	if step then
@@ -903,6 +916,7 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 			then size * 1.1
 			elseif kind == "self" then size * 1.15
 			elseif kind == "cursor" then size * 1.8
+			elseif kind == "orb" then size * 0.75
 			else size
 		f.Size = UDim2.fromOffset(across, across)
 		if icon.yaw then
@@ -1053,6 +1067,14 @@ local function step()
 	gui:SetAttribute("Plan", plan.key)
 	gui:SetAttribute("Seen", table.concat(shown, ","))
 	gui:SetAttribute("Spike", if mLayer.icons.items.Spike then true else false)
+	local orbs = {}
+	for i in ClientSpike.orbs() do
+		if mLayer.icons.items["Orb_" .. i] then
+			table.insert(orbs, i)
+		end
+	end
+	table.sort(orbs)
+	gui:SetAttribute("Orbs", table.concat(orbs, ","))
 	gui:SetAttribute("Turn", math.floor(math.deg(turn) * 10 + 0.5) / 10)
 	gui:SetAttribute("Big", big)
 	gui:SetAttribute("Dark", math.floor(covered * 100 + 0.5) / 100)

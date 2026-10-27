@@ -4,25 +4,34 @@
 -- server runs exactly the same ticks.
 --
 -- Holding Use (4) or fire with the spike in hand, on the ground inside a
--- site's plant area, plants it in plantTime. Holding Use within range of the
--- planted spike, with sight of it, defuses it: defuseTime, or what's left
--- after a saved half. Either roots the player where they are (they can still
--- turn and crouch) and ends the moment the button is let go: a plant starts
--- over, a defuse keeps its half once past it. A defuse also ends the moment
--- its defuser is out of range or loses sight of the spike (Patches 2.07 and
--- 6.10), crouching behind cover, say. G drops the spike from the hand. A
--- defuse puts the weapon away, and the weapon comes back with its draw time
--- when it ends, as it does after a plant or a drop.
+-- site's plant area, plants it in plantTime. Holding Use or Interact (F,
+-- system 49) within range of the planted spike, with sight of it, defuses
+-- it: defuseTime, or what's left after a saved half. Either roots the
+-- player where they are (they can still turn and crouch) and ends the
+-- moment the button is let go: a plant starts over, a defuse keeps its half
+-- once past it. A defuse also ends the moment its defuser is out of range
+-- or loses sight of the spike (Patches 2.07 and 6.10), crouching behind
+-- cover, say. G drops the spike from the hand. A defuse puts the weapon
+-- away, and the weapon comes back with its draw time when it ends, as it
+-- does after a plant or a drop.
+--
+-- Holding Interact on the ground within reach of an Ultimate Orb that's up
+-- (system 49, UltimateOrbs) takes it in its collectTime, as a defuse goes:
+-- rooted, the weapon away until it ends, and over with nothing gained the
+-- moment F is let go or the orb's gone ('canceling a plant or orb pickup',
+-- Patch 0.49). A defuse within reach goes first.
 --
 -- What the server must act on comes out as an Act: the spike planted,
--- defused, dropped, or a defuse let go of (for its saved half).
+-- defused, dropped, a defuse let go of (for its saved half), or an orb
+-- taken.
 
 local Spike = require("./Spike")
+local UltimateOrbs = require("./UltimateOrbs")
 local MovementSim = require("../Movement/MovementSim")
 local WeaponSim = require("../Weapons/WeaponSim")
 
 export type State = {
-	channel: number, -- 0 nothing, 1 planting, 2 defusing
+	channel: number, -- 0 nothing, 1 planting, 2 defusing, 3 taking an Ultimate Orb
 	channelStart: number, -- simulation time it started
 	channelEnd: number, -- when it completes
 	halfStart: boolean, -- this defuse started from a saved half
@@ -32,17 +41,19 @@ export type State = {
 	-- nothing more starts until it's let go (on the course a planter would
 	-- otherwise go straight on to defuse their own spike).
 	holdOver: boolean,
+	orb: number, -- the Ultimate Orb being taken, by number; 0 for none
 }
 
-export type ActKind = "planted" | "defused" | "stopped" | "dropped"
+export type ActKind = "planted" | "defused" | "stopped" | "dropped" | "collected"
 export type Act = {
 	kind: ActKind,
 	tick: number,
 	time: number,
-	position: vector, -- metres: where it was planted or dropped, or the defuser's feet
+	position: vector, -- metres: where it was planted or dropped, the defuser's feet, or the orb taken
 	yaw: number,
 	site: string?, -- planted: the site
 	progress: number, -- stopped: seconds of the 7 the defuse reached
+	orb: number?, -- collected: the Ultimate Orb's number
 }
 
 local SpikeSim = {}
@@ -50,6 +61,7 @@ local SpikeSim = {}
 SpikeSim.NONE = 0
 SpikeSim.PLANTING = 1
 SpikeSim.DEFUSING = 2
+SpikeSim.COLLECTING = 3
 
 local B = MovementSim.Buttons
 local EPS = 1e-9
@@ -57,7 +69,7 @@ local EPS = 1e-9
 local ROOTED_MASK = bit32.bnot(bit32.bor(B.Forward, B.Back, B.Left, B.Right, B.Jump))
 
 function SpikeSim.new(): State
-	return { channel = 0, channelStart = 0, channelEnd = 0, halfStart = false, lastSlot = 1, dropHeld = false, holdOver = false }
+	return { channel = 0, channelStart = 0, channelEnd = 0, halfStart = false, lastSlot = 1, dropHeld = false, holdOver = false, orb = 0 }
 end
 
 function SpikeSim.copy(s: State): State
@@ -80,6 +92,11 @@ end
 -- The buttons movement sees: none of the moving ones while rooted.
 function SpikeSim.movementButtons(s: State, buttons: number): number
 	return if s.channel ~= SpikeSim.NONE then bit32.band(buttons, ROOTED_MASK) else buttons
+end
+
+-- Whether the weapon's put away: a defuse, or an orb being taken.
+function SpikeSim.stowed(s: State): boolean
+	return s.channel == SpikeSim.DEFUSING or s.channel == SpikeSim.COLLECTING
 end
 
 -- How far the plant or defuse under way has got, 0 to 1, at time `t`.
@@ -124,6 +141,7 @@ end
 local function stop(s: State)
 	s.channel = SpikeSim.NONE
 	s.halfStart = false
+	s.orb = 0
 end
 
 -- Takes the spike from a player, by the server's doing (it's handed to
@@ -166,9 +184,10 @@ local function plantPoint(zones: { Spike.Zone }, feet: vector, yaw: number): vec
 	return if Spike.siteAt(zones, ahead) then ahead else feet
 end
 
--- One tick, before movement: starts, carries on, ends or completes the plant
--- or the defuse, and drops the spike on G. `eye` is the eye before this
--- tick's movement. Returns what the server must act on, if anything.
+-- One tick, before movement: starts, carries on, ends or completes the
+-- plant, the defuse or an orb's taking, and drops the spike on G. `eye` is
+-- the eye before this tick's movement. Returns what the server must act
+-- on, if anything.
 function SpikeSim.step(
 	s: State,
 	m: MovementSim.State,
@@ -182,10 +201,11 @@ function SpikeSim.step(
 	local buttons: number = input.buttons
 	local use = has(buttons, B.Use)
 	local fire = has(buttons, B.Fire)
+	local interact = has(buttons, B.Interact)
 	local drop = has(buttons, B.Drop)
 	local dropPressed = drop and not s.dropHeld
 	s.dropHeld = drop
-	if s.holdOver and not (use or fire) then
+	if s.holdOver and not (use or fire or interact) then
 		s.holdOver = false
 	end
 	if w.equipped ~= Spike.SLOT then
@@ -193,8 +213,8 @@ function SpikeSim.step(
 	end
 	local feet = m.position
 
-	local function act(kind: ActKind, position: vector, site: string?, progress: number): Act
-		return { kind = kind, tick = tick, time = t, position = position, yaw = input.yaw, site = site, progress = progress }
+	local function act(kind: ActKind, position: vector, site: string?, progress: number, orb: number?): Act
+		return { kind = kind, tick = tick, time = t, position = position, yaw = input.yaw, site = site, progress = progress, orb = orb }
 	end
 
 	if s.channel == SpikeSim.PLANTING then
@@ -212,7 +232,7 @@ function SpikeSim.step(
 	elseif s.channel == SpikeSim.DEFUSING then
 		local planted = ctx.planted
 		local progress = Spike.defuseProgress(s.halfStart, t - s.channelStart)
-		if not (use and planted and ctx.canDefuse and canReach(ctx, feet, eye, planted)) then
+		if not ((use or interact) and planted and ctx.canDefuse and canReach(ctx, feet, eye, planted)) then
 			stop(s)
 			WeaponSim.redraw(w, t)
 			return act("stopped", feet, nil, progress)
@@ -224,10 +244,27 @@ function SpikeSim.step(
 		else
 			return nil
 		end
+	elseif s.channel == SpikeSim.COLLECTING then
+		local orbs = ctx.orbs
+		local orb = s.orb
+		local at = if orbs then orbs[orb] else nil
+		if not (interact and at and UltimateOrbs.reaches(feet, at)) then
+			stop(s)
+			WeaponSim.redraw(w, t)
+			return nil
+		elseif t >= s.channelEnd - EPS then
+			stop(s)
+			s.holdOver = true
+			WeaponSim.redraw(w, t)
+			return act("collected", at, nil, 0, orb)
+		else
+			return nil
+		end
 	end
 
-	-- Nothing under way: G drops the spike from the hand, and holding Use
-	-- (or fire, with the spike in hand) starts a plant or a defuse.
+	-- Nothing under way: G drops the spike from the hand, holding Use (or
+	-- fire, with the spike in hand) starts a plant or a defuse, Interact a
+	-- defuse, or failing that an orb's taking.
 	if dropPressed and SpikeSim.inHand(w) then
 		release(s, w, t)
 		return act("dropped", feet, nil, 0)
@@ -243,11 +280,22 @@ function SpikeSim.step(
 		return nil
 	end
 	local planted = ctx.planted
-	if use and planted and ctx.canDefuse and not SpikeSim.inHand(w) and canReach(ctx, feet, eye, planted) then
+	if (use or interact) and planted and ctx.canDefuse and not SpikeSim.inHand(w) and canReach(ctx, feet, eye, planted) then
 		s.channel = SpikeSim.DEFUSING
 		s.channelStart = t
 		s.halfStart = ctx.halfSaved
 		s.channelEnd = t + Spike.defuseTime(ctx.halfSaved)
+		root(m)
+		WeaponSim.holster(w)
+		return nil
+	end
+	local orbs = ctx.orbs
+	local orb = if interact and orbs then UltimateOrbs.inReach(orbs, feet) else nil
+	if orb then
+		s.channel = SpikeSim.COLLECTING
+		s.channelStart = t
+		s.channelEnd = t + UltimateOrbs.Params.collectTime.value
+		s.orb = orb
 		root(m)
 		WeaponSim.holster(w)
 	end

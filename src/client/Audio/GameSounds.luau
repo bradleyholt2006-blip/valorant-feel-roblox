@@ -25,6 +25,9 @@
 --            yours on the Self bus and others' where they are, and a latch
 --            as you pick it up; the spike's own beeps, defuse, blast and
 --            drop are SpikeView's, out in the world through playWorld
+--   orbs     an Ultimate Orb's whoosh as someone starts to take it (system
+--            49), heard as far as a plant, yours on the Self bus and
+--            others' where they are, and its chime as yours is taken
 --   abilities  a cast's gust or swish (system 17): yours on the Self bus,
 --            others' where they cast, both through playCast (AbilityEffects
 --            says when); a glide's gusts again and again while it lasts
@@ -243,18 +246,22 @@ end
 -- The spike -------------------------------------------------------------------------
 
 -- A plant or a defuse under way, as heard: which (SpikeSim's channel: 1 a
--- plant, 2 a defuse), when it started, whether it's a defuse from the half,
--- and its beeping: the voice playing it and when that started.
+-- plant, 2 a defuse, 3 an Ultimate Orb's taking), when it started, whether
+-- it's a defuse from the half, and its beeping: the voice playing it and
+-- when that started.
 type Channel = { kind: number, start: number, half: boolean, voice: SoundEngine.Voice?, playedAt: number? }
 
 local function newChannel(kind: number, start: number, half: boolean): Channel
 	return { kind = kind, start = start, half = half, voice = nil, playedAt = nil }
 end
 
--- The plant's beeping, or the defuse's, higher from the half.
+-- The plant's beeping, or the defuse's, higher from the half; or an orb's
+-- whoosh, once as it starts.
 local function cueOf(c: Channel): (string, number?)
 	if c.kind == 1 then
 		return SoundConfig.Spike.plant, nil
+	elseif c.kind == 3 then
+		return SoundConfig.Orbs.grab, nil
 	end
 	return SoundConfig.Spike.defuse, if c.half then SoundConfig.Spike.halfPitch.value else nil
 end
@@ -405,6 +412,11 @@ local function onTick(info: any)
 		-- Let go of, done or cut short: its beeping stops.
 		stopCue(ownChannel)
 		ownChannel = nil
+	end
+	-- An Ultimate Orb taken (system 49).
+	local act = info.act
+	if act and act.kind == "collected" then
+		own(SoundConfig.Orbs.taken)
 	end
 
 	-- Gliding: a gust each so often, the last left to ring out as it ends.
@@ -574,7 +586,7 @@ local function onFrame()
 			if cueDue(c, renderTime) then
 				SoundEngine.stop(c.voice)
 				c.playedAt = renderTime
-				local at = pose.position + DEVICE
+				local at = pose.position + (if c.kind == 3 then CHEST else DEVICE)
 				local sound, pitch = cueOf(c)
 				if silenced then
 					c.voice = nil
@@ -741,6 +753,9 @@ function GameSounds.start()
 	SoundEngine.prepare(spike.defused, "world", C.beep.points)
 	SoundEngine.prepare(spike.blast, "world", C.blast.points)
 	SoundEngine.prepare(spike.drop, "world", C.drop.points)
+	SoundEngine.prepare(SoundConfig.Orbs.grab, "world", C.device.points)
+	SoundEngine.prepare(SoundConfig.Orbs.grab, "self")
+	SoundEngine.prepare(SoundConfig.Orbs.taken, "self")
 	for kind, sound in SoundConfig.Abilities do
 		SoundEngine.prepare(sound, "world", (C :: any)[SoundConfig.CastCurves[kind] or "ability"].points)
 		SoundEngine.prepare(sound, "self")

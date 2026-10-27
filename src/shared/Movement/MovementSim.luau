@@ -85,6 +85,10 @@ local Buttons = {
 	AbilityQ = 8192,
 	AbilityE = 16384,
 	Ultimate = 32768,
+	-- F held, the reference's 'Use object' (system 49): takes an Ultimate
+	-- Orb, and defuses the spike as Use does. The seventeenth button, which
+	-- the input's slot byte carries (PlayerCodec).
+	Interact = 65536,
 }
 
 -- What an ability under way does to one tick of movement (system 17,

@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-eight
+Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-nine
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -33,7 +33,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
-   sections 44 to 51 one and then three, and section 52 three.
+   sections 44 to 51 one and then three, section 52 three, and section 53 two.
 
 | Key | What it does |
 | --- | --- |
@@ -81,7 +81,7 @@ it's set, without the mouse or keys: 128 is the left button (fire, or the knife'
 right (zoom, or the stab), 1024 is 4 held (the spike's plant and defuse), 2048 is G, 32 crouches
 and 1 is W; add them to hold several. The ability keys are 4096 for C, 8192 Q, 16384 E and 32768
 X; an ability casts as its key goes down, so set the attribute and clear it again for each cast
-(C kept set after a throw curves it).
+(C kept set after a throw curves it). 65536 holds F (an Ultimate Orb's taking, or a defuse).
 A boolean attribute `VFTestTake` set to true presses F for you, and clears itself, and
 `VFTestBoard` set to true or false holds the scoreboard open as Tab does or lets it go.
 `VFTestSettingsMenu` set to true or false opens or closes the settings menu, and a string
@@ -3661,6 +3661,65 @@ Then the spike rounds: press P twice more in window 1 (gun game, then the spike 
   back on Jett (`jett`), their selection moved off Omen as player 1's window locked it in.
   Window 1's `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, as in DC11.
 
+## 53. Ultimate Orbs
+
+From [49-ultimate-orbs.md](research/49-ultimate-orbs.md). Two players in the spike rounds, with the
+HUD on (F3) and the Sound Lab open (F2 four times) in both windows. Workspace's `VFOrbs` is which
+orbs are up, by number (`1,2`), and `Workspace.VFUltimateOrbs` holds each orb (`UltimateOrb1`,
+`UltimateOrb2`) and the disc under it (`UltimateOrb1Mark`, `UltimateOrb2Mark`). In metres, Outpost's
+orbs are at (-177.5, 0, 10) and (-122.5, 0, 10), Quarry's at (-343, 0, -3) and (-263, 0, -5), and
+Foundry's at (-493, 0, 1) and (-415, 0, -3): orb 1 on the A side and orb 2 on the B side. A player's
+`VFKit` ends with the ultimate's points and what it needs, as `X0/8` for Jett. Without keys,
+`VFTestButtons` 65536 holds F (add 1 for W, 64 for Space and 128 for the left button), and
+`VFMatchSkip` skips a buy phase or what's left of a round (section 17).
+
+Start a Local Server with 2 players, as in section 9, and press P three times in window 1 (the spike
+rounds). As round 1's buy phase starts, agent select comes up by itself: let its 10 s run out in
+both windows, so both play Jett. Each round's checks fit in its 100 s; if one runs out first, do
+that round's checks again in the next.
+
+- **UO1 Up.** `VFOrbs` reads `1,2`, and `Workspace.VFUltimateOrbs` holds its four parts. In both
+  windows the minimap has a small gold dot for each, orb 1 down A main and orb 2 down B main (on
+  Foundry, A long and B main), and `VFMinimap`'s `Orbs` reads `1,2`. Player 1 walks over the spike
+  in front of them and has it.
+- **UO2 The prompt.** Skip the buy phase. Player 1 walks to orb 1, and player 2 comes and stands
+  about 5 m from it, facing it. The orb is a glowing gold ball about 0.5 m across, 1 m over a faint
+  gold disc 1.2 m across on the floor, with a soft gold light round it. Within about 1.5 m of the
+  disc's middle, `HOLD F FOR THE ULTIMATE ORB` shows in gold under player 1's crosshair; 2 m away
+  it's gone. **Send:** a screenshot of the orb from a few metres away, and the map's name.
+- **UO3 Let go.** Player 1 holds F and the left button at orb 1 (`VFTestButtons` 65664) for about a
+  second, then lets go (clears it). While they're held: a whoosh, which window 1's Sound Lab logs as
+  `orbGrab`, `yours`, and window 2's as `orbGrab` from player 1 about 5 m away; the gun goes from
+  player 1's hands in both windows; a gold bar fills under the crosshair labelled
+  `TAKING THE ULTIMATE ORB`; the HUD's spike line adds `taking an orb` and how far along it is; and
+  nothing fires: the Classic's count stays at 12. As they're let go the bar goes at once, with no
+  chime, the gun comes back over its draw, `VFOrbs` still reads `1,2`, and `VFKit` still ends
+  `X0/8`.
+- **UO4 Taken.** Player 1 holds F, W and Space (`VFTestButtons` 65601): the bar starts from empty,
+  with another whoosh logged in both windows, and they neither move nor jump, though `VFTestYaw`
+  still turns the view. 2 s later a chime, which window 1's Sound Lab logs as `orbTaken`, `yours`,
+  and window 2's doesn't log at all; the bar goes, the gun comes back over its draw, and orb 1's
+  ball and light go while its disc stays. `VFOrbs` reads `2`, orb 1's dot goes from both minimaps
+  (`Orbs` reads `2`), and a moment later player 1's `VFKit` ends `X1/8`, one pip lit on the ability
+  bar's X. From then W and Space move them again: clear `VFTestButtons`. **Send:** how long the bar
+  took, if you timed it.
+- **UO5 Gone.** Player 2 stands on orb 1's disc and holds F (`VFTestButtons` 65536 in window 2): no
+  prompt, no bar, no whoosh, and the Classic stays in their hands. Clear it, and skip what's left of
+  round 1: the defenders win it.
+- **UO6 The next round.** As round 2's buy phase starts, `VFOrbs` reads `1,2` again, both dots are
+  back on the minimaps, and `UltimateOrb1`'s Transparency is 0 again. Player 1's `VFKit` still ends
+  `X1/8`.
+- **UO7 F defuses.** Skip the buy phase. Player 1 picks up the spike in front of them, takes it to
+  site A and plants it (section 17). Player 2 holds F by it (`VFTestButtons` 65536): the Classic
+  goes, the cyan `DEFUSING` bar fills, and 7 s later player 2's screen shows `ROUND WON` with
+  `Spike defused`. Clear `VFTestButtons`.
+- **UO8 Full.** Skip round 3's buy phase. Set `VFTestGive` to `ultimate` in window 2: player 2's
+  `VFKit` ends `X8/8`. Player 2 walks to orb 2 and holds F for 2 s: the chime, `VFOrbs` reads `1`,
+  and `VFKit` still ends `X8/8`.
+- **UO9 Over.** Press P in window 1: the spike rounds in Swiftplay's format, a new match on one of
+  the three maps, and as its round 1 starts `VFOrbs` reads `1,2`, the orbs on that map's places.
+  Press P again, for off: `VFOrbs` is gone and `Workspace.VFUltimateOrbs` is empty.
+
 ## Results
 
 ```
@@ -3999,6 +4058,15 @@ OE2 window 3's SOVA card read TAKEN: yes / no; VFAgentSelected after the lock: _
 OE3 player 2's VFAgent: ___
 OE4 player 3's VFAgent: ___, VFAgentPick: ___; JETT TAKEN in window 1: yes / no
 OE5 player 1's VFAgent: ___, player 3's: ___; window 1's VFKit: ___
+UO1 VFOrbs: ___; Orbs in both windows: ___
+UO2 the map: ___; the orb's look: ___; the prompt came up about ___ m from the disc's middle
+UO3 shots fired while held: ___; logged in window 1: ___, in window 2: ___; player 1's gun in window 2 while F was held: shown / none; VFOrbs after letting go: ___; VFKit: ___
+UO4 the bar took about ___ s; moved while held: yes / no; logged in window 1: ___, in window 2: ___; VFOrbs after: ___; Orbs: ___; VFKit after: ___
+UO5 a prompt, bar or whoosh for player 2 at orb 1's disc: yes / no
+UO6 VFOrbs in round 2: ___; VFKit: ___
+UO7 the defuse with F: started / didn't; the result: ___
+UO8 VFKit after VFTestGive: ___; VFOrbs after: ___; VFKit after: ___
+UO9 VFOrbs in Swiftplay's round 1: ___; after off: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4301,3 +4369,11 @@ Didn't look right (IDs and what you saw):
 | 48 | The time running out on what a selection moved to | OE4 |
 | 48 | In the spike rounds, teammates' windows closing at once on one agent: the first player on the server keeps it, and the other goes back to the agent they play | OE5 |
 | 48 | System 29's time running out, with player 1 on Jett: player 3 now ends on Phoenix | AS4 |
+| 49 | Each map's two orbs up as round 1 starts, their look, and the gold dots on the minimap | UO1, UO2, UO9 |
+| 49 | The prompt at one, and the taking: the bar, rooted with the gun away, the whoosh, 2 s, the chime, its point on the ability bar and in `VFKit`, and the orb gone for both players | UO2, UO3, UO4, UO5 |
+| 49 | Letting go partway: nothing kept, the gun back, and the next try from empty | UO3, UO4 |
+| 49 | Another player hearing the whoosh, and seeing no gun in the taker's hands | UO3, UO4 |
+| 49 | Both orbs back up the next round | UO6 |
+| 49 | F defusing the planted spike | UO7 |
+| 49 | A full ultimate taking one: the orb gone, the points still full | UO8 |
+| 49 | None after the spike rounds | UO9 |

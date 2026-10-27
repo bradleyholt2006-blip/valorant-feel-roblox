@@ -213,9 +213,9 @@ end
 
 local function updateViewmodel(frameDt: number)
 	local sim = PlayerController.sim
-	-- Defusing, the weapon is put away, and flying the Owl Drone (system
-	-- 47) the view's the drone's.
-	if not sim or not PlayerController.alive or sim.spike.channel == SpikeSim.DEFUSING or AbilitySim.droning(sim.abilities) then
+	-- Defusing or taking an Ultimate Orb (system 49), the weapon is put
+	-- away, and flying the Owl Drone (system 47) the view's the drone's.
+	if not sim or not PlayerController.alive or SpikeSim.stowed(sim.spike) or AbilitySim.droning(sim.abilities) then
 		local current = viewmodel
 		if current then
 			current.model.Parent = nil

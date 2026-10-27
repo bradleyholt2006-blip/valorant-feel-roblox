@@ -158,13 +158,14 @@ function PlayerSim.eye(s: State, cfg: any): vector
 	return s.movement.position + vector.create(0, MovementSim.eyeHeight(s.movement, cfg), 0)
 end
 
--- Whether a plant or a defuse has the player rooted.
+-- Whether a plant, a defuse or an orb's taking has the player rooted.
 function PlayerSim.rooted(s: State): boolean
 	return s.spike.channel ~= SpikeSim.NONE
 end
 
--- Buttons that start a plant or a defuse, which a dash doesn't.
-local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire)
+-- Buttons that start a plant, a defuse or an orb's taking (system 49),
+-- which a dash doesn't.
+local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire, PlayerSim.Buttons.Interact)
 
 -- What movement sees of the buttons while a blast of Hunter's Fury's
 -- charges (system 46): none of the moving ones, as with a plant (SpikeSim).
@@ -344,10 +345,10 @@ function PlayerSim.step(
 	end
 	-- A life the Resurrection brought back is held first (system 39), and
 	-- Run it Back's return goes before anything else (system 33): through it
-	-- the player's held. Then the plant and the defuse: the tick they start
-	-- on, they root, and nothing's cast. G lets go of the spike if it's in
-	-- hand (SpikeSim), and otherwise of the gun in hand, once nothing is
-	-- under way.
+	-- the player's held. Then the plant, the defuse and an orb's taking
+	-- (system 49): the tick they start on, they root, and nothing's cast. G
+	-- lets go of the spike if it's in hand (SpikeSim), and otherwise of the
+	-- gun in hand, once nothing is under way.
 	local t = (s.movement.tick + 1) * dt
 	local kit = s.abilities
 	if AbilitySim.reviving(kit, t) then
@@ -504,8 +505,9 @@ function PlayerSim.step(
 			end
 		end
 	end
-	-- A plant or a defuse puts an ability in hand away, lets go of a wall
-	-- being bent, and ends Hunter's Fury (system 46: the spike drawn).
+	-- A plant, a defuse or an orb's taking puts an ability in hand away,
+	-- lets go of a wall being bent, and ends Hunter's Fury (system 46: the
+	-- spike drawn).
 	if PlayerSim.rooted(s) then
 		kit.holding = 0
 		kit.steering, kit.steerUntil = 0, 0
@@ -532,8 +534,8 @@ function PlayerSim.step(
 		end
 	end
 	local tick = s.movement.tick
-	-- A defuse has the weapon put away.
-	if s.spike.channel == SpikeSim.DEFUSING then
+	-- A defuse has the weapon put away, and so does an orb being taken.
+	if SpikeSim.stowed(s.spike) then
 		return nil, nil, act, nil, casts
 	end
 	-- Nothing fires in a dash, which takes the zoom off and stops a burst

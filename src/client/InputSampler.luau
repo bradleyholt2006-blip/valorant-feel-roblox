@@ -34,6 +34,10 @@ InputSampler.Bindings = {
 	-- Spike" both, held to plant or defuse; G its "Drop Equipped Item".
 	{ flag = B.Use, keys = { Enum.KeyCode.Four } },
 	{ flag = B.Drop, keys = { Enum.KeyCode.G } },
+	-- F, the reference's "Use object" (system 49), held to take an Ultimate
+	-- Orb or to defuse; a press of it takes a gun on the ground too
+	-- (GroundGunsView).
+	{ flag = B.Interact, keys = { Enum.KeyCode.F } },
 	-- The ability kit (system 17), on the reference's default keys
 	-- (AbilityConfig.KeySources).
 	{ flag = B.AbilityC, keys = { Enum.KeyCode.C } },

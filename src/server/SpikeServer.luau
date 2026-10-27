@@ -19,7 +19,9 @@
 -- it only while a round is live, only the defending side can defuse it, and
 -- the rounds hear when it's planted, defused or goes off. A new one waits in
 -- front of the attackers as each round starts, and none before. Each match
--- is on one of the rounds' maps (system 25), and Arena says which.
+-- is on one of the rounds' maps (system 25), and Arena says which. Every
+-- player's context carries the Ultimate Orbs up too (system 49), as
+-- OrbServer says, for their simulation to take.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -86,6 +88,9 @@ local roundsLayout: string? = nil -- their map's sites
 local attackers = 0
 local plantOpen = true
 
+-- The Ultimate Orbs up (system 49, OrbServer), which anyone may take.
+local orbs: { [number]: vector }? = nil
+
 -- What players may do with it, rebuilt whenever anything changes: its
 -- carrier, those who may defuse it, and those who may not.
 local forCarrier: Spike.Context = Spike.NONE
@@ -115,6 +120,7 @@ local function publish()
 		planted = planted,
 		halfSaved = halfSaved,
 		sees = RobloxSpike.sees,
+		orbs = orbs,
 	}
 	local mine = table.clone(forOthers)
 	mine.canPlant = state == "carried" and plantOpen
@@ -433,6 +439,13 @@ function SpikeServer.setRound(attacking: number, open: boolean)
 	end
 	attackers = attacking
 	plantOpen = open
+	publish()
+end
+
+-- The Ultimate Orbs up, by number, where each stands (system 49), for
+-- everyone's simulation to take; nil for none.
+function SpikeServer.setOrbs(up: { [number]: vector }?)
+	orbs = up
 	publish()
 end
 

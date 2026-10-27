@@ -3,7 +3,9 @@
 -- stand ("HOLD 4 TO PLANT", "HOLD 4 TO DEFUSE"), a bar while you plant or
 -- defuse it, with the defuse's saved half marked, the spike next to your
 -- weapons while you carry it, a light at the top flashing with the planted
--- spike's beeps, and a banner as it's planted, defused or detonates.
+-- spike's beeps, and a banner as it's planted, defused or detonates. And an
+-- Ultimate Orb (system 49): "HOLD F FOR THE ULTIMATE ORB" within reach of
+-- one, and a gold bar while you take it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -13,6 +15,7 @@ local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
+local UltimateOrbs = require(Shared.Spike.UltimateOrbs)
 
 local Ui = require(script.Parent.Debug.Ui)
 local ClientSpike = require(script.Parent.ClientSpike)
@@ -24,6 +27,8 @@ local SpikeHud = {}
 local DT = 1 / MovementConfig.TickRate.value
 local RED = Color3.fromRGB(235, 70, 60)
 local CYAN = Color3.fromRGB(90, 220, 230)
+local GOLD = Color3.fromRGB(230, 200, 120) -- an Ultimate Orb's (OrbServer)
+local ORB_PROMPT = "HOLD F FOR THE ULTIMATE ORB"
 local BAR_W = 320
 local BANNER_TIME = 2.5 -- seconds a banner stays up (estimate)
 
@@ -148,10 +153,11 @@ function SpikeHud.start()
 			local f = SpikeSim.fraction(s.spike, t)
 			bar.Visible = true
 			fill.Size = UDim2.fromScale(f, 1)
-			fill.BackgroundColor3 = if channel == SpikeSim.PLANTING then RED else CYAN
+			fill.BackgroundColor3 = if channel == SpikeSim.PLANTING then RED elseif channel == SpikeSim.COLLECTING then GOLD else CYAN
 			half.Visible = channel == SpikeSim.DEFUSING
 			barLabel.Text = if channel == SpikeSim.PLANTING
 				then "PLANTING"
+				elseif channel == SpikeSim.COLLECTING then "TAKING THE ULTIMATE ORB"
 				else (if s.spike.halfStart then "DEFUSING  from the half" else "DEFUSING")
 			prompt.Visible = false
 			return
@@ -166,10 +172,12 @@ function SpikeHud.start()
 			text = "HOLD 4 TO PLANT"
 		elseif ctx.canDefuse and ctx.planted and not SpikeSim.inHand(w) and Spike.inDefuseRange(feet, ctx.planted) then
 			text = if ctx.halfSaved then "HOLD 4 TO DEFUSE  (half saved)" else "HOLD 4 TO DEFUSE"
+		elseif ctx.orbs and UltimateOrbs.inReach(ctx.orbs, feet) then
+			text = ORB_PROMPT
 		end
 		prompt.Visible = text ~= ""
 		prompt.Text = text
-		prompt.TextColor3 = if text == "HOLD 4 TO PLANT" then RED else CYAN
+		prompt.TextColor3 = if text == "HOLD 4 TO PLANT" then RED elseif text == ORB_PROMPT then GOLD else CYAN
 	end)
 
 	-- Back to nothing to show as a life starts.
