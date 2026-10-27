@@ -357,6 +357,17 @@ Built one system at a time:
     with it, and it catches nobody while the spawns' barriers are up. His minimap shows where a
     blast would go; in Team Deathmatch it takes 70 points -
     [research and design](docs/research/46-hunters-fury.md)
+47. **Sova's Owl Drone**: C puts Sova's drone in hand, ready in 0.9 s, and mouse 1 sends it out from
+    his eye. His view is the drone's for its 7 s, or until C again, while his body stands where he
+    left it, and his gun's back 0.7 s after. For its first 0.25 s it flies on as it was sent, and
+    then the moving keys fly it along the ground at 5 m/s the way the view faces, and jump and
+    crouch up and down at 3 m/s, never more than 3 m over the floor below it. Mouse 1 from it shoots
+    a dart along the crosshair, 40 m at the most, one every 5 s: an enemy it strikes is pinged 1.6 s
+    after and 1.2 s after that, each ping revealing them to his side for 0.6 s, through walls and on
+    its minimap, and `[Target Hit]` shows for 2 s. Its 100 health is taken by enemies' bullets and
+    knives, and enemies see and hear it only within 15 m or in their sight. One charge at 400
+    credits (in Team Deathmatch back 51 s after it's spent); with it, all of Sova's kit is played -
+    [research and design](docs/research/47-owl-drone.md)
 
 ## Running it
 
@@ -519,7 +530,14 @@ Hunter's Fury went from is their `VFLastFury` attribute (metres), and whom it ca
 `VFFuryHits` (names joined by commas); PlayerGui's `VFFury` carries whether its bow's in hand
 (`Bow`), the seconds it has left (`Left`), whether a blast charges (`Charging`), how fast the view
 turns (`Turn`, a share of its usual) and the blasts drawn (`Blasts`), and `Workspace.VFFury` holds
-each blast and each one charging. The minimap's ScreenGui, `VFMinimap`, carries what it shows: the
+each blast and each one charging. While a player flies the Owl Drone, the id the snapshots give it
+is their `VFDroneId` attribute and the health it has left their `VFDroneHealth`; where their last
+dart ended is their `VFLastDart` (metres), and whom it struck their `VFDartHit`. PlayerGui's
+`VFDrone` carries whether they fly it (`Flying`), the seconds it has left (`Left`), the seconds
+until a dart can go (`DartIn`), whether `[Target Hit]` shows (`TargetHit`), whether a dart's pings
+are on them (`Tagged`) and the drones drawn (`Drones`), and `Workspace.VFDrone` holds each drone,
+their body while they fly it, each dart's streak and each burst's pieces. The minimap's ScreenGui,
+`VFMinimap`, carries what it shows: the
 plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the
 spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big map's open (`Big`) and
 how covered it is by a nearsight's dark (`Dark`, 0 to 1), or by an enemy's From the Shadows.
@@ -578,8 +596,10 @@ From the Shadows (its map in hand, the teleport, being sent back, where it takes
 map, and the wire), Sova's Recon Bolt (the bow in hand, the draw, the bounces and the loose, its
 flight, its pulses and whom they reveal, its shaft, and the wire), his Shock Bolt (the bow in hand,
 the draw and the loose, its burst, how much it does at each distance and whom it reaches, and the
-wire) and his Hunter's Fury (its bow in hand, a blast's windup and the blast, the knockback, the
-blasts' rate, how it ends, whom a blast catches, and the wire) are pure Luau and run outside Roblox:
+wire), his Hunter's Fury (its bow in hand, a blast's windup and the blast, the knockback, the
+blasts' rate, how it ends, whom a blast catches, and the wire) and his Owl Drone (its numbers, in
+hand, sent out, its flight, its ceiling, walls, Sova held, its darts, how it ends, the level with
+drones in it, its ids, and the wire) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

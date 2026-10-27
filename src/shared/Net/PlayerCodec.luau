@@ -200,7 +200,7 @@ local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
 	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse
-	+ 1 + 3 + 3 + 10 + 8 * 22 + 4 * 12 -- the ability kit
+	+ 1 + 3 + 3 + 10 + 8 * 27 + 4 * 18 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -318,8 +318,13 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.chargeAt)
 	wf64(c, a.kickFrom)
 	wf64(c, a.kickYaw)
+	wf64(c, a.droneFrom)
+	wf64(c, a.landAt)
+	wf64(c, a.dartAt)
+	wf64(c, a.bodyYaw)
+	wf64(c, a.bodyPitch)
 	-- Exact: a vector's components are single precision.
-	for _, v in { a.mark, a.stepTo, a.shadowFrom, a.shadowTo } do
+	for _, v in { a.mark, a.stepTo, a.shadowFrom, a.shadowTo, a.dronePos, a.droneVel } do
 		wf32(c, v.x)
 		wf32(c, v.y)
 		wf32(c, v.z)
@@ -469,6 +474,11 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local chargeAt = rf64(c)
 	local kickFrom = rf64(c)
 	local kickYaw = rf64(c)
+	local droneFrom = rf64(c)
+	local landAt = rf64(c)
+	local dartAt = rf64(c)
+	local bodyYaw = rf64(c)
+	local bodyPitch = rf64(c)
 	local function point(): vector
 		local x = rf32(c)
 		local y = rf32(c)
@@ -479,6 +489,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local stepTo = point()
 	local shadowFrom = point()
 	local shadowTo = point()
+	local dronePos = point()
+	local droneVel = point()
 	local abilities = {
 		agent = agent,
 		charges = charges,
@@ -523,6 +535,13 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		chargeAt = chargeAt,
 		kickFrom = kickFrom,
 		kickYaw = kickYaw,
+		droneFrom = droneFrom,
+		landAt = landAt,
+		dronePos = dronePos,
+		droneVel = droneVel,
+		dartAt = dartAt,
+		bodyYaw = bodyYaw,
+		bodyPitch = bodyPitch,
 	}
 
 	local tagUntilTick = r32(c)
@@ -541,7 +560,7 @@ end
 
 export type Pose = {
 	id: number,
-	position: vector, -- metres, feet
+	position: vector, -- metres, feet (a drone's middle, system 47)
 	yaw: number,
 	pitch: number,
 	crouchAlpha: number,
@@ -570,9 +589,13 @@ PlayerCodec.SNAPSHOT_ENTRY = SNAP_ENTRY
 
 -- Entity ids: players use UserId mod 2^32; dummies use DUMMY_BASE + n, for n
 -- up to DUMMY_LIMIT. The range is bounded because Studio's local test
--- players have UserIds -1, -2, ..., which land at the very top of it.
+-- players have UserIds -1, -2, ..., which land at the very top of it. Sova's
+-- Owl Drones (system 47) use DRONE_BASE + n the same way, below the
+-- dummies': in the snapshots, but no player's or dummy's.
 PlayerCodec.DUMMY_BASE = 4294901760 -- 0xFFFF0000
 PlayerCodec.DUMMY_LIMIT = 4096
+PlayerCodec.DRONE_BASE = 4294836224 -- 0xFFFE0000
+PlayerCodec.DRONE_LIMIT = 4096
 
 function PlayerCodec.entityIdForUser(userId: number): number
 	return userId % 2 ^ 32
@@ -580,6 +603,10 @@ end
 
 function PlayerCodec.isDummy(id: number): boolean
 	return id > PlayerCodec.DUMMY_BASE and id <= PlayerCodec.DUMMY_BASE + PlayerCodec.DUMMY_LIMIT
+end
+
+function PlayerCodec.isDrone(id: number): boolean
+	return id > PlayerCodec.DRONE_BASE and id <= PlayerCodec.DRONE_BASE + PlayerCodec.DRONE_LIMIT
 end
 
 -- Applies the same float32 rounding a pose gets on the wire, so the server's

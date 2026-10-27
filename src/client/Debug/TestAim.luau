@@ -16,6 +16,8 @@
 --   VFTestAimRegion         "head", "body" (the default) or "legs"
 --
 -- VFTestAimEntity wins over VFTestAimPoint, which wins over the angles.
+-- Flying the Owl Drone (system 47), they aim from its middle, where its
+-- darts go from.
 -- Clearing them gives the mouse back. More drive the weapons and the buy
 -- menu without a mouse button:
 --
@@ -77,6 +79,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local PlayerSim = require(Shared.PlayerSim)
 local Units = require(Shared.Units)
@@ -243,7 +246,7 @@ function TestAim.start(controller: any)
 		if not sim then
 			return
 		end
-		local eye = PlayerSim.eye(sim, controller.cfg)
+		local eye = if AbilitySim.droning(sim.abilities) then sim.abilities.dronePos else PlayerSim.eye(sim, controller.cfg)
 		local point = target(eye)
 		if point then
 			local yaw, pitch = lookAt(eye, point)

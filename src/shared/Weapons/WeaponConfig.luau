@@ -874,6 +874,28 @@ local FURY_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a blast's knockback 
 	adsCamera = FURY_NA,
 })
 
+-- Sova's Owl Drone (system 47): fire sends the drone out, and from it its
+-- darts go along the crosshair (DroneServer), so no spread or kick moves
+-- either.
+local BOOSTING = "Boosting Ground's Sova guide"
+local SENT = "n/a: the drone goes out the way he faces, and its darts along the crosshair"
+local OWL_NA = p(0, "estimate", SENT)
+local owlExact = accuracy(
+	c({ { 1, 0 } }, "estimate", SENT),
+	p(1, "estimate", SENT),
+	p(0.1, "estimate", SENT),
+	p(1, "estimate", SENT),
+	{ crouch = OWL_NA, walk = OWL_NA, run = OWL_NA, air = OWL_NA }
+)
+owlExact.landError = OWL_NA
+local OWL_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: sending the drone out doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = OWL_NA,
+	adsCamera = OWL_NA,
+})
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -2041,6 +2063,31 @@ WeaponConfig.Defs = {
 		accuracy = furyExact,
 		recoil = FURY_KICK,
 	},
+	-- Sova's Owl Drone (system 47): put in hand in the fifth slot by C
+	-- (AbilityConfig.OwlDrone). Fire sends the drone out; PlayerSim turns
+	-- that into the ability's cast, so it fires no bullet, and the drone's
+	-- darts reveal and hurt nobody.
+	owl = {
+		id = "owl",
+		name = "Owl Drone",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: C puts it in hand, the charge of the Owl Drone (" .. SOVA .. ")"),
+		fireMode = "semi",
+		fireRate = ORB_TRIES,
+		magazine = p(1, "community", SOVA .. ": Owl Drone, 1 use, a drone"),
+		reserve = p(0, "community", "None: another drone is another charge (" .. SOVA .. ": 1 use)"),
+		reloadTime = OWL_NA,
+		equipTime = p(0.9, "community", BOOSTING .. ": 'Equip time is 0.9 seconds'"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: its darts reveal (" .. SOVA .. "), and hurt nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "owldrone",
+		accuracy = owlExact,
+		recoil = OWL_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -2051,7 +2098,8 @@ WeaponConfig.Defs = {
 -- (system 38), the Resurrection (system 39), Dark Cover (system 40),
 -- Paranoia (system 41), Shrouded Step (system 42), From the Shadows
 -- (system 43), the Recon Bolt's bow (system 44), the Shock Bolt's
--- (system 45) and Hunter's Fury's (system 46) last.
+-- (system 45), Hunter's Fury's (system 46) and the Owl Drone (system 47)
+-- last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -2090,6 +2138,7 @@ WeaponConfig.Ids = {
 	"bow",
 	"shockbow",
 	"furybow",
+	"owl",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

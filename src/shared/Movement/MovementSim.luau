@@ -19,7 +19,8 @@
 -- change a tick through Motion: Jett's Updraft and Tailwind (system 17), her
 -- Drift, a glide while jump is held in a fall (system 20), Phoenix's Run
 -- it Back, which holds him where he is (system 33), and Sage's Slow Orb,
--- whose field slows whoever's in it (system 37).
+-- whose field slows whoever's in it (system 37). Sova's Owl Drone (system
+-- 47) flies through the same world, with the same collide-and-slide (fly).
 
 export type World = {
 	-- Sweep an axis-aligned box (center, halfExtents) along delta. Returns the
@@ -593,6 +594,16 @@ function MovementSim.step(s: State, input: Input, cfg: any, weaponMaxSpeed: numb
 	s.position = center - UP * (height * 0.5)
 	s.velocity = vel
 	return s
+end
+
+-- A box with no feet moved through the world for a tick at `vel`, as the
+-- Owl Drone flies (system 47, DroneSim): kept SKIN clear of everything,
+-- deflected off what it meets and sliding along floors, with no gravity
+-- and no stepping. Returns its new centre and the velocity it's left with.
+function MovementSim.fly(world: World, center: vector, vel: vector, half: vector, dt: number, cfg: any): (vector, vector)
+	center = keepClear(world, center, half)
+	local moved, after = slideMove(world, center, vel, half, dt, cfg, nil)
+	return moved, after
 end
 
 -- Accuracy deadzone check for the debug tools; the same strict test as

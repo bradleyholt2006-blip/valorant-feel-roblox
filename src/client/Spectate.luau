@@ -18,7 +18,8 @@
 -- the match behind it. Who's alive, on which side and in line comes from
 -- the player attributes the server keeps (Arena), and where they look from
 -- from RemoteEntities, which leaves the watched player's blocks out of the
--- view.
+-- view. Watching Sova fly his Owl Drone (system 47), the view's the
+-- drone's, as the snapshots show it (his `VFDroneId`).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,6 +28,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local DroneSim = require(Shared.Abilities.DroneSim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
@@ -78,8 +80,14 @@ local function watchable(): { Player }
 	return out
 end
 
--- Where a player looks from as they're drawn: their eye, and their aim.
+-- Where a player looks from as they're drawn: their eye, and their aim;
+-- flying the Owl Drone, the drone's middle and its.
 local function viewOf(player: Player): View?
+	local drone = player:GetAttribute(DroneSim.ID_ATTRIBUTE)
+	local flying = if typeof(drone) == "number" then RemoteEntities.drone(drone, RemoteEntities.renderTime()) else nil
+	if flying then
+		return { eye = Units.toStuds(flying.position), yaw = flying.yaw, pitch = flying.pitch }
+	end
 	local pose = RemoteEntities.sample(PlayerCodec.entityIdForUser(player.UserId), RemoteEntities.renderTime())
 	if not pose then
 		return nil

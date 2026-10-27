@@ -1,10 +1,10 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-six
+Studio can show. It goes through every "Known gaps to check in Studio" item in the forty-seven
 research docs, in an order where each step only relies on things earlier steps showed working.
 
-It takes about six and a half hours. Doing it in parts is fine; keep the order.
+It takes about seven hours. Doing it in parts is fine; keep the order.
 
 The expected values are what our code should produce (worked out from `luau tests/run.luau` and the
 code itself), not the reference game's numbers, which are in the research docs. A result that
@@ -33,7 +33,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three, and
-   sections 44 to 50 one and then three.
+   sections 44 to 51 one and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -3119,18 +3119,17 @@ down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
   reads INITIATOR. Click it: his kit, headed `SOVA   INITIATOR`, with Q SHOCK BOLT lit (section 49),
   X HUNTER'S FURY lit (section 50), and E RECON BOLT lit, with `E readies the bow. Hold fire to draw
   it further and alt fire to add bounces; it sticks where it lands and pulses, revealing enemies it
-  sees.`, and C OWL DRONE with `NOT YET` after it; nothing under them, as he has no passive. Click
-  PICK SOVA: the button reads `PLAYING SOVA`, and `VFAgent` reads `sova`. Close it with T. On the
-  ability bar RECON BOLT has its one pip lit, SHOCK BOLT its two and HUNTER'S FURY its eight, gold,
-  and OWL DRONE is dimmed, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`. **Send:** a screenshot of Sova's
-  card.
+  sees.`, and C OWL DRONE lit (section 51); nothing under them, as he has no passive. Click PICK
+  SOVA: the button reads `PLAYING SOVA`, and `VFAgent` reads `sova`. Close it with T. On the ability
+  bar RECON BOLT has its one pip lit, SHOCK BOLT its two, OWL DRONE its one and HUNTER'S FURY its
+  eight, gold, and `VFKit` reads `C1/1 Q2/2 E1/1 X8/8`. **Send:** a screenshot of Sova's card.
 - **RC2 In hand.** Open the Sound Lab (F2 four times), and keep it open to RC8. Press E: a quick,
   light rattle, logged as `boltEquip`, `yours`; the Vandal goes, and a short dark bow comes up, held
   upright, with a bolt of light blue beside its grip. E's square lights, with `EQUIP` under it for
   0.8 s; the HUD reads `Recon Bolt   [E]`, with no ammo; and `VFKit` ends in `equip`. Under the
   crosshair are three dark bars with two dark diamonds under them (`VFRecon`'s `Bow` true, `Bars` 0
   and `Bounces` 0). Press E again: the bow and the bars go, the Vandal's back, and `VFKit` reads
-  `C0/1 Q2/2 E1/1 X8/8`, nothing spent.
+  `C1/1 Q2/2 E1/1 X8/8`, nothing spent.
 - **RC3 The draw.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and keep it: a slow,
   low scrape, logged as `boltNock`, `yours`, and the bars light blue one by one, a third of a second
   apart, and stay at three (`Bars` 3); `VFKit` ends in `equip draw 3`. Set it to 384 and back to
@@ -3138,7 +3137,7 @@ down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
   and `bounce 2`. Again: neither, `Bounces` 0, and no `bounce` in `VFKit`. Set it to 16512 (E and
   the left button) and back to 128: the bars go dark (`Bars` 0), `draw` goes from `VFKit` and the
   bow stays in hand, its bars dark while the button's held. Clear it: nothing's loosed or heard, and
-  `VFKit` reads `C0/1 Q2/2 E1/1 X8/8 equip`. Press E to put the bow away.
+  `VFKit` reads `C1/1 Q2/2 E1/1 X8/8 equip`. Press E to put the bow away.
 - **RC4 The loose.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
   once: a thin swish, logged as `boltLoose`, `yours`, and a quick, quiet whoosh, `boltFlight`; a
   thin shaft of light flies down the lane, dropping as it goes, and about 1 s later sticks in the
@@ -3205,10 +3204,10 @@ Then Skirmish: press P in window 1. Players 1 and 3 share a side, as in F1. As r
 starts, agent select comes up by itself: pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2
 and 3.
 
-- **RC11 Free each round.** In the buy phase, window 1's `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`. B:
-  under the shields are Owl Drone (`C`, 400), dimmed and reading `NOT YET`, and Shock Bolt (`Q`,
-  150), its two pips lit and reading `FULL` (section 49), and no Recon Bolt; clicking them buys
-  nothing. Close the menu (B).
+- **RC11 Free each round.** In the buy phase, window 1's `VFKit` reads `C1/1 Q2/2 E1/1 X0/8`. B:
+  under the shields are Owl Drone (`C`, 400), its pip lit and reading `FULL` (section 51), and Shock
+  Bolt (`Q`, 150), its two pips lit and reading `FULL` (section 49), and no Recon Bolt; clicking
+  them buys nothing. Close the menu (B).
 - **RC12 Revealed to his side.** Once the round's live, player 2 goes round a corner or behind cover
   within 25 m of players 1 and 3, out of their sight. Player 1 looses a bolt that sticks where
   player 2's in its sight, on a floor or a wall near them, with bounces if they help, and player 3
@@ -3245,9 +3244,9 @@ Vandal in hand.
 
 - **SB1 His kit.** In agent select (T), click SOVA's card: Q SHOCK BOLT is lit now, with `Q readies
   the bow with a shock bolt. Hold fire to draw it further and alt fire to add bounces; it bursts
-  where it lands, hurting those near it.`, and C OWL DRONE still reads `NOT YET` (X HUNTER'S FURY is
+  where it lands, hurting those near it.` (C OWL DRONE is section 51's, and X HUNTER'S FURY
   section 50's). Click PICK SOVA and close it with T. On the ability bar SHOCK BOLT has its two pips
-  lit, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`. Press B: under the shields Shock Bolt (`Q`, 150) has
+  lit, and `VFKit` reads `C1/1 Q2/2 E1/1 X8/8`. Press B: under the shields Shock Bolt (`Q`, 150) has
   its two pips lit and reads `FULL`. Hover it: `Ability, on Q`, the line on his card, and its rows,
   `Charges` up to 2, `A charge` 150 credits and `Burst` `75 within 1 m, 1 at 5 m`. Close the menu
   (B). **Send:** a screenshot of the hover.
@@ -3261,7 +3260,7 @@ Vandal in hand.
   and back to 128: the first diamond lights, and `VFKit` ends in `draw 3 bounce 1`. Set it to 8320
   (Q and the left button) and back to 128: the bars go dark and `draw` goes from `VFKit`, the bow
   still in hand. Clear it: nothing's loosed or heard. Press Q again: the bow and the bars go, the
-  Vandal's back, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`, nothing spent.
+  Vandal's back, and `VFKit` reads `C1/1 Q2/2 E1/1 X8/8`, nothing spent.
 - **SB3 The burst.** Press Q, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
   once: a thin swish, logged as `boltLoose`, `yours`, and a quick, quiet whoosh, `boltFlight`; a
   thin shaft of pale yellow light flies down the lane, dropping as it goes (`Workspace.VFShock`'s
@@ -3317,7 +3316,7 @@ Then Skirmish: press P in window 1. Players 1 and 3 share a side, as in F1. As r
 starts, agent select comes up by itself: pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2
 and 3.
 
-- **SB10 Friend and foe.** In the buy phase, window 1's `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`. Once
+- **SB10 Friend and foe.** In the buy phase, window 1's `VFKit` reads `C1/1 Q2/2 E1/1 X0/8`. Once
   the round's live, players 2 and 3 stand side by side in the open, a metre apart and across
   player 1's line of sight, and player 1, at least 6 m from them, sets `VFTestAimPoint` on the floor
   between them, 0.1 m up, and looses a Shock Bolt: windows 2 and 3 both read `75` and `+1`, and
@@ -3357,16 +3356,16 @@ Hunter's Fury is over. Start each check at the spawn facing down the target lane
 
 - **HF1 His kit.** In agent select (T), click SOVA's card: X HUNTER'S FURY is lit now, with `X
   readies the bow with three energy blasts for 6 s. Fire charges one, then sends it in a long line
-  through walls, hurting and revealing enemies in it.`, and C OWL DRONE still reads `NOT YET`. Click
-  PICK SOVA and close it with T. On the ability bar X's square has eight gold pips and reads `8/8`
-  in gold, and `VFKit` reads `C0/1 Q2/2 E1/1 X8/8`. **Send:** a screenshot of Sova's card.
+  through walls, hurting and revealing enemies in it.`, and C OWL DRONE is lit too (section 51).
+  Click PICK SOVA and close it with T. On the ability bar X's square has eight gold pips and reads
+  `8/8` in gold, and `VFKit` reads `C1/1 Q2/2 E1/1 X8/8`. **Send:** a screenshot of Sova's card.
 - **HF2 In hand.** Open the Sound Lab (F2 four times), and keep it open to HF8. Press X: a low
   chime, a bell slowed right down, logged as `furyCast`, `yours`, and a quick, light rattle,
   `boltEquip`; the Vandal goes, and the Recon Bolt's bow comes up with a bolt of bright cyan beside
   its grip, the bar labelled `drawing` filling over half a second. X's square is outlined in teal,
   its pips dark, with `EQUIP` under it for 0.5 s and then the seconds left, counting down from
   `6.0`; the ammo box reads `3`, with `Hunter's Fury   [X]` under it; and `VFKit` reads
-  `C0/1 Q2/2 E1/1 X0/8 fury`. Under the crosshair are two bars (`VFFury`'s `Bow` true): the upper
+  `C1/1 Q2/2 E1/1 X0/8 fury`. Under the crosshair are two bars (`VFFury`'s `Bow` true): the upper
   one full, dim until the bow's drawn and then bright, emptying as the seconds run down (`Left`),
   and a dark one under it. On the minimap a cyan band runs from you the way you face, out past the
   lane's end (`Fury`, in `VFMinimap`'s `Utility`), and turns as you turn. Fire nothing: as X's note
@@ -3452,6 +3451,174 @@ and 3. In Studio, setting `VFTestGive` to `ultimate` fills the ultimate's points
   on both their minimaps, then a `?` where they were (`VFMinimap`'s `Seen` reads `4294967294` while
   it lasts); nobody lights up in window 2. Clear `VFTestAimPoint`. **Send:** a screenshot of
   window 3 as player 2 lights up, with its minimap.
+
+## 51. Sova's Owl Drone
+
+From [47-owl-drone.md](research/47-owl-drone.md). One player on the course, then three there, in
+Skirmish and in the spike rounds. Play as Sova, as in section 48. Without keys or a mouse button,
+`VFTestButtons` 4096 presses C, 128 the left button, 1 W, 64 jump and 32 crouch: set it and clear it
+again each time, and leave a button set for as long as it's held. `VFTestYaw` and `VFTestPitch` aim,
+in degrees: positive yaw turns left, and positive pitch looks up; while you fly the drone they turn
+its view. A Vector3 `VFTestAimPoint`, in metres, aims at that place, and `VFTestAimEntity` at that
+entity's body (Dummy 1's id is 4294901761, and Dummy 11's 4294901771), until it's cleared; while you
+fly they aim from the drone's middle, where its darts go from. The F3 panel's `pos` line is where
+you stand, in metres. While you fly it, your `VFDroneId` attribute is the id the snapshots give it
+and `VFDroneHealth` the health it has left; `VFLastDart` is where your last dart ended, in metres,
+and `VFDartHit` whom it struck, a name, or nothing. PlayerGui's `VFDrone` carries `Flying` (whether
+you fly it), `Left` (the seconds it has left), `DartIn` (the seconds until a dart can go),
+`TargetHit` (whether `[Target Hit]` shows), `Tagged` (whether a dart's pings are on you) and
+`Drones` (the drones drawn), and `Workspace.VFDrone` holds every drone you have but your own
+(`Drone_` and its id), your body while you fly (`Body`), each dart's streak (`Dart`) and each
+burst's pieces (`Shard`). Whom a ping reveals lights up as a Recon Bolt's pulse does (section 48:
+`VFRecon`'s `Revealed`, and `Reveal_` and the entity's id in `Workspace.VFRecon`). On the course a
+spent charge comes back 1.5 s after it's spent. Start each check at the spawn facing down the target
+lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **OD1 His kit.** In agent select (T), click SOVA's card: C OWL DRONE is lit now, with `C readies a
+  drone, and fire sends it out for you to fly for 7 s, or until C again. Fire from it shoots darts
+  that reveal whoever they strike.`, and nothing on it reads `NOT YET`. Click PICK SOVA and close it
+  with T. On the ability bar OWL DRONE has its one pip lit, and `VFKit` reads `C1/1 Q2/2 E1/1 X8/8`.
+  Press B: under the shields Owl Drone (`C`, 400) has its pip lit and reads `FULL`. Hover it:
+  `Ability, on C`, the line on his card, and its rows, `Charges` up to 1, `A charge` 400 credits,
+  `Flight` `7 s, 100 health` and `A dart` `every 5 s, 2 pings`. Close the menu (B). **Send:** a
+  screenshot of the hover.
+- **OD2 In hand.** Open the Sound Lab (F2 four times), and keep it open to OD9. Press C: a quick
+  mechanical clatter, logged as `droneEquip`, `yours`; the Vandal goes, and the drone comes up over
+  your open hand: a squat dark body with a light blue lens at its front and an arm out to either
+  side, each with a light blue rotor. C's square lights, with `EQUIP` under it for 0.9 s; the HUD
+  reads `Owl Drone   [C]`, with no ammo; and `VFKit` ends in `equip`. Press C again: the drone goes,
+  the Vandal's back, and `VFKit` reads `C1/1 Q2/2 E1/1 X8/8`, nothing spent.
+- **OD3 Sent out.** Press C, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
+  once: a thick, quick whoosh, logged as `droneLaunch`, `yours`; the drone in hand goes, and the
+  view leaves your eye and glides about 1.8 m down the lane, stopping half a second after the click.
+  Round the screen's edges is a light blue tint, the crosshair's green, and under it are two light
+  blue bars (`VFDrone`'s `Flying` true): the upper one full, emptying as the seconds run down
+  (`Left`, from 7), and the lower one empty for a quarter of a second, then full (`DartIn` 0). A
+  quiet, high whir is logged as `droneHum`, `you`, every 0.4 s. `VFDroneId` reads 4294836225, the
+  first drone sent out since the game started, and `VFDroneHealth` 100; `pos` still reads
+  `0.00 0.00 0.00`. C's square is lit with the seconds left under it, from `7.0` down, and `VFKit`
+  reads `C0/1 Q2/2 E1/1 X8/8 drone` and the same seconds; 1.5 s after the click C's pip lights
+  again, `C1/1`. Set `VFTestYaw` to 180: the view turns round, and there's your body standing at the
+  spawn, facing you, in your side's blue (`Body` in `Workspace.VFDrone`). Set it back to 0. As C's
+  note reaches 0 the view's back at your eye, facing down the lane, and the tint, the bars and the
+  whir are gone (`Flying` false, and no `VFDroneId`); the Vandal comes up, ready 0.7 s later.
+  **Send:** a screenshot while it flies.
+- **OD4 Along the ground.** Press C, and once `EQUIP`'s gone set `VFTestButtons` to 129 (W and the
+  left button), then at once to 1, and keep it: the drone flies straight down the lane at 5 m/s, a
+  metre every fifth of a second, through Dummy 1 without stopping, and reaches the 20 m stripe as
+  `Left` reads 3.0. Just then set `VFTestPitch` to -89, and `VFTestButtons` to 129 and back to 1: a
+  thin, quick swish, logged as `droneDart`, `you`, and a thin blue streak from just under the view
+  down to the floor; `VFLastDart` reads about `0, 0, -20`, and `VFDartHit` is empty. Set
+  `VFTestPitch` back to 0. It flies on through Dummy 4, and as its time's up, nearly 35 m down the
+  lane, the view's back at your eye at the spawn; `pos` read `0.00 0.00 0.00` all along.
+- **OD5 Up and down.** Send it out (C, then 128 once `EQUIP`'s gone), and once it's stopped set
+  `VFTestButtons` to 64 (jump) and keep it: the view rises at 3 m/s and, about half a second later,
+  stops 3 m over the floor. Clear it, set `VFTestPitch` to 89 and fire a dart (128, then clear it):
+  `VFLastDart` reads about `0, 42.99, -2.51`, its 40 m straight up from 3 m. Set `VFTestPitch` back
+  to 0 and press C to end it. Once C's lit again, send it out again, and once it's stopped set
+  `VFTestButtons` to 32 (crouch) and keep it: the view sinks at 3 m/s until it's just over the
+  floor, and stays there. Clear it, set `VFTestPitch` to 89 and fire a dart: `VFLastDart` reads
+  about `0, 40.12, -2.51`, 40 m up from 0.12 m. Set `VFTestPitch` back to 0 and press C to end it.
+- **OD6 A dart.** Send it out, and once it's stopped set `VFTestAimEntity` to 4294901761, Dummy 1,
+  and fire a dart (128, then clear it): `droneDart`, `you`, and a thin blue streak from just under
+  the view to Dummy 1's middle. At once `[Target Hit]` shows in light blue under the bars, with a
+  sharp metallic bite, logged as `dartHit`, `yours`, and goes 2 s later (`TargetHit`). `VFLastDart`
+  reads about `0, 1.18, -9.86` and `VFDartHit` `Dummy 1 (static)`, and Dummy 1's label still reads
+  `100 + 50`: a dart does no damage. The lower bar empties and fills again over 5 s, dim until it's
+  full (`DartIn` counting down from 5); fire again at once, and nothing's fired or heard. 1.6 s
+  after the dart a high bell, logged as `dartPing`, `you`, about 8 m away, and Dummy 1 lights up red
+  for 0.6 s (`Reveal_4294901761`, `Revealed` 1); 1.2 s after that, again; then no more. Clear
+  `VFTestAimEntity`, and press C to end it. **Send:** a screenshot with `[Target Hit]` showing.
+- **OD7 Out of reach, and walls.** Once C's lit again, send it out, and once it's stopped set
+  `VFTestYaw` to 10 and fire a dart: the streak runs 40 m down the lane, passing left of Dummy 3,
+  and ends in the air, `VFLastDart` about `-6.95, 1.62, -41.21`, and `VFDartHit` is empty. Set
+  `VFTestYaw` back to 0 and press C to end it. Walk to the wallbang lane's 10 m line, in front of
+  the concrete 0.10 m wall (`pos` within 0.2 m of `-26.00 0.00 -10.00`, `VFTestYaw` 0), and send it
+  out: it stops 1.8 m on. Set `VFTestAimEntity` to 4294901771, Dummy 11, 1.5 m behind the wall, and
+  fire a dart: the streak ends on the wall's face, `VFLastDart` about `-26, 1.24, -20`, `VFDartHit`
+  is empty, and nobody lights up. Clear `VFTestAimEntity`, and press C to end it.
+- **OD8 Walls.** Still on the 10 m line, once C's lit again send it out and set `VFTestButtons` to 1
+  (W) and keep it: the drone flies to the wall and stops against it about 2 s after the launch, the
+  wall filling the view. Set it to 65 (W and jump) and keep it: the drone rises over the wall's top,
+  on over the dummies behind it, and stops against the backstop behind them, 3 m over the floor,
+  less than 2 s later. Clear it, set `VFTestPitch` to -89 and fire a dart: `VFLastDart` reads about
+  `-26, 0, -23.85`, the floor between Dummy 11 and the backstop. Set `VFTestPitch` back to 0 and
+  press C to end it.
+- **OD9 Cut short.** Walk back to the spawn. Once C's lit again, send it out, set `VFTestAimEntity`
+  to 4294901761, fire a dart, and at once press C (4096, then clear it): the view's back at your eye
+  straight away, the tint and the bars gone and `VFKit` without `drone`, and the Vandal comes up,
+  ready 0.7 s later. `[Target Hit]` stays up for its 2 s, and Dummy 1 still lights up 1.6 s and
+  2.8 s after the dart. Clear `VFTestAimEntity`, and press F2 to close the Sound Lab.
+
+Then three players: stop the game and start a Local Server with 3 players, as in section 9. In
+window 1 play as Sova, as before, and open the Sound Lab in windows 2 and 3. Player 1's id is
+4294967295, player 2's 4294967294 and player 3's 4294967293.
+
+- **OD10 Seen and heard.** Player 1 stands at the spawn facing down the target lane (`VFTestYaw` 0,
+  `VFTestPitch` 0), player 2 down it to the left, 12 m on (`pos` about `-4.00 0.00 -12.00`), and
+  player 3 4 m to player 1's right (`pos` about `4.00 0.00 0.00`). In window 1 press C and send the
+  drone out: windows 2 and 3 log `droneLaunch`, `Player1`, and see the drone come out of player 1's
+  head and stop 1.8 m in front of them, a small dark box, its lens at its front and a spinning rotor
+  to either side in the enemy colour (`Drone_4294836225` in `Workspace.VFDrone`, and `VFDrone`'s
+  `Drones` 1), its whir logged every 0.4 s as `droneHum`, `Player1`; player 1 stands still at the
+  spawn. Window 1's `Drones` reads 0: your own isn't drawn. In window 1 hold W (1) for a second:
+  windows 2 and 3 see the drone fly smoothly down the lane and stop. Press C in window 1 to end it:
+  it's gone from windows 2 and 3 (`Drones` 0). **Send:** a screenshot of window 3 with the drone in
+  view.
+- **OD11 Tagged.** Once C's lit again in window 1, send it out, and once it's stopped set
+  `VFTestAimEntity` to 4294967294, player 2, and fire a dart: windows 2 and 3 log `droneDart`,
+  `Player1`, and see a thin streak in the enemy colour run from the drone to player 2. Window 1
+  shows `[Target Hit]`, and its `VFDartHit` reads `Player2`. Window 2 hears a sharp metallic bite,
+  `dartHit`, `yours`, and `TAGGED` shows at the top of its screen in the enemy colour for 3.4 s
+  (`VFDrone`'s `Tagged` true), with a high bell, `dartPing`, `yours`, 1.6 s after the dart and again
+  1.2 s later. At each, in window 1 player 2 lights up red for 0.6 s (`Reveal_4294967294`), but not
+  in window 3 (`Revealed` 0): on the course, whom a dart reveals is its owner's alone. Clear
+  `VFTestAimEntity`, and press C to end it. **Send:** a screenshot of window 2 with `TAGGED`
+  showing.
+- **OD12 Shot down.** Once C's lit again in window 1, send it out, and leave it where it stops. In
+  window 2 set `VFTestAimPoint` to `0, 1.62, -1.82`, the drone's middle, and fire three single shots
+  with the Vandal, half a second apart: each strikes the drone with a spark, and window 1's
+  `VFDroneHealth` reads 60, then 20; at the third, 0: a sharp, high crack in all three windows,
+  logged as `droneBreak`, and the drone bursts into eight pieces that fly out and fall (`Shard` in
+  `Workspace.VFDrone`). Window 1's view is back at player 1's eye at once, the Vandal up 0.7 s
+  later, and player 1 is unhurt. Clear `VFTestAimPoint`.
+
+Then Skirmish: press P in window 1. Players 1 and 3 share a side, as in F1. As round 1's buy phase
+starts, agent select comes up by itself: pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2
+and 3.
+
+- **OD13 Every round.** In round 1's buy phase window 1's `VFKit` reads `C1/1 Q2/2 E1/1 X0/8`. B:
+  under the shields Owl Drone (`C`, 400) and Shock Bolt (`Q`, 150) have their pips lit and read
+  `FULL`, and there's no Recon Bolt; clicking them buys nothing. Close the menu (B).
+- **OD14 Hidden, then seen.** Once the round's live, player 2 stays at their side's spawn, out of
+  sight of players 1 and 3 and more than 15 m from them, and player 3 stands beside player 1. In
+  window 1 send the drone out the way player 2 is: window 3 draws it in your side's blue (`Drones`
+  1) and logs its whir, `droneHum`, `Player1`; window 2 neither draws it (`Drones` 0) nor hears it.
+  Fly it toward player 2 (W, and `VFTestYaw` to turn): once it's within 15 m of player 2, or they
+  could see it, window 2 draws it in the enemy colour (`Drones` 1) and logs its whir. As soon as
+  player 2's in its sight, set window 1's `VFTestAimEntity` to 4294967294 and fire a dart, and
+  player 2 then steps behind cover: window 2 reads `TAGGED`; 1.6 s after the dart and 1.2 s after
+  that, player 2 lights up red through the cover in windows 1 and 3 for 0.6 s (`Reveal_4294967294`),
+  and a red dot shows them on both their minimaps, then a `?` where they were (`VFMinimap`'s `Seen`
+  reads `4294967294` while it lasts); nobody lights up in window 2. Window 1's C pip stays dark for
+  the rest of the round (`C0/1`). Clear `VFTestAimEntity`. To end the round, player 1 kills
+  player 2. **Send:** a screenshot of window 3 as player 2 lights up, with its minimap.
+- **OD15 Friend and foe.** In round 2's buy phase window 1's `VFKit` reads `C1/1` again, its pip
+  lit. Once the round's live, player 1 stands in the open facing `VFTestYaw` 0, player 3 beside
+  them, 3 m to their right, and player 2 where they can see player 1; in windows 2 and 3 set
+  `VFTestAimPoint` to player 1's `pos` plus `0, 1.62, -1.82`, where the drone will stop. Window 1
+  sends the drone out with no keys. Window 3 fires three single shots, half a second apart: they
+  stop at the drone, and window 1's `VFDroneHealth` stays 100. Then window 2 does the same: 60, 20,
+  then 0, and the drone bursts in all three windows, logged as `droneBreak`. Clear `VFTestAimPoint`
+  in both.
+
+Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
+round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+
+- **OD16 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`, C's pip dark. B: under the shields Owl Drone
+  (`C`, 400) is lit, its pip dark. Click it: 400 credits go, C's pip lights, `VFKit` reads `C1/1`,
+  and the tile reads `FULL`; another click buys nothing. Close the menu (B). Once the round's live,
+  send it out: `C0/1`, and the pip stays dark for the rest of the round.
 
 ## Results
 
@@ -3745,7 +3912,7 @@ RC7 VFLastBolt: ___; VFLastRecon at each pulse: ___
 RC8 VFBoltHealth after the shot: ___; a second ping: yes / no
 RC9 what windows 2 and 3 logged: ___; anyone red in windows 2 or 3: yes / no; VFLastRecon: ___
 RC10 VFBoltHealth after window 2's shot: ___; the windows that logged boltBreak: ___
-RC11 VFKit as the round began: ___; Owl Drone NOT YET and Shock Bolt FULL: yes / no; a Recon Bolt tile: yes / no
+RC11 VFKit as the round began: ___; Owl Drone and Shock Bolt FULL: yes / no; a Recon Bolt tile: yes / no
 RC12 VFLastRecon: ___; player 2 red in window 1: yes / no, window 3: yes / no, window 2: yes / no; Seen while it lasted: ___; E back after ___ s
 RC13 VFBoltHealth after player 3's shots: ___; after player 2's: ___; pulsed after player 2's: yes / no
 SB1 anything on Sova's card, the bar or the hover that read differently: ___
@@ -3770,6 +3937,22 @@ HF8 VFFuryHits: ___; Dummy 6's label: ___
 HF9 what windows 2 and 3 logged: ___; the charge's ball in window 3: yes / no; window 2's HUD: ___; window 3's: ___; VFFuryHits: ___; player 2 red in window 1: yes / no, window 3: yes / no
 HF10 VFKit after VFTestGive: ___; what each window logged: ___; VFFuryHits: ___; window 2's health after: ___
 HF11 what window 2 took: ___; window 3's: ___; VFFuryHits: ___; player 2 red in window 1: yes / no, window 3: yes / no, window 2: yes / no; Seen while it lasted: ___
+OD1 anything on Sova's card, the bar or the buy menu's hover that read differently: ___
+OD2 EQUIP for about ___ s; anything the Sound Lab logged differently: ___; VFKit after C again: ___
+OD3 the view stopped about ___ m on; VFDroneId: ___; C's pip back after ___ s; your body at the spawn: yes / no; the view back after ___ s, the Vandal ready ___ s after that
+OD4 VFLastDart: ___; pos while it flew: ___; how far down the lane it got: ___
+OD5 VFLastDart from the top: ___; from the floor: ___
+OD6 VFLastDart: ___; VFDartHit: ___; [Target Hit] for about ___ s; a second dart at once: yes / no; the pings ___ s and ___ s after the dart
+OD7 VFLastDart at yaw 10: ___; at Dummy 11: ___; VFDartHit at Dummy 11: ___
+OD8 stopped at the wall after ___ s; at the backstop after ___ s; VFLastDart: ___
+OD9 the view back at once: yes / no; [Target Hit] stayed: yes / no; Dummy 1 still pinged: yes / no
+OD10 what windows 2 and 3 logged: ___; the drone seen in both: yes / no; Drones in window 1: ___
+OD11 VFDartHit: ___; TAGGED in window 2 for about ___ s; player 2 red in window 1: yes / no, window 3: yes / no
+OD12 VFDroneHealth after each shot: ___; the burst in every window: yes / no
+OD13 VFKit as the round began: ___; Owl Drone and Shock Bolt FULL: yes / no; a Recon Bolt tile: yes / no
+OD14 Drones in window 2 before it came near: ___, after: ___; in window 3: ___; player 2 red in window 1: yes / no, window 3: yes / no, window 2: yes / no; Seen while it lasted: ___
+OD15 VFKit in round 2's buy phase: ___; VFDroneHealth after player 3's shots: ___; after player 2's: ___
+OD16 VFKit as the round began: ___; bought for ___; a second bought: yes / no; C after the launch: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4061,3 +4244,9 @@ Didn't look right (IDs and what you saw):
 | 46 | Whom it catches: the four dummies on its line, 80 each through their Heavy Armor, none beside it more than 2 m off its line, and none behind; two blasts killing them, the kill feed naming Hunter's Fury; and through walls | HF3, HF4, HF7, HF8 |
 | 46 | Its end: as its time's up, a blast charging going with it, and as anything else is drawn | HF2, HF4, HF6 |
 | 46 | With other players: seen and heard; on the course, catching everyone but its owner, revealed to its owner alone; in Skirmish, its allies spared, its enemies revealed to its side through walls and on the minimap; and nobody caught while the barriers are up | HF9, HF10, HF11 |
+| 47 | The Owl Drone lit on Sova's card and the bar, `C1/1` on the course, its rows in the buy menu, and the drone in hand 0.9 s after C, with C again putting it away | OD1, OD2 |
+| 47 | Sent out: the view leaving his eye and stopping 1.8 m on, the tinted edges, the green crosshair, the bars and its hum, his body standing where he left it, and as its 7 s are up, the view back and the gun back 0.7 s later | OD3 |
+| 47 | Flying it: along the ground at 5 m/s the way the view faces, through the dummies, up and down at 3 m/s, no higher than 3 m over the floor and down to it, stopped by a wall and over it; his body still | OD4, OD5, OD8 |
+| 47 | Its darts: one every 5 s; a dummy struck, `[Target Hit]` for 2 s, and its pings 1.6 s and 2.8 s after, revealing it for 0.6 s each; none past 40 m or through a wall | OD6, OD7 |
+| 47 | Its end: C again, its pings going on after, and as its time's up | OD3, OD9 |
+| 47 | With other players: seen and heard; another player tagged, revealed to its owner alone on the course; shot down by an enemy's three hits; in Skirmish, its charge each round, hidden from enemies until they could see it or it's within 15 m, his side's shots doing nothing, and its darts revealing enemies to his side through walls and on the minimap; and bought for 400 in the spike rounds | OD10, OD11, OD12, OD13, OD14, OD15, OD16 |

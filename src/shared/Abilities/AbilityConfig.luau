@@ -22,7 +22,8 @@
 -- Resurrection (system 39). Omen is the fourth (system 40), with his Dark
 -- Cover, his Paranoia (system 41), his Shrouded Step (system 42) and his
 -- From the Shadows (system 43). Sova is the fifth (system 44), with his
--- Recon Bolt, his Shock Bolt (system 45) and his Hunter's Fury (system 46).
+-- Recon Bolt, his Shock Bolt (system 45), his Hunter's Fury (system 46)
+-- and his Owl Drone (system 47).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -212,6 +213,9 @@ local SOVA_SPIKE = "THESPIKE.GG's Sova guide"
 local SOVA_ESPORTS = "esports.net's Sova guide"
 local BOOSTING = "Boosting Ground's Sova guide"
 local SOVA_DIGNITAS = "Dignitas' Sova guide"
+local AIMLAB = "Aim Lab's Sova guide"
+local SOVA_MOBALYTICS = "Mobalytics' Sova page"
+local SOVA_DOTESPORTS = "Dot Esports' article on Sova's drone"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -385,8 +389,8 @@ AbilityConfig.Defs = {
 		description = "X brings up the map. Fire on a place in it sends you there as a Shade, which an enemy's shot or X again sends back before you form.",
 	},
 	-- Sova's (system 44): his kit as the VALORANT Wiki lists it. His Recon
-	-- Bolt, his Shock Bolt (system 45) and his Hunter's Fury (system 46) can
-	-- be played.
+	-- Bolt, his Shock Bolt (system 45), his Hunter's Fury (system 46) and
+	-- his Owl Drone (system 47) can be played.
 	owldrone = {
 		id = "owldrone",
 		name = "Owl Drone",
@@ -394,7 +398,8 @@ AbilityConfig.Defs = {
 		kind = "basic",
 		cost = p(400, "confirmed", P300 .. ": Owl Drone 'Cost increased 300 >>> 400' (" .. SOVA .. ": 400 still)"),
 		charges = p(1, "community", SOVA .. ": Owl Drone, 1 use"),
-		description = "C sends out a drone you fly. Fire from it shoots a dart that reveals whoever it strikes.",
+		weapon = "owl",
+		description = "C readies a drone, and fire sends it out for you to fly for 7 s, or until C again. Fire from it shoots darts that reveal whoever they strike.",
 	},
 	shockbolt = {
 		id = "shockbolt",
@@ -1226,13 +1231,82 @@ AbilityConfig.HuntersFury = {
 	kickTime = p(0.25, "estimate", "Ours: nothing public says how long the knockback takes"),
 }
 
+-- Sova's Owl Drone (system 47), a basic ability: C puts it in hand
+-- (WeaponConfig's owl, in the fifth slot), and fire, once it's ready,
+-- spends its charge and sends it out from his eye the way he faces. The
+-- view's the drone's while it flies, and he stands where he was, his gun
+-- away: for its deploy it flies on as it was sent, and then the keys fly
+-- it, along the way the view faces, jump taking it up and crouch down
+-- (Patch 2.05's keys for 'flying up and down'), never higher over the
+-- floor below it than its ceiling (DroneSim). Fire, once the keys fly it,
+-- shoots a dart along the crosshair, no sooner after the last than its
+-- cooldown: whoever it strikes, but for his side, is revealed to his side
+-- for a moment at each of its pings. Enemies' bullets and knives take its
+-- health, and it breaks at none; allies' do nothing (Patch 5.12: 'The
+-- following abilities are now immune to allied damage.'). It's over once
+-- its time's up, C's pressed again or it breaks, and the gun's back in
+-- hand its unequip after. Riot gives its time, health, pings and cost;
+-- the wiki and the guides the rest they give (47-owl-drone.md, section
+-- 2).
+AbilityConfig.OwlDrone = {
+	-- From the fire until the keys fly it, and its time, from the fire.
+	deploy = p(0.25, "community", BOOSTING .. ": 'deploy time is 0.25 seconds'"),
+	duration = p(7, "confirmed", P408 .. ": Owl Drone 'Duration reduced 10s >>> 7s'"),
+	-- From its end until the gun's back in hand.
+	unequip = p(0.7, "community", BOOSTING .. ": 'unequip time is 0.7 seconds'"),
+	health = p(100, "confirmed", P408 .. ": Owl Drone 'Health reduced 125 >>> 100'"),
+	-- How fast the keys fly it along the ground and up or down (metres a
+	-- second), and how quickly it gets there (metres a second, each
+	-- second).
+	speed = p(
+		5,
+		"estimate",
+		"Ours, under a run's 6.75 m/s: no source we could read gives it; "
+			.. SOVA_DOTESPORTS
+			.. ": it 'feels very slow and is clunky to control at first'"
+	),
+	climb = p(3, "estimate", "Ours: " .. AIMLAB .. ": 'Use your jump key bind to raise the drone's elevation', with no speed"),
+	accel = p(20, "estimate", "Ours: up to its speed in a quarter of a second, from a stop"),
+	-- The highest its middle goes over the floor below it, and how far
+	-- under it a floor's looked for (metres): with none there, it sinks.
+	ceiling = p(3, "estimate", "Ours: " .. BOOSTING .. " has its greatest height depend on the ground beneath it, with no number"),
+	depth = p(20, "estimate", "Ours: deeper than any drop on the maps"),
+	-- Its box, across and high (metres), which the world stops and
+	-- bullets hit.
+	width = p(0.4, "estimate", "Ours: about a hand's span across its wings"),
+	height = p(0.25, "estimate", "Ours"),
+	-- A dart: how long after one until the next, and how far it reaches
+	-- (metres), at once along the crosshair.
+	dartCooldown = p(
+		5,
+		"community",
+		SOVA_SPIKE .. ": 'Dart cooldown: 5 seconds'; " .. BOOSTING .. ": 'The dart itself has a 5-second cooldown after firing.'"
+	),
+	dartRange = p(40, "estimate", "Ours: no source we could read says how far a dart goes, or how fast"),
+	-- Whom a dart strikes: its pings, the first this long after it, the
+	-- rest this far apart, each revealing them this long.
+	pings = p(2, "confirmed", P408 .. ": Owl Drone 'Number of reveal pings reduced 3 >>> 2'"),
+	firstPing = p(1.6, "confirmed", P408 .. ": 'Initial delay before first ping reveals increased 1.2s >>> 1.6s*'"),
+	pingEvery = p(1.2, "confirmed", P408 .. ": '*Delay between the first and second ping remains 1.2s'"),
+	reveal = p(
+		0.6,
+		"community",
+		SOVA .. ": a 0.6 s real-time Reveal (" .. BOOSTING .. " the same; " .. SOVA_ESPORTS .. " and " .. SOVA_MOBALYTICS .. ": 0.8 s)"
+	),
+	-- How long its owner's '[Target Hit]' stays on screen.
+	hitText = p(2, "confirmed", P408 .. ": '[Target Hit] confirmation text now remains on screen for 2s, previously 1s'"),
+	-- How far its rotors are heard (metres).
+	heard = p(15, "estimate", "Ours: " .. SOVA_TRACKER .. ": 'Makes noise because of engine rotors.', with no distance"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
 -- for the Barrier Orb, after its wall's raised, for the Resurrection,
 -- after it's cast, for Shrouded Step, after it's fired: its windup, his
 -- time gone and the draw, and for From the Shadows, after it's fired: its
--- windup and his time as a Shade, when the gun's drawn again, and for the
--- Recon Bolt and the Shock Bolt, after it's loosed).
+-- windup and his time as a Shade, when the gun's drawn again, for the
+-- Recon Bolt and the Shock Bolt, after it's loosed, and for the Owl Drone,
+-- after its flight's over).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -1260,6 +1334,8 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.ReconBolt.unequip.value
 	elseif id == "shockbolt" then
 		return AbilityConfig.ShockBolt.unequip.value
+	elseif id == "owldrone" then
+		return AbilityConfig.OwlDrone.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

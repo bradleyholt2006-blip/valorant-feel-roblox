@@ -186,7 +186,7 @@ do
 			and AbilityConfig.AgentIds[5] == "sova"
 			and AbilityConfig.AgentIndex.sova == 5
 	)
-	check("his Owl Drone doesn't play yet", not AbilitySim.playable("owldrone") and AbilitySim.playable("huntersfury"))
+	check("his whole kit plays, the Owl Drone too", AbilitySim.playable("owldrone") and AbilitySim.playable("huntersfury"))
 	local owl, shock, fury = AbilityConfig.Defs.owldrone, AbilityConfig.Defs.shockbolt, AbilityConfig.Defs.huntersfury
 	check(
 		"the rest of his kit as Patch 3.0 has it: the Owl Drone 400, the Shock Bolt 150, Hunter's Fury 8 points",
@@ -196,7 +196,7 @@ do
 			and shock.cost.value == 150
 			and fury.points ~= nil
 			and fury.points.value == 8
-			and owl.weapon == nil
+			and owl.weapon == "owl"
 			and fury.weapon == "furybow"
 	)
 	check(
@@ -265,8 +265,8 @@ do
 	local p = newPlayer()
 	local w, kit = p.sim.weapons, p.sim.abilities
 	check(
-		"his kit filled: the Recon Bolt's charge and Hunter's Fury's points, and nothing of the Owl Drone's",
-		kit.charges[E] == 1 and kit.charges[1] == 0 and kit.points == AbilitySim.pointsNeeded(kit)
+		"his kit filled: the Owl Drone's charge, the Recon Bolt's and Hunter's Fury's points",
+		kit.charges[E] == 1 and kit.charges[1] == 1 and kit.points == AbilitySim.pointsNeeded(kit)
 	)
 	local _, casts = step(p, B.AbilityE)
 	local cast = casts[1]

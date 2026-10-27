@@ -364,6 +364,8 @@ function AbilityServer.start()
 			or cast.kind == "shade"
 			or cast.kind == "home"
 			or cast.kind == "blast"
+			or cast.kind == "dart"
+			or cast.kind == "land"
 		then
 			return
 		end

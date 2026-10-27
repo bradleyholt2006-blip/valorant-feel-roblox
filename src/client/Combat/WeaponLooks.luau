@@ -244,6 +244,20 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.025, 0.025, 0.05), offset = vector.create(-0.025, 0.03, -0.49), accent = true }, -- head
 		},
 	},
+	-- The Owl Drone (system 47): the drone held up over the open hand, a
+	-- squat body with its lens to the front and an arm out to either side,
+	-- each with its rotor.
+	owl = {
+		muzzle = vector.create(0, 0.065, -0.16),
+		pieces = {
+			{ size = vector.create(0.1, 0.05, 0.12), offset = vector.create(0, 0.06, -0.09) }, -- body
+			{ size = vector.create(0.035, 0.035, 0.02), offset = vector.create(0, 0.065, -0.155), accent = true }, -- lens
+			{ size = vector.create(0.2, 0.012, 0.03), offset = vector.create(0, 0.09, -0.09) }, -- arms
+			{ size = vector.create(0.06, 0.006, 0.06), offset = vector.create(0.1, 0.1, -0.09), accent = true }, -- rotor
+			{ size = vector.create(0.06, 0.006, 0.06), offset = vector.create(-0.1, 0.1, -0.09), accent = true }, -- rotor
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -285,6 +299,7 @@ local SHAPE_OF: { [string]: string } = {
 	bow = "bow",
 	shockbow = "bow",
 	furybow = "bow",
+	owl = "owl",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -325,6 +340,7 @@ local ACCENT: { [string]: Color3 } = {
 	bow = Color3.fromRGB(110, 200, 255),
 	shockbow = Color3.fromRGB(235, 235, 120),
 	furybow = Color3.fromRGB(80, 235, 255),
+	owl = Color3.fromRGB(95, 175, 255),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

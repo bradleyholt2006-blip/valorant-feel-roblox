@@ -45,6 +45,7 @@ local ShadowView = require(script.ShadowView)
 local ReconView = require(script.ReconView)
 local ShockView = require(script.ShockView)
 local FuryView = require(script.FuryView)
+local DroneView = require(script.DroneView)
 local MinimapView = require(script.MinimapView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
@@ -123,7 +124,8 @@ GameSounds.start()
 -- (system 41), Shrouded Step's targeter and steps (system 42), From the
 -- Shadows' map and shades (system 43), the Recon Bolt's bow, bolts,
 -- pulses and reveals (system 44), the Shock Bolt's bolts and bursts
--- (system 45), and Hunter's Fury's bow, blasts and reveals (system 46).
+-- (system 45), Hunter's Fury's bow, blasts and reveals (system 46), and
+-- the Owl Drone's flight, drones, darts, pings and bursts (system 47).
 AbilityHud.start()
 AbilityEffects.start()
 CloudView.start()
@@ -142,6 +144,7 @@ ShadowView.start()
 ReconView.start()
 ShockView.start()
 FuryView.start()
+DroneView.start()
 -- The minimap at the top left (system 34), and the big map while Caps Lock
 -- is held: the map, your side and the enemies it sees, the spike, what's
 -- been thrown, and the sounds you make.

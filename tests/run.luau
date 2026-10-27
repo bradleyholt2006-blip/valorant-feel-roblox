@@ -55,5 +55,6 @@ require("./fromtheshadows")
 require("./reconbolt")
 require("./shockbolt")
 require("./huntersfury")
+require("./owldrone")
 
 H.finish()

@@ -42,7 +42,10 @@
 -- has risen, out of play, on the last life's kit with no shield, and held
 -- in its simulation (AbilitySim's floatUntil and heldUntil, which the
 -- owner learns from CharacterRig.REVIVED) until ReviveServer has it burst
--- out.
+-- out. Sova's Owl Drone (system 47) flies in his simulation too: while it
+-- flies, his input is the drone's, so the snapshots show his body facing
+-- and looking as it did as he sent it, its gun away, and his view (view)
+-- is the drone's. DroneServer shows the drone itself.
 --
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
 -- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
@@ -217,22 +220,28 @@ local function tagPart(part: Instance)
 	end
 end
 
--- The player's pose as the simulation has it now.
+-- The player's pose as the simulation has it now. While the Owl Drone
+-- flies, and on the tick its flight's over, the body faces and looks as it
+-- did as he sent it (system 47), not as the input does.
 local function currentPose(r: Record): PlayerCodec.Pose
-	local m, w = r.sim.movement, r.sim.weapons
+	local m, w, kit = r.sim.movement, r.sim.weapons, r.sim.abilities
+	local t = m.tick * DT
+	local body = AbilitySim.droning(kit) or math.abs(kit.landAt - t) < 1e-9
 	return {
 		id = r.entity.id,
 		position = m.position,
-		yaw = r.yaw,
-		pitch = r.pitch,
+		yaw = if body then kit.bodyYaw else r.yaw,
+		pitch = if body then kit.bodyPitch else r.pitch,
 		crouchAlpha = m.crouchAlpha,
 		grounded = m.grounded,
 		alive = true,
 		-- A dash makes no steps (system 17).
 		quiet = StepTracker.isQuiet(r.buttons, m.crouched) or AbilitySim.dashing(r.sim.abilities, m.tick * DT),
 		reloading = WeaponSim.isReloading(w),
-		-- Defusing, the weapon is put away.
-		weapon = if r.sim.spike.channel == SpikeSim.DEFUSING then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		-- Defusing, or flying the Owl Drone, the weapon is put away.
+		weapon = if r.sim.spike.channel == SpikeSim.DEFUSING or AbilitySim.droning(kit)
+			then 0
+			else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 		channel = r.sim.spike.channel,
 		gliding = m.gliding,
 		shade = AbilitySim.shaded(r.sim.abilities, m.tick * DT),
@@ -484,11 +493,16 @@ function PlayerSimServer.give(player: Player, slot: number, id: string, ammo: nu
 end
 
 -- Where a player's eye is and the way it looks, as of their last move run
--- (the server's check of what they say they're looking at).
+-- (the server's check of what they say they're looking at). Flying the Owl
+-- Drone (system 47), the eye's the drone's middle.
 function PlayerSimServer.view(player: Player): (vector?, vector?)
 	local r = records[player]
 	if not r then
 		return nil, nil
+	end
+	local kit = r.sim.abilities
+	if AbilitySim.droning(kit) then
+		return kit.dronePos, Accuracy.aim(r.yaw, r.pitch)
 	end
 	return PlayerSim.eye(r.sim, Tuning.config()), Accuracy.aim(r.yaw, r.pitch)
 end

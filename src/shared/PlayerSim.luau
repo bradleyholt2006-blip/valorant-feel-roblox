@@ -16,7 +16,9 @@
 -- 39), Shrouded Step holds him through its windup and his time gone, and
 -- puts him where it marked (system 42), and From the Shadows holds him
 -- through its windup and his time as a Shade, which it puts where the map
--- marked (system 43). A Slow Orb's field slows whoever starts a tick in it
+-- marked (system 43), and the Owl Drone puts its own in hand (system 47),
+-- whose fire sends the drone out, holding him where he is while the input
+-- flies it. A Slow Orb's field slows whoever starts a tick in it
 -- (SlowSim), from the fields each step's given, and a Barrier Orb's wall
 -- stands in the world everything in the tick goes through
 -- (BarrierSim.world), from the walls it's given.
@@ -169,6 +171,7 @@ local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire)
 local B = PlayerSim.Buttons
 local CHARGE_MASK = bit32.bnot(bit32.bor(B.Forward, B.Back, B.Left, B.Right, B.Jump))
 local HF = AbilityConfig.HuntersFury
+local DR = AbilityConfig.OwlDrone
 
 local HOLD: MovementSim.Motion = { hold = true }
 local RES = AbilityConfig.Resurrection
@@ -300,6 +303,23 @@ local function shadowing(
 	return act, if shadow then { shadow } else nil
 end
 
+-- A tick of the Owl Drone's flight at `t` (system 47), with what started in
+-- it, if anything (AbilitySim.droneThrough): the input flies the drone, so
+-- nothing pressed moves him, fires or casts, and a plant or a defuse under
+-- way ends as if let go of; he stays crouched if he was, and falls and
+-- slides on as he was. The gun stays away until its unequip after the
+-- flight.
+local function flying(s: State, input: any, cfg: any, world: any, dt: number, objective: Spike.Context?, t: number, cast: AbilitySim.Cast?)
+	local kit = s.abilities
+	local still = table.clone(input)
+	still.buttons = if s.movement.crouched then PlayerSim.Buttons.Crouch else 0
+	still.yaw, still.pitch = kit.bodyYaw, kit.bodyPitch
+	local act = SpikeSim.step(s.spike, s.movement, s.weapons, still, t, s.movement.tick + 1, PlayerSim.eye(s, cfg), objective or Spike.NONE)
+	WeaponSim.stow(s.weapons, t, DR.unequip.value)
+	MovementSim.step(s.movement, still, cfg, PlayerSim.maxSpeed(s, cfg), world, dt, nil)
+	return act, if cast then { cast } else nil
+end
+
 -- Advance one tick. Returns the bullets fired this tick, if any (one round's:
 -- several for a shotgun), the knife swing that started, if one did, what
 -- happened with the spike, if anything, the gun G let go of, if it did
@@ -359,6 +379,28 @@ function PlayerSim.step(
 	if shadow then
 		WeaponSim.redraw(s.weapons, t)
 	end
+	-- So does the Owl Drone's flight (system 47): the input flies it, and
+	-- fire pressed (the edge the weapons would see) shoots its darts. As
+	-- it's over he looks again the way he did as he sent it, for the rest
+	-- of the tick too, which it tells of with the tick's casts, and the
+	-- gun's back its unequip on.
+	local fired = false
+	if AbilitySim.droning(kit) then
+		local fire = MovementSim.has(input.buttons, PlayerSim.Buttons.Fire)
+		fired = fire and not s.weapons.fireHeld
+		s.weapons.fireHeld = fire
+	end
+	local droning, flown = AbilitySim.droneThrough(kit, input, t, dt, s.movement.tick + 1, s.movement.position, world, cfg, fired)
+	if droning then
+		local flyAct, flyCasts = flying(s, input, cfg, world, dt, objective, t, flown)
+		return nil, nil, flyAct, nil, flyCasts
+	end
+	if flown then
+		input = table.clone(input)
+		input.yaw, input.pitch = kit.bodyYaw, kit.bodyPitch
+		look = Accuracy.aim(input.yaw, input.pitch)
+		WeaponSim.stow(s.weapons, t, DR.unequip.value)
+	end
 	local dropPressed = MovementSim.has(input.buttons, PlayerSim.Buttons.Drop) and not s.spike.dropHeld
 	local spikeInput = input
 	if AbilitySim.dashing(s.abilities, t) then
@@ -382,9 +424,10 @@ function PlayerSim.step(
 	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
 	local grounded, crouched = s.movement.grounded, s.movement.crouched
 	local motion, casts = AbilitySim.step(kit, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
-	-- He's there (Shrouded Step), or there for good (From the Shadows): never
-	-- both, as neither starts while the other's under way.
-	local over = step or shadow
+	-- He's there (Shrouded Step), there for good (From the Shadows), or back
+	-- from the Owl Drone: never two, as none starts while another's under
+	-- way.
+	local over = step or shadow or flown
 	if over then
 		local list = casts or {}
 		table.insert(list, 1, over)
@@ -426,6 +469,7 @@ function PlayerSim.step(
 	-- it Back's cast puts away what's in the fifth slot, and the gun through
 	-- its activation, and its mark keeps how he stood (system 33). Hunter's
 	-- Fury's puts its bow in hand, drawn over its equip (system 46).
+	-- The Owl Drone's goes as it's sent out (system 47, below).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -575,6 +619,11 @@ function PlayerSim.step(
 					cast.step = there
 					AbilitySim.shadow(kit, t, there)
 				end
+				-- The Owl Drone sent out from his eye the way he faces (system
+				-- 47), its view his until its flight's over.
+				if cast.kind == "drone" then
+					AbilitySim.launch(kit, t, shot.origin, input.yaw, input.pitch)
+				end
 				local list = casts or {}
 				table.insert(list, cast)
 				casts = list
@@ -627,6 +676,18 @@ function PlayerSim.home(s: State, cfg: any, t: number, look: vector): AbilitySim
 		WeaponSim.redraw(s.weapons, t)
 	end
 	return back
+end
+
+-- The Owl Drone broken, applied by the server between ticks as an enemy's
+-- hit takes the last of its health (system 47): its flight's over as of
+-- `t`, his last tick's time, as when its time's up, and the gun's back its
+-- unequip on. Returns its "land" cast, or nil if it isn't flying.
+function PlayerSim.downed(s: State, t: number): AbilitySim.Cast?
+	local cast = AbilitySim.land(s.abilities, t, s.movement.tick, s.movement.position)
+	if cast then
+		WeaponSim.stow(s.weapons, t, DR.unequip.value)
+	end
+	return cast
 end
 
 -- What a single Blade Storm knife does with a kill this player made with

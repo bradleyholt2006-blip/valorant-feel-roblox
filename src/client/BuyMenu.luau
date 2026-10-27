@@ -288,6 +288,10 @@ local function abilityLines(def: AbilityConfig.AbilityDef): { string }
 		local reach =
 			string.format("%s within %s m, %s at %s m", num(SB.damage.value), num(SB.inner.value), num(SB.least.value), num(SB.outer.value))
 		table.insert(lines, row("Burst", reach))
+	elseif def.id == "owldrone" then
+		local OD = AbilityConfig.OwlDrone
+		table.insert(lines, row("Flight", string.format("%s s, %s health", num(OD.duration.value), num(OD.health.value))))
+		table.insert(lines, row("A dart", string.format("every %s s, %s pings", num(OD.dartCooldown.value), num(OD.pings.value))))
 	end
 	local recharge = def.recharge
 	if recharge and recharge.kind == "kills" then
