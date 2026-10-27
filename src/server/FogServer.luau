@@ -22,6 +22,10 @@
 -- only the targets near it the shooter has (FogServer.shows), so a miss
 -- past someone behind a wall says nothing of where they are.
 --
+-- While Sova flies his Owl Drone (system 47) he looks, and hears, from the
+-- drone, as it moves. The drones are in the snapshots as no entity's, and
+-- what decides who has them is DroneServer's (FogServer.others).
+--
 -- Workspace's `VFFogOff` attribute, true, turns it off (everyone has
 -- everyone), to compare. What its looks cost goes on Workspace once a
 -- second: `VFFogLines`, the lines they cast in it, and `VFFogMs`, the
@@ -32,6 +36,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local FogOfWar = require(Shared.Combat.FogOfWar)
 local Minimap = require(Shared.Match.Minimap)
@@ -48,6 +53,11 @@ local FogServer = {}
 FogServer.OFF = "VFFogOff"
 FogServer.LINES = "VFFogLines"
 FogServer.MS = "VFFogMs"
+
+-- Whether something in the snapshots that's no player's or dummy's (an Owl
+-- Drone, system 47) is in a player's, when something decides: nil for an
+-- id it knows nothing of.
+FogServer.others = nil :: ((Player, number) -> boolean?)?
 
 local P = FogOfWar.Params
 -- How many barriers one line goes through at the most.
@@ -112,12 +122,17 @@ local function gather(): { FogOfWar.Target }
 end
 
 -- A player in play as a viewer: their eye, its velocity and their eye stood
--- up, and how far behind the server their screen is.
+-- up, and how far behind the server their screen is. Flying the Owl Drone
+-- (system 47), the eye's the drone's, moving as it is.
 local function viewerOf(player: Player, id: number, side: number): FogOfWar.Viewer?
 	local eye = PlayerSimServer.view(player)
 	local sim = PlayerSimServer.getSim(player)
 	if not eye or not sim then
 		return nil
+	end
+	local kit = sim.abilities
+	if AbilitySim.droning(kit) then
+		return { id = id, side = side, eye = eye, velocity = kit.droneVel, standEye = eye, behind = PlayerSimServer.behind(player) or 0 }
 	end
 	local m = sim.movement
 	return {
@@ -204,7 +219,12 @@ function FogServer.sendsTo(player: Player): ((id: number) -> boolean)?
 	local inPlay = PlayerSimServer.inPlay(player)
 	local mates = inPlayBySide[side] or {}
 	local seen = spotted[side]
+	local others = FogServer.others
 	return function(id: number): boolean
+		local other = if others then others(player, id) else nil
+		if other ~= nil then
+			return other
+		end
 		local them: FogOfWar.Who = { id = id, side = sideOf[id] }
 		if FogOfWar.always(me, them) or (seen ~= nil and seen[id] == true) then
 			return true

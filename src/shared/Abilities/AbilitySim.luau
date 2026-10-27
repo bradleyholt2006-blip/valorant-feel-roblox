@@ -108,7 +108,17 @@
 -- pushes him level from the way he faces, its speed falling to nothing
 -- over its time. It's over (calm) once its time's up, its bow's gone or
 -- anything else is drawn, a blast charging with it, and an ability put in
--- hand ends it too.
+-- hand ends it too. His Owl Drone (C, system 47) is put in hand the same
+-- way, and fire, once it's ready, spends its charge and sends the drone
+-- out (a "drone" cast, which PlayerSim launches) from his eye. While it
+-- flies he's held where he is, nothing pressed moving him, and the input
+-- flies the drone (droneThrough, DroneSim), its view the drone's: for its
+-- deploy it flies on as it was sent, and then the keys fly it, and fire,
+-- no sooner than its dart's cooldown, shoots a dart from it along the
+-- crosshair (a "dart" cast, which the server judges). Its flight's over
+-- ("land") once its time's up or C's pressed again, or as the server
+-- breaks it between ticks (PlayerSim.downed), and the gun's back in hand
+-- its unequip after.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -122,6 +132,7 @@
 local AbilityConfig = require("./AbilityConfig")
 local SmokeSim = require("./SmokeSim")
 local BarrierSim = require("./BarrierSim")
+local DroneSim = require("./DroneSim")
 local MovementSim = require("../Movement/MovementSim")
 local Accuracy = require("../Weapons/Accuracy")
 
@@ -216,6 +227,18 @@ export type State = {
 	chargeAt: number,
 	kickFrom: number,
 	kickYaw: number,
+	-- The Owl Drone (system 47): when it was sent out, 0 when it isn't
+	-- flying; when its last flight ended, 0 for none; its middle and how
+	-- it's moving (metres, metres a second); when its next dart can go; and
+	-- the way he faced and looked as he sent it, which his body keeps
+	-- while it flies and he looks again as it ends.
+	droneFrom: number,
+	landAt: number,
+	dronePos: vector,
+	droneVel: vector,
+	dartAt: number,
+	bodyYaw: number,
+	bodyPitch: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -231,11 +254,14 @@ export type State = {
 -- its windup ends), "arrive" (there), "shadows" (From the Shadows fired),
 -- "shade" (a Shade as its windup ends), "form" (there for good), "home"
 -- (sent back), "bolt" (a bolt of Sova's loosed), "fury" (Hunter's Fury
--- cast), "charge" (a blast's windup started) or "blast" (a blast gone as
--- its windup ends), where the player's feet
--- and eye were (for "home", where they are back), and the way it goes (the
--- dash's way, up for a lift, the way they faced for a readied gust and for
--- Run it Back's, the way they looked for the rest). A flare's says which
+-- cast), "charge" (a blast's windup started), "blast" (a blast gone as
+-- its windup ends), "drone" (the Owl Drone sent out), "dart" (a dart shot
+-- from it) or "land" (its flight over), where the player's feet and eye
+-- were (for "home", where they are back, and for a dart and a landing,
+-- the drone's middle in place of the eye), and the way it goes (the
+-- dash's way, up for a lift, the way they faced for a readied gust, for
+-- Run it Back's and for a landing, the way they looked for the rest). A
+-- flare's says which
 -- way round it curves, a fireball's whether it was lobbed, a wall's where
 -- it goes, a smoke's how far its mark was and where it goes, a step's, his
 -- going's, a teleport's and a Shade's, where it takes him (a "home", where
@@ -269,6 +295,7 @@ local SS = AbilityConfig.ShroudedStep
 local FS = AbilityConfig.FromTheShadows
 local RC = AbilityConfig.ReconBolt
 local HF = AbilityConfig.HuntersFury
+local DR = AbilityConfig.OwlDrone
 local B = MovementSim.Buttons
 local EPS = 1e-9
 local UP = vector.create(0, 1, 0)
@@ -302,6 +329,7 @@ local PLAYABLE: { [string]: boolean } = {
 	reconbolt = true,
 	shockbolt = true,
 	huntersfury = true,
+	owldrone = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -373,6 +401,13 @@ function AbilitySim.new(agent: string?): State
 		chargeAt = 0,
 		kickFrom = 0,
 		kickYaw = 0,
+		droneFrom = 0,
+		landAt = 0,
+		dronePos = ZERO,
+		droneVel = ZERO,
+		dartAt = 0,
+		bodyYaw = 0,
+		bodyPitch = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -432,7 +467,8 @@ end
 -- ultimate (Blade Storm, Run it Back and the return it brings, From the
 -- Shadows, or Hunter's Fury and a blast's knockback), an ability in hand,
 -- a wall being bent, a return from the Resurrection, a step (Shrouded
--- Step), a bolt drawn and its bounces (the Recon Bolt); and the Barrier
+-- Step), a bolt drawn and its bounces (the Recon Bolt), the Owl Drone's
+-- flight and what's left of it; and the Barrier
 -- Orb's targeter is across the view again
 -- (the VALORANT Wiki has it across the view when it's first equipped in a
 -- round). Nothing carries into a new life or a new round.
@@ -453,6 +489,9 @@ function AbilitySim.settle(s: State)
 	s.drawFrom, s.letDown, s.bounces = 0, false, 0
 	s.furyUntil, s.chargeAt = 0, 0
 	s.kickFrom, s.kickYaw = 0, 0
+	s.droneFrom, s.landAt, s.dartAt = 0, 0, 0
+	s.dronePos, s.droneVel = ZERO, ZERO
+	s.bodyYaw, s.bodyPitch = 0, 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -553,13 +592,14 @@ function AbilitySim.full(s: State, ultimate: boolean?): boolean
 end
 
 -- Whether anything's under way at `t`: a readied window, a lift, a dash, a
--- step or a teleport.
+-- step, a teleport or a drone's flight.
 function AbilitySim.busy(s: State, t: number): boolean
 	return t < s.readyUntil - EPS
 		or t < s.liftUntil - EPS
 		or t < s.dashUntil - EPS
 		or AbilitySim.stepping(s, t)
 		or AbilitySim.shadowing(s, t)
+		or AbilitySim.droning(s)
 end
 
 -- Ultimate points, up to what the ultimate needs.
@@ -631,17 +671,17 @@ end
 -- through Shrouded Step's windup and "shroud" while he's gone, "shadows"
 -- through From the Shadows' windup and "shade" while he's a Shade, "fury"
 -- while Hunter's Fury's bow is in hand and "charge" while a blast charges,
--- "equip"
+-- "drone 6.2" while the Owl Drone flies, the seconds it has left, "equip"
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
--- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
--- Resurrection's orb, Dark Cover's orb, Paranoia's orb, Shrouded Step's
--- mark, From the Shadows' map, Sova's bow), "mark 15.0" with Dark
--- Cover's orb in hand, how far its mark is (metres), "draw 2" while a bolt
--- of Sova's is drawn, the bars it's filled, and "bounce 1" with bounces
--- added to it, "bend" while a wall is being bent (Blaze), "turn"
--- while the Barrier Orb's targeter is turned from across the view,
--- "revived" while a life the Resurrection brought back is held, and
--- "glide" while `gliding` (the movement's, for Drift).
+-- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's
+-- orb, Dark Cover's orb, Paranoia's orb, Shrouded Step's mark, From the
+-- Shadows' map, Sova's bow, his Owl Drone), "mark 15.0" with Dark Cover's
+-- orb in hand, how far its mark is (metres), "draw 2" while a bolt of
+-- Sova's is drawn, the bars it's filled, and "bounce 1" with bounces added
+-- to it, "bend" while a wall is being bent (Blaze), "turn" while the
+-- Barrier Orb's targeter is turned from across the view, "revived" while a
+-- life the Resurrection brought back is held, and "glide" while `gliding`
+-- (the movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -656,6 +696,9 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	end
 	if AbilitySim.charging(s, t) then
 		table.insert(parts, "charge")
+	end
+	if AbilitySim.droning(s) then
+		table.insert(parts, string.format("drone %.1f", math.max(AbilitySim.droneEnds(s) - t, 0)))
 	end
 	if s.backUntil > 0 then
 		table.insert(parts, "back")
@@ -1099,6 +1142,8 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		cast.kind = "barrier"
 	elseif def.id == "shroudedstep" then
 		cast.kind = "step"
+	elseif def.id == "owldrone" then
+		cast.kind = "drone"
 	elseif def.id == "blaze" then
 		cast.kind = "flame"
 		s.steering = slot
@@ -1209,6 +1254,110 @@ function AbilitySim.kickVelocity(s: State, t: number, dt: number): vector
 	local top = 2 * HF.kick.value / (n * dt)
 	local speed = math.max(top * (1 - (k + 0.5) / n), 0)
 	return facing(s.kickYaw) * -speed
+end
+
+-- Whether the Owl Drone flies (system 47): sent out, its flight not over.
+function AbilitySim.droning(s: State): boolean
+	return s.droneFrom > 0
+end
+
+-- Whether the keys fly it at `t`: its deploy's over.
+function AbilitySim.piloting(s: State, t: number): boolean
+	return s.droneFrom > 0 and t >= s.droneFrom + DR.deploy.value - EPS
+end
+
+-- When its time's up (0 when it isn't flying).
+function AbilitySim.droneEnds(s: State): number
+	return if s.droneFrom > 0 then s.droneFrom + DR.duration.value else 0
+end
+
+-- Whether its flight's just over at `t`, the gun on its way back.
+function AbilitySim.landing(s: State, t: number): boolean
+	return s.landAt > 0 and t < s.landAt + DR.unequip.value - EPS
+end
+
+-- The Owl Drone sent out at `t` (system 47), its middle at `eye`, flying
+-- the way `yaw` faces at its speed, level; his body keeps facing along
+-- `yaw` and looking along `pitch` while it flies. Its first dart can go
+-- once its deploy's over.
+function AbilitySim.launch(s: State, t: number, eye: vector, yaw: number, pitch: number)
+	s.droneFrom = t
+	s.landAt = 0
+	s.dronePos = eye
+	s.droneVel = facing(yaw) * DR.speed.value
+	s.dartAt = t + DR.deploy.value
+	s.bodyYaw, s.bodyPitch = yaw, pitch
+end
+
+-- Its flight over at `t`, from `feet` (his): its time up, C pressed again,
+-- or, between ticks, broken (PlayerSim.downed). Returns its "land" cast,
+-- from where the drone was, the way he faces; nil if it isn't flying.
+function AbilitySim.land(s: State, t: number, tick: number, feet: vector): Cast?
+	if s.droneFrom == 0 then
+		return nil
+	end
+	local from = s.dronePos
+	s.droneFrom = 0
+	s.landAt = t
+	s.droneVel = ZERO
+	s.dartAt = 0
+	return {
+		slot = AbilitySim.slotOf(s, "owldrone") or C,
+		ability = "owldrone",
+		kind = "land",
+		tick = tick,
+		time = t,
+		position = feet,
+		origin = from,
+		direction = facing(s.bodyYaw),
+	}
+end
+
+-- The Owl Drone's tick at `t` (system 47), before anything else in it but
+-- a return, Shrouded Step and From the Shadows: while it flies the kit's
+-- keys are watched, so C pressed counts and a key held as it ends doesn't
+-- cast, and C pressed again, or its time up, ends its flight (land, from
+-- `feet`). Otherwise the input flies it (DroneSim, through `world`), and
+-- `fired` (fire pressed this tick), once the keys fly it and its cooldown's
+-- over, shoots a dart from its middle along the crosshair ("dart"). Returns
+-- whether he's held this tick, and what started, if anything.
+function AbilitySim.droneThrough(
+	s: State,
+	input: any,
+	t: number,
+	dt: number,
+	tick: number,
+	feet: vector,
+	world: MovementSim.World,
+	cfg: any,
+	fired: boolean
+): (boolean, Cast?)
+	if s.droneFrom == 0 then
+		return false, nil
+	end
+	local keys = bit32.band(input.buttons, ALL)
+	local pressed = bit32.band(keys, bit32.bnot(s.held))
+	s.held = keys
+	local slot = AbilitySim.slotOf(s, "owldrone") or C
+	if t >= AbilitySim.droneEnds(s) - EPS or bit32.band(pressed, AbilitySim.BUTTONS[slot]) ~= 0 then
+		return false, AbilitySim.land(s, t, tick, feet)
+	end
+	s.dronePos, s.droneVel = DroneSim.step(s.dronePos, s.droneVel, input.buttons, input.yaw, AbilitySim.piloting(s, t), dt, world, cfg)
+	if fired and AbilitySim.piloting(s, t) and t >= s.dartAt - EPS then
+		s.dartAt = t + DR.dartCooldown.value
+		return true,
+			{
+				slot = slot,
+				ability = "owldrone",
+				kind = "dart",
+				tick = tick,
+				time = t,
+				position = feet,
+				origin = s.dronePos,
+				direction = Accuracy.aim(input.yaw, input.pitch),
+			}
+	end
+	return true, nil
 end
 
 -- The ability in `slot` used, between ticks, as the server finds a try of

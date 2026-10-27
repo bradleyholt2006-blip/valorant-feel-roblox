@@ -7,8 +7,10 @@
 -- while its knives last (system 19), its note the knives left, and an
 -- ability's while it's in hand (Curveball's flare, system 30; Hot Hands'
 -- fireball, system 31; Blaze's flame, system 32; the Healing Orb, system
--- 36; the Resurrection's orb, system 39; Sova's bow, systems 44 and 45),
--- its note EQUIP until it can be thrown or drawn, and Blaze's while its
+-- 36; the Resurrection's orb, system 39; Sova's bow, systems 44 and 45;
+-- his Owl Drone, system 47), its note EQUIP until it can be thrown, drawn
+-- or sent out, the Owl Drone's while it flies, its note the seconds left,
+-- and Blaze's while its
 -- wall's being bent; Run it Back's while it runs, its note the seconds
 -- left, and through his return, BACK (system 33); Shrouded Step's through
 -- its windup and his time gone, STEP (system 42); From the Shadows' while
@@ -247,6 +249,9 @@ function AbilityHud.start()
 				elseif def and def.id == "shroudedstep" and AbilitySim.stepping(kit, t) then
 					lit = true
 					note = "STEP"
+				elseif def and def.id == "owldrone" and AbilitySim.droning(kit) then
+					lit = true
+					note = string.format("%.1f", math.max(AbilitySim.droneEnds(kit) - t, 0))
 				elseif kit.holding == index then
 					lit = true
 					if t < s.weapons.equipEndTime then

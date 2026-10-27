@@ -12,7 +12,8 @@
 -- so the server's history holds exactly what clients draw, and a shot at
 -- someone a shooter can't see is still checked against where they were.
 -- Players and dummies give their paced poses (MovePacer), so they move
--- evenly from one snapshot to the next.
+-- evenly from one snapshot to the next, and so do Sova's Owl Drones (system
+-- 47), which are no entity's (Replication.extras).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -34,6 +35,9 @@ local seq = 0
 
 -- Listeners get every snapshot as sent (server time + quantised poses).
 Replication.listeners = {} :: { (number, { PlayerCodec.Pose }) -> () }
+-- What else each snapshot carries, as poses: Sova's Owl Drones (system 47,
+-- DroneServer).
+Replication.extras = {} :: { () -> { PlayerCodec.Pose } }
 
 -- A snapshot's packets: its poses a chunk at a time, at least one.
 local function encode(now: number, poses: { PlayerCodec.Pose }): { buffer }
@@ -55,6 +59,11 @@ function Replication.step(now: number)
 	end
 	seq = (seq + 1) % 65536
 	local poses = Entities.poses()
+	for _, extra in Replication.extras do
+		for _, pose in extra() do
+			table.insert(poses, pose)
+		end
+	end
 	local quantized = table.create(#poses)
 	for i, pose in poses do
 		quantized[i] = PlayerCodec.quantizePose(pose)

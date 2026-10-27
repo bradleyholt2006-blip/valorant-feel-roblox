@@ -61,6 +61,8 @@
 -- system 38), and stop every bullet. A bullet or a knife that strikes one
 -- takes its damage off it (CombatServer.struck): a bullet's to the body at
 -- its range, less what the walls before took, and a knife's from in front.
+-- So do Sova's Owl Drones (system 47, DroneServer), which the snapshots
+-- carry as no entity's: the rewind history has them too (posed).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -79,6 +81,7 @@ local Penetration = require(Shared.Combat.Penetration)
 local Melee = require(Shared.Combat.Melee)
 local RobloxLevel = require(Shared.Combat.RobloxLevel)
 local BarrierSim = require(Shared.Abilities.BarrierSim)
+local DroneSim = require(Shared.Abilities.DroneSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
@@ -404,6 +407,17 @@ local function levelFor(viewTime: number): Penetration.Level
 	local at = CombatServer.levelAt
 	return if at then at(level, viewTime) else level
 end
+CombatServer.levelFor = levelFor
+
+-- Everything the snapshots carry that's no entity's and `include` accepts
+-- (Sova's Owl Drones, system 47), posed as a screen showed them at
+-- `viewTime` (as far back as the cap allows).
+function CombatServer.posed(viewTime: number, include: (id: number) -> boolean): { LagCompensation.Target }
+	local rewind = LagCompensation.rewindTime(viewTime, Workspace:GetServerTimeNow(), Tuning.maxRewind())
+	return LagCompensation.targets(history, rewind.time, function(id: number): boolean
+		return Entities.get(id) == nil and include(id)
+	end)
+end
 
 -- One round: its bullets, all fired on the same tick from the same eye.
 function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot }, viewTime: number)
@@ -613,8 +627,10 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 		hit = verdict.target ~= nil,
 		wall = if verdict.wall and wallPoint then Units.toStuds(wallPoint) else nil,
 		normal = verdict.normal,
-		-- A wall of Sage's, which takes no cut.
+		-- A wall of Sage's, which takes no cut, or an Owl Drone (system 47),
+		-- which flies on.
 		ice = if verdict.wall and wall and BarrierSim.piece(wall.key) then true else nil,
+		drone = if verdict.wall and wall and DroneSim.piece(wall.key) then true else nil,
 	}
 	local reach = FogOfWar.weaponEdge(swing.weapon)
 	for _, entity in Entities.all() do

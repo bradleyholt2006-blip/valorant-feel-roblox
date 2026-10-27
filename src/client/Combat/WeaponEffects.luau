@@ -53,7 +53,9 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local Penetration = require(Shared.Combat.Penetration)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local BarrierSim = require(Shared.Abilities.BarrierSim)
+local DroneSim = require(Shared.Abilities.DroneSim)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
 
@@ -211,8 +213,9 @@ end
 
 local function updateViewmodel(frameDt: number)
 	local sim = PlayerController.sim
-	-- Defusing, the weapon is put away.
-	if not sim or not PlayerController.alive or sim.spike.channel == SpikeSim.DEFUSING then
+	-- Defusing, the weapon is put away, and flying the Owl Drone (system
+	-- 47) the view's the drone's.
+	if not sim or not PlayerController.alive or sim.spike.channel == SpikeSim.DEFUSING or AbilitySim.droning(sim.abilities) then
 		local current = viewmodel
 		if current then
 			current.model.Parent = nil
@@ -372,6 +375,11 @@ local function drawWalls(origin: vector, dir: vector, walls: { Penetration.Wall 
 			spark(at + first.normal * 0.01, ICE_COLOR, 0.04)
 			return
 		end
+		-- An Owl Drone (system 47) flies on: no mark stays on it.
+		if DroneSim.piece(first.key) then
+			spark(at + first.normal * 0.01, RICOCHET_COLOR, 0.025)
+			return
+		end
 		mark(at, first.normal)
 		local exit, exitNormal = last.exit, last.exitNormal
 		if exit and exitNormal then
@@ -428,6 +436,10 @@ local function drawSwing(record: ClientMelee.Record)
 		local point = swing.origin + swing.direction * wall.distance
 		if BarrierSim.piece(wall.key) then
 			spark(point + wall.normal * 0.01, ICE_COLOR, 0.04)
+			return
+		end
+		if DroneSim.piece(wall.key) then
+			spark(point + wall.normal * 0.01, RICOCHET_COLOR, 0.02)
 			return
 		end
 		cut(point, wall.normal, sweepAcross(swing.direction, swing.combo, wall.normal), if swing.kind == "stab" then STAB_CUT else SLASH_CUT)
@@ -532,6 +544,10 @@ local function onSwingFx(fx: any)
 	local point, normal = Units.toMetres(fx.wall), Units.asVector(fx.normal)
 	if fx.ice == true then
 		spark(point + normal * 0.01, ICE_COLOR, 0.04)
+		return
+	end
+	if fx.drone == true then
+		spark(point + normal * 0.01, RICOCHET_COLOR, 0.02)
 		return
 	end
 	local combo = if typeof(fx.combo) == "number" then fx.combo else 1

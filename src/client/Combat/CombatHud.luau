@@ -3,6 +3,8 @@
 -- weapon, a reload / equip bar, server-confirmed hit markers and damage
 -- numbers, the death notice and a scope overlay. The kill feed is KillFeed's.
 -- Blade Storm's knives (system 19) show how many are left, on their key.
+-- While the Owl Drone flies (system 47) the gun's away with no draw bar;
+-- the drone's own bars are DroneView's.
 --
 -- Hit markers and damage numbers only ever come from the server's verdict,
 -- never from the client's guess, so they show what actually counted.
@@ -13,6 +15,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
@@ -265,7 +268,7 @@ function CombatHud.start()
 				fill = 1 - math.clamp((w.equipEndTime - t) / math.max(drawLength, 1e-3), 0, 1)
 				label = "drawing"
 			end
-			barBack.Visible = fill ~= nil and alive
+			barBack.Visible = fill ~= nil and alive and not AbilitySim.droning(sim.abilities)
 			if fill then
 				barFill.Size = UDim2.fromScale(fill, 1)
 				barLabel.Text = label

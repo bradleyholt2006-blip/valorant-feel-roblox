@@ -632,6 +632,34 @@ SoundConfig.Sounds = {
 	furyBlast = sound(1, 0.03, 3, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 0.8),
+	-- The Owl Drone (system 47): in hand, the rifle's draw raised past the
+	-- bow's, as something lighter still; sent out, the thick whoosh sped
+	-- up; in flight, the transporter's swell sped right up and quiet, over
+	-- and over, as its rotors' hum; a dart, the thin swish sped up; one
+	-- striking someone, the knife's strike on a rod sped up, as it bites;
+	-- each ping, the kill's bell, higher than a recon bolt's pulse; and
+	-- shot down, the spike blast's crack sped right up.
+	droneEquip = sound(0.6, 0.03, 2, {
+		asset(9116362481, "Machine Gun Movement 2 (SFX)", 0.472, 0.08),
+	}, 1.5),
+	droneLaunch = sound(0.7, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.5),
+	droneHum = sound(0.3, 0.02, 4, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 2.6),
+	droneDart = sound(0.7, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 1.8),
+	dartHit = sound(0.8, 0.04, 3, {
+		asset(9113449513, "Blade Hits Metal Rod On Knife Impacts 9 (SFX)", 0.504),
+	}, 1.6),
+	dartPing = sound(0.9, 0.02, 4, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 1.1),
+	droneBreak = sound(0.6, 0.04, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 2.6),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
@@ -647,8 +675,10 @@ SoundConfig.Sounds = {
 -- says, and Sova's Recon Bolt's string drawn back, which only the one
 -- drawing it hears, and its bolt in the air, stuck, pulsing and shot to
 -- pieces, his Shock Bolt's bursting, and his Hunter's Fury cast, a blast of
--- it charging, and one going, heard across the map), heard as the ability
--- curve says (systems 17 to 19, 30 to 33 and 36 to 46). Blade Storm's
+-- it charging, and one going, heard across the map, and his Owl Drone sent
+-- out, humming as it flies, its darts, one striking someone, their pings
+-- and the drone shot down), heard as the ability curve says (systems 17
+-- to 19, 30 to 33 and 36 to 47). Blade Storm's
 -- knives drawn again sound as their draw does, and so does an ability put
 -- in hand (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
 -- Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb),
@@ -700,6 +730,12 @@ SoundConfig.Abilities = {
 	fury = "furyCast",
 	charge = "furyCharge",
 	blast = "furyBlast",
+	drone = "droneLaunch",
+	dronehum = "droneHum",
+	dartshot = "droneDart",
+	darthit = "dartHit",
+	dartping = "dartPing",
+	dronebreak = "droneBreak",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and
@@ -863,6 +899,9 @@ SoundConfig.Weapons = {
 	-- Hunter's Fury's (system 46): the same, its cast and its blasts
 	-- charging and going the ability's.
 	furybow = { draw = "boltEquip", curve = "ability" },
+	-- The Owl Drone (system 47): the same, its going out, its hum, its
+	-- darts, their pings and its breaking the ability's.
+	owl = { draw = "droneEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

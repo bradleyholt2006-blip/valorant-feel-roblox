@@ -32,6 +32,12 @@
 -- Where each entity is drawn every frame also goes into a MotionMeter, for
 -- the Hit Reg Lab's motion line.
 --
+-- Sova's Owl Drones (system 47) come in the snapshots too, as no entity's,
+-- and are kept apart from everyone else (RemoteEntities.drones): nothing
+-- here draws them, and shots meet them only in the level (DroneView). One
+-- the newest snapshot hasn't got isn't there, as for anyone, and one out of
+-- them for a while is forgotten.
+--
 -- A player whose spawn protection is on in gun game (system 23) is drawn as
 -- a force field, since shots go through them. An Omen who's a Shade in From
 -- the Shadows (system 43, his pose's shade) is drawn dark and see-through
@@ -63,10 +69,13 @@ local NetSim = require(script.Parent.NetSim)
 local RemoteEntities = {}
 
 local MOTION_WINDOW = 1 -- seconds of drawn frames each entity's motion is measured over
+local DRONE_FORGET = 2 -- seconds out of the snapshots before a drone's history goes
 
 local histories: { [number]: PoseHistory.History } = {}
 local meters: { [number]: MotionMeter.Meter } = {}
 local lastSeen: { [number]: number } = {}
+local droneHistories: { [number]: PoseHistory.History } = {}
+local droneSeen: { [number]: number } = {}
 local latestSnapshot = -math.huge
 local localId = PlayerCodec.entityIdForUser(Players.LocalPlayer.UserId)
 
@@ -208,6 +217,16 @@ local function onSnapshot(payload: buffer)
 		if pose.id == localId then
 			continue
 		end
+		if PlayerCodec.isDrone(pose.id) then
+			droneSeen[pose.id] = math.max(droneSeen[pose.id] or -math.huge, serverTime)
+			local h = droneHistories[pose.id]
+			if not h then
+				h = PoseHistory.new()
+				droneHistories[pose.id] = h
+			end
+			PoseHistory.push(h, serverTime, pose)
+			continue
+		end
 		lastSeen[pose.id] = math.max(lastSeen[pose.id] or -math.huge, serverTime)
 		local h = histories[pose.id]
 		if not h then
@@ -216,6 +235,34 @@ local function onSnapshot(payload: buffer)
 		end
 		PoseHistory.push(h, serverTime, pose)
 	end
+end
+
+-- A drone's pose at a snapshot time (system 47): its middle, and the way
+-- it looks. Nil if the newest snapshot hasn't got it.
+function RemoteEntities.drone(id: number, serverTime: number): PlayerCodec.Pose?
+	local seen, h = droneSeen[id], droneHistories[id]
+	if seen == nil or h == nil or seen < latestSnapshot - 1e-6 then
+		return nil
+	end
+	local lookup = PoseHistory.sample(h, serverTime)
+	return if lookup then lookup.pose else nil
+end
+
+-- Every drone the newest snapshot has, posed at a snapshot time.
+function RemoteEntities.drones(serverTime: number): { PlayerCodec.Pose }
+	local out: { PlayerCodec.Pose } = {}
+	for id, seen in droneSeen do
+		if seen < latestSnapshot - DRONE_FORGET then
+			droneSeen[id] = nil
+			droneHistories[id] = nil
+			continue
+		end
+		local pose = RemoteEntities.drone(id, serverTime)
+		if pose then
+			table.insert(out, pose)
+		end
+	end
+	return out
 end
 
 -- An entity's pose at a snapshot time, with which snapshots it came from.

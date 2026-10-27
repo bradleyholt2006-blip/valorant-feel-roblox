@@ -33,6 +33,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local GroundGuns = require(Shared.Weapons.GroundGuns)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local SpikeSim = require(Shared.Spike.SpikeSim)
@@ -169,11 +170,18 @@ local function onDeath(player: Player)
 end
 
 -- F: the gun the player says is in view, if it is, swapped for the gun in
--- its slot.
+-- its slot. Not while they fly the Owl Drone (system 47): their view's the
+-- drone's.
 local function onTake(player: Player, id: any)
 	local gun = if typeof(id) == "number" then state.guns[id] else nil
 	local sim = PlayerSimServer.getSim(player)
-	if not gun or not sim or not PlayerSimServer.inPlay(player) or sim.spike.channel ~= SpikeSim.NONE then
+	if
+		not gun
+		or not sim
+		or not PlayerSimServer.inPlay(player)
+		or sim.spike.channel ~= SpikeSim.NONE
+		or AbilitySim.droning(sim.abilities)
+	then
 		return
 	end
 	local slot = GroundGuns.slotOf(gun.weapon)

@@ -30,7 +30,13 @@
 -- (system 43) takes the place its map's cursor is on (mapPoint) with each
 -- input that fires, puts the view where the Shade is at once, and where
 -- he's sent back, and while it's under way, or as the server sends him back
--- (an enemy's hit on the Shade), a correction isn't blended either.
+-- (an enemy's hit on the Shade), a correction isn't blended either. Sova's
+-- Owl Drone (system 47) flies in the simulation too, so it answers the keys
+-- at once: while it flies, the view's from its middle, moving as it does
+-- between ticks, and the body stands facing the way it did as he sent it;
+-- as its flight's over, the view's back in the body, turned that way again,
+-- and so it is as the server ends it (an enemy's shots taking the last of
+-- its health).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -162,6 +168,7 @@ local remotes = Remotes.get()
 local sim: PlayerSim.State? = nil
 local prevPosition: vector = vector.create(0, 0, 0)
 local prevCrouch = 0
+local prevDrone: vector = vector.create(0, 0, 0) -- the Owl Drone's middle before the last tick (system 47)
 local seq = 0
 local pending: { PlayerCodec.WireInput } = {}
 local unsent: { PlayerCodec.WireInput } = {}
@@ -237,6 +244,7 @@ local function tick()
 	end
 	prevPosition = s.movement.position
 	prevCrouch = s.movement.crouchAlpha
+	prevDrone = s.abilities.dronePos
 	local shots, swing, act, _, casts =
 		PlayerSim.step(s, input, PlayerController.cfg, world, DT, objective(), slows(input), barriers(input))
 	simTime += DT
@@ -244,7 +252,10 @@ local function tick()
 	-- Back at Run it Back's mark (system 33): the view's there at once,
 	-- turned the way he faced as he cast it. Gone by Shrouded Step (system
 	-- 42), it's where he's going at once, turned as it was, and so it is
-	-- as a Shade, and sent back, in From the Shadows (system 43).
+	-- as a Shade, and sent back, in From the Shadows (system 43). The Owl
+	-- Drone sent out, it's from the drone's middle at once, and as its
+	-- flight's over, back in the body, turned the way he faced as he sent
+	-- it (system 47).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "rise" then
@@ -255,6 +266,11 @@ local function tick()
 			elseif cast.kind == "vanish" or cast.kind == "shade" or cast.kind == "home" then
 				prevPosition = s.movement.position
 				visualOffset = vector.create(0, 0, 0)
+			elseif cast.kind == "drone" then
+				prevDrone = s.abilities.dronePos
+			elseif cast.kind == "land" then
+				CameraController.yaw = s.abilities.bodyYaw
+				CameraController.pitch = s.abilities.bodyPitch
 			end
 		end
 	end
@@ -422,6 +438,13 @@ local function mismatch(guess: PlayerSim.State, server: PlayerSim.State): (boole
 		or ga.chargeAt ~= sa.chargeAt
 		or ga.kickFrom ~= sa.kickFrom
 		or ga.kickYaw ~= sa.kickYaw
+		or ga.droneFrom ~= sa.droneFrom
+		or ga.landAt ~= sa.landAt
+		or ga.dronePos ~= sa.dronePos
+		or ga.droneVel ~= sa.droneVel
+		or ga.dartAt ~= sa.dartAt
+		or ga.bodyYaw ~= sa.bodyYaw
+		or ga.bodyPitch ~= sa.bodyPitch
 	then
 		return true, posErr
 	end
@@ -491,6 +514,8 @@ local function onAck(payload: buffer)
 	if needsCorrection then
 		stats.corrections += 1
 		local before = s.movement.position
+		local droneBefore = s.abilities.dronePos
+		local flew = AbilitySim.droning(s.abilities)
 		local corrected = serverSim :: PlayerSim.State
 		local now = objective()
 		for _, input in pending do
@@ -499,6 +524,14 @@ local function onAck(payload: buffer)
 		end
 		visualOffset += before - corrected.movement.position
 		prevPosition += corrected.movement.position - before
+		prevDrone += corrected.abilities.dronePos - droneBefore
+		-- The Owl Drone's flight ended by the server (system 47): the view's
+		-- back in the body, turned the way he faced as he sent it.
+		local kit = corrected.abilities
+		if flew and not AbilitySim.droning(kit) and kit.landAt > 0 then
+			CameraController.yaw = kit.bodyYaw
+			CameraController.pitch = kit.bodyPitch
+		end
 		-- Held through Run it Back's return (system 33), gone by Shrouded
 		-- Step (system 42), or in From the Shadows or just sent back from it
 		-- (system 43), he's where the server has him at once, the blend
@@ -571,13 +604,22 @@ local function onRender(frameDt: number)
 	local cfg = PlayerController.cfg
 	local eye = cfg.standEyeHeight + (cfg.crouchEyeHeight - cfg.standEyeHeight) * crouch
 	local feetStuds = Units.toStuds(feet)
+	-- Flying the Owl Drone (system 47), the view's from its middle, and
+	-- the body faces the way it did as he sent it.
+	local kit = s.abilities
+	local flying = PlayerController.alive and AbilitySim.droning(kit)
 
 	if root and root.Parent then
-		root.CFrame = CFrame.new(feetStuds + Vector3.new(0, rootOffset, 0)) * CFrame.Angles(0, CameraController.yaw, 0)
+		local facing = if flying then kit.bodyYaw else CameraController.yaw
+		root.CFrame = CFrame.new(feetStuds + Vector3.new(0, rootOffset, 0)) * CFrame.Angles(0, facing, 0)
 	end
 	local def = PlayerSim.def(s)
 	local zoom = if s.weapons.scoped > 0 and def.ads then def.ads.zoom[s.weapons.scoped] else 1
 	updateKick(s, frameDt)
+	if flying then
+		CameraController.render(Units.toStuds(prevDrone + (kit.dronePos - prevDrone) * alpha), 1)
+		return
+	end
 	CameraController.render(feetStuds + Vector3.new(0, eye * Units.STUDS_PER_METRE, 0), zoom)
 end
 

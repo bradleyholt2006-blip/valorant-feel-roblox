@@ -13,6 +13,10 @@
 -- lines that meet show one outline round the lot and a see-through line
 -- isn't darkened by its own outline.
 --
+-- Flying the Owl Drone (system 47), the primary crosshair is green, still
+-- (Patch 4.08: 'Changed crosshair color to green to better stand out
+-- against the white HUD'), as its darts go exactly along it.
+--
 -- Hidden while a menu has the cursor, and while dead.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +25,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Crosshair = require(Shared.Settings.Crosshair)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local Accuracy = require(Shared.Weapons.Accuracy)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
@@ -186,9 +191,13 @@ function CrosshairView.start(controller: any)
 	round.Parent = sniper
 
 	local primary: Crosshair.Profile, ads: Crosshair.Profile, sniperDot: Crosshair.SniperDot, adsOwn: boolean
+	local flying: Crosshair.Profile
 	local function read()
 		local code = ClientSettings.code
 		primary = Crosshair.profile(code, "P")
+		flying = table.clone(primary)
+		flying.color = Crosshair.COLORS[1].rgb
+		flying.colorName = Crosshair.COLORS[1].name
 		ads = Crosshair.adsProfile(code)
 		adsOwn = Crosshair.advanced(code) and Crosshair.hasSection(code, "A")
 		sniperDot = Crosshair.sniperDot(code)
@@ -223,10 +232,14 @@ function CrosshairView.start(controller: any)
 			return
 		end
 		sniper.Visible = false
-		local profile = if zoom > 1 then ads else primary
+		local droning = AbilitySim.droning(sim.abilities)
+		local profile = if droning then flying elseif zoom > 1 then ads else primary
 		CrosshairView.shown = if zoom > 1 and adsOwn then "A" else "P"
 
-		local movement, firing = errors(sim, buttons, controller.cfg)
+		local movement, firing = 0, 0
+		if not droning then
+			movement, firing = errors(sim, buttons, controller.cfg)
+		end
 		local viewport = Workspace.CurrentCamera.ViewportSize
 		local pixelsPerTan = viewport.X / 2 / math.tan(math.rad(CameraController.zoomedFov(zoom)) / 2)
 		local movementPixels = math.tan(math.rad(movement)) * pixelsPerTan
