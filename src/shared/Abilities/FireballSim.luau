@@ -138,9 +138,10 @@ function FireballSim.at(keys: { Key }, age: number): vector
 	return FireballSim.along(key, age)
 end
 
--- The share of `delta` it goes from `from` before it meets the world, and
--- the way what it meets faces, if it meets anything.
-local function sweep(world: any, from: vector, half: vector, delta: vector): (number?, vector?)
+-- The share of `delta` a box `half` its half size goes from `from` before
+-- it meets the world, and the way what it meets faces, if it meets
+-- anything (the Recon Bolt's too, BoltSim).
+function FireballSim.sweep(world: any, from: vector, half: vector, delta: vector): (number?, vector?)
 	local length = vector.magnitude(delta)
 	if length < EPS then
 		return nil, nil
@@ -183,7 +184,7 @@ function FireballSim.step(f: Fireball, dt: number, world: any?): boolean
 		local delta = to - f.position
 		local fraction: number?, normal: vector? = nil, nil
 		if world and bounces < BOUNCES_A_TICK then
-			fraction, normal = sweep(world, f.position, half, delta)
+			fraction, normal = FireballSim.sweep(world, f.position, half, delta)
 		end
 		if not fraction or not normal then
 			f.position = to

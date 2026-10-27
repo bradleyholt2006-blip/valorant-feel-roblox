@@ -40,6 +40,10 @@
 --     form; ShadowView draws its map, the windup, the Shade and its
 --     arrival, forming and being sent back, and sounds others' Shades
 --     arriving and being sent back, and yours sent back by a hit (system 43)
+--   * the Recon Bolt: only heard here, as it's loosed; ReconView draws the
+--     bow's draw, the bolt in the air and stuck, its pulses and whom they
+--     reveal, and sounds its flight, sticking, pulses and breaking
+--     (system 44)
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
@@ -228,7 +232,7 @@ local function onCast(event: any)
 		return -- predicted already
 	end
 	if event.kind == "flight" then
-		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's, SlowView's or ParanoiaView's
+		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's, SlowView's, ParanoiaView's or ReconView's
 	elseif event.kind == "healing" then
 		return -- a heal: HealView's
 	elseif event.kind == "reviving" or event.kind == "revived" then

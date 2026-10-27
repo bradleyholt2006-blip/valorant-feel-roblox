@@ -226,6 +226,22 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- The Recon Bolt's bow (system 44): a short bow stood upright, its
+	-- limbs bending back from the grip, its string straight between their
+	-- tips, and a bolt of light nocked beside the grip.
+	bow = {
+		muzzle = vector.create(-0.025, 0.03, -0.52),
+		pieces = {
+			{ size = vector.create(0.03, 0.14, 0.045), offset = vector.create(0, 0.02, -0.12) }, -- grip
+			{ size = vector.create(0.02, 0.15, 0.03), offset = vector.create(0, 0.16, -0.105) }, -- upper limb
+			{ size = vector.create(0.018, 0.06, 0.025), offset = vector.create(0, 0.26, -0.085) }, -- upper tip
+			{ size = vector.create(0.02, 0.15, 0.03), offset = vector.create(0, -0.12, -0.105) }, -- lower limb
+			{ size = vector.create(0.018, 0.06, 0.025), offset = vector.create(0, -0.22, -0.085) }, -- lower tip
+			{ size = vector.create(0.004, 0.54, 0.004), offset = vector.create(0, 0.02, -0.07) }, -- string
+			{ size = vector.create(0.012, 0.012, 0.42), offset = vector.create(-0.025, 0.03, -0.26), accent = true }, -- bolt
+			{ size = vector.create(0.025, 0.025, 0.05), offset = vector.create(-0.025, 0.03, -0.49), accent = true }, -- head
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -264,6 +280,7 @@ local SHAPE_OF: { [string]: string } = {
 	blindorb = "blindorb",
 	stepmark = "stepmark",
 	shadowmap = "shadowmap",
+	bow = "bow",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -301,6 +318,7 @@ local ACCENT: { [string]: Color3 } = {
 	blindorb = Color3.fromRGB(64, 34, 102),
 	stepmark = Color3.fromRGB(84, 52, 128),
 	shadowmap = Color3.fromRGB(150, 110, 230),
+	bow = Color3.fromRGB(110, 200, 255),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

@@ -174,6 +174,7 @@ local BlazeServer = require(script.Parent.BlazeServer)
 local HealServer = require(script.Parent.HealServer)
 local SlowServer = require(script.Parent.SlowServer)
 local BarrierServer = require(script.Parent.BarrierServer)
+local ReconServer = require(script.Parent.ReconServer)
 local ReviveServer = require(script.Parent.ReviveServer)
 local CloudServer = require(script.Parent.CloudServer)
 local AbilityServer = require(script.Parent.AbilityServer)
@@ -739,10 +740,10 @@ local function publish()
 end
 
 -- A round has started since this last looked: the ground cleared of guns,
--- fire (systems 31 and 32), ice (system 37) and walls of ice (system 38),
--- every heal over (system 36), and in the spike rounds a new spike in
--- front of the attackers, each kit's round (system 17) and, at the start
--- of each half, everyone back on the starting kit.
+-- fire (systems 31 and 32), ice (system 37), walls of ice (system 38) and
+-- recon bolts (system 44), every heal over (system 36), and in the spike
+-- rounds a new spike in front of the attackers, each kit's round (system
+-- 17) and, at the start of each half, everyone back on the starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -758,6 +759,7 @@ local function roundStarted()
 	HealServer.clear()
 	SlowServer.clear()
 	BarrierServer.clear()
+	ReconServer.clear()
 	ReviveServer.clear()
 	CloudServer.clear()
 	if not m then
@@ -875,6 +877,7 @@ local function stop()
 	HealServer.clear()
 	SlowServer.clear()
 	BarrierServer.clear()
+	ReconServer.clear()
 	ReviveServer.clear()
 	CloudServer.clear()
 	AbilityServer.economy = false
@@ -925,6 +928,7 @@ local function begin(wanted: Mode, format: string)
 	HealServer.clear()
 	SlowServer.clear()
 	BarrierServer.clear()
+	ReconServer.clear()
 	ReviveServer.clear()
 	CloudServer.clear()
 	-- Deathmatch has no teams: everyone can hurt everyone.

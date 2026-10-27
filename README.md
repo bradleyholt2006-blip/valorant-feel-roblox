@@ -328,6 +328,18 @@ Built one system at a time:
     to where he cast it, unhurt, the points spent all the same. Its arrival is heard within 22.5 m,
     and an enemy's minimap goes dark until it's over -
     [research and design](docs/research/43-from-the-shadows.md)
+44. **Sova's Recon Bolt**: Sova, an Initiator, is the fifth agent, and his Recon Bolt the first of
+    his kit played. E puts his bow in hand, ready in 0.8 s. Mouse 1 held draws the bolt, a bar under
+    the crosshair filling each third of a second, three at the most, and mouse 2 adds a bounce, two
+    at the most and then none again; E lets a draw go. Mouse 1 let go looses it, at 18 m/s with no
+    bar up to 41.25 m/s with three, falling less the further it's drawn: level from the eye, a tap
+    sticks in the floor 18.6 m ahead and a full draw 60 m. It goes off whatever it meets while it
+    has bounces left, as off a mirror, and sticks to the next thing it meets. 0.667 s later it
+    pulses, and again 1.6 s after: each pulse reveals every enemy within 30 m that it has in sight,
+    their silhouettes lit through walls for his side for 0.75 s, and on its minimap. An enemy's
+    bullet or knife takes its 20 health, and his side's do nothing. One charge, free each round and
+    back 50 s after it's loosed (48 s in Team Deathmatch), and the gun's back 0.7 s after a loose -
+    [research and design](docs/research/44-recon-bolt.md)
 
 ## Running it
 
@@ -478,7 +490,12 @@ the floor they're going to and their arrival. Where a player's last From the Sha
 their `VFLastShadow` attribute (the floor, in metres), and PlayerGui's `VFShadow` carries whether
 its map's up (`Map`), its cursor (`Cursor`, in metres), whether fire would take them there
 (`Placeable`), their Shade's grey (`Grey`), how far they see as one (`Sight`, in metres) and how
-dark an enemy's has made their minimap (`Dark`). The
+dark an enemy's has made their minimap (`Dark`). Where a player's last Recon Bolt stuck is their
+`VFLastBolt` attribute (metres), the names its last pulse revealed their `VFLastRecon`, in order,
+and the health it has left their `VFBoltHealth`; PlayerGui's `VFRecon` carries whether the bow's in
+hand (`Bow`), the bars it's drawn (`Bars`), its bounces (`Bounces`), the bolts drawn (`Bolts`) and
+the silhouettes shown (`Revealed`), and `Workspace.VFRecon` holds each bolt, each pulse and each
+silhouette. The
 minimap's ScreenGui, `VFMinimap`, carries what it
 shows: the plan drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`),
 whether the spike is (`Spike`), how far it's turned (`Turn`, degrees), whether the big map's open
@@ -534,9 +551,11 @@ aim along them, the return's times and hold, who can be brought back, and the wi
 Cover (his kit, the orb in hand and its mark, where its smoke goes, its flight, the smoke and its
 warning, and the wire), his Paranoia (the orb in hand and its send, its flight, whom it touches
 and who's warned, the nearsight, how far the nearsighted see and how the deafened hear), his
-Shrouded Step (its charges, its mark in hand, the step, where it takes him, and the wire) and his
+Shrouded Step (its charges, its mark in hand, the step, where it takes him, and the wire), his
 From the Shadows (its map in hand, the teleport, being sent back, where it takes him, the course's
-map, and the wire) are pure Luau and run outside Roblox:
+map, and the wire) and Sova's Recon Bolt (the bow in hand, the draw, the bounces and the loose, its
+flight, its pulses and whom they reveal, its shaft, and the wire) are pure Luau and run outside
+Roblox:
 
 ```
 luau tests/run.luau

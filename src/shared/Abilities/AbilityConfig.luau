@@ -21,7 +21,8 @@
 -- her Slow Orb (system 37), her Barrier Orb (system 38) and her
 -- Resurrection (system 39). Omen is the fourth (system 40), with his Dark
 -- Cover, his Paranoia (system 41), his Shrouded Step (system 42) and his
--- From the Shadows (system 43).
+-- From the Shadows (system 43). Sova is the fifth (system 44), with his
+-- Recon Bolt.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -129,6 +130,7 @@ AbilityConfig.TeamDeathmatch = {
 		runitback = p(70, "community", TDM_WIKI .. "'s ultimate costs: Phoenix's Run it Back, 70 points"),
 		resurrection = p(50, "community", TDM_WIKI .. "'s ultimate costs: Sage's Resurrection, 50 points"),
 		fromtheshadows = p(60, "community", TDM_WIKI .. "'s ultimate costs: Omen's From the Shadows, 60 points"),
+		huntersfury = p(70, "community", TDM_WIKI .. "'s ultimate costs: Sova's Hunter's Fury, 70 points"),
 	},
 	cooldowns = {
 		cloudburst = p(29, "community", TDM_WIKI .. "'s cooldowns: Jett's Cloudburst, 29 s"),
@@ -143,6 +145,9 @@ AbilityConfig.TeamDeathmatch = {
 		shroudedstep = p(33, "community", TDM_WIKI .. "'s cooldowns: Omen's Shrouded Step, 33 s"),
 		paranoia = p(73, "community", TDM_WIKI .. "'s cooldowns: Omen's Paranoia, 73 s"),
 		darkcover = p(65, "community", TDM_WIKI .. "'s cooldowns: Omen's Dark Cover, 65 s"),
+		owldrone = p(51, "community", TDM_WIKI .. "'s cooldowns: Sova's Owl Drone, 51 s"),
+		shockbolt = p(26, "community", TDM_WIKI .. "'s cooldowns: Sova's Shock Bolt, 26 s"),
+		reconbolt = p(48, "community", TDM_WIKI .. "'s cooldowns: Sova's Recon Bolt, 48 s"),
 	},
 	signatureStart = p(1, "community", TDM_WIKI .. ": 'Most agents start the match with one full charge of their signature ability'"),
 	headStart = p(
@@ -198,6 +203,9 @@ local PARANOIA = "VALORANT Wiki, Paranoia"
 local STEP = "VALORANT Wiki, Shrouded Step"
 local P049 = "Patch 0.49"
 local SHADOWS = "VALORANT Wiki, From the Shadows"
+local SOVA = "VALORANT Wiki, Sova"
+local RECON = "VALORANT Wiki, Recon Bolt"
+local SOVA_PAGE = "playvalorant.com's page for Sova"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -370,13 +378,60 @@ AbilityConfig.Defs = {
 		weapon = "shadowmap",
 		description = "X brings up the map. Fire on a place in it sends you there as a Shade, which an enemy's shot or X again sends back before you form.",
 	},
+	-- Sova's (system 44): his kit as the VALORANT Wiki lists it. His Recon
+	-- Bolt can be played.
+	owldrone = {
+		id = "owldrone",
+		name = "Owl Drone",
+		slot = AbilityConfig.C,
+		kind = "basic",
+		cost = p(400, "confirmed", P300 .. ": Owl Drone 'Cost increased 300 >>> 400' (" .. SOVA .. ": 400 still)"),
+		charges = p(1, "community", SOVA .. ": Owl Drone, 1 use"),
+		description = "C sends out a drone you fly. Fire from it shoots a dart that reveals whoever it strikes.",
+	},
+	shockbolt = {
+		id = "shockbolt",
+		name = "Shock Bolt",
+		slot = AbilityConfig.Q,
+		kind = "basic",
+		cost = p(150, "confirmed", P300 .. ": Shock Dart 'Cost increased 100 >>> 150' (" .. SOVA .. ": 150 still)"),
+		charges = p(2, "community", SOVA .. ": Shock Bolt, 2 uses"),
+		description = "Q readies the bow with a shock bolt. Hold fire to draw it further and alt fire to add bounces; it bursts where it lands.",
+	},
+	reconbolt = {
+		id = "reconbolt",
+		name = "Recon Bolt",
+		slot = AbilityConfig.E,
+		kind = "signature",
+		charges = p(1, "community", SOVA .. ": Recon Bolt, 1 use, free"),
+		free = 1,
+		recharge = {
+			kind = "cooldown",
+			seconds = p(
+				50,
+				"confirmed",
+				P1300 .. ": 'The signature ability cooldown of Sova, Fade, Skye, Breach, KAY/0 have been reduced from 60s to 50s.'"
+			),
+		},
+		weapon = "bow",
+		description = "E readies the bow. Hold fire to draw it further and alt fire to add bounces; it sticks where it lands and pulses, revealing enemies it sees.",
+	},
+	huntersfury = {
+		id = "huntersfury",
+		name = "Hunter's Fury",
+		slot = AbilityConfig.X,
+		kind = "ultimate",
+		points = p(8, "confirmed", P300 .. ": Hunter's Fury 'Ultimate points required increased 7 >>> 8' (" .. SOVA .. ": 8 still)"),
+		description = "X readies the bow with three energy blasts. Fire sends one in a long line through walls, hurting and revealing enemies in it.",
+	},
 } :: { [string]: AbilityDef }
 
 -- The roles are Riot's: 'Duelist', on playvalorant.com's pages for Jett and
 -- for Phoenix, Sage's in Patch 1.01: 'As a Sentinel, Sage is supposed to
 -- be most effective when defending territory that she already controls.',
--- and Omen's in Patch 4.04: 'We want to increase his reliability as a
--- Controller'.
+-- Omen's in Patch 4.04: 'We want to increase his reliability as a
+-- Controller', and Sova's in Patch 13.00: 'We're reducing Signature
+-- Ability cooldowns for Initiators! (Sova, Fade, Skye, Breach, and KAY/O)'.
 AbilityConfig.Agents = {
 	jett = {
 		id = "jett",
@@ -404,6 +459,12 @@ AbilityConfig.Agents = {
 		role = "Controller",
 		abilities = { "shroudedstep", "paranoia", "darkcover", "fromtheshadows" },
 	},
+	sova = {
+		id = "sova",
+		name = "Sova",
+		role = "Initiator",
+		abilities = { "owldrone", "shockbolt", "reconbolt", "huntersfury" },
+	},
 } :: { [string]: Agent }
 
 -- What each passive does, for agent select (system 29), in our words.
@@ -422,8 +483,8 @@ AbilityConfig.NO_AGENT = ""
 
 -- The agents' ids by index, and each id's index, for the wire (0 for no
 -- agent's kit).
-AbilityConfig.AgentIds = { "jett", "phoenix", "sage", "omen" }
-AbilityConfig.AgentIndex = { jett = 1, phoenix = 2, sage = 3, omen = 4 } :: { [string]: number }
+AbilityConfig.AgentIds = { "jett", "phoenix", "sage", "omen", "sova" }
+AbilityConfig.AgentIndex = { jett = 1, phoenix = 2, sage = 3, omen = 4, sova = 5 } :: { [string]: number }
 
 -- The ability an agent has in a slot, if any.
 function AbilityConfig.abilityOf(agent: string, slot: number): AbilityDef?
@@ -1004,12 +1065,76 @@ AbilityConfig.FromTheShadows = {
 	),
 }
 
+-- Sova's Recon Bolt (system 44), his signature: E puts his bow in hand
+-- (WeaponConfig's bow, in the fifth slot), and once it's drawn, fire held
+-- draws the bolt back, a bar filling each third of a second, three at the
+-- most; alt fire adds a bounce, two at the most, and once more takes them
+-- off again. Fire let go looses it from his eye along the crosshair, at
+-- the speed and under the gravity its bars give it, and E while it's drawn
+-- lets the draw go, the bow staying in hand. It goes off whatever it meets
+-- while it has bounces left, keeping its speed, and sticks to the next
+-- thing it meets (BoltSim). Stuck, it winds up and pulses, its pulses a
+-- while apart: each reveals every enemy within its radius it has in sight,
+-- their silhouettes seen by his side through walls for a moment, and on
+-- their minimap. Enemies' bullets and knives take its health, and it
+-- breaks at none; allies' do nothing (Patch 5.12: 'The following abilities
+-- are now immune to allied damage.'). Riot gives the cooldown, the
+-- bounces, the pulses and the health; the wiki the rest it gives
+-- (44-recon-bolt.md, section 2).
+AbilityConfig.ReconBolt = {
+	-- From the loose until the gun's back in hand.
+	unequip = p(0.7, "community", RECON .. ": unequip 0.7 s (game files)"),
+	-- How long fire's held for each bar, and how many bars there are.
+	bar = p(1 / 3, "community", RECON .. ": '0.333 seconds/1st bar filled for Class 3 Projectile' (its estimate)"),
+	bars = p(3, "community", RECON .. ": 'reaching its longest trajectory once all three bars are filled'"),
+	-- Its flight with no bar filled, then one, two and all three: this
+	-- fast, falling at this share of the world's gravity.
+	speed = {
+		p(18, "community", RECON .. ": 'Immediately cast as a Class 2 Projectile'; " .. PROJECTILE .. ": class 2 at 1800, read as cm/s"),
+		p(29, "community", RECON .. ": '0.333 seconds/1st bar filled for Class 3 Projectile'; " .. PROJECTILE .. ": class 3 at 2900"),
+		p(41.25, "community", RECON .. ": '0.667 seconds/2nd bar filled for Class 4 Projectile'; " .. PROJECTILE .. ": class 4 at 4125"),
+		p(41.25, "community", RECON .. ": '1.000 second/3rd bar filled for Class 5 Projectile'; " .. PROJECTILE .. ": class 5 at 4125"),
+	},
+	gravity = {
+		p(0.3, "community", PROJECTILE .. ": class 2's gravity 0.3, read as a share of the world's"),
+		p(0.45, "community", PROJECTILE .. ": class 3's gravity 0.45, read as a share of the world's"),
+		p(0.3, "community", PROJECTILE .. ": class 4's gravity 0.3, read as a share of the world's"),
+		p(0.15, "community", PROJECTILE .. ": class 5's gravity 0.15, read as a share of the world's"),
+	},
+	worldGravity = p(9.8, "estimate", "Ours, as Hot Hands': Unreal Engine's default, 980 cm/s^2; no source gives the reference's"),
+	-- The most bounces alt fire adds, and what's kept of its speed off a
+	-- surface.
+	bounces = p(2, "confirmed", SOVA_PAGE .. ": 'ALT FIRE to add up to two bounces to this arrow.'"),
+	bounce = p(1, "estimate", "Ours: as off a mirror, its speed kept; nothing public says what a bounce keeps"),
+	-- Half the size of the box that flies, for what it meets, and the
+	-- longest it flies before it's given up on, having met nothing.
+	size = p(0.05, "estimate", "Ours, metres: small, as the wiki's history has its collision made smaller in v0.50"),
+	airTime = p(10, "estimate", "Ours: past any shot across a map; nothing public says"),
+	-- Stuck: its windup, then its pulses this far apart, each reaching this
+	-- far and revealing whom it sees for a moment; and it's gone its time
+	-- after the first.
+	windup = p(0.667, "community", RECON .. ": windup 0.667 s (its estimate)"),
+	pulses = p(2, "confirmed", P704 .. ": Recon Bolt (E) 'Total number of scans reduced 3>>>2'"),
+	interval = p(1.6, "community", RECON .. ": a pulse every 1.6 s (game files)"),
+	radius = p(30, "community", RECON .. ": pulse radius 30 m (game files)"),
+	reveal = p(0.75, "community", RECON .. ": each reveal 0.75 s (measured from footage)"),
+	duration = p(3.2, "community", SOVA .. ": Recon Bolt 3.2 s, read as from its first pulse to its end, its two 1.6 s apart"),
+	-- Where it looks from, off the surface it's stuck to, metres.
+	lift = p(0.1, "estimate", "Ours: so the surface it's stuck in isn't in its way"),
+	-- Its health, and the shaft standing out of the surface, which bullets
+	-- and knives hit: its length and width, metres.
+	health = p(20, "confirmed", P512 .. ": 'Recon Bolt (E) Health increased 1 >>> 20'"),
+	length = p(0.5, "estimate", "Ours: about an arrow's length out of what it's stuck in"),
+	width = p(0.2, "estimate", "Ours: wider than the shaft, so it can be hit"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
 -- for the Barrier Orb, after its wall's raised, for the Resurrection,
 -- after it's cast, for Shrouded Step, after it's fired: its windup, his
 -- time gone and the draw, and for From the Shadows, after it's fired: its
--- windup and his time as a Shade, when the gun's drawn again).
+-- windup and his time as a Shade, when the gun's drawn again, and for the
+-- Recon Bolt, after it's loosed).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -1033,6 +1158,8 @@ function AbilityConfig.unequip(id: string): number
 	elseif id == "fromtheshadows" then
 		local FS = AbilityConfig.FromTheShadows
 		return FS.windup.value + FS.shade.value
+	elseif id == "reconbolt" then
+		return AbilityConfig.ReconBolt.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

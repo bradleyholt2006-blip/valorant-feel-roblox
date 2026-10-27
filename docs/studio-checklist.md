@@ -1758,14 +1758,14 @@ Press Play (F5), with one player.
 
 - **AS1 The course.** Press T: `AGENT SELECT` at the top left, `PICK ANY TIME` in gold at the top
   right, and under them `Nothing's at stake here: an agent picked is yours at once, as often as you
-  like.` There are four cards: JETT and PHOENIX over DUELIST, SAGE over SENTINEL and OMEN over
-  CONTROLLER. Jett's is outlined in gold with `YOURS` over the name. Under them is Jett's kit,
-  headed `JETT   DUELIST`: C CLOUDBURST, Q UPDRAFT, E TAILWIND and X BLADE STORM, each with its
-  line, and last `DRIFT   PASSIVE` with `Hold jump while you fall to glide.` On the right, `YOUR
-  TEAM` reads `Nobody else on your side`. The button reads `PLAYING JETT`, dimmed, and `T to close`
-  is at the bottom right. The mouse moves a cursor, a click fires nothing, and WASD still moves you.
-  Your player's `VFAgent` reads `jett` and `VFAgentPick` `free`. T closes it, and the view turns
-  with the mouse again. **Send:** a screenshot of the screen.
+  like.` There are five cards: JETT and PHOENIX over DUELIST, SAGE over SENTINEL, OMEN over
+  CONTROLLER and SOVA over INITIATOR. Jett's is outlined in gold with `YOURS` over the name. Under
+  them is Jett's kit, headed `JETT   DUELIST`: C CLOUDBURST, Q UPDRAFT, E TAILWIND and X BLADE
+  STORM, each with its line, and last `DRIFT   PASSIVE` with `Hold jump while you fall to glide.` On
+  the right, `YOUR TEAM` reads `Nobody else on your side`. The button reads `PLAYING JETT`, dimmed,
+  and `T to close` is at the bottom right. The mouse moves a cursor, a click fires nothing, and WASD
+  still moves you. Your player's `VFAgent` reads `jett` and `VFAgentPick` `free`. T closes it, and
+  the view turns with the mouse again. **Send:** a screenshot of the screen.
 - **AS2 The other menus.** With B's buy menu open, T does nothing; the same with O's settings
   menu. Close them, and press T: B now does nothing. With the screen up, O opens the settings
   menu over it; close it with O, and the screen is still up, the mouse still moves its cursor, and
@@ -2352,9 +2352,9 @@ and 4294967293 for player 3. Your `VFLastHeal` attribute is the name of the play
 healed. On the course a spent charge comes back 1.5 s after it's spent. Start each check with the
 Vandal in hand.
 
-- **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX, SAGE and OMEN, and SAGE's reads
-  SENTINEL. Click it: her kit, X RESURRECTION, C BARRIER ORB and Q SLOW ORB lit (sections 43, 42 and
-  41), and E HEALING ORB lit, with `E readies a healing orb. Fire heals the hurt ally in your
+- **HO1 Her kit.** In agent select, the cards are JETT, PHOENIX, SAGE, OMEN and SOVA, and SAGE's
+  reads SENTINEL. Click it: her kit, X RESURRECTION, C BARRIER ORB and Q SLOW ORB lit (sections 43,
+  42 and 41), and E HEALING ORB lit, with `E readies a healing orb. Fire heals the hurt ally in your
   crosshair, alt fire heals you, 100 health over 5 s.`; nothing under them, as she has no passive.
   Click PICK SAGE: the button reads `PLAYING SAGE`, and `VFAgent` reads `sage`. Close it with T. On
   the ability bar RESURRECTION has its seven pips lit gold, BARRIER ORB has its pip lit, SLOW ORB
@@ -2729,8 +2729,8 @@ metres, and `Workspace.VFClouds` holds each smoke, a `Smoke` ball, and with the 
 mark, `SmokeMark`. On the course a spent charge comes back 1.5 s after it's spent. Start at the
 spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 
-- **DC1 His kit.** In agent select, the cards are JETT, PHOENIX, SAGE and OMEN, and OMEN's reads
-  CONTROLLER. Click it: his kit, with X FROM THE SHADOWS lit (section 47), C SHROUDED STEP lit
+- **DC1 His kit.** In agent select, the cards are JETT, PHOENIX, SAGE, OMEN and SOVA, and OMEN's
+  reads CONTROLLER. Click it: his kit, with X FROM THE SHADOWS lit (section 47), C SHROUDED STEP lit
   (section 46), Q PARANOIA lit (section 45), and E DARK COVER lit, with `E readies a shadow orb.
   Hold fire to send its mark further, alt fire to bring it closer, and E again to smoke there.`;
   nothing under them, as he has no passive. Click PICK OMEN: the button reads `PLAYING OMEN`, and
@@ -3097,6 +3097,132 @@ and 3. In Studio, setting `VFTestGive` to `ultimate` fills the ultimate's points
   where you stand, and press X as soon as you're a Shade: window 2's minimap clears as player 1's
   sent back, before the 4 s are up. **Send:** a screenshot of window 2's dark minimap.
 
+## 48. Sova's Recon Bolt
+
+From [44-recon-bolt.md](research/44-recon-bolt.md). One player on the course, then three there and
+in Skirmish. Play as Sova: press T, click SOVA's card and PICK SOVA (or set `VFTestAgents` to true,
+`VFTestAgent` to `sova`, then `VFTestAgent` to `lock`). Without keys or a mouse button,
+`VFTestButtons` 16384 presses E, 128 the left button and 256 the right: set it and clear it again
+each time, and leave 128 set for as long as the left button's held. `VFTestYaw` and `VFTestPitch`
+aim, in degrees: positive yaw turns left, and positive pitch looks up; a Vector3 `VFTestAimPoint`,
+in metres, aims at that place instead until it's cleared. The F3 panel's `pos` line is where you
+stand, in metres. Your `VFLastBolt` attribute is where your last bolt stuck, in metres,
+`VFLastRecon` the names its last pulse revealed, in order, and `VFBoltHealth` the health it has
+left. PlayerGui's `VFRecon` carries `Bow` (whether the bow's in hand), `Bars` (the bars drawn),
+`Bounces` (the bounces added), `Bolts` (the bolts drawn, in the air or stuck) and `Revealed` (the
+silhouettes shown), and `Workspace.VFRecon` holds each bolt (`Bolt`), each pulse (`Pulse`) and each
+silhouette (`Reveal_` and the entity's id: Dummy 1's is 4294901761, and Dummy 6's 4294901766). On
+the course a spent charge comes back 1.5 s after it's spent. Start each check at the spawn facing
+down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
+
+- **RC1 His kit.** In agent select (T), the cards are JETT, PHOENIX, SAGE, OMEN and SOVA, and SOVA's
+  reads INITIATOR. Click it: his kit, headed `SOVA   INITIATOR`, with E RECON BOLT lit and `E
+  readies the bow. Hold fire to draw it further and alt fire to add bounces; it sticks where it
+  lands and pulses, revealing enemies it sees.`, and C OWL DRONE, Q SHOCK BOLT and X HUNTER'S FURY
+  each with `NOT YET` after it; nothing under them, as he has no passive. Click PICK SOVA: the
+  button reads `PLAYING SOVA`, and `VFAgent` reads `sova`. Close it with T. On the ability bar RECON
+  BOLT has its one pip lit and the rest are dimmed, and `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`.
+  **Send:** a screenshot of Sova's card.
+- **RC2 In hand.** Open the Sound Lab (F2 four times), and keep it open to RC8. Press E: a quick,
+  light rattle, logged as `boltEquip`, `yours`; the Vandal goes, and a short dark bow comes up, held
+  upright, with a bolt of light blue beside its grip. E's square lights, with `EQUIP` under it for
+  0.8 s; the HUD reads `Recon Bolt   [E]`, with no ammo; and `VFKit` ends in `equip`. Under the
+  crosshair are three dark bars with two dark diamonds under them (`VFRecon`'s `Bow` true, `Bars` 0
+  and `Bounces` 0). Press E again: the bow and the bars go, the Vandal's back, and `VFKit` reads
+  `C0/1 Q0/2 E1/1 X0/8`, nothing spent.
+- **RC3 The draw.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and keep it: a slow,
+  low scrape, logged as `boltNock`, `yours`, and the bars light blue one by one, a third of a second
+  apart, and stay at three (`Bars` 3); `VFKit` ends in `equip draw 3`. Set it to 384 and back to
+  128: the first diamond lights (`Bounces` 1), and `VFKit` ends in `draw 3 bounce 1`. Again: both,
+  and `bounce 2`. Again: neither, `Bounces` 0, and no `bounce` in `VFKit`. Set it to 16512 (E and
+  the left button) and back to 128: the bars go dark (`Bars` 0), `draw` goes from `VFKit` and the
+  bow stays in hand, its bars dark while the button's held. Clear it: nothing's loosed or heard, and
+  `VFKit` reads `C0/1 Q0/2 E1/1 X0/8 equip`. Press E to put the bow away.
+- **RC4 The loose.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
+  once: a thin swish, logged as `boltLoose`, `yours`, and a quick, quiet whoosh, `boltFlight`; a
+  thin shaft of light flies down the lane, dropping as it goes, and about 1 s later sticks in the
+  floor just short of the 20 m stripe, standing up out of it, with a quick metallic strike,
+  `boltStick`. `VFLastBolt` reads about `0, 0.05, -18.6`, and `VFBoltHealth` 20. The bow goes and
+  the Vandal's back 0.7 s after the swish; E's pip goes dark, the seconds to its cooldown under it,
+  and lights again 1.5 s later. The shaft brightens, and 0.67 s after it stuck a bell's ping, logged
+  as `reconPulse`, `yours`: a shell of light sweeps out from it to 60 m across, and the dummies it
+  sees light up red where they stand, over anything in the way, for 0.75 s (`Reveal_4294901761` and
+  others in `Workspace.VFRecon`, counted by `Revealed`). 1.6 s later a second ping and sweep, and
+  1.6 s after that the shaft's gone (`Bolts` 0). `VFLastRecon` has Dummy 1 to Dummy 5 and Dummy 7,
+  and some of the wallbang lane's dummies, seen from the side past the ends of their walls, but not
+  Dummy 6, 31 m away. **Send:** a screenshot as the first pulse sweeps out.
+- **RC5 Drawn further.** Set `VFTestPitch` to 1. Press E, and once `EQUIP`'s gone hold the left
+  button until `Bars` reads 1, then let it go: the bolt flies faster and sticks in the floor 2 m
+  short of Dummy 4, `VFLastBolt` about `0, 0.05, -28.0`. Once E's lit again, the same until `Bars`
+  reads 2: faster still, it sticks in the lane's floor about 4 m past Dummy 6, `0, 0.05, -53.9`,
+  1.3 s after the loose, and `VFLastRecon` reads `Dummy 4 (static),Dummy 5 (strafe),Dummy 6
+  (static)`, no more. Then until `Bars` reads 3: flatter, it sticks in the backstop about 1.1 m up,
+  `0, 1.12, -59.7`, about 1.45 s after the loose, and `VFLastRecon` has Dummy 6 and Dummy 4, 29.6 m
+  away, just inside its 30 m, and Dummy 5 at times as it strafes in and out of reach.
+- **RC6 Bounces.** Set `VFTestPitch` to 0. Press E, and once `EQUIP`'s gone set `VFTestButtons` to
+  256 and clear it (`Bounces` 1), then tap the left button as in RC4: the bolt goes off the floor
+  short of the 20 m stripe, rises back to about head height, and sticks in the lane's floor about
+  4 m short of the backstop, `VFLastBolt` about `0, 0.05, -55.9`, about 3.1 s after the loose;
+  `VFLastRecon` reads `Dummy 4 (static),Dummy 5 (strafe),Dummy 6 (static)`. Once E's lit again, the
+  same with two bounces (256 twice, cleared between): it goes off the floor there too and sticks in
+  the backstop's foot, `0, 0.64, -59.7`, about 3.3 s after the loose. Once it's lit again, set
+  `VFTestPitch` to 1, press E, give it one bounce and hold the left button until `Bars` reads 3: it
+  goes off the backstop about 1.1 m up and comes back down the lane, sticking in the floor between
+  the 30 m and 40 m stripes, `0, 0.05, -35.6`, about 2 s after the loose.
+- **RC7 Walls in the way.** Walk to the wallbang lane's 10 m line, in front of the concrete 0.10 m
+  wall (`pos` about `-26.00 0.00 -10.00`, `VFTestYaw` 0, `VFTestPitch` 0), and loose a tap: it
+  sticks in the wall's face about 1.2 m up, `VFLastBolt` about `-26, 1.17, -19.95`. At its pulses
+  `VFLastRecon` has Dummy 1 and Dummy 3, 28 m and 24 m away in the open, and Dummy 2 at times as it
+  strafes in and out of reach, but none of the dummies behind the walls, not even Dummy 11, 1.6 m
+  behind the wall the bolt's in.
+- **RC8 Shot to pieces.** Back at the spawn, loose a tap as in RC4. As soon as the first ping's
+  heard, set `VFTestAimPoint` to `0, 0.3, -18.6`, the shaft's middle, and fire one shot (128, then
+  clear it): a sharp crack, logged as `boltBreak`, `yours`, a flash where the shaft stood, and it's
+  gone (`Bolts` 0); `VFBoltHealth` reads 0, and there's no second ping. Clear `VFTestAimPoint`, and
+  press F2 to close the Sound Lab.
+
+Then three players: stop the game and start a Local Server with 3 players, as in section 9. In
+window 1 play as Sova, as before, and open the Sound Lab in windows 2 and 3. Player 1's id is
+4294967295, player 2's 4294967294 and player 3's 4294967293.
+
+- **RC9 Seen and heard.** Player 1 stands at the spawn facing down the target lane (`VFTestYaw` 0,
+  `VFTestPitch` 0), player 3 beside them, 2 m to their left (`pos` about `-2.00 0.00 0.00`), and
+  player 2 down the lane, 4 m right of its middle half way from the 20 m stripe to the 30 m one
+  (`pos` about `4.00 0.00 -25.00`). In window 1 press E and tap the left button: windows 2 and 3 log
+  `boltLoose` and `boltFlight`, see the shaft of light fly and stick short of the 20 m stripe, and
+  log `boltStick`; then both log `reconPulse` twice and see the shell of light sweep out, but nobody
+  lights up red in either (`Revealed` 0). In window 1 players 2 and 3 light up red at each pulse
+  with the dummies (`Reveal_4294967294` and `Reveal_4294967293`), and `VFLastRecon` ends in
+  `Player2,Player3`. **Send:** a screenshot of window 1 at a pulse.
+- **RC10 Broken by another.** Once E's lit again in window 1, loose another tap the same way. In
+  window 2 set `VFTestAimPoint` to `0, 0.3, -18.6` and, as soon as the bolt's stuck, fire one shot
+  with the Vandal: a sharp crack in all three windows, logged as `boltBreak`, a flash where the
+  shaft stood, and it's gone from all three; window 1's `VFBoltHealth` reads 0, and nobody logs
+  another `reconPulse` from it. Clear `VFTestAimPoint`.
+
+Then Skirmish: press P in window 1. Players 1 and 3 share a side, as in F1. As round 1's buy phase
+starts, agent select comes up by itself: pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2
+and 3.
+
+- **RC11 Free each round.** In the buy phase, window 1's `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`. B:
+  under the shields are Owl Drone (`C`, 400) and Shock Bolt (`Q`, 150), dimmed and reading
+  `NOT YET`, and no Recon Bolt; clicking them buys nothing. Close the menu (B).
+- **RC12 Revealed to his side.** Once the round's live, player 2 goes round a corner or behind cover
+  within 25 m of players 1 and 3, out of their sight. Player 1 looses a bolt that sticks where
+  player 2's in its sight, on a floor or a wall near them, with bounces if they help, and player 3
+  steps into its sight too. At each pulse, in windows 1 and 3, player 2 lights up red through the
+  walls for 0.75 s, moving as they move (`Reveal_4294967294`), and for as long a red dot shows them
+  on window 1's minimap, then a `?` where they were (`VFMinimap`'s `Seen` reads `4294967294` while
+  it lasts); window 2 sees the bolt and its sweeps and logs `reconPulse`, but nobody lights up red
+  in it (`Revealed` 0). `VFLastRecon` reads `Player2` alone, though player 3 stands in the bolt's
+  sight. Window 1's E pip is dark, the seconds under it counting down from 50, and it lights again
+  50 s after the loose. **Send:** a screenshot of window 1 at a pulse, with its minimap.
+- **RC13 Allies' shots, and an enemy's.** Once E's lit again, player 1 looses a bolt onto the floor
+  in the open where players 2 and 3 can both see it. As soon as it's stuck, player 3 aims at its
+  shaft (`VFTestAimPoint` 0.25 m over player 1's `VFLastBolt`) and fires three shots: window 1's
+  `VFBoltHealth` stays 20, and it pulses on. Player 2 does the same with one shot: a sharp crack in
+  all three windows, logged as `boltBreak`, the shaft gone, `VFBoltHealth` 0, and no pulse after.
+
 ## Results
 
 ```
@@ -3379,6 +3505,19 @@ FS8 the windows that logged shadowGo: ___; shadowArrive in window 2: ___; in win
 FS9 player 1's pos after the shot: ___; their health after: ___; what each window logged: ___
 FS10 the big map up: yes / no; the cursor red in the buy phase: yes / no; anything fired: yes / no
 FS11 Placeable as the round went live: ___, after about ___ s; window 2's Dark while it ran: ___, for about ___ s; window 3's: ___; the minimap's Shade in window 1: yes / no; window 2's cleared as player 1 was sent back: yes / no
+RC1 anything on Sova's card or the bar that read differently: ___
+RC2 EQUIP for about ___ s; the bars and diamonds under the crosshair: yes / no; anything the Sound Lab logged differently: ___
+RC3 the bars about ___ s apart; the bounces 1, 2, 0: yes / no; anything loosed after E let the draw go: yes / no
+RC4 VFLastBolt: ___; stuck about ___ s after the loose; the Vandal back after ___ s; E's pip back after ___ s; pings ___ s and ___ s after it stuck, gone after ___ s; VFLastRecon: ___
+RC5 VFLastBolt with 1 bar: ___; with 2: ___, VFLastRecon: ___; with 3: ___, VFLastRecon: ___
+RC6 VFLastBolt with one bounce: ___, VFLastRecon: ___; with two: ___; off the backstop: ___
+RC7 VFLastBolt: ___; VFLastRecon at each pulse: ___
+RC8 VFBoltHealth after the shot: ___; a second ping: yes / no
+RC9 what windows 2 and 3 logged: ___; anyone red in windows 2 or 3: yes / no; VFLastRecon: ___
+RC10 VFBoltHealth after window 2's shot: ___; the windows that logged boltBreak: ___
+RC11 VFKit as the round began: ___; Owl Drone and Shock Bolt NOT YET: yes / no; a Recon Bolt tile: yes / no
+RC12 VFLastRecon: ___; player 2 red in window 1: yes / no, window 3: yes / no, window 2: yes / no; Seen while it lasted: ___; E back after ___ s
+RC13 VFBoltHealth after player 3's shots: ___; after player 2's: ___; pulsed after player 2's: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -3651,3 +3790,11 @@ Didn't look right (IDs and what you saw):
 | 43 | X as a Shade sending you back, and doing nothing in the windup | FS6 |
 | 43 | Onto the 1.00 m jump box and the crouch tunnel's roof, and beside a wall the cursor's on | FS7 |
 | 43 | With other players: the swirl, the puff, the Shade dark and see-through, its arrival heard within 22.5 m; an enemy's shot sending it back unhurt; an enemy's minimap dark while it runs, and cleared as it's sent back; and the cursor red in the buy phase | FS8, FS9, FS10, FS11 |
+| 44 | The Recon Bolt lit on Sova's card and the bar, the rest of his kit NOT YET there and in the buy menu, `E1/1` on the course, and the bow in hand 0.8 s after E | RC1, RC2, RC11 |
+| 44 | The draw: the bars a third of a second apart, the bounces added and taken off by alt fire, E letting the draw go, and E again putting the bow away | RC2, RC3 |
+| 44 | The loose: the gun back 0.7 s after; the bolt's flight, sticking where `BoltSim` has it, a tap 18.6 m down the lane, and further with more bars | RC4, RC5 |
+| 44 | Bounces off the floor and the backstop | RC6 |
+| 44 | The pulses: the windup, two 1.6 s apart, the shell of light, the pings, and gone 3.2 s after the first | RC4 |
+| 44 | The reveals: the silhouettes through walls, `VFLastRecon`, nobody past 30 m, and nobody a wall hides, even right behind it | RC4, RC5, RC6, RC7 |
+| 44 | Shot to pieces: a shot at its shaft breaking it, and no more pulses | RC8, RC10 |
+| 44 | With other players: seen and heard; on the course, revealing everyone but its owner, to its owner alone; in Skirmish, revealing enemies alone to its owner's side, through walls and on the minimap; allies' shots doing nothing and an enemy's breaking it; and its charge back 50 s after it's loosed | RC9, RC10, RC12, RC13 |
