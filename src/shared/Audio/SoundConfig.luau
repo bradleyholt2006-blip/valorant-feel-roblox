@@ -584,6 +584,35 @@ SoundConfig.Sounds = {
 	shadowBreak = sound(0.8, 0.03, 3, {
 		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
 	}, 0.45),
+	-- The Recon Bolt (system 44): the bow in hand the rifle's draw raised,
+	-- as something lighter; its string drawn back, the knife's scrape
+	-- slowed right down; loosed, the thin swish, quicker than Blade Storm's
+	-- knives; in the air, the thick whoosh sped right up and quiet, as it
+	-- whistles; stuck, the knife's strike on a wall sped up, as the head
+	-- bites; each pulse, the kill's bell slowed, as a ping; and shot to
+	-- pieces, the spike blast's crack sped up past anything of Sage's.
+	boltEquip = sound(0.6, 0.03, 2, {
+		asset(9116362481, "Machine Gun Movement 2 (SFX)", 0.472, 0.08),
+	}, 1.2),
+	boltNock = sound(0.6, 0.03, 2, {
+		asset(9116190984, "Knife Fast Scraping Draws Pull Out 1 (SFX)", 0.113),
+	}, 0.55),
+	boltLoose = sound(0.7, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 1.35),
+	boltFlight = sound(0.4, 0.05, 4, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.9),
+	boltStick = sound(0.7, 0.05, 4, {
+		asset(9113449513, "Blade Hits Metal Rod On Knife Impacts 9 (SFX)", 0.504),
+		asset(9113449377, "Blade Hits Metal Rod On Knife Impacts 5 (SFX)", 0.498),
+	}, 1.3),
+	reconPulse = sound(0.9, 0.02, 4, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 0.8),
+	boltBreak = sound(0.6, 0.04, 4, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 2.2),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
@@ -596,13 +625,14 @@ SoundConfig.Sounds = {
 -- Step fired and his arrival, which is heard only as far as the arrival
 -- curve says, and his From the Shadows fired, heard across the map, and
 -- his Shade arriving, forming and sent back, heard only as far as the
--- shade curve says), heard as the ability curve says (systems 17 to 19, 30
--- to 33 and 36 to 43). Blade
--- Storm's knives drawn again sound as their draw does, and so does an
--- ability put in hand (Curveball's flare, Hot Hands' fireball, Blaze's
--- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
--- Resurrection's orb), which only the one drawing it hears. The orbs'
--- tries make no sound: only a heal or a return does.
+-- shade curve says, and Sova's Recon Bolt's string drawn back, which only
+-- the one drawing it hears, and its bolt in the air, stuck, pulsing and
+-- shot to pieces), heard as the ability curve says (systems 17 to 19,
+-- 30 to 33 and 36 to 44). Blade Storm's knives drawn again sound as their
+-- draw does, and so does an ability put in hand (Curveball's flare, Hot
+-- Hands' fireball, Blaze's flame, the Healing Orb, the Slow Orb, the
+-- Barrier Orb, the Resurrection's orb), which only the one drawing it
+-- hears. The orbs' tries make no sound: only a heal or a return does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -639,6 +669,12 @@ SoundConfig.Abilities = {
 	shade = "shadowArrive",
 	form = "shadowForm",
 	home = "shadowBreak",
+	bolt = "boltLoose",
+	nock = "boltNock",
+	boltflight = "boltFlight",
+	boltstick = "boltStick",
+	pulse = "reconPulse",
+	boltbreak = "boltBreak",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and
@@ -791,6 +827,9 @@ SoundConfig.Weapons = {
 	-- From the Shadows' map (system 43): the same, its firing, his Shade's
 	-- arrival, its forming and its going back the ability's.
 	shadowmap = { draw = "shadowEquip", curve = "ability" },
+	-- The Recon Bolt's bow (system 44): the same, its string drawn back,
+	-- the bolt loosed, in the air, stuck, pulsing and broken the ability's.
+	bow = { draw = "boltEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

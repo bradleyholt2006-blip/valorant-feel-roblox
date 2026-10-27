@@ -6,8 +6,9 @@
 -- Blaze its flame (system 32), the Healing Orb its orb (system 36), the Slow
 -- Orb its own (system 37), the Barrier Orb its own (system 38), the
 -- Resurrection its own (system 39), Dark Cover its own (system 40),
--- Shrouded Step its own (system 42) and From the Shadows its map (system
--- 43), and whose Run it Back holds the player through his return and puts
+-- Shrouded Step its own (system 42), From the Shadows its map (system 43)
+-- and the Recon Bolt its bow, drawn and loosed by the kit (system 44), and
+-- whose Run it Back holds the player through his return and puts
 -- him back at its mark (system 33), as the Resurrection holds a life it
 -- brings back, rising with the body and then falling to the floor (system
 -- 39), Shrouded Step holds him through its windup and his time gone, and
@@ -485,6 +486,21 @@ function PlayerSim.step(
 	-- And Blade Storm is over once its knives are gone.
 	if s.abilities.storm and s.weapons.loadout[WeaponSim.ULT] == "" then
 		s.abilities.storm = false
+	end
+	-- The Recon Bolt's bow in hand (system 44) fires nothing: fire held
+	-- draws its bolt once it's ready, alt fire adds bounces, and fire let go
+	-- looses it, which puts it away (AbilitySim.bow).
+	local inHand = AbilitySim.def(kit, kit.holding)
+	local w = s.weapons
+	if inHand and inHand.id == "reconbolt" and w.equipped == WeaponSim.ULT and w.loadout[WeaponSim.ULT] ~= "" then
+		local ready = t >= w.equipEndTime - 1e-9
+		local bolt = AbilitySim.bow(kit, t, input.buttons, ready, tick, s.movement.position, PlayerSim.eye(s, cfg), look)
+		if bolt then
+			local list = casts or {}
+			table.insert(list, bolt)
+			casts = list
+			WeaponSim.putAway(w, t, AbilityConfig.unequip(bolt.ability))
+		end
 	end
 	-- An ability in hand (system 30): what it fires is its throw, the
 	-- ability's cast and no bullet, and the gun's back in hand a moment

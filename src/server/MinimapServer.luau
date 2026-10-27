@@ -20,6 +20,9 @@
 -- standing (CloudServer), the walls of fire (BlazeServer) and the walls of
 -- ice (BarrierServer, system 38).
 --
+-- Whom Sova's Recon Bolt reveals to a side (system 44, ReconServer) is on
+-- its minimap too while the reveal lasts, as if spotted.
+--
 -- Who each side spots goes to the fog of war too (FogServer, system 35),
 -- so their snapshots carry whoever their minimap shows.
 
@@ -43,6 +46,7 @@ local CloudServer = require(script.Parent.CloudServer)
 local BlazeServer = require(script.Parent.BlazeServer)
 local BarrierServer = require(script.Parent.BarrierServer)
 local FogServer = require(script.Parent.FogServer)
+local ReconServer = require(script.Parent.ReconServer)
 
 local MinimapServer = {}
 
@@ -132,6 +136,13 @@ local function look(now: number)
 		blocked = blocked,
 	}
 	local spotted = Sight.spotted(viewers, targets, o)
+	for side, ids in ReconServer.revealed(now) do
+		local seen = spotted[side] or {}
+		spotted[side] = seen
+		for id in ids do
+			seen[id] = true
+		end
+	end
 	FogServer.spotted(spotted)
 	-- A dropped spike, for the spike rounds' defenders (a side's number;
 	-- on the course anyone defuses, 0, and nobody's told).

@@ -14,8 +14,9 @@
 -- walls of fire whose caster is dead run on, fires burn whoever the moves left
 -- standing in them, the Healing Orb's heals give what they've come to, after
 -- the fires' burns that pause them, the Slow Orb's fields say whom the moves
--- left slowed, and Paranoia's orbs touch whoever the moves left in their way,
--- before the minimap's spotting goes by what they see.
+-- left slowed, Paranoia's orbs touch whoever the moves left in their way,
+-- and the Recon Bolt's pulses reveal whoever the moves left in their sight,
+-- before the minimap's spotting goes by what they see and what they reveal.
 -- Regen Shields refill after the shots, and the minimap's spotting looks
 -- after them, so nobody they killed is seen; the fog of war's looks come
 -- after that, with what each side spots, and each player's snapshot goes
@@ -50,6 +51,7 @@ local SlowServer = require(script.SlowServer)
 local BarrierServer = require(script.BarrierServer)
 local ReviveServer = require(script.ReviveServer)
 local ParanoiaServer = require(script.ParanoiaServer)
+local ReconServer = require(script.ReconServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
 local StepServer = require(script.StepServer)
@@ -72,6 +74,9 @@ FireServer.start()
 HealServer.start()
 SlowServer.start()
 BarrierServer.start()
+-- After the Barrier Orb's, whose walls stand in the level shots are traced
+-- through before the Recon Bolt's shafts.
+ReconServer.start()
 ReviveServer.start()
 ParanoiaServer.start()
 BlazeServer.start()
@@ -108,6 +113,7 @@ RunService.Heartbeat:Connect(function(dt)
 	BarrierServer.step(now)
 	ReviveServer.step(now)
 	ParanoiaServer.step(now)
+	ReconServer.step(now)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)
 	MinimapServer.step(now)

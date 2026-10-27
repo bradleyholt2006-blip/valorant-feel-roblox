@@ -21,7 +21,8 @@
 -- number and the hit sounds show.
 --
 -- Sage's walls of ice stand in the level as the screen showed them
--- (ClientShots.levelAt, system 38), as they do in the server's.
+-- (ClientShots.levelAt, system 38), as they do in the server's, and so do
+-- the shafts of Sova's Recon Bolts (system 44).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -170,12 +171,17 @@ ClientShots.stats = newStats()
 ClientShots.level = RobloxLevel.new()
 -- Sage's walls in play (system 38, BarrierView); none without.
 ClientShots.barriers = nil :: (() -> { BarrierSim.Wall })?
+-- A level with Sova's Recon Bolts standing in it at a server time (system
+-- 44, ReconView); none without.
+ClientShots.bolts = nil :: ((Penetration.Level, number) -> Penetration.Level)?
 
 -- The level as a screen showed it at server time `time`: with Sage's walls
--- standing then in it.
+-- and Sova's bolts standing then in it.
 function ClientShots.levelAt(time: number): Penetration.Level
 	local walls = ClientShots.barriers
-	return if walls then BarrierSim.level(ClientShots.level, walls(), time) else ClientShots.level
+	local level = if walls then BarrierSim.level(ClientShots.level, walls(), time) else ClientShots.level
+	local bolts = ClientShots.bolts
+	return if bolts then bolts(level, time) else level
 end
 
 -- Same rules as the server's trace: through the level first, then hitboxes.

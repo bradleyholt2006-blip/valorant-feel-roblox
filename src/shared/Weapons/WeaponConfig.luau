@@ -828,6 +828,28 @@ local SHADOW_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a teleport doesn't
 	adsCamera = SHADOW_NA,
 })
 
+-- Sova's Recon Bolt (system 44): its bow fires nothing. Held fire draws the
+-- bolt and letting go looses it (AbilitySim), and BoltSim flies it from the
+-- crosshair, so no spread or kick moves it; alt fire adds a bounce.
+local RECON = "VALORANT Wiki, Recon Bolt"
+local LOOSED = "n/a: BoltSim flies it from the crosshair"
+local BOW_NA = p(0, "estimate", LOOSED)
+local bowExact = accuracy(
+	c({ { 1, 0 } }, "estimate", LOOSED),
+	p(1, "estimate", LOOSED),
+	p(0.1, "estimate", LOOSED),
+	p(1, "estimate", LOOSED),
+	{ crouch = BOW_NA, walk = BOW_NA, run = BOW_NA, air = BOW_NA }
+)
+bowExact.landError = BOW_NA
+local BOW_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a loosed bolt doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = BOW_NA,
+	adsCamera = BOW_NA,
+})
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -1913,6 +1935,31 @@ WeaponConfig.Defs = {
 		accuracy = shadowExact,
 		recoil = SHADOW_KICK,
 	},
+	-- Sova's Recon Bolt (system 44): put in hand in the fifth slot by E
+	-- (AbilityConfig.ReconBolt). It fires nothing: PlayerSim has the kit draw
+	-- it while fire's held and loose it as fire's let go, and BoltSim flies
+	-- it. It hurts nobody.
+	bow = {
+		id = "bow",
+		name = "Recon Bolt",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought: E puts it in hand, its charge free each round (" .. RECON .. ")"),
+		fireMode = "none",
+		fireRate = p(1, "estimate", "n/a: a bolt a draw"),
+		magazine = p(1, "community", RECON .. ": 1 use, a bolt"),
+		reserve = p(0, "community", "None: another bolt is another charge (" .. RECON .. ": 1 use)"),
+		reloadTime = BOW_NA,
+		equipTime = p(0.8, "community", RECON .. ": equip 0.8 s (game files)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it reveals (" .. RECON .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "reconbolt",
+		accuracy = bowExact,
+		recoil = BOW_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -1921,8 +1968,8 @@ WeaponConfig.Defs = {
 -- (system 30), Hot Hands' fireball (system 31), Blaze's flame (system 32),
 -- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
 -- (system 38), the Resurrection (system 39), Dark Cover (system 40),
--- Paranoia (system 41), Shrouded Step (system 42) and From the Shadows
--- (system 43) last.
+-- Paranoia (system 41), Shrouded Step (system 42), From the Shadows
+-- (system 43) and the Recon Bolt's bow (system 44) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -1958,6 +2005,7 @@ WeaponConfig.Ids = {
 	"blindorb",
 	"stepmark",
 	"shadowmap",
+	"bow",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

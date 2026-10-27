@@ -7,13 +7,14 @@
 -- while its knives last (system 19), its note the knives left, and an
 -- ability's while it's in hand (Curveball's flare, system 30; Hot Hands'
 -- fireball, system 31; Blaze's flame, system 32; the Healing Orb, system
--- 36; the Resurrection's orb, system 39), its note EQUIP until it can be
--- thrown, and Blaze's while its wall's being bent; Run it Back's while it
--- runs, its note the seconds left, and through his return, BACK (system
--- 33); Shrouded Step's through its windup and his time gone, STEP (system
--- 42); and From the Shadows' while its map's in hand, EQUIP until it can
--- be fired and then MAP, through its windup the seconds left, and as a
--- Shade, SHADE (system 43). What can't be played yet is dimmed.
+-- 36; the Resurrection's orb, system 39; the Recon Bolt's bow, system 44),
+-- its note EQUIP until it can be thrown or drawn, and Blaze's while its
+-- wall's being bent; Run it Back's while it runs, its note the seconds
+-- left, and through his return, BACK (system 33); Shrouded Step's through
+-- its windup and his time gone, STEP (system 42); and From the Shadows'
+-- while its map's in hand, EQUIP until it can be fired and then MAP,
+-- through its windup the seconds left, and as a Shade, SHADE (system 43).
+-- What can't be played yet is dimmed.
 -- It reads the local player's predicted kit (PlayerController.sim), so a
 -- cast shows on the tick it's pressed. A kit of no agent's, as deathmatch's
 -- (system 26), has no bar. Where abilities recharge over time (Team
