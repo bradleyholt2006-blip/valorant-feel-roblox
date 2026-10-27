@@ -613,6 +613,12 @@ SoundConfig.Sounds = {
 	boltBreak = sound(0.6, 0.04, 4, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 2.2),
+	-- The Shock Bolt (system 45): its bow and its bolt in the air as the
+	-- Recon Bolt's; bursting, the spike blast's crack, louder and sped up
+	-- less than a recon bolt's breaking.
+	shockBurst = sound(0.9, 0.04, 4, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 1.5),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
@@ -627,12 +633,13 @@ SoundConfig.Sounds = {
 -- his Shade arriving, forming and sent back, heard only as far as the
 -- shade curve says, and Sova's Recon Bolt's string drawn back, which only
 -- the one drawing it hears, and its bolt in the air, stuck, pulsing and
--- shot to pieces), heard as the ability curve says (systems 17 to 19,
--- 30 to 33 and 36 to 44). Blade Storm's knives drawn again sound as their
--- draw does, and so does an ability put in hand (Curveball's flare, Hot
--- Hands' fireball, Blaze's flame, the Healing Orb, the Slow Orb, the
--- Barrier Orb, the Resurrection's orb), which only the one drawing it
--- hears. The orbs' tries make no sound: only a heal or a return does.
+-- shot to pieces, and his Shock Bolt's bursting), heard as the ability
+-- curve says (systems 17 to 19, 30 to 33 and 36 to 45). Blade Storm's
+-- knives drawn again sound as their draw does, and so does an ability put
+-- in hand (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
+-- Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb),
+-- which only the one drawing it hears. The orbs' tries make no sound: only
+-- a heal or a return does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -675,6 +682,7 @@ SoundConfig.Abilities = {
 	boltstick = "boltStick",
 	pulse = "reconPulse",
 	boltbreak = "boltBreak",
+	shockburst = "shockBurst",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and
@@ -830,6 +838,9 @@ SoundConfig.Weapons = {
 	-- The Recon Bolt's bow (system 44): the same, its string drawn back,
 	-- the bolt loosed, in the air, stuck, pulsing and broken the ability's.
 	bow = { draw = "boltEquip", curve = "ability" },
+	-- The Shock Bolt's (system 45): the same, its bolt bursting the
+	-- ability's.
+	shockbow = { draw = "boltEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

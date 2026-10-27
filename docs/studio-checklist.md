@@ -3116,20 +3116,20 @@ the course a spent charge comes back 1.5 s after it's spent. Start each check at
 down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
 
 - **RC1 His kit.** In agent select (T), the cards are JETT, PHOENIX, SAGE, OMEN and SOVA, and SOVA's
-  reads INITIATOR. Click it: his kit, headed `SOVA   INITIATOR`, with E RECON BOLT lit and `E
-  readies the bow. Hold fire to draw it further and alt fire to add bounces; it sticks where it
-  lands and pulses, revealing enemies it sees.`, and C OWL DRONE, Q SHOCK BOLT and X HUNTER'S FURY
-  each with `NOT YET` after it; nothing under them, as he has no passive. Click PICK SOVA: the
-  button reads `PLAYING SOVA`, and `VFAgent` reads `sova`. Close it with T. On the ability bar RECON
-  BOLT has its one pip lit and the rest are dimmed, and `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`.
-  **Send:** a screenshot of Sova's card.
+  reads INITIATOR. Click it: his kit, headed `SOVA   INITIATOR`, with Q SHOCK BOLT lit (section 49),
+  and E RECON BOLT lit, with `E readies the bow. Hold fire to draw it further and alt fire to add
+  bounces; it sticks where it lands and pulses, revealing enemies it sees.`, and C OWL DRONE and X
+  HUNTER'S FURY each with `NOT YET` after it; nothing under them, as he has no passive. Click PICK
+  SOVA: the button reads `PLAYING SOVA`, and `VFAgent` reads `sova`. Close it with T. On the ability
+  bar RECON BOLT has its one pip lit and SHOCK BOLT its two, and the rest are dimmed, and `VFKit`
+  reads `C0/1 Q2/2 E1/1 X0/8`. **Send:** a screenshot of Sova's card.
 - **RC2 In hand.** Open the Sound Lab (F2 four times), and keep it open to RC8. Press E: a quick,
   light rattle, logged as `boltEquip`, `yours`; the Vandal goes, and a short dark bow comes up, held
   upright, with a bolt of light blue beside its grip. E's square lights, with `EQUIP` under it for
   0.8 s; the HUD reads `Recon Bolt   [E]`, with no ammo; and `VFKit` ends in `equip`. Under the
   crosshair are three dark bars with two dark diamonds under them (`VFRecon`'s `Bow` true, `Bars` 0
   and `Bounces` 0). Press E again: the bow and the bars go, the Vandal's back, and `VFKit` reads
-  `C0/1 Q0/2 E1/1 X0/8`, nothing spent.
+  `C0/1 Q2/2 E1/1 X0/8`, nothing spent.
 - **RC3 The draw.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and keep it: a slow,
   low scrape, logged as `boltNock`, `yours`, and the bars light blue one by one, a third of a second
   apart, and stay at three (`Bars` 3); `VFKit` ends in `equip draw 3`. Set it to 384 and back to
@@ -3137,7 +3137,7 @@ down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the Vandal in hand.
   and `bounce 2`. Again: neither, `Bounces` 0, and no `bounce` in `VFKit`. Set it to 16512 (E and
   the left button) and back to 128: the bars go dark (`Bars` 0), `draw` goes from `VFKit` and the
   bow stays in hand, its bars dark while the button's held. Clear it: nothing's loosed or heard, and
-  `VFKit` reads `C0/1 Q0/2 E1/1 X0/8 equip`. Press E to put the bow away.
+  `VFKit` reads `C0/1 Q2/2 E1/1 X0/8 equip`. Press E to put the bow away.
 - **RC4 The loose.** Press E, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
   once: a thin swish, logged as `boltLoose`, `yours`, and a quick, quiet whoosh, `boltFlight`; a
   thin shaft of light flies down the lane, dropping as it goes, and about 1 s later sticks in the
@@ -3204,9 +3204,10 @@ Then Skirmish: press P in window 1. Players 1 and 3 share a side, as in F1. As r
 starts, agent select comes up by itself: pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2
 and 3.
 
-- **RC11 Free each round.** In the buy phase, window 1's `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`. B:
-  under the shields are Owl Drone (`C`, 400) and Shock Bolt (`Q`, 150), dimmed and reading
-  `NOT YET`, and no Recon Bolt; clicking them buys nothing. Close the menu (B).
+- **RC11 Free each round.** In the buy phase, window 1's `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`. B:
+  under the shields are Owl Drone (`C`, 400), dimmed and reading `NOT YET`, and Shock Bolt (`Q`,
+  150), its two pips lit and reading `FULL` (section 49), and no Recon Bolt; clicking them buys
+  nothing. Close the menu (B).
 - **RC12 Revealed to his side.** Once the round's live, player 2 goes round a corner or behind cover
   within 25 m of players 1 and 3, out of their sight. Player 1 looses a bolt that sticks where
   player 2's in its sight, on a floor or a wall near them, with bounces if they help, and player 3
@@ -3222,6 +3223,115 @@ and 3.
   shaft (`VFTestAimPoint` 0.25 m over player 1's `VFLastBolt`) and fires three shots: window 1's
   `VFBoltHealth` stays 20, and it pulses on. Player 2 does the same with one shot: a sharp crack in
   all three windows, logged as `boltBreak`, the shaft gone, `VFBoltHealth` 0, and no pulse after.
+
+## 49. Sova's Shock Bolt
+
+From [45-shock-bolt.md](research/45-shock-bolt.md). One player on the course, then three there, in
+Skirmish and in the spike rounds. Play as Sova, as in section 48. Without keys or a mouse button,
+`VFTestButtons` 8192 presses Q, 128 the left button and 256 the right: set it and clear it again
+each time, and leave 128 set for as long as the left button's held. `VFTestYaw` and `VFTestPitch`
+aim, in degrees: positive yaw turns left, and positive pitch looks up; a Vector3 `VFTestAimPoint`,
+in metres, aims at that place instead until it's cleared. The F3 panel's `pos` line is where you
+stand, in metres. Your `VFLastShock` attribute is where your last bolt burst, in metres, and
+`VFShockHits` whom it hurt and how much: each a name and its damage, in order of their names and
+joined by commas, or nothing. PlayerGui's `VFRecon` shows the bow's draw as in section 48 (`Bow`,
+`Bars` and `Bounces`), and `Workspace.VFShock` holds each bolt in the air (`Bolt`) and each burst
+while it flashes (`Burst`); its `Bolts` attribute counts the bolts in the air, and `Bursts` the
+bursts shown. You and the dummies wear Heavy Armor, their labels reading `100 + 50`, and a dummy
+comes back 2 s after it dies. On the course a spent charge comes back 1.5 s after it's spent. Start
+each check at the spawn facing down the target lane (`VFTestYaw` 0, `VFTestPitch` 0), with the
+Vandal in hand.
+
+- **SB1 His kit.** In agent select (T), click SOVA's card: Q SHOCK BOLT is lit now, with `Q readies
+  the bow with a shock bolt. Hold fire to draw it further and alt fire to add bounces; it bursts
+  where it lands, hurting those near it.`, and C OWL DRONE and X HUNTER'S FURY still read `NOT YET`.
+  Click PICK SOVA and close it with T. On the ability bar SHOCK BOLT has its two pips lit, and
+  `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`. Press B: under the shields Shock Bolt (`Q`, 150) has its two
+  pips lit and reads `FULL`. Hover it: `Ability, on Q`, the line on his card, and its rows,
+  `Charges` up to 2, `A charge` 150 credits and `Burst` `75 within 1 m, 1 at 5 m`. Close the menu
+  (B). **Send:** a screenshot of the hover.
+- **SB2 In hand.** Open the Sound Lab (F2 four times), and keep it open to SB8. Press Q: a quick,
+  light rattle, logged as `boltEquip`, `yours`; the Vandal goes, and the Recon Bolt's bow comes up,
+  with a bolt of pale yellow beside its grip. Q's square lights, with `EQUIP` under it for 0.8 s;
+  the HUD reads `Shock Bolt   [Q]`, with no ammo; and `VFKit` ends in `equip`. Under the crosshair
+  are three dark bars with two dark diamonds under them (`VFRecon`'s `Bow` true). Once `EQUIP`'s
+  gone, set `VFTestButtons` to 128 and keep it: a slow, low scrape, `boltNock`, and the bars light
+  blue a third of a second apart, three at the most; `VFKit` ends in `equip draw 3`. Set it to 384
+  and back to 128: the first diamond lights, and `VFKit` ends in `draw 3 bounce 1`. Set it to 8320
+  (Q and the left button) and back to 128: the bars go dark and `draw` goes from `VFKit`, the bow
+  still in hand. Clear it: nothing's loosed or heard. Press Q again: the bow and the bars go, the
+  Vandal's back, and `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`, nothing spent.
+- **SB3 The burst.** Press Q, and once `EQUIP`'s gone set `VFTestButtons` to 128 and clear it at
+  once: a thin swish, logged as `boltLoose`, `yours`, and a quick, quiet whoosh, `boltFlight`; a
+  thin shaft of pale yellow light flies down the lane, dropping as it goes (`Workspace.VFShock`'s
+  `Bolts` 1), and about 1 s later, where it meets the floor just short of the 20 m stripe, it
+  bursts: a ball of light flashes out 10 m across and fades in about a third of a second, with a
+  crack, louder and deeper than a recon bolt's breaking, logged as `shockBurst`, `yours` (`Bolts` 0,
+  `Bursts` 1). `VFLastShock` reads about `0, 0.05, -18.6`, and `VFShockHits` has
+  `Dummy 3 (crouch) 48`, crouched 2.4 m from it, whose label reads `84 + 19` (83.68 and 18.32,
+  rounded up), and Dummy 2 at times, for a few points, as it strafes in and out of reach. The bow
+  goes and the Vandal's back 0.7 s after the swish; one of Q's pips goes dark, and lights again
+  1.5 s later. **Send:** a screenshot as it bursts.
+- **SB4 At a dummy's feet.** Walk 4 m down the lane (`pos` about `0.00 0.00 -4.00`, and no closer,
+  or the burst reaches you too), set `VFTestAimPoint` to `0, 0.1, -10`, Dummy 1's feet, and loose a
+  tap: it bursts just short of them about a third of a second later, `VFLastShock` about
+  `0, 0.05, -9.6`, and `VFShockHits` reads `Dummy 1 (static) 75`; its label reads `75 + 1` (74.5 and
+  0.5, rounded up), and your HUD still reads `100` and `+50`. Press Q and loose your second the same
+  way: Dummy 1 dies, and the kill feed reads `<your name>   Shock Bolt   Dummy 1`. Clear
+  `VFTestAimPoint`.
+- **SB5 Further out, less.** Back at the spawn, set `VFTestPitch` to 1. Press Q, hold the left
+  button until `Bars` reads 1, and let it go: it bursts on the floor 2 m short of Dummy 4 about 1 s
+  after the loose, `VFLastShock` about `0, 0.05, -28.0`, and `VFShockHits` has Dummy 4 for about 57,
+  its label about `81 + 13`, and Dummy 5 at times, for less, as it strafes. Once Q's pips are lit
+  again, the same until `Bars` reads 2: it bursts on the lane's floor about 4 m past Dummy 6,
+  `0, 0.05, -53.9`, 1.3 s after the loose, and `VFShockHits` reads `Dummy 6 (static)` and about 21.
+  Then until `Bars` reads 3: it bursts on the backstop about 1.1 m up, `0, 1.12, -59.7`, nearly 10 m
+  from Dummy 6, and `VFShockHits` is empty. Set `VFTestPitch` back to 0.
+- **SB6 Your own.** Set `VFTestPitch` to -90 and loose a tap: it bursts at your feet at once,
+  `VFLastShock` about `0, 0.05, 0`, and `VFShockHits` reads `<your name> 75`: your HUD reads `75`
+  and `+1` (74.5 and 0.5, rounded up). Set `VFTestPitch` back to 0.
+- **SB7 A bounce.** Press Q, set `VFTestButtons` to 256 and clear it (`Bounces` 1), then loose a
+  tap: the bolt goes off the floor short of the 20 m stripe without bursting, rises back to about
+  head height, and bursts on the lane's floor about 4 m short of the backstop, `VFLastShock` about
+  `0, 0.05, -55.9`, about 3.1 s after the loose; `VFShockHits` is empty, Dummy 6 being 5.9 m from
+  it.
+- **SB8 Walls in the way.** Walk to the wallbang lane's 10 m line, in front of the concrete 0.10 m
+  wall (`pos` about `-26.00 0.00 -10.00`, `VFTestYaw` 0, `VFTestPitch` 0), and loose a tap: it
+  bursts on the wall's face about 1.2 m up, `VFLastShock` about `-26, 1.17, -19.95`, and
+  `VFShockHits` is empty: Dummy 11, 1.6 m behind the wall, and the dummies beside it are unhurt,
+  their labels still `100 + 50`. Press F2 to close the Sound Lab.
+
+Then three players: stop the game and start a Local Server with 3 players, as in section 9. In
+window 1 play as Sova, as before, and open the Sound Lab in windows 2 and 3.
+
+- **SB9 Seen, heard and hurt.** Player 1 stands at the spawn facing down the target lane
+  (`VFTestYaw` 0, `VFTestPitch` 0), player 3 beside them, 2 m to their left (`pos` about
+  `-2.00 0.00 0.00`), and player 2 where a tap lands, just short of the 20 m stripe (`pos` about
+  `0.00 0.00 -18.60`). In window 1 press Q and loose a tap: windows 2 and 3 log `boltLoose` and
+  `boltFlight`, see the shaft of light fly through player 2 and burst at their feet, and log
+  `shockBurst`. Window 2's HUD reads `75` and `+1`, and window 3's still `100` and `+50`; window 1's
+  `VFShockHits` ends in `Player2 75`. **Send:** a screenshot of window 2 as it bursts.
+
+Then Skirmish: press P in window 1. Players 1 and 3 share a side, as in F1. As round 1's buy phase
+starts, agent select comes up by itself: pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2
+and 3.
+
+- **SB10 Friend and foe.** In the buy phase, window 1's `VFKit` reads `C0/1 Q2/2 E1/1 X0/8`. Once
+  the round's live, players 2 and 3 stand side by side in the open, a metre apart and across
+  player 1's line of sight, and player 1, at least 6 m from them, sets `VFTestAimPoint` on the floor
+  between them, 0.1 m up, and looses a Shock Bolt: windows 2 and 3 both read `75` and `+1`, and
+  window 1's `VFShockHits` reads `Player2 75,Player3 75`, his side hurt as his enemies are;
+  window 1's `VFKit` then reads `Q1/2`, and the spent pip stays dark for the rest of the round.
+  Clear `VFTestAimPoint`.
+
+Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
+round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+
+- **SB11 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`, both of Q's pips dark. B: under the shields
+  Shock Bolt (`Q`, 150) is lit, its pips dark. Click it: 150 credits go, one of Q's pips lights, and
+  `VFKit` reads `Q1/2`; click again: `Q2/2`, and the tile reads `FULL`, and a third click buys
+  nothing. Close the menu (B). Once the round's live, loose one: `Q1/2`, and the spent pip stays
+  dark for the rest of the round.
 
 ## Results
 
@@ -3515,9 +3625,20 @@ RC7 VFLastBolt: ___; VFLastRecon at each pulse: ___
 RC8 VFBoltHealth after the shot: ___; a second ping: yes / no
 RC9 what windows 2 and 3 logged: ___; anyone red in windows 2 or 3: yes / no; VFLastRecon: ___
 RC10 VFBoltHealth after window 2's shot: ___; the windows that logged boltBreak: ___
-RC11 VFKit as the round began: ___; Owl Drone and Shock Bolt NOT YET: yes / no; a Recon Bolt tile: yes / no
+RC11 VFKit as the round began: ___; Owl Drone NOT YET and Shock Bolt FULL: yes / no; a Recon Bolt tile: yes / no
 RC12 VFLastRecon: ___; player 2 red in window 1: yes / no, window 3: yes / no, window 2: yes / no; Seen while it lasted: ___; E back after ___ s
 RC13 VFBoltHealth after player 3's shots: ___; after player 2's: ___; pulsed after player 2's: yes / no
+SB1 anything on Sova's card, the bar or the hover that read differently: ___
+SB2 EQUIP for about ___ s; the bolt's colour in hand: ___; anything the Sound Lab logged differently: ___
+SB3 VFLastShock: ___; burst about ___ s after the loose; VFShockHits: ___; Dummy 3's label: ___; the Vandal back after ___ s; Q's pip back after ___ s
+SB4 VFLastShock: ___; VFShockHits: ___; Dummy 1's label: ___; your HUD: ___; the kill feed after the second: ___
+SB5 VFLastShock and VFShockHits with 1 bar: ___; with 2: ___; with 3: ___
+SB6 VFShockHits: ___; your HUD after: ___
+SB7 VFLastShock: ___; burst where it first met the floor: yes / no
+SB8 VFLastShock: ___; VFShockHits: ___
+SB9 what windows 2 and 3 logged: ___; window 2's HUD: ___; window 3's: ___; VFShockHits: ___
+SB10 VFKit as the round began: ___; windows 2 and 3 after the burst: ___; VFShockHits: ___
+SB11 VFKit as the round began: ___; bought for ___ each; a third bought: yes / no; Q after the loose: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -3798,3 +3919,9 @@ Didn't look right (IDs and what you saw):
 | 44 | The reveals: the silhouettes through walls, `VFLastRecon`, nobody past 30 m, and nobody a wall hides, even right behind it | RC4, RC5, RC6, RC7 |
 | 44 | Shot to pieces: a shot at its shaft breaking it, and no more pulses | RC8, RC10 |
 | 44 | With other players: seen and heard; on the course, revealing everyone but its owner, to its owner alone; in Skirmish, revealing enemies alone to its owner's side, through walls and on the minimap; allies' shots doing nothing and an enemy's breaking it; and its charge back 50 s after it's loosed | RC9, RC10, RC12, RC13 |
+| 45 | The Shock Bolt lit on Sova's card and the bar, `Q2/2` on the course, its `Burst` row in the buy menu, and the bow in hand 0.8 s after Q, drawn, given bounces and let go as the Recon Bolt's, and Q again putting it away | SB1, SB2 |
+| 45 | The loose: the gun back 0.7 s after; the bolt bursting where `BoltSim` has it land, a tap 18.6 m down the lane, with its flash and its crack, and with a bounce only where it lands | SB3, SB5, SB7 |
+| 45 | Its damage: 75 within 1 m, less further out and none past 5 m, through a dummy's Heavy Armor; two at a dummy's feet killing it, the kill feed naming the Shock Bolt | SB3, SB4, SB5 |
+| 45 | Its owner hurt by his own burst | SB6 |
+| 45 | Nobody hurt behind the wall it bursts on, even right behind it | SB8 |
+| 45 | With other players: seen and heard; hurting anyone near it, an ally as much as an enemy; both charges there each round in Skirmish; and bought at 150 a charge in the spike rounds, two at most, nothing bringing a spent one back | SB9, SB10, SB11 |

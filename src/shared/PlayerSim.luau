@@ -7,7 +7,8 @@
 -- Orb its own (system 37), the Barrier Orb its own (system 38), the
 -- Resurrection its own (system 39), Dark Cover its own (system 40),
 -- Shrouded Step its own (system 42), From the Shadows its map (system 43)
--- and the Recon Bolt its bow, drawn and loosed by the kit (system 44), and
+-- and the Recon Bolt its bow, drawn and loosed by the kit (system 44), as
+-- the Shock Bolt does (system 45), and
 -- whose Run it Back holds the player through his return and puts
 -- him back at its mark (system 33), as the Resurrection holds a life it
 -- brings back, rising with the body and then falling to the floor (system
@@ -487,12 +488,13 @@ function PlayerSim.step(
 	if s.abilities.storm and s.weapons.loadout[WeaponSim.ULT] == "" then
 		s.abilities.storm = false
 	end
-	-- The Recon Bolt's bow in hand (system 44) fires nothing: fire held
-	-- draws its bolt once it's ready, alt fire adds bounces, and fire let go
-	-- looses it, which puts it away (AbilitySim.bow).
+	-- Sova's bow in hand (the Recon Bolt's, system 44, or the Shock Bolt's,
+	-- system 45) fires nothing: fire held draws its bolt once it's ready,
+	-- alt fire adds bounces, and fire let go looses it, which puts it away
+	-- (AbilitySim.bow).
 	local inHand = AbilitySim.def(kit, kit.holding)
 	local w = s.weapons
-	if inHand and inHand.id == "reconbolt" and w.equipped == WeaponSim.ULT and w.loadout[WeaponSim.ULT] ~= "" then
+	if inHand and AbilitySim.bowed(inHand.id) and w.equipped == WeaponSim.ULT and w.loadout[WeaponSim.ULT] ~= "" then
 		local ready = t >= w.equipEndTime - 1e-9
 		local bolt = AbilitySim.bow(kit, t, input.buttons, ready, tick, s.movement.position, PlayerSim.eye(s, cfg), look)
 		if bolt then

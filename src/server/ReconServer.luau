@@ -1,10 +1,11 @@
 --!strict
 -- Sova's Recon Bolt on the server (system 44). Each bolt loosed (a "bolt"
--- cast) flies here through BoltSim at once, through the level, as nothing
--- changes its path after the loose, and sticks where it lands, on the
--- server's clock. Every client is told of the loose (the Ability remote's
--- "flight"): its keys, how long after the loose it sticks, where, and the
--- way the surface there faces, so each draws it the same way.
+-- cast of the Recon Bolt's) flies here through BoltSim at once, through
+-- the level, as nothing changes its path after the loose, and sticks where
+-- it lands, on the server's clock. Every client is told of the loose (the
+-- Ability remote's "flight"): its keys, how long after the loose it
+-- sticks, where, and the way the surface there faces, so each draws it the
+-- same way.
 --
 -- Stuck, it winds up and pulses (BoltSim.pulseAt), on through its owner's
 -- death. Each pulse reveals every enemy in play within its radius it has
@@ -87,7 +88,7 @@ local bolts: { BoltSim.Stuck } = {}
 local revealedTo: { [number]: { [number]: number } } = {}
 
 local function onCast(player: Player, cast: AbilitySim.Cast)
-	if cast.kind ~= "bolt" then
+	if cast.kind ~= "bolt" or cast.ability ~= "reconbolt" then
 		return
 	end
 	local entity = PlayerSimServer.entityOf(player)

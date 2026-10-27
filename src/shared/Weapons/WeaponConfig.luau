@@ -830,8 +830,10 @@ local SHADOW_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a teleport doesn't
 
 -- Sova's Recon Bolt (system 44): its bow fires nothing. Held fire draws the
 -- bolt and letting go looses it (AbilitySim), and BoltSim flies it from the
--- crosshair, so no spread or kick moves it; alt fire adds a bounce.
+-- crosshair, so no spread or kick moves it; alt fire adds a bounce. His
+-- Shock Bolt's bow (system 45) is the same.
 local RECON = "VALORANT Wiki, Recon Bolt"
+local SOVA = "VALORANT Wiki, Sova"
 local LOOSED = "n/a: BoltSim flies it from the crosshair"
 local BOW_NA = p(0, "estimate", LOOSED)
 local bowExact = accuracy(
@@ -1960,6 +1962,31 @@ WeaponConfig.Defs = {
 		accuracy = bowExact,
 		recoil = BOW_KICK,
 	},
+	-- Sova's Shock Bolt (system 45): the same bow, put in hand in the fifth
+	-- slot by Q with a shock bolt (AbilityConfig.ShockBolt). It fires
+	-- nothing, as the Recon Bolt's doesn't; the bolt's burst does its damage
+	-- (ShockSim), credited to it.
+	shockbow = {
+		id = "shockbow",
+		name = "Shock Bolt",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: Q puts it in hand, a charge of the Shock Bolt (" .. SOVA .. ")"),
+		fireMode = "none",
+		fireRate = p(1, "estimate", "n/a: a bolt a draw"),
+		magazine = p(1, "community", SOVA .. ": 2 uses, a bolt each"),
+		reserve = p(0, "community", "None: another bolt is another charge (" .. SOVA .. ": 2 uses)"),
+		reloadTime = BOW_NA,
+		equipTime = p(0.8, "estimate", "Ours, as the Recon Bolt's bow (" .. RECON .. ": equip 0.8 s); nothing public found gives its own"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None from the bow: its bolt's burst does the damage (ShockSim)"),
+		penetration = "none",
+		suppressed = false,
+		ability = "shockbolt",
+		accuracy = bowExact,
+		recoil = BOW_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -1969,7 +1996,8 @@ WeaponConfig.Defs = {
 -- the Healing Orb (system 36), the Slow Orb (system 37), the Barrier Orb
 -- (system 38), the Resurrection (system 39), Dark Cover (system 40),
 -- Paranoia (system 41), Shrouded Step (system 42), From the Shadows
--- (system 43) and the Recon Bolt's bow (system 44) last.
+-- (system 43), the Recon Bolt's bow (system 44) and the Shock Bolt's
+-- (system 45) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -2006,6 +2034,7 @@ WeaponConfig.Ids = {
 	"stepmark",
 	"shadowmap",
 	"bow",
+	"shockbow",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

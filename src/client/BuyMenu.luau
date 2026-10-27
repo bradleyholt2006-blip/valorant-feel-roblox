@@ -283,6 +283,11 @@ local function abilityLines(def: AbilityConfig.AbilityDef): { string }
 		table.insert(lines, row("Burn", string.format("%s a second", num(BZ.burn.value))))
 		local healTime = IF.heal.value * IF.blazeEvery.value
 		table.insert(lines, row("Heals you", string.format("%s over %s s, Inner Fire", num(IF.heal.value), num(healTime))))
+	elseif def.id == "shockbolt" then
+		local SB = AbilityConfig.ShockBolt
+		local reach =
+			string.format("%s within %s m, %s at %s m", num(SB.damage.value), num(SB.inner.value), num(SB.least.value), num(SB.outer.value))
+		table.insert(lines, row("Burst", reach))
 	end
 	local recharge = def.recharge
 	if recharge and recharge.kind == "kills" then

@@ -228,7 +228,8 @@ local SHAPES: { [string]: Shape } = {
 	},
 	-- The Recon Bolt's bow (system 44): a short bow stood upright, its
 	-- limbs bending back from the grip, its string straight between their
-	-- tips, and a bolt of light nocked beside the grip.
+	-- tips, and a bolt of light nocked beside the grip. The Shock Bolt's
+	-- (system 45) is the same bow, its bolt another colour.
 	bow = {
 		muzzle = vector.create(-0.025, 0.03, -0.52),
 		pieces = {
@@ -281,6 +282,7 @@ local SHAPE_OF: { [string]: string } = {
 	stepmark = "stepmark",
 	shadowmap = "shadowmap",
 	bow = "bow",
+	shockbow = "bow",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -319,6 +321,7 @@ local ACCENT: { [string]: Color3 } = {
 	stepmark = Color3.fromRGB(84, 52, 128),
 	shadowmap = Color3.fromRGB(150, 110, 230),
 	bow = Color3.fromRGB(110, 200, 255),
+	shockbow = Color3.fromRGB(235, 235, 120),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

@@ -3,7 +3,9 @@
 -- the air and stuck, their pulses, and the enemies they reveal.
 --   * your bow in hand shows its draw under the crosshair, a bar for each
 --     third of a second it's been drawn, three at most, and under them its
---     bounces, a pip lit for each added; the draw starting creaks
+--     bounces, a pip lit for each added; the draw starting creaks. The
+--     Shock Bolt's bow (system 45) shows its draw the same way; ShockView
+--     draws its bolts
 --   * your own bolts fly here at once, as you loose them (PlayerController's
 --     castListeners), through BoltSim as the server flies them, and stick
 --     where the server's will. When the server says where one goes (the
@@ -210,7 +212,7 @@ local function play(kind: string, at: vector, own: boolean, entity: number, foll
 end
 
 local function onOwnCast(cast: AbilitySim.Cast)
-	if cast.kind ~= "bolt" then
+	if cast.kind ~= "bolt" or cast.ability ~= "reconbolt" then
 		return
 	end
 	local entity = PlayerController.entityId
@@ -517,7 +519,7 @@ local function frame(s: Shown, age: number): boolean
 	return true
 end
 
--- Whether your bow's in hand, and the kit's time.
+-- Whether your bow's in hand, with either bolt, and the kit's time.
 local function bowInHand(): (boolean, number)
 	local s = PlayerController.sim
 	if not s or not PlayerController.alive then
@@ -526,7 +528,7 @@ local function bowInHand(): (boolean, number)
 	local kit = s.abilities
 	local def = if kit.holding ~= 0 then AbilitySim.def(kit, kit.holding) else nil
 	local w = s.weapons
-	return def ~= nil and def.id == "reconbolt" and w.equipped == WeaponSim.ULT and w.loadout[WeaponSim.ULT] ~= "", s.movement.tick * DT
+	return def ~= nil and AbilitySim.bowed(def.id) and w.equipped == WeaponSim.ULT and w.loadout[WeaponSim.ULT] ~= "", s.movement.tick * DT
 end
 
 function ReconView.start()

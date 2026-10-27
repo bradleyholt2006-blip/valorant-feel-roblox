@@ -186,10 +186,7 @@ do
 			and AbilityConfig.AgentIds[5] == "sova"
 			and AbilityConfig.AgentIndex.sova == 5
 	)
-	check(
-		"only his Recon Bolt plays yet",
-		not AbilitySim.playable("owldrone") and not AbilitySim.playable("shockbolt") and not AbilitySim.playable("huntersfury")
-	)
+	check("his Owl Drone and Hunter's Fury don't play yet", not AbilitySim.playable("owldrone") and not AbilitySim.playable("huntersfury"))
 	local owl, shock, fury = AbilityConfig.Defs.owldrone, AbilityConfig.Defs.shockbolt, AbilityConfig.Defs.huntersfury
 	check(
 		"the rest of his kit as Patch 3.0 has it: the Owl Drone 400, the Shock Bolt 150, Hunter's Fury 8 points",
@@ -200,7 +197,6 @@ do
 			and fury.points ~= nil
 			and fury.points.value == 8
 			and owl.weapon == nil
-			and shock.weapon == nil
 			and fury.weapon == nil
 	)
 	check(

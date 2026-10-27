@@ -96,7 +96,10 @@
 -- and then none again, and fire let go looses it (bow, a "bolt" cast with
 -- its bars and bounces), spending its charge and putting it away. E while
 -- it's drawn lets the draw go, the bow staying in hand, and nothing's
--- drawn again until fire's let go. BoltSim flies it.
+-- drawn again until fire's let go. BoltSim flies it. His Shock Bolt (Q,
+-- system 45) puts the same bow in hand with a shock bolt, drawn, given
+-- bounces and loosed the same way (a "bolt" cast too), and it bursts where
+-- it lands (ShockSim).
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -188,10 +191,10 @@ export type State = {
 	shadowAt: number,
 	shadowFrom: vector,
 	shadowTo: vector,
-	-- The Recon Bolt's bow in hand (system 44): when its draw started, 0
-	-- with none; whether a draw was let go with fire still held, so nothing
-	-- is drawn until it's let go; whether alt fire was held last tick; and
-	-- the bounces it adds.
+	-- Sova's bow in hand (the Recon Bolt's, system 44, or the Shock Bolt's,
+	-- system 45): when its draw started, 0 with none; whether a draw was
+	-- let go with fire still held, so nothing is drawn until it's let go;
+	-- whether alt fire was held last tick; and the bounces it adds.
 	drawFrom: number,
 	letDown: boolean,
 	altDown: boolean,
@@ -210,7 +213,7 @@ export type State = {
 -- (Paranoia's orb sent), "step" (Shrouded Step fired), "vanish" (gone as
 -- its windup ends), "arrive" (there), "shadows" (From the Shadows fired),
 -- "shade" (a Shade as its windup ends), "form" (there for good), "home"
--- (sent back) or "bolt" (the Recon Bolt loosed), where the player's feet
+-- (sent back) or "bolt" (a bolt of Sova's loosed), where the player's feet
 -- and eye were (for "home", where they are back), and the way it goes (the
 -- dash's way, up for a lift, the way they faced for a readied gust and for
 -- Run it Back's, the way they looked for the rest). A flare's says which
@@ -277,15 +280,22 @@ local PLAYABLE: { [string]: boolean } = {
 	shroudedstep = true,
 	fromtheshadows = true,
 	reconbolt = true,
+	shockbolt = true,
 }
 
 function AbilitySim.playable(id: string): boolean
 	return PLAYABLE[id] == true
 end
 
+-- Whether an ability is a bolt loosed from Sova's bow: the Recon Bolt
+-- (system 44) or the Shock Bolt (system 45).
+function AbilitySim.bowed(id: string): boolean
+	return id == "reconbolt" or id == "shockbolt"
+end
+
 -- Whether an ability is one its key puts in hand, to be thrown or tried
 -- from there (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
--- Healing Orb, the Slow Orb, the Barrier Orb, the Recon Bolt's bow): a
+-- Healing Orb, the Slow Orb, the Barrier Orb, Sova's bow): a
 -- weapon of its own, outside the ultimate, but for the Resurrection's orb
 -- (system 39) and From the Shadows' map (system 43).
 local function held(def: AbilityConfig.AbilityDef?): boolean
@@ -594,10 +604,10 @@ end
 -- with an ability in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the
 -- Resurrection's orb, Dark Cover's orb, Paranoia's orb, Shrouded Step's
--- mark, From the Shadows' map, the Recon Bolt's bow), "mark 15.0" with
--- Dark Cover's orb in hand, how far its mark is (metres), "draw 2" while
--- the Recon Bolt's drawn, the bars it's filled, and "bounce 1" with
--- bounces added to it, "bend" while a wall is being bent (Blaze), "turn"
+-- mark, From the Shadows' map, Sova's bow), "mark 15.0" with Dark
+-- Cover's orb in hand, how far its mark is (metres), "draw 2" while a bolt
+-- of Sova's is drawn, the bars it's filled, and "bounce 1" with bounces
+-- added to it, "bend" while a wall is being bent (Blaze), "turn"
 -- while the Barrier Orb's targeter is turned from across the view,
 -- "revived" while a life the Resurrection brought back is held, and
 -- "glide" while `gliding` (the movement's, for Drift).
@@ -633,7 +643,7 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 		if def and def.id == "darkcover" then
 			table.insert(parts, string.format("mark %.1f", s.reach))
 		end
-		if def and def.id == "reconbolt" then
+		if def and AbilitySim.bowed(def.id) then
 			if s.drawFrom > 0 then
 				table.insert(parts, string.format("draw %d", AbilitySim.bars(s, t)))
 			end
@@ -1062,8 +1072,8 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 	return cast
 end
 
--- Sova's bow in hand (system 44), a tick: `ready` once it's drawn, after
--- the weapons' step. Alt fire pressed adds a bounce, and past the most
+-- Sova's bow in hand (systems 44 and 45), a tick: `ready` once it's drawn,
+-- after the weapons' step. Alt fire pressed adds a bounce, and past the most
 -- takes them all off again. Fire held, once the bow's ready, draws the
 -- bolt from this tick, unless a draw was let go with it held (step), and
 -- then nothing's drawn until it's let go. Fire let go with the bolt drawn
@@ -1089,12 +1099,13 @@ function AbilitySim.bow(s: State, t: number, buttons: number, ready: boolean, ti
 		return nil
 	end
 	local bars = AbilitySim.bars(s, t)
+	local def = AbilitySim.def(s, slot)
 	s.drawFrom = 0
 	s.charges[slot] -= 1
 	s.holding = 0
 	local cast: Cast = {
 		slot = slot,
-		ability = "reconbolt",
+		ability = if def then def.id else "reconbolt",
 		kind = "bolt",
 		tick = tick,
 		time = t,
@@ -1108,8 +1119,8 @@ function AbilitySim.bow(s: State, t: number, buttons: number, ready: boolean, ti
 	return cast
 end
 
--- The bars the Recon Bolt's draw has filled at `t`: one each third of a
--- second, three at the most, and none with nothing drawn.
+-- The bars a bolt's draw has filled at `t`: one each third of a second,
+-- three at the most, and none with nothing drawn.
 function AbilitySim.bars(s: State, t: number): number
 	if s.drawFrom == 0 then
 		return 0
@@ -1315,12 +1326,12 @@ function AbilitySim.step(
 					direction = aim,
 					reach = s.reach,
 				})
-			elseif held(def) and s.holding == slot and id == "reconbolt" and s.drawFrom > 0 then
-				-- The Recon Bolt's key again while it's drawn lets the draw go,
-				-- the bow staying in hand, and fire let go then looses nothing
-				-- (the VALORANT Wiki: recasting while charging resets it, to
-				-- 'allow him to safely release his Fire key without firing the
-				-- arrow').
+			elseif held(def) and s.holding == slot and AbilitySim.bowed(id) and s.drawFrom > 0 then
+				-- A bolt's key again while it's drawn lets the draw go, the bow
+				-- staying in hand, and fire let go then looses nothing (the
+				-- VALORANT Wiki, of the Recon Bolt: recasting while charging
+				-- resets it, to 'allow him to safely release his Fire key
+				-- without firing the arrow').
 				s.drawFrom = 0
 				s.letDown = true
 			elseif held(def) and s.holding == slot then
@@ -1333,8 +1344,8 @@ function AbilitySim.step(
 				-- someone back).
 				s.holding = slot
 				s.steering, s.steerUntil = 0, 0
-				-- Nothing drawn or added yet (the Recon Bolt's bow), and alt
-				-- fire held as it comes isn't a press.
+				-- Nothing drawn or added yet (Sova's bow), and alt fire held as
+				-- it comes isn't a press.
 				s.drawFrom, s.letDown, s.bounces = 0, false, 0
 				s.altDown = MovementSim.has(buttons, B.AltFire)
 				local aim = Accuracy.aim(input.yaw, input.pitch)

@@ -33,8 +33,9 @@
 --
 -- The spike's blast kills outright, with nobody to credit (kill), Team
 -- Deathmatch's spawn rooms burn whoever they shouldn't have in them (hurt),
--- and Hot Hands' fire whoever stands in it, credited to its thrower (burn,
--- system 31).
+-- Hot Hands' fire whoever stands in it, credited to its thrower (burn,
+-- system 31), and Sova's Shock Bolt whoever its burst reaches, credited to
+-- him (blast, system 45).
 --
 -- Each damage event says whether the bullets went through a wall first, for
 -- the kill feed (system 16), and every hit that took something is told to
@@ -111,7 +112,8 @@ CombatServer.spares = nil :: ((Entities.Entity, Entities.Entity?, string, string
 -- Whether a hit leaves an entity unhurt, taken in its place (Omen's Shade,
 -- system 43, ShadowServer), called with it, who hit it, and for a shot or a
 -- swing whether it was a Shade where the attacker's screen showed it (nil
--- for what isn't aimed: a fire's burn). Nothing's told of a hit it takes.
+-- for what isn't aimed: a fire's burn, a bolt's burst). Nothing's told of a
+-- hit it takes.
 CombatServer.absorbs = nil :: ((Entities.Entity, Entities.Entity?, boolean?) -> boolean)?
 -- The level shots and swings are traced through, as the attacker's screen
 -- showed it at `viewTime`: with Sage's walls standing then in it
@@ -215,6 +217,16 @@ end
 -- and the kit's points. Fire doesn't slow: the reference's tagging is its
 -- bullets' ("Bullet tagging", Patch 3.0).
 function CombatServer.burn(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string)
+	if victim.health.alive then
+		damage(attacker, victim, amount, "body", weapon, nil, nil, true)
+	end
+end
+
+-- Hurts an entity by `amount` in a burst, through its shield as any hit,
+-- as `weapon` (Sova's Shock Bolt, system 45), credited to `attacker` for
+-- the kill feed and the kit's points. A burst doesn't slow, as fire
+-- doesn't.
+function CombatServer.blast(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string)
 	if victim.health.alive then
 		damage(attacker, victim, amount, "body", weapon, nil, nil, true)
 	end

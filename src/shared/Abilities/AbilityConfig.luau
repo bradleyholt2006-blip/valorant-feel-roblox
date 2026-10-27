@@ -22,7 +22,7 @@
 -- Resurrection (system 39). Omen is the fourth (system 40), with his Dark
 -- Cover, his Paranoia (system 41), his Shrouded Step (system 42) and his
 -- From the Shadows (system 43). Sova is the fifth (system 44), with his
--- Recon Bolt.
+-- Recon Bolt and his Shock Bolt (system 45).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -206,6 +206,8 @@ local SHADOWS = "VALORANT Wiki, From the Shadows"
 local SOVA = "VALORANT Wiki, Sova"
 local RECON = "VALORANT Wiki, Recon Bolt"
 local SOVA_PAGE = "playvalorant.com's page for Sova"
+local DRIVEN = "esportsdriven.com's Sova guide"
+local SOVA_TRACKER = "valoranttracker.org, Sova"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -379,7 +381,7 @@ AbilityConfig.Defs = {
 		description = "X brings up the map. Fire on a place in it sends you there as a Shade, which an enemy's shot or X again sends back before you form.",
 	},
 	-- Sova's (system 44): his kit as the VALORANT Wiki lists it. His Recon
-	-- Bolt can be played.
+	-- Bolt and his Shock Bolt (system 45) can be played.
 	owldrone = {
 		id = "owldrone",
 		name = "Owl Drone",
@@ -396,7 +398,8 @@ AbilityConfig.Defs = {
 		kind = "basic",
 		cost = p(150, "confirmed", P300 .. ": Shock Dart 'Cost increased 100 >>> 150' (" .. SOVA .. ": 150 still)"),
 		charges = p(2, "community", SOVA .. ": Shock Bolt, 2 uses"),
-		description = "Q readies the bow with a shock bolt. Hold fire to draw it further and alt fire to add bounces; it bursts where it lands.",
+		weapon = "shockbow",
+		description = "Q readies the bow with a shock bolt. Hold fire to draw it further and alt fire to add bounces; it bursts where it lands, hurting those near it.",
 	},
 	reconbolt = {
 		id = "reconbolt",
@@ -1128,13 +1131,40 @@ AbilityConfig.ReconBolt = {
 	width = p(0.2, "estimate", "Ours: wider than the shaft, so it can be hit"),
 }
 
+-- Sova's Shock Bolt (system 45), a basic ability: Q puts his bow in hand
+-- with a shock bolt (WeaponConfig's shockbow, in the fifth slot), drawn,
+-- given bounces and loosed as the Recon Bolt is (AbilitySim.bow), and it
+-- flies as the Recon Bolt does, the wiki having the two in the same
+-- projectile classes (BoltSim). Where it would stick it bursts: everyone
+-- it has in sight within its outer radius, from just off the surface it
+-- met, takes its damage, the most within its inner radius and less further
+-- out, in a straight line to the least at the outer (ShockSim). Its owner
+-- and his side take it as his enemies do, and it doesn't slow. Riot gives
+-- the most it does and its cost; the wiki and the guides the rest they
+-- give (45-shock-bolt.md, section 2).
+AbilityConfig.ShockBolt = {
+	-- From the loose until the gun's back in hand.
+	unequip = p(0.7, "estimate", "Ours, as the Recon Bolt's bow (" .. RECON .. ": unequip 0.7 s); nothing public found gives its own"),
+	-- The most it does, within its inner radius, and the least, at its
+	-- outer (metres); none past it.
+	damage = p(75, "confirmed", P408 .. ": Shock Dart 'Max Damage decreased 90 >>> 75'"),
+	least = p(1, "community", SOVA .. ": Shock Bolt's damage 1-75, the least at its outer radius and the most at its inner"),
+	inner = p(1, "estimate", "Ours, metres: the wiki's damage runs out from an inner radius, with no number we could read"),
+	outer = p(5, "community", DRIVEN .. ": 'it deals damage within a radius of 5 meters'; " .. SOVA_TRACKER .. ": 'Radius | 5m'"),
+	-- Where it bursts from, off the surface it met, metres.
+	lift = p(0.1, "estimate", "Ours, as the Recon Bolt's: so the surface it met isn't in the way"),
+	-- What its owner and his side take of it, as shares of an enemy's.
+	selfShare = p(1, "estimate", "Ours: all of it; nothing public we could read says less"),
+	allyShare = p(1, "estimate", "Ours: all of it; nothing public we could read says less"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
 -- for the Barrier Orb, after its wall's raised, for the Resurrection,
 -- after it's cast, for Shrouded Step, after it's fired: its windup, his
 -- time gone and the draw, and for From the Shadows, after it's fired: its
 -- windup and his time as a Shade, when the gun's drawn again, and for the
--- Recon Bolt, after it's loosed).
+-- Recon Bolt and the Shock Bolt, after it's loosed).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -1160,6 +1190,8 @@ function AbilityConfig.unequip(id: string): number
 		return FS.windup.value + FS.shade.value
 	elseif id == "reconbolt" then
 		return AbilityConfig.ReconBolt.unequip.value
+	elseif id == "shockbolt" then
+		return AbilityConfig.ShockBolt.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end
