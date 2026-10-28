@@ -50,6 +50,7 @@ local MinimapView = require(script.MinimapView)
 local PingView = require(script.PingView)
 local ReportView = require(script.ReportView)
 local IndicatorView = require(script.IndicatorView)
+local KillBannerView = require(script.KillBannerView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
@@ -163,6 +164,9 @@ ReportView.start()
 -- the way each hit came from, a yellow chevron the side a fire or a wall
 -- of fire is near you, and a red diamond once one reaches you.
 IndicatorView.start()
+-- The kill banner (system 55): each kill of yours, low in the middle with
+-- the kill sound, counted through the round or the life.
+KillBannerView.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

@@ -132,7 +132,8 @@
 -- Skirmish and the spike rounds once one's under way (ReportServer.byRound):
 -- everyone's starts over as a round starts, and goes to them as it ends.
 -- Anywhere else, and while a match waits for an opponent, it goes by the
--- life.
+-- life. So does the kill banner's count of each player's kills (system 55,
+-- BannerServer).
 --
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
@@ -194,6 +195,7 @@ local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
 local OrbServer = require(script.Parent.OrbServer)
 local ReportServer = require(script.Parent.ReportServer)
+local BannerServer = require(script.Parent.BannerServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -759,11 +761,11 @@ end
 -- fire (systems 31 and 32), ice (system 37), walls of ice (system 38),
 -- recon bolts (system 44) and shock bolts in the air (system 45), every
 -- heal over (system 36), every Owl Drone's flight and its darts' pings
--- (system 47), everyone's combat report (system 53), and in the spike
--- rounds a new spike in front of the attackers, the map's Ultimate Orbs
--- all up (system 49), each kit's round (system 17) with its ultimate's
--- points (system 50) and, at the start of each half, everyone back on the
--- starting kit.
+-- (system 47), everyone's combat report (system 53) and count of kills
+-- for the kill banner (system 55), and in the spike rounds a new spike in
+-- front of the attackers, the map's Ultimate Orbs all up (system 49), each
+-- kit's round (system 17) with its ultimate's points (system 50) and, at
+-- the start of each half, everyone back on the starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -774,6 +776,7 @@ local function roundStarted()
 	end
 	seenMatch, seenRound = matchNumber, round
 	ReportServer.roundStarted(round)
+	BannerServer.roundStarted()
 	GroundGunsServer.clear()
 	FireServer.clear()
 	BlazeServer.clear()
@@ -912,6 +915,7 @@ local function stop()
 	PickupsServer.stop()
 	OrbServer.stop()
 	ReportServer.reset()
+	BannerServer.reset()
 	GroundGunsServer.dropOnDeath = false
 	GroundGunsServer.drops = true
 	GroundGunsServer.clear()
@@ -969,6 +973,7 @@ local function begin(wanted: Mode, format: string)
 	seenMatch, seenRound = 0, 0
 	endedMatch, endedRound = 0, 0
 	ReportServer.reset()
+	BannerServer.reset()
 	GroundGunsServer.clear()
 	FireServer.clear()
 	BlazeServer.clear()
@@ -1533,12 +1538,15 @@ function Arena.start()
 		return false
 	end
 	-- The combat report goes by the round in Skirmish and the spike rounds,
-	-- once one's under way (system 53).
-	ReportServer.byRound = function(): boolean
+	-- once one's under way (system 53), and so does the kill banner's count
+	-- (system 55).
+	local function byRound(): boolean
 		local s, m = skirmish, match
 		local phase: string? = if s then s.phase elseif m then m.phase else nil
 		return phase ~= nil and phase ~= "waiting"
 	end
+	ReportServer.byRound = byRound
+	BannerServer.byRound = byRound
 	table.insert(ReviveServer.reviveListeners, function(owner)
 		local player = owner.player
 		local s, m = skirmish, match

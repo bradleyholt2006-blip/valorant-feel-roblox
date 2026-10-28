@@ -143,7 +143,8 @@ function SoundMath.dryHeard(pressed: boolean, fired: boolean, ammo: number, read
 	return pressed and not fired and ammo == 0 and ready
 end
 
--- The kill sound's playback speed for the nth kill of a life.
+-- The kill sound's playback speed for the nth kill the kill banner counts
+-- (system 55).
 function SoundMath.killPitch(kills: number): number
 	return 1 + SoundConfig.KillPitchStep.value * (math.clamp(kills, 1, 5) - 1)
 end
