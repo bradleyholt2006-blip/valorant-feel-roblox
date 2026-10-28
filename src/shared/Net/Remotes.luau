@@ -32,6 +32,7 @@ local definitions: { [string]: string } = {
 	LoadoutPick = "RemoteEvent", -- client -> server, a loadout picked for a stage of Team Deathmatch (system 27)
 	AgentPick = "RemoteEvent", -- client -> server, an agent selected or locked in (system 29)
 	Sight = "RemoteEvent", -- server -> each player, who their side sees, for the minimap (system 34)
+	Ping = "RemoteEvent", -- both ways: a ping asked for, and each for a side to see (system 52)
 }
 
 export type Remotes = {
@@ -55,6 +56,7 @@ export type Remotes = {
 	LoadoutPick: RemoteEvent,
 	AgentPick: RemoteEvent,
 	Sight: RemoteEvent,
+	Ping: RemoteEvent,
 }
 
 local cached: Remotes? = nil

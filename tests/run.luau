@@ -60,5 +60,6 @@ require("./oneofeach")
 require("./ultorbs")
 require("./ultpoints")
 require("./glance")
+require("./pings")
 
 H.finish()

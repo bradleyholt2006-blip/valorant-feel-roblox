@@ -394,6 +394,15 @@ Built one system at a time:
     gold diamond under anyone's whose ultimate is ready, an enemy's too. The scoreboard has each
     player's agent in a box before their name and their ultimate under ULT, how far along it is
     (`3/8`) or READY, for both sides - [research and design](docs/research/51-at-a-glance.md)
+52. **Pings**: tap Z to ping what the crosshair's on for your side: an enemy in sight, the spike, a
+    gun on the ground, or the place itself, which a smoke or a cloud stops at its edge. Hold Z for a
+    wheel of four calls, Danger, Watching, Pushing and Need support, and move the mouse towards one,
+    then let go to ping it, or right click to put it away. With the big map up (Caps Lock) the mouse
+    moves a cursor across it, and a left click pings that place on the maps alone, dead or alive.
+    Each ping is a marker with its word and how far away it is, faded under the crosshair and gone
+    after 4 s, and a mark on the minimap and the big map, with a beep, or a ding for the map's; four
+    come in quick succession, then one more each 1.5 s -
+    [research and design](docs/research/52-pings.md)
 
 ## Running it
 
@@ -427,7 +436,10 @@ Team Deathmatch B is the loadout menu, before the match or in your spawn room), 
 held the scoreboard (the arena and the spike rounds), mouse 1 and 2, while you're down in either,
 the next or the last teammate to watch,
 a click on a map card, during the vote after a match, your vote for the next map,
-M the Play menu (a click picks a mode's card, and PLAY plays it), Caps Lock held the big map,
+M the Play menu (a click picks a mode's card, and PLAY plays it), Caps Lock held the big map
+(mouse 1 pings the place under its cursor), Z a ping for your side on what your crosshair's on
+(held, the ping wheel: move the mouse towards a call and let go to ping it, or mouse 2 to put it
+away),
 T agent select (a click selects an agent's card, and LOCK IN locks it in),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
@@ -482,16 +494,18 @@ draws that slot (5 is Blade Storm's knives), `VFTestSettingsMenu` set to true or
 closes the settings menu, `VFTestSetting` set to `key=value` (`sensitivity=0.8`, `scoped=0.5`,
 `dpi=1600`, `crosshair=0;P;c;5` or `mapRotate=0`) enters that setting as its box or button in the
 menu would, `VFTestMap` set to true or false opens or closes the big map as holding Caps Lock does,
-`VFTestMapPoint` set to a place, in metres, puts From the Shadows' cursor on the map nearest it,
-`VFTestTake` set to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as
-Tab does or lets it go, `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would,
-`VFTestPlayMenu` set to true or false opens or closes the Play menu, `VFTestPlay` set to a mode's
-key (`skirmish`, `gungame`, `deathmatch`, `teamdeathmatch`, `standard`, `competitive` or
-`swiftplay`) presses PLAY for it, `VFTestLoadouts` set to true or false opens or closes Team
-Deathmatch's loadout menu, `VFTestPick` set to `2,3` picks the second stage's third loadout as a
-click would, `VFTestAgents` set to true or false opens or closes agent select as T does, and
-`VFTestAgent` set to an agent's id (`jett`) selects it as a click on its card would, or set to
-`lock` locks in. Each of the last sixteen clears itself.
+`VFTestMapPoint` set to a place, in metres, puts From the Shadows' cursor, or the big map's to ping
+with, on the map nearest it, `VFTestPing` set to `tap`, a call's id (`danger`, `watching`, `pushing`
+or `help`), `wheel`, `shut` or `map` pings as Z tapped, Z let go on that call, Z held, mouse 2 on
+the wheel or mouse 1 on the big map would, `VFTestTake` set to true presses F, `VFTestBoard` set to
+true or false holds the scoreboard open as Tab does or lets it go, `VFTestVote` set to 1, 2 or 3
+votes for that map card as a click would, `VFTestPlayMenu` set to true or false opens or closes the
+Play menu, `VFTestPlay` set to a mode's key (`skirmish`, `gungame`, `deathmatch`, `teamdeathmatch`,
+`standard`, `competitive` or `swiftplay`) presses PLAY for it, `VFTestLoadouts` set to true or false
+opens or closes Team Deathmatch's loadout menu, `VFTestPick` set to `2,3` picks the second stage's
+third loadout as a click would, `VFTestAgents` set to true or false opens or closes agent select as
+T does, and `VFTestAgent` set to an agent's id (`jett`) selects it as a click on its card would, or
+set to `lock` locks in. Each of the last seventeen clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
 From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame`, `spike`, `deathmatch` or
 `teamdeathmatch`), `VFMatchFormat` (`standard`, `competitive` or `swiftplay`) and `VFArenaOn`
@@ -633,9 +647,11 @@ in it, its ids, and the wire), one of each agent on a side (what's taken, a sele
 the time running out, the other side, a key for each side, back in a match, fewer agents than
 places, and halftime), the spike rounds' Ultimate Orbs (where they stand, which are up, whose feet
 reach one, the taking, a defuse first, and the wire), the ultimate's points across a match (each
-round's kind, a match's, a half's and an overtime round's start, and a death's point paid) and each
+round's kind, a match's, a half's and an overtime round's start, and a death's point paid), each
 player's agent and ultimate at a glance (the ultimate as everyone reads it, a kit charging, each
-agent's letters, a health bar, and the top bar's tiles) are pure Luau and run outside Roblox:
+agent's letters, a health bar, and the top bar's tiles) and pings (what a ping along the crosshair
+marks: places, the sky and its reach, smokes, enemies in sight, guns and the spike; the wheel's
+calls and its pick, the look, the limit, and how a ping shows) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

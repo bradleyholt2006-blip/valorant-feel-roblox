@@ -47,6 +47,7 @@ local ShockView = require(script.ShockView)
 local FuryView = require(script.FuryView)
 local DroneView = require(script.DroneView)
 local MinimapView = require(script.MinimapView)
+local PingView = require(script.PingView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
@@ -149,6 +150,10 @@ DroneView.start()
 -- is held: the map, your side and the enemies it sees, the spike, what's
 -- been thrown, and the sounds you make.
 MinimapView.start()
+-- Pings (system 52): Z at what the crosshair's on, Z held for the wheel,
+-- and a click on the big map, for your side to see in the world and on the
+-- maps.
+PingView.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

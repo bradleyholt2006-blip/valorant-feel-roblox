@@ -669,6 +669,16 @@ SoundConfig.Sounds = {
 	droneBreak = sound(0.6, 0.04, 3, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 2.6),
+	-- Pings (system 52): one along the crosshair, the spike's beep sped up
+	-- to a blip; one on the map, the kill's bell sped right up, a sound of
+	-- its own ('new ping visuals and new ping sound for pings made on the
+	-- map', Patch 9.11).
+	ping = sound(0.6, 0, 3, {
+		asset(9119142417, "Single Tone Single High Pitch Beep Tones 1 (SFX)", 0.271),
+	}, 1.35),
+	mapPing = sound(0.6, 0, 3, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 1.6),
 }
 
 -- What each kind of cast sounds like (AbilitySim.Cast's kind, a thrown
@@ -789,6 +799,13 @@ SoundConfig.Spike = {
 SoundConfig.Orbs = {
 	grab = "orbGrab",
 	taken = "orbTaken",
+}
+
+-- Pings' sounds (system 52), for the side they're for, on the UI bus: one
+-- along the crosshair, and one on the map.
+SoundConfig.Pings = {
+	ping = "ping",
+	map = "mapPing",
 }
 
 -- Jett's glide (Drift, system 20). The reference's has a sound of its own,

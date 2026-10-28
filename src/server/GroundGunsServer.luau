@@ -253,6 +253,11 @@ function GroundGunsServer.has(id: number): boolean
 	return state.guns[id] ~= nil
 end
 
+-- The guns on the ground, by id, to ping (system 52, PingServer).
+function GroundGunsServer.guns(): { [number]: GroundGuns.Gun }
+	return state.guns
+end
+
 -- Takes the gun `id` off the ground, if it's there: a spawner's, its stage
 -- over or what's played changed.
 function GroundGunsServer.remove(id: number)

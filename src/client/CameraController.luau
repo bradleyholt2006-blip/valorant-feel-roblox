@@ -35,9 +35,10 @@ CameraController.zoom = 1
 -- While set (the buy menu or the settings menu is open), the mouse moves a
 -- cursor instead of the view.
 CameraController.cursorFree = false
--- While set (Omen's From the Shadows' map is up, system 43, ShadowView),
--- the mouse moves its cursor across the map instead of the view: called
--- with each frame's movement, in counts, as the view would turn by.
+-- While set (Omen's From the Shadows' map is up, system 43, ShadowView; the
+-- ping wheel is, or the big map's up to ping on, system 52, PingView), the
+-- mouse moves its cursor or pick instead of the view: called with each
+-- frame's movement, in counts, as the view would turn by.
 CameraController.mapCursor = nil :: ((Vector2) -> ())?
 -- How fast the view turns, as a share of its usual: less while a blast of
 -- Sova's Hunter's Fury charges (system 46, FuryView).

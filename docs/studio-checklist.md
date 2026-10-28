@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-one
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-two
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -34,7 +34,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
-   three, and section 55 three.
+   three, section 55 three, and section 56 one and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -44,7 +44,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | F6 | Record movement to a CSV in the Output window |
 | G | Drops the gun or the spike in hand (not in gun game or either deathmatch, but for a Team Deathmatch spawner's gun, which it destroys); with the knife in hand and the HUD on, the ghost box where the server has you |
 | F | Picks up the gun on the ground you're looking at, swapping it for yours |
-| Z | Zero the mouse counter (while the Counter-Strafe Lab is open) |
+| Z | A ping for your side on what the crosshair's on; held, the ping wheel (section 56). While the Counter-Strafe Lab is open, it zeroes the mouse counter too |
 | [ / ] | Footstep radius down and up 2 m, this client only (while the Sound Lab is open) |
 | Y | Practice dummies' footsteps on and off (while the Sound Lab is open; off at the start) |
 | H | The Sound Lab's rings on the floor on and off |
@@ -63,7 +63,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | 4 | The spike, while you carry it; held, it plants in a site or defuses the planted spike |
 | B | The buy menu: every gun and shield (on the course at any time; in the arena during the buy phase or while waiting; never in gun game; in deathmatch any time, guns alone; in Team Deathmatch the loadout menu instead, before the match or in your spawn room) |
 | O | The settings menu: your sensitivity, crosshair and the minimap's settings |
-| Caps Lock | Held: the big map, in a match (the minimap at the top left is only in a match) |
+| Caps Lock | Held: the big map, in a match (the minimap at the top left is only in a match); the left button pings the place under its cursor |
 | T | Agent select: a card for each agent, its kit, your side's picks and LOCK IN (on the course and while waiting any time, and in a match, where it counts down your window; not in gun game, either deathmatch or between matches) |
 | 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game or Team Deathmatch; in deathmatch any time) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
@@ -3862,6 +3862,142 @@ then to `lock`), and let window 3's 10 s run out, on Jett.
   `VFTestBoard` to true: no row has a box before its name, there's no `ULT` column, and
   `VFScoreboard` has no `Ult`. Set `VFTestBoard` to false.
 
+## 56. Pings
+
+From [52-pings.md](research/52-pings.md). One player on the course, then three in Skirmish.
+PlayerGui's `VFPings` carries `Shown`, the markers on the screen in the order they came, each as its
+word and how far away it is in whole metres (`HERE 3m, ENEMY 10m`); `Left`, the pings you have left,
+whole; `Wheel`, empty while the wheel's shut, `open` while it's up, or the call picked; and
+`Cursor`, where the big map's cursor is while it's up to ping on, in metres. The wheel is the
+`VFPingWheel` ScreenGui. `VFMinimap` carries `Pings`, the pings on the minimap by what they mark
+(`place`, `enemy`, `spike`, `gun`, a call's id, or `map` for one made on the map), and their icons
+are `Ping_` and a number. Without Z or the mouse, a string attribute `VFTestPing` set to `tap` pings
+as tapping Z does; to `danger`, `watching`, `pushing` or `help` as letting Z go with that call
+picked does; to `wheel` opens the wheel as holding Z does; to `shut` puts it away as the right
+button does; and to `map` pings as the left button does on the big map, where its cursor is. It
+clears itself; set from the server's command bar, clear it there too before setting it again.
+`VFTestMap` holds the big map up as Caps Lock does, and `VFTestMapPoint`, a Vector3 in metres, puts
+its cursor nearest that place (section 47). `VFTestYaw` and `VFTestPitch` aim, in degrees: positive
+yaw turns left, and positive pitch looks up. `VFTestAimEntity` aims at an entity, and wins over them
+until it's cleared. A ping shows for 4 s, fading over its last half second, and you have four, each
+back 1.5 s after it's spent.
+
+Press Play (F5), with one player, as Jett (her card in agent select, T, if you've picked another).
+Open the Sound Lab (F2 four times), and keep it open to PI7. Start at the spawn facing down the
+target lane (`VFTestYaw` 0), with the Vandal in hand. Dummy 1, the static dummy on the 10 m stripe,
+is 4294901761.
+
+- **PI1 A place.** Look down at the floor (`VFTestPitch` -30) and tap Z (or set `VFTestPing` to
+  `tap`): a short, high beep, logged as `ping`, `yours`, and on the floor about 3 m ahead, under the
+  crosshair, a small pale yellow diamond with a dark edge, `HERE` over it in pale yellow and `3m`
+  under it in white, all of it faint, about 70% see-through. `Shown` reads `HERE 3m`, and `Left` 3,
+  back to 4 1.5 s later. Look up a little (`VFTestPitch` -20): the marker's under the crosshair no
+  longer, and it's solid. 3.5 s after the beep it starts to fade, and by 4 s it's gone, `Shown`
+  empty. **Send:** a screenshot of the marker, solid.
+- **PI2 The sky, and Dummy 1.** Look up (`VFTestPitch` 30) and tap Z: nothing's marked or heard, but
+  `Left` drops by one all the same. Aim at Dummy 1 (`VFTestAimEntity` 4294901761) and tap Z: a beep,
+  and a red diamond on Dummy 1's body, `ENEMY` over it in red and `10m` under it; `Shown` reads
+  `ENEMY 10m`. Clear `VFTestAimEntity`.
+- **PI3 A gun.** Set `VFTestPitch` to 0 and press G (or `VFTestButtons` 2048, then clear it): the
+  Vandal lands on the floor about 1.2 m ahead. Look down at it (`VFTestPitch` -50) and tap Z: a
+  beep, and a pale yellow diamond on the gun, `VANDAL` over it and `2m` under it; `Shown` reads
+  `VANDAL 2m`. Pick it up again (F, or `VFTestTake` true).
+- **PI4 The spike.** Turn round to face its tile, 4 m behind the spawn (`VFTestYaw` 180,
+  `VFTestPitch` -20), and tap Z: an orange diamond on the spike, `SPIKE` over it in orange and `4m`
+  under it; `Shown` reads `SPIKE 4m`.
+- **PI5 The wheel.** Turn back down the lane (`VFTestYaw` 0, `VFTestPitch` -30). Hold Z (or set
+  `VFTestPing` to `wheel`): a quarter of a second after it goes down, four dark panels come up round
+  the middle of the screen, `DANGER` above, `WATCHING` on the right, `PUSHING` below and
+  `NEED SUPPORT` on the left, with a white dot in the middle; `Wheel` reads `open`. With the mouse:
+  the view doesn't turn, and the dot moves instead, a little way at the most; moved right,
+  `WATCHING` lights pale yellow with dark letters, and `Wheel` reads `watching`; the left button
+  fires nothing. Click the right button (or set `VFTestPing` to `shut`): the wheel's gone, nothing's
+  pinged or heard, and `Wheel` is empty. Hold Z again, move the mouse up and let go (or set
+  `VFTestPing` to `danger`): a beep, and on the floor 3 m ahead a pale yellow marker reading
+  `DANGER`; `Shown` reads `DANGER 3m`. With the mouse, hold Z, don't move it, and let go: nothing's
+  pinged.
+- **PI6 The limit.** Once `Left` reads 4, run this in the server's command bar, which taps Z five
+  times in under a second and then holds it for the wheel:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  for _, what in { "tap", "tap", "tap", "tap", "tap", "wheel" } do
+  	p:SetAttribute("VFTestPing", nil)
+  	task.wait(0.05)
+  	p:SetAttribute("VFTestPing", what)
+  	task.wait(0.1)
+  end
+  ```
+
+  Four beeps, not five, and four markers on the floor 3 m ahead, one on another: `Shown` reads
+  `HERE 3m, HERE 3m, HERE 3m, HERE 3m`, and `Left` 0. The wheel comes up greyed, its words and its
+  dot grey, and moving the mouse lights nothing, `Wheel` reading `open`. Within 1.5 s `Left` reads 1
+  and the wheel's words are white again; `Left` is back to 4 within about 6 s. Set `VFTestPing` to
+  `shut`, in the command bar.
+
+- **PI7 A cloud in the way.** Run this in the server's command bar, which throws Cloudburst on the
+  floor in front of Dummy 1 (as in Y5) and, a second later, with the cloud whole, pings Dummy 1
+  through it:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestPitch", -10)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 4096)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p:SetAttribute("VFTestAimEntity", 4294901761)
+  task.wait(0.2)
+  p:SetAttribute("VFTestPing", nil)
+  task.wait(0.05)
+  p:SetAttribute("VFTestPing", "tap")
+  ```
+
+  The cloud bursts on the floor about 8.6 m ahead, over Dummy 1, and the ping lands on its near
+  edge, not on Dummy 1: a pale yellow `HERE` marker 5 or 6 m away, on the cloud's face, `Shown`
+  reading `HERE 5m` or `HERE 6m`. Once the cloud's gone, tap Z again: `ENEMY 10m`. Clear
+  `VFTestAimEntity` and `VFTestPing`, and close the Sound Lab.
+
+Then three players: stop the game, start a Local Server with 3 players, as in section 9, and press P
+in window 1 (Skirmish). Players 1 and 3 share a side, as in F1. As round 1's buy phase starts, agent
+select comes up by itself: LOCK IN in every window. Open the Sound Lab in all three windows. In a
+Local Server, player 1's id is 4294967295, player 2's 4294967294 and player 3's 4294967293.
+
+- **PI8 Your side's.** In the buy phase, player 1 looks down at the floor in front of them
+  (`VFTestPitch` -30) and taps Z. Windows 1 and 3 log `ping`, and window 2 doesn't. Window 1's
+  marker is pale yellow, `Shown` reading `HERE 3m`. On window 1's minimap and on window 3's, a small
+  diamond where it is, pale yellow in window 1's and blue in window 3's, and their `VFMinimap`s'
+  `Pings` read `place`; window 2's minimap has none, and its `Pings` is empty. Player 3 turns to
+  look at it: a blue diamond, `HERE` over it in blue.
+- **PI9 The big map takes over.** In window 1, hold Z (or set `VFTestPing` to `wheel`) and, with the
+  wheel up, hold Caps Lock (or set `VFTestMap` to true): the wheel goes, nothing pinged and `Wheel`
+  empty, as the big map comes up, and on it a white ring with a dot in it, the cursor, in the middle
+  of the hall: `Cursor` reads `100, 0, 0`. Tap Z (or set `VFTestPing` to `tap`): nothing's pinged,
+  and no wheel comes up. With the mouse: the cursor moves across the map, the view doesn't turn, and
+  pushed off the map the cursor stops at its edge. Set `VFTestMapPoint` to `150, 0, 0`: the cursor's
+  held at the map's edge, `Cursor` reading `111.5, 0, 0`. Set it to `100, 0, 10`: `Cursor` reads
+  `100, 0, 10`.
+- **PI10 A ping on the map.** Click the left button (or set `VFTestPing` to `map`): windows 1 and 3
+  hear a bright, high ding, logged as `mapPing`, and on their maps, the minimap and window 1's big
+  map, a disc ringed in white at the cursor's place, pale yellow in window 1 and blue in window 3;
+  window 2 hears and shows nothing. Nothing's in the world: neither window's `Shown` lists it.
+  `Pings` reads `map` in windows 1 and 3 and is empty in window 2. With the mouse, the Vandal
+  doesn't fire. 4 s after the ding, it's gone. Let go of Caps Lock (or set `VFTestMap` to false):
+  the cursor's gone, and `Cursor` too. **Send:** a screenshot of window 3's minimap with the ping.
+- **PI11 An enemy.** Skip the buy phase if it's still on (`VFMatchSkip`, in the server's command
+  bar). Once round 1's live, window 1 aims at player 2 (`VFTestAimEntity` 4294967294), with nothing
+  between them, and taps Z: a beep in windows 1 and 3, and none in window 2. In window 1, a red
+  diamond on player 2, `ENEMY` over it in red and how far away they are under it (`Shown` `ENEMY`
+  and the metres), and on windows 1's and 3's minimaps a red diamond where they were, `Pings`
+  reading `enemy`; window 2's has none. Player 2 walks on: the marker stays where they were. Clear
+  `VFTestAimEntity`.
+- **PI12 While dead.** Player 2 kills player 1, and window 1 watches player 3. In window 1, tap Z
+  (or set `VFTestPing` to `tap`): nothing's pinged, and `Left` doesn't change. Hold Caps Lock (or
+  set `VFTestMap` to true): the big map, with the cursor in the hall's middle. Click the left button
+  (or set `VFTestPing` to `map`): a ping on the maps in windows 1 and 3, as in PI10, and window 1
+  still watches player 3; the click doesn't switch whom you watch.
+
 ## Results
 
 ```
@@ -4224,6 +4360,18 @@ GA3 window 1's Yours: ___; window 2's Theirs: ___; Player1's ULT there: ___, in 
 GA4 window 1's Yours after the shot: ___, after the kill: ___; window 2's Theirs: ___; Ult: ___
 GA5 on the victory screen, the agents' boxes: shown / gone; ULT: shown / gone; Ult: ___
 GA6 gun game's tiles: ___; Yours: ___, Theirs: ___; the boxes and ULT: shown / gone
+PI1 Shown: ___; Left: ___, then ___; faint under the crosshair: yes / no; solid off it: yes / no; gone after ___ s
+PI2 the sky's ping: marked / nothing, Left: ___ to ___; Dummy 1's Shown: ___, in red: yes / no
+PI3 Shown: ___
+PI4 Shown: ___, in orange: yes / no
+PI5 the wheel's calls: ___; Wheel moved right: ___; shut: nothing pinged yes / no; Shown: ___
+PI6 beeps: ___; Shown: ___; Left: ___; the wheel greyed: yes / no; Left back to 1 after ___ s
+PI7 with the cloud, Shown: ___; after it, Shown: ___
+PI8 windows that logged ping: ___; Pings in windows 1, 2 and 3: ___, ___, ___; window 3's colour: ___
+PI9 the wheel as the big map came up: gone / stayed; Cursor: ___, then ___, then ___; Z: pinged / nothing
+PI10 windows that logged mapPing: ___; Pings in windows 1, 2 and 3: ___, ___, ___; in the world: shown / not
+PI11 window 1's Shown: ___; Pings in windows 1, 2 and 3: ___, ___, ___; window 2 heard it: yes / no
+PI12 Z while dead: nothing / pinged; the map ping in windows: ___; the click switched whom you watch: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4546,3 +4694,11 @@ Didn't look right (IDs and what you saw):
 | 51 | The scoreboard's agents and ULT, both sides', live, with `READY` in gold once full | GA2, GA3, GA4 |
 | 51 | The victory screen keeping the agents, without the ULT | GA5 |
 | 51 | Gun game: names' letters on the top bar, and no agents or ULT on the scoreboard | GA6 |
+| 52 | Z tapped at the floor, the sky, an enemy, a gun and the spike: a marker for each but the sky's, with its word and how far away it is, and a beep | PI1, PI2, PI3, PI4 |
+| 52 | Z held: the wheel, its pick, and a call pinged where the crosshair is; right click putting it away | PI5 |
+| 52 | The limit: four in quick succession, then the wheel greyed, and one more back after 1.5 s | PI6 |
+| 52 | A marker faded under the crosshair, and gone after 4 s | PI1 |
+| 52 | A cloud stopping a ping at its edge, and an enemy behind one not pinged | PI7 |
+| 52 | Pings seen by the pinger's side alone, in the world and on both maps | PI8, PI10, PI11 |
+| 52 | The big map's cursor and a left click: a ping on the maps and not in the world, with its ding | PI9, PI10 |
+| 52 | While dead: map pings, and no Z | PI12 |
