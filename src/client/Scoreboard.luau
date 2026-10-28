@@ -39,8 +39,10 @@
 -- attribute lists each row's agent, name and ultimate, for scripted checks.
 --
 -- Everything comes from the player attributes the server keeps (Arena), and
--- each player's shield from what combat events have said of it. While either
--- is on, Roblox's own player list, which Tab would open, is off.
+-- each player's shield from what combat events have said of it. A bot
+-- (system 60) has a row as a player has, from the same attributes on its
+-- stand-in (Who). While either is on, Roblox's own player list, which Tab
+-- would open, is off.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -60,12 +62,12 @@ local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
-local PlayerCodec = require(Shared.Net.PlayerCodec)
 
 local Ui = require(script.Parent.Debug.Ui)
 local PlayMenu = require(script.Parent.PlayMenu)
 local RemoteEntities = require(script.Parent.RemoteEntities)
 local Visuals = require(script.Parent.Visuals)
+local Who = require(script.Parent.Who)
 
 local Scoreboard = {}
 
@@ -103,10 +105,11 @@ type Row = { frame: Frame, strip: Frame, cells: { [string]: TextLabel } }
 -- the other side.
 local MATCH_MVP, TEAM_MVP = "MATCH MVP", "TEAM MVP"
 
--- What a row shows of a player, and what orders the rows: the combat score,
--- or in gun game the level, or in deathmatch the place (math.huge for none).
+-- What a row shows of a player or a bot, and what orders the rows: the
+-- combat score, or in gun game the level, or in deathmatch the place
+-- (math.huge for none).
 type Line = {
-	player: Player,
+	who: Who.Someone,
 	kills: number,
 	deaths: number,
 	assists: number,
@@ -121,17 +124,18 @@ local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
 end
 
-local function number(player: Player, name: string): number
-	local value = player:GetAttribute(name)
+local function number(holder: Instance, name: string): number
+	local value = holder:GetAttribute(name)
 	return if typeof(value) == "number" then value else 0
 end
 
-local function lineOf(player: Player, gunGame: boolean): Line
+local function lineOf(who: Who.Someone, gunGame: boolean): Line
+	local player = who.holder
 	local acs = MatchRules.average(number(player, MatchConfig.SCORE), number(player, MatchConfig.ROUNDS))
 	local level = number(player, GunGameConfig.LEVEL)
 	local place = player:GetAttribute(DeathmatchConfig.PLACE)
 	return {
-		player = player,
+		who = who,
 		kills = number(player, MatchConfig.KILLS),
 		deaths = number(player, MatchConfig.DEATHS),
 		assists = number(player, MatchConfig.ASSISTS),
@@ -143,24 +147,24 @@ local function lineOf(player: Player, gunGame: boolean): Line
 	}
 end
 
--- The players on a side, best combat score (in gun game, level, and on the
--- same level whoever leads or won, `leader`) first.
+-- The players and bots on a side, best combat score (in gun game, level,
+-- and on the same level whoever leads or won, `leader`) first.
 local function linesOf(side: number, gunGame: boolean, leader: any): { Line }
 	local out: { Line } = {}
-	for _, player in Players:GetPlayers() do
-		if player:GetAttribute(ArenaConfig.SIDE) == side then
-			table.insert(out, lineOf(player, gunGame))
+	for _, who in Who.all() do
+		if who.holder:GetAttribute(ArenaConfig.SIDE) == side then
+			table.insert(out, lineOf(who, gunGame))
 		end
 	end
 	table.sort(out, function(a: Line, b: Line): boolean
 		if a.rank ~= b.rank then
 			return a.rank > b.rank
-		elseif gunGame and (a.player.UserId == leader) ~= (b.player.UserId == leader) then
-			return a.player.UserId == leader
+		elseif gunGame and (a.who.id == leader) ~= (b.who.id == leader) then
+			return a.who.id == leader
 		elseif a.kills ~= b.kills then
 			return a.kills > b.kills
 		end
-		return a.player.DisplayName < b.player.DisplayName
+		return a.who.name < b.who.name
 	end)
 	return out
 end
@@ -168,9 +172,9 @@ end
 -- Everyone playing a deathmatch, in their places.
 local function placesOf(): { Line }
 	local out: { Line } = {}
-	for _, player in Players:GetPlayers() do
-		if typeof(player:GetAttribute(ArenaConfig.SIDE)) == "number" then
-			table.insert(out, lineOf(player, false))
+	for _, who in Who.all() do
+		if typeof(who.holder:GetAttribute(ArenaConfig.SIDE)) == "number" then
+			table.insert(out, lineOf(who, false))
 		end
 	end
 	table.sort(out, function(a: Line, b: Line): boolean
@@ -179,14 +183,14 @@ local function placesOf(): { Line }
 		elseif a.kills ~= b.kills then
 			return a.kills > b.kills
 		end
-		return a.player.DisplayName < b.player.DisplayName
+		return a.who.name < b.who.name
 	end)
 	return out
 end
 
--- The gun a player holds, as the scoreboard names it, and their shield's.
-local function loadoutOf(player: Player): string
-	local text = player:GetAttribute(MatchConfig.LOADOUT)
+-- The gun someone holds, as the scoreboard names it, and their shield's.
+local function loadoutOf(who: Who.Someone): string
+	local text = who.holder:GetAttribute(MatchConfig.LOADOUT)
 	local primary, sidearm = "", ""
 	if typeof(text) == "string" then
 		local a, b = string.match(text, "^([^,]*),?(.*)$")
@@ -198,7 +202,7 @@ local function loadoutOf(player: Player): string
 	if def then
 		table.insert(parts, string.upper(def.name))
 	end
-	local hp = RemoteEntities.healthOf(PlayerCodec.entityIdForUser(player.UserId))
+	local hp = RemoteEntities.healthOf(who.entity)
 	local shield = WeaponConfig.Shields[hp.armor]
 	if shield and (hp.shield > 0 or (shield.regen ~= nil and hp.pool > 0)) then
 		local word = string.match(shield.name, "^%a+") or shield.name
@@ -410,16 +414,16 @@ function Scoreboard.start()
 					continue
 				end
 				row.frame.Position = UDim2.fromOffset(8, top + (r - 1) * (ROW_H + ROW_GAP))
-				local player = line.player
+				local who = line.who
 				local cells = row.cells
-				local mine = player == me
+				local mine = who.player == me
 				local alive = line.alive or over
 				row.frame.BackgroundColor3 = if mine then MINE else Ui.PANEL
 				row.strip.BackgroundColor3 = if mine then ally else enemy
 				row.strip.BackgroundTransparency = if alive then 0 else 0.6
 				showAgent(cells.agent, "", enemy, alive)
 				cells.ult.Text = ""
-				cells.name.Text = player.DisplayName
+				cells.name.Text = who.name
 				cells.name.TextColor3 = if mine then GOLD else Ui.TEXT
 				cells.name.TextTransparency = if alive then 0 else 0.5
 				cells.k.Text = tostring(line.kills)
@@ -429,11 +433,11 @@ function Scoreboard.start()
 				cells.credits.Text = ""
 				if over then
 					-- Whoever won, if anyone scored.
-					local mvp = player.UserId == leader and line.kills > 0
+					local mvp = who.id == leader and line.kills > 0
 					cells.loadout.Text = if mvp then "<b>" .. MATCH_MVP .. "</b>" else ""
 					cells.loadout.TextColor3 = GOLD
 				else
-					cells.loadout.Text = if mine then loadoutOf(player) else ""
+					cells.loadout.Text = if mine then loadoutOf(who) else ""
 					cells.loadout.TextColor3 = Ui.TEXT
 				end
 			end
@@ -460,7 +464,7 @@ function Scoreboard.start()
 			local y = top + (i - 1) * (shown * (ROW_H + ROW_GAP) + SIDE_GAP)
 			-- The side's best, if they scored at all.
 			local best = sideLines[1]
-			local mvp = if over and best and best.rank > 0 then best.player else nil
+			local mvp = if over and best and best.rank > 0 then best.who.id else nil
 			local badge = if i == mvpTable then MATCH_MVP else TEAM_MVP
 			for r, row in rows do
 				local line = sideLines[r]
@@ -469,25 +473,26 @@ function Scoreboard.start()
 					continue
 				end
 				row.frame.Position = UDim2.fromOffset(8, y + (r - 1) * (ROW_H + ROW_GAP))
-				local player = line.player
+				local who = line.who
+				local player = who.holder
 				local cells = row.cells
-				local mine = player == me
+				local mine = who.player == me
 				-- Nobody's dimmed once the match is over.
 				local alive = line.alive or over
 				row.frame.BackgroundColor3 = if mine then MINE else Ui.PANEL
 				row.strip.BackgroundColor3 = colour
 				row.strip.BackgroundTransparency = if alive then 0 else 0.6
 				-- Their agent, and while the match is on their ultimate.
-				local letters = if agents then Glance.badge(player:GetAttribute(AgentSelect.AGENT), player.DisplayName) else ""
+				local letters = if agents then Glance.badge(player:GetAttribute(AgentSelect.AGENT), Who.plain(who.name)) else ""
 				showAgent(cells.agent, letters, colour, alive)
 				local ult = if agents and not over then Glance.cell(player:GetAttribute(AbilityConfig.ULT_ATTRIBUTE)) else ""
 				cells.ult.Text = ult
 				cells.ult.TextColor3 = if ult == Glance.READY then GOLD else Ui.TEXT
 				cells.ult.TextTransparency = if alive then 0 else 0.5
 				if agents and not over then
-					table.insert(listed, letters .. " " .. player.DisplayName .. (if ult ~= "" then " " .. ult else ""))
+					table.insert(listed, letters .. " " .. who.name .. (if ult ~= "" then " " .. ult else ""))
 				end
-				cells.name.Text = player.DisplayName
+				cells.name.Text = who.name
 				cells.name.TextColor3 = if mine then GOLD else Ui.TEXT
 				cells.name.TextTransparency = if alive then 0 else 0.5
 				cells.k.Text = tostring(line.kills)
@@ -498,7 +503,7 @@ function Scoreboard.start()
 				cells.credits.Text = if spike and not over and typeof(credits) == "number" then tostring(credits) else ""
 				cells.credits.TextColor3 = GOLD
 				if over then
-					cells.loadout.Text = if player == mvp then "<b>" .. badge .. "</b>" else ""
+					cells.loadout.Text = if who.id == mvp then "<b>" .. badge .. "</b>" else ""
 					cells.loadout.TextColor3 = if badge == MATCH_MVP then GOLD else Ui.TEXT
 				elseif gunGame then
 					-- Everyone's gun is their level's, so both sides show.
@@ -506,7 +511,7 @@ function Scoreboard.start()
 					cells.loadout.Text = if def then string.upper(def.name) else ""
 					cells.loadout.TextColor3 = Ui.TEXT
 				else
-					cells.loadout.Text = if ours then loadoutOf(player) else ""
+					cells.loadout.Text = if ours then loadoutOf(who) else ""
 					cells.loadout.TextColor3 = Ui.TEXT
 				end
 			end

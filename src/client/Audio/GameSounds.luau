@@ -68,6 +68,7 @@ local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local NetSim = require(script.Parent.Parent.NetSim)
 local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
+local Who = require(script.Parent.Parent.Who)
 local ClientShots = require(script.Parent.Parent.Combat.ClientShots)
 local ClientMelee = require(script.Parent.Parent.Combat.ClientMelee)
 local SoundEngine = require(script.Parent.SoundEngine)
@@ -196,13 +197,8 @@ local function inBuyPhaseAcross(id: number): boolean
 		return false
 	end
 	local mine = Players.LocalPlayer:GetAttribute(ArenaConfig.SIDE)
-	for _, player in Players:GetPlayers() do
-		if PlayerCodec.entityIdForUser(player.UserId) == id then
-			local theirs = player:GetAttribute(ArenaConfig.SIDE)
-			return typeof(mine) == "number" and typeof(theirs) == "number" and mine ~= theirs
-		end
-	end
-	return false
+	local theirs = Who.side(id)
+	return typeof(mine) == "number" and theirs ~= nil and mine ~= theirs
 end
 
 -- Reloads ------------------------------------------------------------------------

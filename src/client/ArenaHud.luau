@@ -63,7 +63,6 @@ local MatchConfig = require(Shared.Match.MatchConfig)
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AgentSelect = require(Shared.Abilities.AgentSelect)
 local Glance = require(Shared.Abilities.Glance)
-local PlayerCodec = require(Shared.Net.PlayerCodec)
 local MatchRules = require(Shared.Match.MatchRules)
 local RoundCallouts = require(Shared.Match.RoundCallouts)
 local SpikeMaps = require(Shared.Match.SpikeMaps)
@@ -77,6 +76,7 @@ local InputSampler = require(script.Parent.InputSampler)
 local PlayerController = require(script.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.RemoteEntities)
 local Visuals = require(script.Parent.Visuals)
+local Who = require(script.Parent.Who)
 
 local ArenaHud = {}
 
@@ -138,16 +138,17 @@ local function newTile(gui: ScreenGui): Tile
 	return { frame = frame, label = label, health = health, fill = fill, ready = ready }
 end
 
--- The players on a side, in the order their tiles go.
-local function sideOf(side: number): { Player }
+-- The players on a side, and its bots (system 60), in the order their
+-- tiles go.
+local function sideOf(side: number): { Who.Someone }
 	local out = {}
-	for _, player in Players:GetPlayers() do
-		if player:GetAttribute(ArenaConfig.SIDE) == side then
-			table.insert(out, player)
+	for _, someone in Who.all() do
+		if someone.holder:GetAttribute(ArenaConfig.SIDE) == side then
+			table.insert(out, someone)
 		end
 	end
-	table.sort(out, function(a: Player, b: Player): boolean
-		return a.DisplayName < b.DisplayName
+	table.sort(out, function(a: Who.Someone, b: Who.Someone): boolean
+		return a.name < b.name
 	end)
 	return out
 end
@@ -158,7 +159,7 @@ end
 -- your side (`yours`) its health. Returns them as Glance.describe lists them.
 local function placeTiles(
 	tiles: { Tile },
-	players: { Player },
+	players: { Who.Someone },
 	colour: Color3,
 	width: number,
 	left: boolean,
@@ -167,11 +168,12 @@ local function placeTiles(
 ): string
 	local listed = {}
 	for i, tile in tiles do
-		local player: Player? = players[i]
-		if not player then
+		local someone: Who.Someone? = players[i]
+		if not someone then
 			tile.frame.Visible = false
 			continue
 		end
+		local player = someone.holder
 		tile.frame.Visible = true
 		local step = (i - 1) * (TILE_W + TILE_GAP) + TILE_GAP
 		local x = if left then -width / 2 - step - TILE_W else width / 2 + step
@@ -179,13 +181,13 @@ local function placeTiles(
 		local alive = player:GetAttribute(MatchConfig.ALIVE) ~= false
 		tile.frame.BackgroundColor3 = if alive then colour else Ui.PANEL
 		tile.frame.BackgroundTransparency = if alive then 0.15 else 0.35
-		local badge = Glance.badge(if agents then player:GetAttribute(AgentSelect.AGENT) else nil, player.DisplayName)
+		local badge = Glance.badge(if agents then player:GetAttribute(AgentSelect.AGENT) else nil, Who.plain(someone.name))
 		tile.label.Text = badge
 		tile.label.TextColor3 = if alive then Ui.PANEL else colour
 		tile.label.TextTransparency = if alive then 0 else 0.5
 		local health: number? = nil
 		if yours then
-			local hp = RemoteEntities.healthOf(PlayerCodec.entityIdForUser(player.UserId))
+			local hp = RemoteEntities.healthOf(someone.entity)
 			health = if alive then hp.health else 0
 		end
 		tile.health.Visible = health ~= nil
@@ -228,7 +230,7 @@ local function split(text: any): { string }
 	return out
 end
 
-local function killsOf(player: Player): number
+local function killsOf(player: Instance): number
 	local value = player:GetAttribute(MatchConfig.KILLS)
 	return if typeof(value) == "number" then value else 0
 end
@@ -536,11 +538,11 @@ function ArenaHud.start()
 			-- Your kills against the most anyone else has, and under the bar
 			-- your place among everyone playing, and who leads if it isn't you.
 			local rivals, playing = 0, 0
-			for _, player in Players:GetPlayers() do
-				if typeof(player:GetAttribute(ArenaConfig.SIDE)) == "number" then
+			for _, someone in Who.all() do
+				if typeof(someone.holder:GetAttribute(ArenaConfig.SIDE)) == "number" then
 					playing += 1
-					if player ~= me then
-						rivals = math.max(rivals, killsOf(player))
+					if someone.player ~= me then
+						rivals = math.max(rivals, killsOf(someone.holder))
 					end
 				end
 			end
@@ -551,10 +553,10 @@ function ArenaHud.start()
 			local place = me:GetAttribute(DeathmatchConfig.PLACE)
 			if typeof(place) == "number" and phase == "live" then
 				local id = arena:GetAttribute("Leader")
-				local leader = if typeof(id) == "number" and id ~= me.UserId then Players:GetPlayerByUserId(id) else nil
+				local leader = if typeof(id) == "number" and id ~= me.UserId then Who.find(id) else nil
 				guns.Visible = true
 				guns.Text = string.format('<font color="#%s">%s</font> OF %d', Ui.hex(GOLD), string.upper(Ui.ordinal(place)), playing)
-					.. (if leader and killsOf(leader) > 0 then "   LEADER  " .. string.upper(leader.DisplayName) else "")
+					.. (if leader and killsOf(leader.holder) > 0 then "   LEADER  " .. string.upper(leader.name) else "")
 					.. "   B buy menu"
 			end
 			if phase == "waiting" then

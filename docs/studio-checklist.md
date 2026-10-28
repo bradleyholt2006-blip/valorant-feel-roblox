@@ -36,7 +36,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
    three, section 55 three, section 56 one and then three, section 57 one and then two, section 58
    one and then two, section 59 one and then two, section 60 two and then three, section 61 three,
-   section 62 one and then two, and section 63 one and then two.
+   section 62 one and then two, section 63 one and then two, and section 64 one, then two, then
+   one.
 
 | Key | What it does |
 | --- | --- |
@@ -5288,6 +5289,209 @@ Start a Local Server with 1 player, as in section 9.
   13.2 s and 7.9 s. **Send:** each time, whether heaven, the window and the platform each look worth
   taking for what they cost, and whether A or B looks the easier to take.
 
+## 64. Bots
+
+From [60-bots.md](research/60-bots.md). System 60 fills what's played with bots, players the server
+plays itself: up to ten in the spike rounds and Team Deathmatch, eight in gun game and deathmatch
+and four in Skirmish, a player joining taking a bot's place. A bot is drawn, named and counted as a
+player is, with `BOT ` before its name. Each has a stand-in in ReplicatedStorage's `VFBots`, a
+Configuration named after it with `Entity`, `Id` and the attributes the arena keeps on a player
+(`VFArenaSide`, `VFAlive`, `VFKills`, `VFStartCredits`, `VFCredits`, `VFLoadout` and the rest), and
+in Studio `VFBotTask`, its job in its side's plan (`gather`, `push`, `take`, `hunt`, `hold`,
+`rotate`, `follow`, `roam` or `wait`). Workspace's `VFBots` set false keeps bots out, and
+`VFBotSkill` (`easy`, `normal`, `hard` or `expert`) sets how well they play, from each one's next
+life. In Studio the Output says `[VF] BOT Ash stuck at (x, y, z), going another way` each time a
+bot's been stuck for 1.2 s, with where in metres in the map's own frame, and Workspace's `VFBotMs`
+has the milliseconds the bots take of each server frame. Bots don't carry, plant or defuse the spike
+yet, nor use abilities.
+
+Start a Local Server with 1 player, as in section 9.
+
+- **BT1 Filling each mode.** In the server's command bar, run this. It plays each mode in turn and,
+  3 s in, counts the bots and those named and numbered as bots, counts who's on each side, and reads
+  the phase:
+
+  ```lua
+  workspace:SetAttribute("VFMatchMap", "outpost")
+  for _, mode in { "skirmish", "gungame", "deathmatch", "teamdeathmatch", "spike" } do
+  	workspace:SetAttribute("VFArenaMode", mode)
+  	workspace:SetAttribute("VFArenaOn", true)
+  	task.wait(3)
+  	local folder = game.ReplicatedStorage:FindFirstChild("VFBots")
+  	local everyone = if folder then folder:GetChildren() else {}
+  	local bots, named = #everyone, 0
+  	for _, bot in everyone do
+  		if string.sub(bot.Name, 1, 4) == "BOT " and bot:GetAttribute("Id") < 0 then
+  			named += 1
+  		end
+  	end
+  	for _, player in game.Players:GetPlayers() do
+  		table.insert(everyone, player)
+  	end
+  	local count = {}
+  	for _, who in everyone do
+  		local side = who:GetAttribute("VFArenaSide")
+  		if side then
+  			count[side] = (count[side] or 0) + 1
+  		end
+  	end
+  	local sides = {}
+  	for side = 1, 20 do
+  		if count[side] then
+  			table.insert(sides, count[side])
+  		end
+  	end
+  	local phase = workspace.VFArena:GetAttribute("Phase")
+  	local line = "%s: %d bots, %d named; on each side %s; %s"
+  	print(string.format(line, mode, bots, named, table.concat(sides, ", "), tostring(phase)))
+  end
+  ```
+
+  After each mode's `[VF] Arena on:` line, the Output shows, in turn:
+
+  - `skirmish: 3 bots, 3 named; on each side 2, 2; buy`
+  - `gungame: 7 bots, 7 named; on each side 4, 4; live`
+  - `deathmatch: 7 bots, 7 named; on each side 1, 1, 1, 1, 1, 1, 1, 1; live`
+  - `teamdeathmatch: 9 bots, 9 named; on each side 5, 5; pregame`
+  - `spike: 9 bots, 9 named; on each side 5, 5; buy`
+
+  One player starts each match, where alone they'd be `waiting`. Where agent select comes up, lock
+  in any agent. **Send:** the five lines.
+
+- **BT2 A player's place.** Stop the game, start a Local Server with 2 players, and run BT1's script
+  again: each mode has one bot fewer (`skirmish: 2 bots`, through `spike: 8 bots`), and the same on
+  each side. Then close window 2, so player 2 leaves, and run
+  `print(#game.ReplicatedStorage.VFBots:GetChildren())` in the server's command bar: `9`, a bot
+  having taken their place. Only once the place is published: one player plays Skirmish against
+  three bots, and a second joins and presses PLAY SKIRMISH: they wait in line until the round's
+  over, or until a bot's down, and then take a bot's place. **Send:** the Output's lines, and how
+  the join went if it was tried.
+
+- **BT3 On screen.** In a buy phase of the spike rounds, after player 2's gone (skip to one with
+  `VFMatchSkip` if need be), run this in window 1's command bar. It holds the scoreboard open, and
+  lists the top bar's tiles, the scoreboard's rows and who's drawn:
+
+  ```lua
+  local me = game.Players.LocalPlayer
+  me:SetAttribute("VFTestBoard", true)
+  task.wait(1)
+  local gui = me.PlayerGui
+  print("yours:", gui.VFArenaHud:GetAttribute("Yours"))
+  print("theirs:", gui.VFArenaHud:GetAttribute("Theirs"))
+  print("board:", gui.VFScoreboard:GetAttribute("Ult"))
+  local drawn = {}
+  for _, model in workspace.VFPlayers:GetChildren() do
+  	table.insert(drawn, model.Name)
+  end
+  table.sort(drawn)
+  print("drawn:", table.concat(drawn, ", "))
+  me:SetAttribute("VFTestBoard", false)
+  ```
+
+  `yours:` lists five tiles, each with `100`: your agent's letters, and four bots', the first two
+  letters of each name past `BOT ` (`AS` for `BOT Ash`). `theirs:` lists the other side's five bots'
+  letters, with no health. `board:` has a row for each of the ten: yours with your agent's letters
+  and your ultimate (`JE Player1 0/8`), and a bot's with its letters and its name and no ultimate
+  (`AS BOT Ash`). `drawn:` names your side's four bots, and none of the other side's, out of sight
+  in their spawn. Take screenshots of the top bar; the scoreboard (hold Tab), each bot with its
+  credits, and on your side its gun and shield; a bot of yours up close, with its name and health
+  over its head (`BOT Ash`, then `100 + 25` in Light Armor) and its outline in your side's colour;
+  and the minimap, with your side's bots on it. **Send:** the Output's lines and the screenshots.
+
+- **BT4 What they buy.** A few seconds into a buy phase, run this in the server's command bar:
+
+  ```lua
+  for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+  	local start, left = bot:GetAttribute("VFStartCredits"), bot:GetAttribute("VFCredits")
+  	print(bot.Name, bot:GetAttribute("VFArenaSide"), start, left, bot:GetAttribute("VFLoadout"))
+  end
+  ```
+
+  Nobody's spent more than they had. In a half's first round, from 800 credits, each has bought a
+  Light Armor (`400` left, `,classic`) or now and then a Ghost (`300` left, `,ghost`). Skip to the
+  next buy phase (`VFMatchSkip` twice, for the buy phase and then the round) and run it again, and
+  once more after that: a bot with a rifle's and armour's worth has a rifle (`vandal` or `phantom`
+  first in `VFLoadout`), one with less a Spectre, one with less still nothing new, and one without a
+  shield buys one if it can. **Send:** the Output's lines.
+
+- **BT5 Going round together.** In a buy phase of the spike rounds on Outpost (BT1's `VFMatchMap`),
+  stay in your spawn and run this in the server's command bar. It skips the buy phase, then every
+  2 s for a minute lists the jobs of each side's bots alive:
+
+  ```lua
+  workspace:SetAttribute("VFMatchSkip", true)
+  for k = 1, 30 do
+  	task.wait(2)
+  	local jobs = { {}, {} }
+  	for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+  		local side = bot:GetAttribute("VFArenaSide")
+  		if bot:GetAttribute("VFAlive") ~= false and jobs[side] then
+  			table.insert(jobs[side], tostring(bot:GetAttribute("VFBotTask")))
+  		end
+  	end
+  	local attackers = workspace.VFArena:GetAttribute("Attackers")
+  	local a, d = jobs[attackers], jobs[3 - attackers]
+  	table.sort(a)
+  	table.sort(d)
+  	local phase = workspace.VFArena:GetAttribute("Phase")
+  	print(k * 2, phase, "attack: " .. table.concat(a, " "), "defend: " .. table.concat(d, " "))
+  end
+  ```
+
+  The attacking side's bots read `gather`, then `push` together, then `take` once on the site (and
+  `hunt` 20 s on with nobody seen). The defending side's read `hold`, and once attackers are seen at
+  a site all but one of those at the other read `rotate`. While it runs, hold Caps Lock for the big
+  map: your side's bots go together, attacking to the same site or defending to each way into the
+  sites, through doors and up stairs, never stopped against a wall or in a doorway, and spread out
+  rather than in a line or a heap. As they fight, the kill feed names them, and each one that dies
+  drops its gun where it falls, a part in Workspace's `VFGroundGuns`. The Output has no `stuck at`
+  line, or very few. Then for each of `quarry`, `foundry` and `wharf`, set `VFMatchMap` to it,
+  `VFArenaOn` to false and then true, and once round 1's buy phase starts run the script again.
+  **Send:** the Output's lines for each map, every `stuck at` line among them, and screenshots of
+  the big map as the attackers push and as the defenders hold.
+
+- **BT6 Following a player.** Set `VFArenaMode` to `teamdeathmatch`. Once its pre-game's over, run
+  this in window 1's command bar, which every second for half a minute prints how far each of your
+  side's bots is from you, in metres:
+
+  ```lua
+  local me = game.Players.LocalPlayer
+  for k = 1, 30 do
+  	task.wait(1)
+  	local eye = workspace.CurrentCamera.CFrame.Position
+  	local out = {}
+  	for _, model in workspace.VFPlayers:GetChildren() do
+  		local standIn = game.ReplicatedStorage.VFBots:FindFirstChild(model.Name)
+  		if standIn and standIn:GetAttribute("VFArenaSide") == me:GetAttribute("VFArenaSide") then
+  			table.insert(out, string.format("%.0f", (model.body.Position - eye).Magnitude * 0.28))
+  		end
+  	end
+  	print(k, table.concat(out, " "))
+  end
+  ```
+
+  Meanwhile walk out of your spawn room and across the map, through doors and up stairs, stopping
+  now and then. Your side's four bots come with you a few metres off, and where you stop gather
+  round you, 3 to 7 m off, and none is left behind against a wall: most distances are under 10 m,
+  and none stays over 20 m. **Send:** the Output's lines, and anything a bot did that looked wrong.
+
+- **BT7 How they fight.** Play Skirmish against the bots for a few rounds at each skill, setting
+  Workspace's `VFBotSkill` to `easy`, `normal`, `hard` and then `expert` in the server's command
+  bar; each takes hold from a bot's next life. A bot takes a moment to notice you, longer at the
+  edge of its view; stops dead before it shoots; taps at range, fires short bursts nearer and sprays
+  up close; and misses some, Easy the most. Hold an angle and let one walk into it: on Normal you
+  win most of those, and lose most where you walk into theirs. Die, and the view follows your side's
+  bots as it would teammates. Then play a few rounds of the spike rounds. **Send:** for each skill,
+  the rounds won and lost, whether they felt like people (too good, about right or too easy), and
+  anything that looked robotic.
+
+- **BT8 Off, and what they cost.** In a live round of the spike rounds on Wharf, with nine bots, run
+  `print(workspace:GetAttribute("VFBotMs"))` in the server's command bar a few times: the
+  milliseconds the bots take of each server frame, well under the frame's 16.7. Then set `VFBots` to
+  false: as the round ends the bots leave and none join,
+  `print(#game.ReplicatedStorage.VFBots:GetChildren())` prints `0`, and the match waits for players
+  (`waiting`). Set it back to true: nine join, and the match goes on. **Send:** the numbers.
+
 ## Results
 
 ```
@@ -5713,6 +5917,14 @@ WH2 the six views: ___; anything floating, sunk, poking through or flickering: _
 WH3 player 1, the stairs, the railing, the drop and back up: ___; hookah's window: ___; player 2, heaven's stairs, the window's stairs and frame, the ramps and the platform: ___; anything that stopped or tripped: ___
 WH4 heaven's railing, standing / crouched: ___ / ___; the window's frame, standing / crouched: ___ / ___; the lane from the frame: ___
 WH5 A: player 1 ___ s, player 2 ___ s; B: player 1 ___ s, player 2 ___ s; heaven, the window and the platform worth taking: ___; A or B easier to take: ___
+BT1 the five lines: ___
+BT2 the five lines with 2 players: ___; after window 2 closed: ___; a player joining on the published place: ___
+BT3 yours: ___; theirs: ___; board: ___; drawn: ___; anything wrong in the screenshots: ___
+BT4 the first round: ___; the next two: ___; anyone spending more than they had: yes / no
+BT5 Outpost: ___; Quarry: ___; Foundry: ___; Wharf: ___; the stuck at lines: ___; together, spread out and never against a wall: yes / no
+BT6 the distances: ___; anyone left behind or walking into a wall: ___
+BT7 rounds won / lost: Easy ___ / ___, Normal ___ / ___, Hard ___ / ___, Expert ___ / ___; too good, about right or too easy: ___; robotic: ___
+BT8 VFBotMs: ___; with VFBots false: ___; back on: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6088,3 +6300,9 @@ Didn't look right (IDs and what you saw):
 | 59 | Jumping through hookah's window | WH3 |
 | 59 | From the window and heaven, standing shows a head over the frame or the railing, and crouching hides it | WH4 |
 | 59 | Each side's run to each site, and how the map feels at five a side | WF5, WH5 |
+| 60 | Bots filling each mode, the match starting with one player, and a player joining taking a bot's place | BT1, BT2 |
+| 60 | The bots on screen: names, outlines, the scoreboard, the top bar, the minimap and the kill feed | BT3, BT5 |
+| 60 | What they buy in the spike rounds, and their guns dropping where they die | BT4, BT5 |
+| 60 | How they fight in the place's real geometry: noticing, stopping to shoot, bursts, and whether Normal is beatable | BT7 |
+| 60 | Going round the spike maps together and following a player, without walking into walls, on Roblox's own collisions | BT5, BT6 |
+| 60 | What nine bots cost the server | BT8 |

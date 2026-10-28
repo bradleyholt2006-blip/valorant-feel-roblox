@@ -47,6 +47,7 @@ local Ui = require(script.Parent.Debug.Ui)
 local NetSim = require(script.Parent.NetSim)
 local PlayerController = require(script.Parent.PlayerController)
 local Visuals = require(script.Parent.Visuals)
+local Who = require(script.Parent.Who)
 
 local ReportView = {}
 
@@ -90,21 +91,17 @@ local function playerOf(id: number): Player?
 	return nil
 end
 
+-- A dummy's name, a player's or a bot's (system 60).
 local function nameOf(id: number): string
 	if PlayerCodec.isDummy(id) then
 		return string.format("Dummy %d", id - PlayerCodec.DUMMY_BASE)
 	end
-	local player = playerOf(id)
-	return if player then player.DisplayName else "?"
+	return Who.name(id) or "?"
 end
 
 -- The ally colour for you and your side, the enemy colour for anyone else.
 local function colourOf(id: number): Color3
-	local me = Players.LocalPlayer
-	local player = playerOf(id)
-	local mine = me:GetAttribute(ArenaConfig.SIDE)
-	local theirs = if player then player:GetAttribute(ArenaConfig.SIDE) else nil
-	if player == me or (mine ~= nil and theirs == mine) then
+	if id == PlayerCodec.entityIdForUser(Players.LocalPlayer.UserId) or Who.ally(id) then
 		return color3(VisualConfig.allyColour)
 	end
 	return color3(VisualConfig.EnemyColours[Visuals.enemyColour].colour)

@@ -26,6 +26,10 @@
 -- drone, as it moves. The drones are in the snapshots as no entity's, and
 -- what decides who has them is DroneServer's (FogServer.others).
 --
+-- Bots (system 60, BotServer) are on sides too, and take looks as players
+-- do, so a player down sees and hears what a bot on their side in play
+-- does, as they would a teammate's.
+--
 -- Workspace's `VFFogOff` attribute, true, turns it off (everyone has
 -- everyone), to compare. What its looks cost goes on Workspace once a
 -- second: `VFFogLines`, the lines they cast in it, and `VFFogMs`, the
@@ -59,6 +63,12 @@ FogServer.MS = "VFFogMs"
 -- id it knows nothing of.
 FogServer.others = nil :: ((Player, number) -> boolean?)?
 
+-- A bot on a side (system 60): its entity id and side, and while it's in
+-- play its eye, as a viewer.
+export type Bot = { id: number, side: number, viewer: FogOfWar.Viewer? }
+-- The bots there are, when something has them (BotServer).
+FogServer.bots = nil :: (() -> { Bot })?
+
 local P = FogOfWar.Params
 -- How many barriers one line goes through at the most.
 local PASSES = 4
@@ -71,6 +81,7 @@ params.RespectCanCollide = true
 local state = FogOfWar.new()
 local spreads = Random.new()
 local nextAt: { [Player]: number } = {}
+local botNextAt: { [number]: number } = {}
 local revealUntil: { [Player]: number } = {}
 -- What each side spots, by side, from the minimap's last look.
 local spotted: { [number]: { [number]: boolean } } = {}
@@ -157,7 +168,27 @@ function FogServer.step(now: number)
 	table.clear(sideOf)
 	table.clear(inPlayBySide)
 	table.clear(earsBySide)
-	local due: { { player: Player, viewer: FogOfWar.Viewer } } = {}
+	local looks: { FogOfWar.Viewer } = {}
+	-- Someone in play on a side, and when their next look is: each one's
+	-- looks start somewhere in the first interval, so they're spread over
+	-- its frames.
+	local function inPlay(viewer: FogOfWar.Viewer, side: number, at: number?): number
+		local mates = inPlayBySide[side] or {}
+		inPlayBySide[side] = mates
+		table.insert(mates, { id = viewer.id, side = side })
+		local ears = earsBySide[side] or {}
+		earsBySide[side] = ears
+		table.insert(ears, viewer.eye)
+		local nextLook = at or now + spreads:NextNumber() * P.every.value
+		if now >= nextLook then
+			nextLook += P.every.value
+			if nextLook <= now then
+				nextLook = now + P.every.value
+			end
+			table.insert(looks, viewer)
+		end
+		return nextLook
+	end
 	for _, player in Players:GetPlayers() do
 		local side = player:GetAttribute(ArenaConfig.SIDE)
 		local entity = PlayerSimServer.entityOf(player)
@@ -166,32 +197,25 @@ function FogServer.step(now: number)
 		end
 		sideOf[entity.id] = side
 		local viewer = if PlayerSimServer.inPlay(player) then viewerOf(player, entity.id, side) else nil
-		if not viewer then
-			continue
+		if viewer then
+			nextAt[player] = inPlay(viewer, side, nextAt[player])
 		end
-		local mates = inPlayBySide[side] or {}
-		inPlayBySide[side] = mates
-		table.insert(mates, { id = entity.id, side = side })
-		local ears = earsBySide[side] or {}
-		earsBySide[side] = ears
-		table.insert(ears, viewer.eye)
-		-- Each player's looks start somewhere in the first interval, so
-		-- they're spread over its frames.
-		local at = nextAt[player] or now + spreads:NextNumber() * P.every.value
-		if now >= at then
-			at += P.every.value
-			if at <= now then
-				at = now + P.every.value
-			end
-			table.insert(due, { player = player, viewer = viewer })
-		end
-		nextAt[player] = at
 	end
-	if not off and #due > 0 then
+	local bots = FogServer.bots
+	if bots then
+		for _, bot in bots() do
+			sideOf[bot.id] = bot.side
+			local viewer = bot.viewer
+			if viewer then
+				botNextAt[bot.id] = inPlay(viewer, bot.side, botNextAt[bot.id])
+			end
+		end
+	end
+	if not off and #looks > 0 then
 		local began = os.clock()
 		local targets = gather()
-		for _, look in due do
-			costLines += FogOfWar.look(state, now, look.viewer, targets, blocked, spotted[look.viewer.side :: number])
+		for _, viewer in looks do
+			costLines += FogOfWar.look(state, now, viewer, targets, blocked, spotted[viewer.side :: number])
 		end
 		costTime += os.clock() - began
 	end
@@ -279,6 +303,12 @@ function FogServer.start()
 		revealUntil[player] = nil
 		FogOfWar.forget(state, PlayerCodec.entityIdForUser(player.UserId))
 	end)
+end
+
+-- A bot gone (system 60): what it saw, and what was seen of it, forgotten.
+function FogServer.forget(id: number)
+	botNextAt[id] = nil
+	FogOfWar.forget(state, id)
 end
 
 return FogServer

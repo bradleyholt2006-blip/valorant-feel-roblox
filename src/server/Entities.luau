@@ -1,6 +1,7 @@
 --!strict
--- Registry of everything that can be shot: players and practice dummies.
--- Combat asks it for target poses; replication asks it for snapshot poses.
+-- Registry of everything that can be shot: players, practice dummies and
+-- bots (system 60). Combat asks it for target poses; replication asks it
+-- for snapshot poses.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,7 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 
-export type Kind = "player" | "dummy"
+export type Kind = "player" | "dummy" | "bot"
 
 export type Entity = {
 	id: number,
@@ -43,6 +44,16 @@ function Entities.all(): { [number]: Entity }
 	return byId
 end
 
+-- An entity's id in the match's rules (MatchRules): a player's UserId, a
+-- bot's (PlayerCodec.botRuleId); nil for anything else.
+function Entities.ruleId(entity: Entity): number?
+	local player = entity.player
+	if player then
+		return player.UserId
+	end
+	return if entity.kind == "bot" then PlayerCodec.botRuleId(entity.id - PlayerCodec.BOT_BASE) else nil
+end
+
 -- What a combat event tells clients about an entity's health and shield:
 -- the shield's kind as `armor` and a Regen Shield's pool left as `pool`.
 function Entities.vitals(entity: Entity): { [string]: any }
@@ -51,7 +62,7 @@ function Entities.vitals(entity: Entity): { [string]: any }
 end
 
 -- The poses this frame's snapshot shows of every living, spawned entity
--- (players and dummies pace theirs, MovePacer).
+-- (players, dummies and bots pace theirs, MovePacer).
 function Entities.poses(): { PlayerCodec.Pose }
 	local out = {}
 	for _, entity in byId do

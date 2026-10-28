@@ -13,14 +13,14 @@
 -- show a revive).
 --
 -- It reads the server's damage events and returns (the Combat remote's
--- "damage" and "revived"), which every client gets.
+-- "damage" and "revived"), which every client gets. A bot (system 60) is
+-- named and coloured as a player is (Who).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local TeamDeathmatchConfig = require(Shared.Arena.TeamDeathmatchConfig)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
@@ -30,6 +30,7 @@ local Remotes = require(Shared.Net.Remotes)
 local Ui = require(script.Parent.Debug.Ui)
 local NetSim = require(script.Parent.NetSim)
 local Visuals = require(script.Parent.Visuals)
+local Who = require(script.Parent.Who)
 
 local KillFeed = {}
 
@@ -48,31 +49,17 @@ local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
 end
 
-local function playerOf(id: number): Player?
-	for _, player in Players:GetPlayers() do
-		if PlayerCodec.entityIdForUser(player.UserId) == id then
-			return player
-		end
-	end
-	return nil
-end
-
 local function nameOf(id: number): string
 	if PlayerCodec.isDummy(id) then
 		return string.format("Dummy %d", id - PlayerCodec.DUMMY_BASE)
 	end
-	local player = playerOf(id)
-	return if player then player.DisplayName else "?"
+	return Who.name(id) or "?"
 end
 
 -- The colour a name is in: the ally colour for you and your side, the
 -- enemy colour for anyone else.
 local function colourOf(id: number): Color3
-	local me = Players.LocalPlayer
-	local player = playerOf(id)
-	local mine = me:GetAttribute(ArenaConfig.SIDE)
-	local theirs = if player then player:GetAttribute(ArenaConfig.SIDE) else nil
-	if player == me or (mine ~= nil and theirs == mine) then
+	if id == PlayerCodec.entityIdForUser(Players.LocalPlayer.UserId) or Who.ally(id) then
 		return color3(VisualConfig.allyColour)
 	end
 	return color3(VisualConfig.EnemyColours[Visuals.enemyColour].colour)

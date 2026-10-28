@@ -7,9 +7,9 @@
 --
 -- A gun let go of with G is thrown a little ahead, as the spike is: it's
 -- stopped short of a wall and lands where it falls. In the spike rounds
--- (Arena sets dropOnDeath) the dead drop theirs where they fall: their
--- primary, or their sidearm if they have no primary. A gun with no ground
--- under it is lost.
+-- (Arena sets dropOnDeath) the dead drop theirs where they fall, bots too
+-- (system 60): their primary, or their sidearm if they have no primary. A
+-- gun with no ground under it is lost.
 --
 -- Anyone alive can pick one up, on either side. Walking over it puts it in
 -- its slot if that slot is empty. F (the GroundGun remote, with the gun's id)
@@ -34,6 +34,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local PlayerSim = require(Shared.PlayerSim)
 local GroundGuns = require(Shared.Weapons.GroundGuns)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 local SpikeSim = require(Shared.Spike.SpikeSim)
@@ -165,6 +166,23 @@ local function onDeath(player: Player)
 	-- It's on the ground now, not with them.
 	PlayerSimServer.give(player, slot, "")
 	ShopServer.forget(player, slot)
+	lay(weapon, ammo, reserve, sim.movement.position + HAND, yaw)
+	sync()
+end
+
+-- A bot's gun where it falls (system 60), as a player's: from its
+-- simulation, facing `yaw`.
+function GroundGunsServer.botDied(sim: PlayerSim.State, yaw: number)
+	if not GroundGunsServer.dropOnDeath then
+		return
+	end
+	local w = sim.weapons
+	local slot = GroundGuns.deathSlot(w.loadout)
+	if not slot then
+		return
+	end
+	local weapon, ammo, reserve = w.loadout[slot], w.ammo[slot], w.reserve[slot]
+	WeaponSim.give(w, slot, "")
 	lay(weapon, ammo, reserve, sim.movement.position + HAND, yaw)
 	sync()
 end

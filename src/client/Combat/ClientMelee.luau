@@ -31,6 +31,7 @@ local Units = require(Shared.Units)
 local PlayerController = require(script.Parent.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local NetSim = require(script.Parent.Parent.NetSim)
+local Who = require(script.Parent.Parent.Who)
 local ClientShots = require(script.Parent.ClientShots)
 
 -- What the server decided about one swing.
@@ -94,8 +95,8 @@ function ClientMelee.attackOf(swing: WeaponSim.Swing): WeaponConfig.SwingDef?
 	return if swing.kind == "stab" then melee.stab else melee.slash
 end
 
--- Another player on our side, whom the server's swing passes by, as its
--- bullets do.
+-- Another player on our side, or a bot (system 60), whom the server's
+-- swing passes by, as its bullets do.
 local function isTeammate(id: number): boolean
 	local me = Players.LocalPlayer
 	if me.Neutral or me.Team == nil then
@@ -106,7 +107,7 @@ local function isTeammate(id: number): boolean
 			return player ~= me and not player.Neutral and player.Team == me.Team
 		end
 	end
-	return false
+	return Who.bot(id) ~= nil and Who.ally(id)
 end
 
 -- What a swing catches with everyone as this client drew them at

@@ -1,7 +1,8 @@
 --!strict
 -- Watching a teammate (system 21): while you're down in the arena or the
 -- spike rounds, dead or waiting for the next round to play, the camera looks
--- out of a living teammate's eyes, as Counter-Strike's competitive
+-- out of a living teammate's eyes, a bot's too (system 60, Who), as
+-- Counter-Strike's competitive
 -- spectating: 'dead players can only watch their teammates in first person',
 -- switching between them with the 'left and right mouse button' (the
 -- Counter-Strike Wiki; community). Anyone not on a side, waiting in line for
@@ -31,7 +32,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DroneSim = require(Shared.Abilities.DroneSim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local MatchConfig = require(Shared.Match.MatchConfig)
-local PlayerCodec = require(Shared.Net.PlayerCodec)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
 local Units = require(Shared.Units)
 
@@ -40,11 +40,12 @@ local CameraController = require(script.Parent.CameraController)
 local PlayMenu = require(script.Parent.PlayMenu)
 local PlayerController = require(script.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.RemoteEntities)
+local Who = require(script.Parent.Who)
 
 local Spectate = {}
 
 -- Who the camera is watching, if anyone.
-Spectate.watching = nil :: Player?
+Spectate.watching = nil :: Who.Someone?
 
 -- Seconds a view stays put after a death before it moves on (estimate).
 local DEATH_HOLD = 2
@@ -58,37 +59,48 @@ local held: View? = nil -- the last view drawn, held once nobody's left to watch
 -- Who you may watch now, in the order the arena's tiles have them: your
 -- side's living players, or anyone alive if you aren't on a side or have
 -- nothing to look at yet (you joined as your side's last fell).
-local function watchable(): { Player }
+local function watchable(): { Who.Someone }
 	local side = me:GetAttribute(ArenaConfig.SIDE)
 	local anyone = typeof(side) ~= "number" or (held == nil and PlayerController.sim == nil)
-	local out: { Player } = {}
-	for _, player in Players:GetPlayers() do
-		if player == me or player:GetAttribute(MatchConfig.ALIVE) ~= true then
+	local out: { Who.Someone } = {}
+	for _, someone in Who.all() do
+		local holder = someone.holder
+		if someone.player == me or holder:GetAttribute(MatchConfig.ALIVE) ~= true then
 			continue
-		elseif not anyone and player:GetAttribute(ArenaConfig.SIDE) ~= side then
+		elseif not anyone and holder:GetAttribute(ArenaConfig.SIDE) ~= side then
 			continue
-		elseif RemoteEntities.isPresent(PlayerCodec.entityIdForUser(player.UserId)) then
-			table.insert(out, player)
+		elseif RemoteEntities.isPresent(someone.entity) then
+			table.insert(out, someone)
 		end
 	end
-	table.sort(out, function(a: Player, b: Player): boolean
-		if a.DisplayName ~= b.DisplayName then
-			return a.DisplayName < b.DisplayName
+	table.sort(out, function(a: Who.Someone, b: Who.Someone): boolean
+		if a.name ~= b.name then
+			return a.name < b.name
 		end
-		return a.UserId < b.UserId
+		return a.id < b.id
 	end)
 	return out
 end
 
--- Where a player looks from as they're drawn: their eye, and their aim;
+-- Where someone is in a list of who you may watch.
+local function indexOf(list: { Who.Someone }, someone: Who.Someone): number?
+	for i, other in list do
+		if other.id == someone.id then
+			return i
+		end
+	end
+	return nil
+end
+
+-- Where someone looks from as they're drawn: their eye, and their aim;
 -- flying the Owl Drone, the drone's middle and its.
-local function viewOf(player: Player): View?
-	local drone = player:GetAttribute(DroneSim.ID_ATTRIBUTE)
+local function viewOf(someone: Who.Someone): View?
+	local drone = someone.holder:GetAttribute(DroneSim.ID_ATTRIBUTE)
 	local flying = if typeof(drone) == "number" then RemoteEntities.drone(drone, RemoteEntities.renderTime()) else nil
 	if flying then
 		return { eye = Units.toStuds(flying.position), yaw = flying.yaw, pitch = flying.pitch }
 	end
-	local pose = RemoteEntities.sample(PlayerCodec.entityIdForUser(player.UserId), RemoteEntities.renderTime())
+	local pose = RemoteEntities.sample(someone.entity, RemoteEntities.renderTime())
 	if not pose then
 		return nil
 	end
@@ -154,7 +166,7 @@ function Spectate.start()
 
 		local list = watchable()
 		local current = Spectate.watching
-		if current and not table.find(list, current) then
+		if current and not indexOf(list, current) then
 			-- They're down: their last view, for a moment.
 			Spectate.watching = nil
 			holdUntil = now + DEATH_HOLD
@@ -165,7 +177,7 @@ function Spectate.start()
 		local target = Spectate.watching
 		local view = if target then viewOf(target) else nil
 		held = view or held
-		RemoteEntities.viewing = if target then PlayerCodec.entityIdForUser(target.UserId) else nil
+		RemoteEntities.viewing = if target then target.entity else nil
 		local shown = held
 		if shown then
 			CameraController.lookFrom(shown.eye, shown.yaw, shown.pitch)
@@ -183,8 +195,8 @@ function Spectate.start()
 		end
 		title.Visible = target ~= nil and not over
 		if target then
-			title.Text = "SPECTATING  " .. string.upper(target.DisplayName)
-			title.TextColor3 = if target:GetAttribute(ArenaConfig.SIDE) == me:GetAttribute(ArenaConfig.SIDE) then ally else Ui.TEXT
+			title.Text = "SPECTATING  " .. string.upper(target.name)
+			title.TextColor3 = if target.holder:GetAttribute(ArenaConfig.SIDE) == me:GetAttribute(ArenaConfig.SIDE) then ally else Ui.TEXT
 		end
 		status.Visible = text ~= "" and not over
 		status.Text = text
@@ -207,7 +219,7 @@ function Spectate.start()
 			return
 		end
 		local list = watchable()
-		local index = table.find(list, current)
+		local index = indexOf(list, current)
 		if index and #list > 1 then
 			Spectate.watching = list[(index - 1 + step) % #list + 1]
 		end

@@ -142,6 +142,16 @@
 -- goes to clients as the arena's model's Callout. The match's last round
 -- has its victory screen instead.
 --
+-- Bots (system 60, BotServer) fill what's played up to a quota of players
+-- (BotFill), so a match starts without waiting for anyone else to join:
+-- each joins, plays and leaves by the rules a player does, by its own id in
+-- them (PlayerCodec.botRuleId), on a side, on the same kits, its record kept
+-- and its deaths counted. A player joining takes a bot's place, and with
+-- nobody playing there are none. In the spike rounds each one buys as it
+-- spawns in a buy phase (BotBuy), from its own credits. What the arena keeps
+-- on a player for clients, it keeps on a bot's stand-in. Workspace's VFBots
+-- attribute, false, keeps them out.
+--
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
 -- off. So do Workspace's attributes, set from the server, which is how
@@ -171,6 +181,9 @@ local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local GunGameRules = require(Shared.Arena.GunGameRules)
 local TeamDeathmatchConfig = require(Shared.Arena.TeamDeathmatchConfig)
 local TeamDeathmatchRules = require(Shared.Arena.TeamDeathmatchRules)
+local BotBuy = require(Shared.Bots.BotBuy)
+local BotConfig = require(Shared.Bots.BotConfig)
+local BotFill = require(Shared.Bots.BotFill)
 local MapVote = require(Shared.Match.MapVote)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
@@ -181,9 +194,12 @@ local PlayerSim = require(Shared.PlayerSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local Units = require(Shared.Units)
+local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
 
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
+local Entities = require(script.Parent.Entities)
+local BotServer = require(script.Parent.BotServer)
 local CombatServer = require(script.Parent.CombatServer)
 local ShopServer = require(script.Parent.ShopServer)
 local SpikeServer = require(script.Parent.SpikeServer)
@@ -280,19 +296,21 @@ local tdm: TeamDeathmatchRules.State? = nil
 local teams: { Team } = {}
 local published = -1
 local queued: { [Player]: boolean } = {} -- spawns asked for and not started yet
-local loadouts: { [Player]: string } = {} -- what MatchConfig.LOADOUT says of each player
-local kitMatch: { [Player]: number } = {} -- the match each player last got the starting kit for
--- Gun game's: the weapon of the kill each player has just died to, until
+-- By id in the rules, a player's or a bot's: what MatchConfig.LOADOUT says
+-- of each one, and the match each last got the starting kit for.
+local loadouts: { [number]: string } = {}
+local kitMatch: { [number]: number } = {}
+-- Gun game's: the weapon of the kill each one has just died to, until
 -- their death is handled.
-local killedWith: { [Player]: string } = {}
+local killedWith: { [number]: string } = {}
 -- Who's pressed PLAY for what's played here, with Arena.menuFirst (system
 -- 24).
 local chosen: { [Player]: boolean } = {}
--- Deathmatch's: where each player last fell, in the map's own metres, until
+-- Deathmatch's: where each one last fell, in the map's own metres, until
 -- their next life starts; each map's places a life can start, and what sees
 -- what on it, once they're first asked for; and the health packs' models,
 -- by their ids.
-local diedAt: { [Player]: vector } = {}
+local diedAt: { [number]: vector } = {}
 local spotsOf: { [string]: { DeathmatchSpawns.Spot } } = {}
 local seeingOn: { [string]: DeathmatchSpawns.Sees } = {}
 local packModels: { [number]: Model } = {}
@@ -488,16 +506,77 @@ local function playerFor(id: number): Player?
 	return Players:GetPlayerByUserId(id)
 end
 
--- From the player's next life, the starting kit of what's played: Skirmish's
+-- Players and bots alike, by their ids in the rules (system 60): what
+-- carries their attributes for clients (a bot's stand-in), and their
+-- simulations, lives and guns, PlayerSimServer's or BotServer's.
+local function holderOf(id: number): Instance?
+	return playerFor(id) or BotServer.standIn(id)
+end
+
+local function getSim(id: number): PlayerSim.State?
+	local player = playerFor(id)
+	return if player then PlayerSimServer.getSim(player) else BotServer.getSim(id)
+end
+
+local function entityOf(id: number): Entities.Entity?
+	local player = playerFor(id)
+	return if player then PlayerSimServer.entityOf(player) else BotServer.entityOf(id)
+end
+
+local function isAlive(id: number): boolean
+	local player = playerFor(id)
+	return if player then PlayerSimServer.isAlive(player) else BotServer.isAlive(id)
+end
+
+local function spawnPending(id: number): boolean
+	local player = playerFor(id)
+	return if player then PlayerSimServer.spawnPending(player) else BotServer.spawnPending(id)
+end
+
+local function holding(id: number, slot: number): (string?, number?)
+	local player = playerFor(id)
+	if player then
+		return PlayerSimServer.holding(player, slot)
+	end
+	return BotServer.holding(id, slot)
+end
+
+local function give(id: number, slot: number, weapon: string, ammo: number?, reserve: number?): boolean
+	local player = playerFor(id)
+	if player then
+		return PlayerSimServer.give(player, slot, weapon, ammo, reserve)
+	end
+	return BotServer.give(id, slot, weapon, ammo, reserve)
+end
+
+local function resetKit(id: number, kit: { string }?, shield: string?)
+	local player = playerFor(id)
+	if player then
+		PlayerSimServer.resetKit(player, kit, shield)
+	else
+		BotServer.resetKit(id, kit, shield)
+	end
+end
+
+local function reloadInHand(id: number, most: number?)
+	local player = playerFor(id)
+	if player then
+		PlayerSimServer.reloadInHand(player, most)
+	else
+		BotServer.reloadInHand(id, most)
+	end
+end
+
+-- From someone's next life, the starting kit of what's played: Skirmish's
 -- (WeaponConfig's default), the spike rounds' (the Classic and the knife,
 -- no shield) or deathmatch's (Skirmish's, in Heavy Armor).
-local function startingKit(player: Player)
+local function startingKit(id: number)
 	if mode == "spike" then
-		PlayerSimServer.resetKit(player, MatchConfig.StartingKit, "")
+		resetKit(id, MatchConfig.StartingKit, "")
 	elseif mode == "deathmatch" then
-		PlayerSimServer.resetKit(player, nil, DeathmatchConfig.SHIELD)
+		resetKit(id, nil, DeathmatchConfig.SHIELD)
 	else
-		PlayerSimServer.resetKit(player)
+		resetKit(id)
 	end
 end
 
@@ -508,13 +587,13 @@ end
 -- Deathmatch on the loadout picked for the stage under way, its abilities
 -- starting over as the rules say. Roblox takes a moment to load the
 -- character, and what they buy meanwhile is held for the new life
--- (ShopServer).
+-- (ShopServer). A bot's life starts with the next frame (system 60).
 local function spawn(ids: { number })
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	local matchNumber = if s then s.match elseif m then m.match elseif d then d.match else nil
 	for _, id in ids do
 		local player = playerFor(id)
-		if not player then
+		if not player and not BotServer.has(id) then
 			continue
 		end
 		local kit: { string }?, shield: string? = nil, nil
@@ -523,15 +602,19 @@ local function spawn(ids: { number })
 		elseif t then
 			kit, shield = TeamDeathmatchRules.kitOf(t, id)
 			TeamDeathmatchRules.armed(t, id)
-			if TeamDeathmatchRules.startsOver(t, id) then
+			if TeamDeathmatchRules.startsOver(t, id) and player then
 				AbilityServer.fresh(player, now())
 			end
 		end
 		if kit then
-			PlayerSimServer.resetKit(player, kit, shield)
-		elseif matchNumber and kitMatch[player] ~= matchNumber then
-			kitMatch[player] = matchNumber
-			startingKit(player)
+			resetKit(id, kit, shield)
+		elseif matchNumber and kitMatch[id] ~= matchNumber then
+			kitMatch[id] = matchNumber
+			startingKit(id)
+		end
+		if not player then
+			BotServer.spawn(id)
+			continue
 		end
 		PlayerSimServer.expectSpawn(player)
 		if not queued[player] then
@@ -562,6 +645,14 @@ local function seat(sides: Roster.Sides?, vote: MapVote.Vote?)
 		player:SetAttribute(ArenaConfig.SIDE, side)
 		player:SetAttribute(ArenaConfig.LINE, if sides then Roster.placeInLine(sides, id) else nil)
 		player:SetAttribute(ArenaConfig.VOTE, if vote then vote.picks[id] else nil)
+	end
+	-- Bots (system 60) are on no team, but on a side all the same.
+	for _, id in BotServer.ids() do
+		BotServer.setSide(id, if sides then Roster.sideOf(sides, id) else nil)
+		local standIn = BotServer.standIn(id)
+		if standIn then
+			standIn:SetAttribute(ArenaConfig.LINE, if sides then Roster.placeInLine(sides, id) else nil)
+		end
 	end
 end
 
@@ -718,27 +809,27 @@ local function publish()
 		else nil
 	if members then
 		for id, member in members do
-			local player = playerFor(id)
-			if not player then
+			local holder = holderOf(id)
+			if not holder then
 				continue
 			end
-			player:SetAttribute(MatchConfig.ALIVE, member.alive)
-			player:SetAttribute(MatchConfig.KILLS, member.kills)
-			player:SetAttribute(MatchConfig.DEATHS, member.deaths)
-			player:SetAttribute(MatchConfig.ASSISTS, member.assists)
-			player:SetAttribute(MatchConfig.SCORE, member.score)
-			player:SetAttribute(MatchConfig.ROUNDS, member.rounds)
+			holder:SetAttribute(MatchConfig.ALIVE, member.alive)
+			holder:SetAttribute(MatchConfig.KILLS, member.kills)
+			holder:SetAttribute(MatchConfig.DEATHS, member.deaths)
+			holder:SetAttribute(MatchConfig.ASSISTS, member.assists)
+			holder:SetAttribute(MatchConfig.SCORE, member.score)
+			holder:SetAttribute(MatchConfig.ROUNDS, member.rounds)
 			if m then
-				player:SetAttribute(MatchConfig.CREDITS, member.credits)
-				player:SetAttribute(MatchConfig.START_CREDITS, member.startCredits)
+				holder:SetAttribute(MatchConfig.CREDITS, member.credits)
+				holder:SetAttribute(MatchConfig.START_CREDITS, member.startCredits)
 			elseif g then
-				player:SetAttribute(GunGameConfig.LEVEL, GunGameRules.levelOf(g, id))
+				holder:SetAttribute(GunGameConfig.LEVEL, GunGameRules.levelOf(g, id))
 			elseif d then
-				player:SetAttribute(DeathmatchConfig.PLACE, DeathmatchRules.placeOf(d, id))
+				holder:SetAttribute(DeathmatchConfig.PLACE, DeathmatchRules.placeOf(d, id))
 			elseif t then
-				player:SetAttribute(TeamDeathmatchConfig.KIT_STAGE, t.kitStage[id])
+				holder:SetAttribute(TeamDeathmatchConfig.KIT_STAGE, t.kitStage[id])
 				local primary, sidearm = TeamDeathmatchRules.lentOf(t, id, 1), TeamDeathmatchRules.lentOf(t, id, 2)
-				player:SetAttribute(
+				holder:SetAttribute(
 					TeamDeathmatchConfig.LENT,
 					if primary or sidearm then (primary or "") .. "," .. (sidearm or "") else nil
 				)
@@ -752,9 +843,9 @@ local function publish()
 			table.insert(ids, id)
 		end
 		for _, id in ids do
-			local player = playerFor(id)
-			if player then
-				player:SetAttribute(TeamDeathmatchConfig.PICKS, table.concat(TeamDeathmatchRules.picksOf(t, id), ","))
+			local holder = holderOf(id)
+			if holder then
+				holder:SetAttribute(TeamDeathmatchConfig.PICKS, table.concat(TeamDeathmatchRules.picksOf(t, id), ","))
 			end
 		end
 	end
@@ -829,15 +920,14 @@ local function roundStarted()
 	local kind: MatchRules.RoundKind = MatchRules.roundKind(m.format, m.round)
 	local swiftplay = m.formatKey == "swiftplay"
 	for id in m.members do
-		local player = playerFor(id)
-		if not player then
-			continue
-		end
 		if half then
-			kitMatch[player] = m.match
-			startingKit(player)
+			kitMatch[id] = m.match
+			startingKit(id)
 		end
-		AbilityServer.roundStarted(player, kind, swiftplay)
+		local player = playerFor(id)
+		if player then
+			AbilityServer.roundStarted(player, kind, swiftplay)
+		end
 	end
 end
 
@@ -881,9 +971,9 @@ local function roundEnded()
 	setCallout(if winner then CalloutServer.roundOver(winner) else nil)
 end
 
--- Someone joins what's played, or leaves it: their team, and whoever spawns.
-local function join(player: Player)
-	local id = player.UserId
+-- Someone joins what's played, or leaves it, by their id in the rules (a
+-- player's UserId, or a bot's): their team, and whoever spawns.
+local function join(id: number)
 	local ids: { number }
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	if s then
@@ -904,8 +994,7 @@ local function join(player: Player)
 	spawn(ids)
 end
 
-local function leave(player: Player)
-	local id = player.UserId
+local function leave(id: number)
 	local ids: { number }
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	if s then
@@ -924,6 +1013,48 @@ local function leave(player: Player)
 	publish()
 	roundStarted()
 	spawn(ids)
+end
+
+-- Bots in what's played (system 60): as many joining as fill it up to the
+-- mode's quota with the players in it, on a side or in line, and leaving as
+-- BotFill says, as players would; none at all with Workspace's VFBots
+-- false, or nothing played.
+local function fill()
+	local s, m, g, d, t = skirmish, match, gun, dm, tdm
+	local sides: Roster.Sides? = if s then s elseif m then m elseif g then g elseif d then d elseif t then t else nil
+	local phase: string? = if s then s.phase elseif m then m.phase elseif g then g.phase elseif d then d.phase elseif t then t.phase else nil
+	local players = 0
+	local seats: { BotFill.Seat } = {}
+	if sides then
+		for id, member in sides.members do
+			if BotServer.has(id) then
+				table.insert(seats, { id = id, side = member.side, alive = member.alive, order = member.order })
+			else
+				players += 1
+			end
+		end
+		for k, id in sides.queue do
+			if BotServer.has(id) then
+				table.insert(seats, { id = id, side = nil, alive = false, order = sides.joins + k })
+			else
+				players += 1
+			end
+		end
+	end
+	local on = sides ~= nil and mode ~= nil and Workspace:GetAttribute(BotConfig.ON) ~= false
+	local quota = if on and mode then BotConfig.Quotas[mode].value else 0
+	local add, leaving = BotFill.plan(quota, players, seats, phase)
+	for _, id in leaving do
+		leave(id)
+		BotServer.remove(id)
+		loadouts[id] = nil
+		kitMatch[id] = nil
+		killedWith[id] = nil
+		diedAt[id] = nil
+	end
+	for _ = 1, add do
+		join(BotServer.add())
+	end
 end
 
 -- What the spike rounds hear of the spike.
@@ -996,6 +1127,9 @@ local function stop()
 	table.clear(killedWith)
 	table.clear(diedAt)
 	syncPacks()
+	for _, id in BotServer.ids() do
+		BotServer.remove(id)
+	end
 	for _, player in Players:GetPlayers() do
 		AbilityServer.reset(player)
 		player.Team = nil
@@ -1083,9 +1217,10 @@ local function begin(wanted: Mode, format: string)
 	published = -2
 	for _, player in Players:GetPlayers() do
 		if not Arena.menuFirst or chosen[player] then
-			join(player)
+			join(player.UserId)
 		end
 	end
+	fill()
 	publish()
 end
 
@@ -1127,19 +1262,19 @@ local function apply()
 	end
 end
 
--- Tells clients the guns each player holds, when they've changed.
+-- Tells clients the guns each one holds, when they've changed.
 local function publishLoadouts(members: { [number]: any })
 	for id in members do
-		local player = playerFor(id)
-		if not player then
+		local holder = holderOf(id)
+		if not holder then
 			continue
 		end
-		local primary = PlayerSimServer.holding(player, 1)
-		local sidearm = PlayerSimServer.holding(player, 2)
+		local primary = holding(id, 1)
+		local sidearm = holding(id, 2)
 		local text = (primary or "") .. "," .. (sidearm or "")
-		if loadouts[player] ~= text then
-			loadouts[player] = text
-			player:SetAttribute(MatchConfig.LOADOUT, text)
+		if loadouts[id] ~= text then
+			loadouts[id] = text
+			holder:SetAttribute(MatchConfig.LOADOUT, text)
 		end
 	end
 end
@@ -1154,36 +1289,37 @@ local function publishProtection(time: number)
 		return
 	end
 	for id in members do
-		local player = playerFor(id)
+		local holder = holderOf(id)
 		local safe = if g then GunGameRules.safe(g, id, time) elseif t then TeamDeathmatchRules.safe(t, id, time) else false
 		local on = if safe then true else nil
-		if player and player:GetAttribute(GunGameConfig.PROTECTED) ~= on then
-			player:SetAttribute(GunGameConfig.PROTECTED, on)
+		if holder and holder:GetAttribute(GunGameConfig.PROTECTED) ~= on then
+			holder:SetAttribute(GunGameConfig.PROTECTED, on)
 		end
 		local since = if t then t.spawnedAt[id] else nil
-		if player and t and player:GetAttribute(TeamDeathmatchConfig.ROOM_SINCE) ~= since then
-			player:SetAttribute(TeamDeathmatchConfig.ROOM_SINCE, since)
+		if holder and t and holder:GetAttribute(TeamDeathmatchConfig.ROOM_SINCE) ~= since then
+			holder:SetAttribute(TeamDeathmatchConfig.ROOM_SINCE, since)
 		end
 	end
 end
 
--- Puts a kit's guns in a living player's hands now, in place of what they
--- hold (gun game's next level, Team Deathmatch's stage): the new guns first,
--- so the hand goes to one as the old one's slot empties. A gun they hold
--- already stays as it is, but in a slot of `renew`, which has it afresh.
-local function arm(player: Player, kit: { string }?, renew: { [number]: boolean }?)
-	if not kit or not PlayerSimServer.isAlive(player) then
+-- Puts a kit's guns in a living player's or bot's hands now, in place of
+-- what they hold (gun game's next level, Team Deathmatch's stage): the new
+-- guns first, so the hand goes to one as the old one's slot empties. A gun
+-- they hold already stays as it is, but in a slot of `renew`, which has it
+-- afresh.
+local function arm(id: number, kit: { string }?, renew: { [number]: boolean }?)
+	if not kit or not isAlive(id) then
 		return
 	end
 	for slot = 1, 2 do
 		local afresh = renew ~= nil and renew[slot] == true
-		if kit[slot] ~= "" and (afresh or PlayerSimServer.holding(player, slot) ~= kit[slot]) then
-			PlayerSimServer.give(player, slot, kit[slot])
+		if kit[slot] ~= "" and (afresh or holding(id, slot) ~= kit[slot]) then
+			give(id, slot, kit[slot])
 		end
 	end
 	for slot = 1, 2 do
-		if kit[slot] == "" and PlayerSimServer.holding(player, slot) ~= "" then
-			PlayerSimServer.give(player, slot, "")
+		if kit[slot] == "" and holding(id, slot) ~= "" then
+			give(id, slot, "")
 		end
 	end
 end
@@ -1199,10 +1335,9 @@ end
 local function spawnRooms(t: TeamDeathmatchRules.State, time: number)
 	local origin = SpikeMaps.Maps[t.map].origin
 	for id, member in t.members do
-		local player = if member.alive then playerFor(id) else nil
-		local sim = if player and PlayerSimServer.isAlive(player) then PlayerSimServer.getSim(player) else nil
-		local entity = if player then PlayerSimServer.entityOf(player) else nil
-		if not player or not sim or not entity or PlayerSimServer.spawnPending(player) then
+		local sim = if member.alive and isAlive(id) then getSim(id) else nil
+		local entity = if sim then entityOf(id) else nil
+		if not sim or not entity or spawnPending(id) then
 			continue
 		end
 		local room: TeamDeathmatchRules.Room? = TeamDeathmatchRules.roomOf(t, id, sim.movement.position - origin)
@@ -1224,7 +1359,7 @@ local function spawnRooms(t: TeamDeathmatchRules.State, time: number)
 		end
 		if TeamDeathmatchRules.rearms(t, id, time, room == "own") then
 			local kit, shield = TeamDeathmatchRules.kitOf(t, id)
-			arm(player, kit, renew)
+			arm(id, kit, renew)
 			if entity.health.kind ~= shield then
 				CombatServer.setShield(entity, shield)
 			end
@@ -1236,13 +1371,12 @@ local function spawnRooms(t: TeamDeathmatchRules.State, time: number)
 	end
 end
 
--- Reloads the gun in a player's hands at once, as deathmatch does with
--- each kill and each health pack: the Ares and the Odin 30 rounds at the
--- most.
-local function reload(player: Player)
-	local _, slot = PlayerSimServer.holding(player, 1)
-	local id = if slot then PlayerSimServer.holding(player, slot) else nil
-	PlayerSimServer.reloadInHand(player, DeathmatchRules.reloadFor(id))
+-- Reloads the gun in someone's hands at once, as deathmatch does with each
+-- kill and each health pack: the Ares and the Odin 30 rounds at the most.
+local function reload(id: number)
+	local _, slot = holding(id, 1)
+	local weapon = if slot then holding(id, slot) else nil
+	reloadInHand(id, DeathmatchRules.reloadFor(weapon))
 end
 
 -- Whoever alive stands over a health pack takes it (deathmatch): full health
@@ -1253,14 +1387,13 @@ local function pickUps(d: DeathmatchRules.State, time: number)
 	end
 	local origin = SpikeMaps.Maps[d.map].origin
 	for id, member in d.members do
-		local player = if member.alive then playerFor(id) else nil
-		local sim = if player and PlayerSimServer.isAlive(player) then PlayerSimServer.getSim(player) else nil
-		if player and sim and DeathmatchRules.pickUp(d, id, sim.movement.position - origin, time) then
-			local entity = PlayerSimServer.entityOf(player)
+		local sim = if member.alive and isAlive(id) then getSim(id) else nil
+		if sim and DeathmatchRules.pickUp(d, id, sim.movement.position - origin, time) then
+			local entity = entityOf(id)
 			if entity then
 				CombatServer.heal(entity)
 			end
-			reload(player)
+			reload(id)
 		end
 	end
 end
@@ -1307,7 +1440,7 @@ end
 function Arena.play(player: Player)
 	chosen[player] = true
 	player:SetAttribute(PlayConfig.PLAYING, true)
-	join(player)
+	join(player.UserId)
 end
 
 -- Whether someone is in what's played: on a side, or waiting in line.
@@ -1317,7 +1450,8 @@ function Arena.has(player: Player): boolean
 	return sides ~= nil and (sides.members[player.UserId] ~= nil or Roster.placeInLine(sides, player.UserId) ~= nil)
 end
 
--- How many are in what's played, on a side (not waiting in line).
+-- How many players are in what's played, on a side (not waiting in line,
+-- and not the bots, which give way to them, system 60).
 function Arena.playing(): number
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	local members: { [number]: Roster.Member }? = if s
@@ -1329,8 +1463,10 @@ function Arena.playing(): number
 		else nil
 	local n = 0
 	if members then
-		for _ in members do
-			n += 1
+		for id in members do
+			if not BotServer.has(id) then
+				n += 1
+			end
 		end
 	end
 	return n
@@ -1368,6 +1504,7 @@ function Arena.step(time: number)
 	else
 		return
 	end
+	fill()
 	publish()
 	roundStarted()
 	roundLive()
@@ -1463,8 +1600,8 @@ function Arena.start()
 		end
 	end)
 
-	PlayerSimServer.spawnPicker = function(player: Player): PlayerSimServer.SpawnPoint?
-		local id = player.UserId
+	-- Where someone's next life starts, a player's or a bot's.
+	local function spawnPoint(id: number): PlayerSimServer.SpawnPoint?
 		local s, m, g, d, t = skirmish, match, gun, dm, tdm
 		-- The arena's rooms, in Skirmish and gun game.
 		local sides: Roster.Sides? = if s then s elseif g then g else nil
@@ -1491,14 +1628,13 @@ function Arena.start()
 			local plan = SpikeMaps.Maps[d.map]
 			local enemies = {}
 			for other, member in d.members do
-				local them = if other ~= id and member.alive then playerFor(other) else nil
-				local sim = if them and PlayerSimServer.isAlive(them) then PlayerSimServer.getSim(them) else nil
+				local sim = if other ~= id and member.alive and isAlive(other) then getSim(other) else nil
 				if sim then
 					table.insert(enemies, sim.movement.position - plan.origin)
 				end
 			end
-			local chosen = DeathmatchSpawns.choose(spotsFor(d.map), enemies, diedAt[player], seesFor(d.map), math.random)
-			diedAt[player] = nil
+			local chosen = DeathmatchSpawns.choose(spotsFor(d.map), enemies, diedAt[id], seesFor(d.map), math.random)
+			diedAt[id] = nil
 			return { feet = plan.origin + chosen.feet, yaw = chosen.yaw }
 		elseif t then
 			-- Their side's spawn room, on the match's map.
@@ -1512,6 +1648,41 @@ function Arena.start()
 			return { feet = plan.origin + chosen.feet, yaw = chosen.yaw }
 		end
 		return nil
+	end
+	PlayerSimServer.spawnPicker = function(player: Player): PlayerSimServer.SpawnPoint?
+		return spawnPoint(player.UserId)
+	end
+	BotServer.spawnPicker = spawnPoint
+	-- What the bots' plans go by (system 60): the map, whether a round's
+	-- under way, which side attacks in the spike rounds, and in Skirmish each
+	-- side's spawn spots, for the other side's bots to hunt as far as.
+	BotServer.situation = function(): BotServer.Situation?
+		local s, m, g, d, t = skirmish, match, gun, dm, tdm
+		local out: BotServer.Situation
+		if s then
+			out = { arenaMap = s.map, live = s.phase == "live", round = s.match * 1000 + s.round, roles = {}, spawns = {} }
+			for side = 1, Roster.SIDES do
+				local feet: { vector } = {}
+				for _, spot in ArenaLayout.spots(side) do
+					table.insert(feet, spot.feet)
+				end
+				out.spawns[side] = feet
+			end
+		elseif g then
+			out = { arenaMap = g.map, live = g.phase == "live", round = g.match, roles = {}, spawns = {} }
+		elseif m then
+			local live = m.phase == "live" or m.phase == "planted"
+			out = { spikeMap = m.map, live = live, round = m.match * 1000 + m.round, roles = {}, spawns = {} }
+			out.roles[m.attackers] = "attack"
+			out.roles[3 - m.attackers] = "defend"
+		elseif d then
+			out = { spikeMap = d.map, live = d.phase == "live", round = d.match, roles = {}, spawns = {} }
+		elseif t then
+			out = { spikeMap = t.map, live = t.phase == "live", round = t.match, roles = {}, spawns = {} }
+		else
+			return nil
+		end
+		return out
 	end
 	PlayerSimServer.loadoutRule = function(player: Player): boolean?
 		local s, m, g, d, t = skirmish, match, gun, dm, tdm
@@ -1567,32 +1738,32 @@ function Arena.start()
 		local m = match
 		return if m then Roster.sideOf(m, player.UserId) else nil
 	end
-	-- Every hit between players goes in the record.
+	-- Every hit between players, and bots, goes in the record.
 	table.insert(CombatServer.damageListeners, function(attacker, victim, amount: number)
 		local s, m, g, d, t = skirmish, match, gun, dm, tdm
-		local by = if attacker then attacker.player else nil
-		local hurt = victim.player
+		local by = if attacker then Entities.ruleId(attacker) else nil
+		local hurt = Entities.ruleId(victim)
 		if not by or not hurt then
 			return
 		end
 		if s then
-			ArenaRules.damaged(s, by.UserId, hurt.UserId, amount)
+			ArenaRules.damaged(s, by, hurt, amount)
 		elseif m then
-			MatchRules.damaged(m, by.UserId, hurt.UserId, amount)
+			MatchRules.damaged(m, by, hurt, amount)
 		elseif g then
-			GunGameRules.damaged(g, by.UserId, hurt.UserId, amount)
+			GunGameRules.damaged(g, by, hurt, amount)
 		elseif d then
-			DeathmatchRules.damaged(d, by.UserId, hurt.UserId, amount)
+			DeathmatchRules.damaged(d, by, hurt, amount)
 		elseif t then
-			TeamDeathmatchRules.damaged(t, by.UserId, hurt.UserId, amount)
+			TeamDeathmatchRules.damaged(t, by, hurt, amount)
 		end
 	end)
 	-- What each kill was made with, for gun game's knife kills; the kill
 	-- comes before the death.
 	table.insert(CombatServer.killListeners, function(_, victim, weapon: string)
-		local player = victim.player
-		if player and gun then
-			killedWith[player] = weapon
+		local id = Entities.ruleId(victim)
+		if id and gun then
+			killedWith[id] = weapon
 		end
 	end)
 	-- Sage's Resurrection (system 39): in Skirmish and the spike rounds,
@@ -1636,45 +1807,53 @@ function Arena.start()
 			publish()
 		end
 	end)
-	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
+	-- A death, a player's or a bot's, with whoever killed them, if anyone
+	-- else did.
+	local function died(id: number, killer: number?)
 		local s, m, g, d, t = skirmish, match, gun, dm, tdm
-		local weapon = killedWith[player]
-		killedWith[player] = nil
+		local weapon = killedWith[id]
+		killedWith[id] = nil
 		if s then
-			ArenaRules.died(s, player.UserId, now(), if killer then killer.UserId else nil)
+			ArenaRules.died(s, id, now(), killer)
 			publish()
 		elseif m then
-			MatchRules.died(m, player.UserId, now(), if killer then killer.UserId else nil)
+			MatchRules.died(m, id, now(), killer)
 			-- What they bought is lost with them.
-			startingKit(player)
+			startingKit(id)
 			publish()
 		elseif g then
-			GunGameRules.died(g, player.UserId, now(), if killer then killer.UserId else nil, weapon)
+			GunGameRules.died(g, id, now(), killer, weapon)
 			-- The killer's next gun, in their hands at once.
 			if killer then
-				arm(killer, GunGameRules.kitOf(g, killer.UserId))
+				arm(killer, GunGameRules.kitOf(g, killer))
 			end
 			publish()
 		elseif d then
 			-- A health pack where they fell, on the floor, and the next life
 			-- away from here.
-			local sim = PlayerSimServer.getSim(player)
+			local sim = getSim(id)
 			local origin = SpikeMaps.Maps[d.map].origin
 			local feet = if sim then sim.movement.position - origin else nil
 			local floor = if feet then vector.create(feet.x, 0, feet.z) else nil
 			if floor then
-				diedAt[player] = floor
+				diedAt[id] = floor
 			end
-			DeathmatchRules.died(d, player.UserId, now(), if killer then killer.UserId else nil, floor)
+			DeathmatchRules.died(d, id, now(), killer, floor)
 			-- Every kill reloads the gun in the killer's hands.
 			if killer then
 				reload(killer)
 			end
 			publish()
 		elseif t then
-			TeamDeathmatchRules.died(t, player.UserId, now(), if killer then killer.UserId else nil)
+			TeamDeathmatchRules.died(t, id, now(), killer)
 			publish()
 		end
+	end
+	table.insert(PlayerSimServer.deathListeners, function(player: Player, _, by: Entities.Entity?)
+		died(player.UserId, if by then Entities.ruleId(by) else nil)
+	end)
+	table.insert(BotServer.deathListeners, function(id: number, by: Entities.Entity?)
+		died(id, if by then Entities.ruleId(by) else nil)
 	end)
 	-- G does nothing in gun game and both deathmatches, as their clients don't
 	-- send it (ArenaHud); should a drop come anyway, the gun goes straight back
@@ -1693,47 +1872,85 @@ function Arena.start()
 	-- Each new life in gun game and Team Deathmatch can't be hurt for a
 	-- moment, until it fires, swings or scopes (or in Team Deathmatch leaves
 	-- its room, spawnRooms).
-	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
+	local function spawned(id: number)
 		local g, t = gun, tdm
 		if g then
-			GunGameRules.spawned(g, player.UserId, now())
+			GunGameRules.spawned(g, id, now())
 		elseif t then
-			TeamDeathmatchRules.spawned(t, player.UserId, now())
+			TeamDeathmatchRules.spawned(t, id, now())
 		end
 		publishProtection(now())
+	end
+	local function fired(id: number)
+		local g, t = gun, tdm
+		if (g and GunGameRules.fired(g, id)) or (t and TeamDeathmatchRules.unprotect(t, id)) then
+			publishProtection(now())
+		end
+	end
+	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
+		spawned(player.UserId)
 	end)
 	local ATTACK = bit32.bor(PlayerSim.Buttons.Fire, PlayerSim.Buttons.AltFire)
 	table.insert(PlayerSimServer.tickListeners, function(player: Player, input: PlayerCodec.WireInput)
-		local g, t = gun, tdm
-		if not bit32.btest(input.buttons, ATTACK) then
-			return
-		end
-		if (g and GunGameRules.fired(g, player.UserId)) or (t and TeamDeathmatchRules.unprotect(t, player.UserId)) then
-			publishProtection(now())
+		if bit32.btest(input.buttons, ATTACK) then
+			fired(player.UserId)
 		end
 	end)
+	-- A bot's life (system 60): in a buy phase of the spike rounds, it buys
+	-- (BotBuy), from its own credits.
+	table.insert(BotServer.spawnListeners, function(id: number)
+		spawned(id)
+		local m = match
+		local entity = BotServer.entityOf(id)
+		if not m or m.phase ~= "buy" or not entity then
+			return
+		end
+		local h = entity.health
+		local worn = WeaponConfig.Shields[h.kind]
+		local primary = BotServer.holding(id, 1)
+		local sidearm = BotServer.holding(id, 2)
+		local has: BotBuy.Has = {
+			primary = primary or "",
+			sidearm = sidearm or "",
+			-- One that's taken half its points or more is as good as none.
+			shield = if worn and h.shield * 2 >= worn.points.value then h.kind else "",
+		}
+		local kind = MatchRules.roundKind(m.format, m.round)
+		for _, item in BotBuy.choose(MatchRules.credits(m, id) or 0, has, kind == "match" or kind == "half", math.random) do
+			if not MatchRules.spend(m, id, BotBuy.price(item)) then
+				break
+			end
+			if WeaponConfig.Shields[item] then
+				CombatServer.setShield(entity, item)
+			else
+				BotServer.give(id, WeaponConfig.Defs[item].slot, item)
+			end
+		end
+	end)
+	table.insert(BotServer.fireListeners, fired)
 	CombatServer.protected = function(entity): boolean
 		local g, t = gun, tdm
-		local player = entity.player
-		if not player then
+		local id = Entities.ruleId(entity)
+		if not id then
 			return false
 		end
-		return (g ~= nil and GunGameRules.safe(g, player.UserId, now())) or (t ~= nil and TeamDeathmatchRules.safe(t, player.UserId, now()))
+		return (g ~= nil and GunGameRules.safe(g, id, now())) or (t ~= nil and TeamDeathmatchRules.safe(t, id, now()))
 	end
 
 	Players.PlayerAdded:Connect(function(player)
 		if not Arena.menuFirst then
-			join(player)
+			join(player.UserId)
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
+		local id = player.UserId
 		queued[player] = nil
-		kitMatch[player] = nil
-		loadouts[player] = nil
-		killedWith[player] = nil
+		kitMatch[id] = nil
+		loadouts[id] = nil
+		killedWith[id] = nil
 		chosen[player] = nil
-		diedAt[player] = nil
-		leave(player)
+		diedAt[id] = nil
+		leave(id)
 	end)
 
 	Workspace:SetAttribute(ArenaConfig.ON, on)

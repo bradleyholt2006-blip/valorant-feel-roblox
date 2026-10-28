@@ -600,11 +600,17 @@ PlayerCodec.SNAPSHOT_ENTRY = SNAP_ENTRY
 -- up to DUMMY_LIMIT. The range is bounded because Studio's local test
 -- players have UserIds -1, -2, ..., which land at the very top of it. Sova's
 -- Owl Drones (system 47) use DRONE_BASE + n the same way, below the
--- dummies': in the snapshots, but no player's or dummy's.
+-- dummies': in the snapshots, but no player's or dummy's. Bots (system 60)
+-- use BOT_BASE + n, below the drones'; in the rules a bot goes by its
+-- entity id less 2^32 (botRuleId), a negative number below any Studio test
+-- player's UserId, which entityIdForUser turns back into its entity id as
+-- it does a player's UserId.
 PlayerCodec.DUMMY_BASE = 4294901760 -- 0xFFFF0000
 PlayerCodec.DUMMY_LIMIT = 4096
 PlayerCodec.DRONE_BASE = 4294836224 -- 0xFFFE0000
 PlayerCodec.DRONE_LIMIT = 4096
+PlayerCodec.BOT_BASE = 4294770688 -- 0xFFFD0000
+PlayerCodec.BOT_LIMIT = 4096
 
 function PlayerCodec.entityIdForUser(userId: number): number
 	return userId % 2 ^ 32
@@ -616,6 +622,21 @@ end
 
 function PlayerCodec.isDrone(id: number): boolean
 	return id > PlayerCodec.DRONE_BASE and id <= PlayerCodec.DRONE_BASE + PlayerCodec.DRONE_LIMIT
+end
+
+-- Whether an entity id is a bot's.
+function PlayerCodec.isBot(id: number): boolean
+	return id > PlayerCodec.BOT_BASE and id <= PlayerCodec.BOT_BASE + PlayerCodec.BOT_LIMIT
+end
+
+-- Bot `n`'s id in the rules (1 up to BOT_LIMIT).
+function PlayerCodec.botRuleId(n: number): number
+	return PlayerCodec.BOT_BASE + n - 2 ^ 32
+end
+
+-- Whether an id in the rules is a bot's.
+function PlayerCodec.isBotRule(id: number): boolean
+	return id < 0 and PlayerCodec.isBot(PlayerCodec.entityIdForUser(id))
 end
 
 -- Applies the same float32 rounding a pose gets on the wire, so the server's
