@@ -22,6 +22,17 @@
 -- In deathmatch (system 26) it opens whenever you're alive, and sells the
 -- guns alone, free (DeathmatchConfig.FOR_SALE): every life wears Heavy
 -- Armor, and there are no abilities, so the rest is dimmed.
+--
+-- In the spike rounds teammates buy guns for each other (system 57,
+-- TeamBuy): right-click a gun you don't have to ask your team for it, and
+-- again to take that back. The team panel left of the menu has a card for
+-- each of your side, you first: their credits, gun and shield, plan, and
+-- the gun they're asking for, with BUY to buy it for them, which needs its
+-- price in credits. One bought for you is yours, drawn as one you bought
+-- is, and selling it back refunds whoever bought it. The panel's buttons
+-- tell your team your plan: saving, buying, or extra credits to buy for
+-- them. A teammate asking for a gun plays the ping's blip (system 52),
+-- whether the menu's open or not.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,6 +47,7 @@ local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local Shop = require(Shared.Weapons.Shop)
+local TeamBuy = require(Shared.Weapons.TeamBuy)
 local Remotes = require(Shared.Net.Remotes)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
@@ -46,6 +58,7 @@ local PlayerController = require(script.Parent.PlayerController)
 local CameraController = require(script.Parent.CameraController)
 local InputSampler = require(script.Parent.InputSampler)
 local WeaponLooks = require(script.Parent.Combat.WeaponLooks)
+local GameSounds = require(script.Parent.Audio.GameSounds)
 local Ui = require(script.Parent.Debug.Ui)
 
 local BuyMenu = {}
@@ -70,6 +83,16 @@ local OWNED = Color3.fromRGB(235, 235, 235)
 local SELLABLE = Color3.fromRGB(90, 220, 200)
 local GOLD = Color3.fromRGB(230, 200, 120)
 local SHORT = Color3.fromRGB(235, 90, 80) -- what you can't afford
+local ASKED = Color3.fromRGB(120, 180, 255) -- what you've asked your team for
+
+-- The team panel left of the menu, in the spike rounds (system 57): a card
+-- for each of your side.
+local TEAM_W = 236
+local TEAM_GAP = 12
+local CARD_H = 74
+local MAX_CARDS = 5
+local HELP = "Click to buy   Right-click to sell back what you bought this buy phase   B to close"
+local HELP_TEAM = "Click to buy   Right-click to sell back what you bought this buy phase, or to ask your team for a gun   B to close"
 
 local CATEGORY: { [string]: string } = {
 	sidearm = "Sidearm",
@@ -87,6 +110,17 @@ type Tile = { id: string, item: Shop.Item, button: TextButton, stroke: UIStroke,
 -- An ability's tile has a pip for each charge it can hold, and is shown
 -- for its agent's kit.
 type AbilityTile = Tile & { pips: { Frame }, agent: string }
+-- A card in the team panel, and whose it is now.
+type Card = {
+	frame: Frame,
+	name: TextLabel,
+	credits: TextLabel,
+	kit: TextLabel,
+	plan: TextLabel,
+	ask: TextLabel,
+	button: TextButton,
+	player: Player?,
+}
 
 local tiles: { Tile } = {}
 local abilityTiles: { AbilityTile } = {}
@@ -113,12 +147,22 @@ local function shieldWorn(): string
 	return if typeof(kind) == "string" then kind else ""
 end
 
--- Our copy of what we've bought this buy phase and what it replaced, for
--- what buying something costs.
+-- A player's copy of what they've bought this buy phase, what it replaced
+-- and who paid for it, for what buying something costs.
+local function shopStateOf(player: Player): Shop.State
+	local bought = player:GetAttribute(Shop.BOUGHT_ATTRIBUTE)
+	local before = player:GetAttribute(Shop.BEFORE_ATTRIBUTE)
+	local paid = player:GetAttribute(Shop.PAID_ATTRIBUTE)
+	return Shop.fromLists(
+		if typeof(bought) == "string" then bought else nil,
+		if typeof(before) == "string" then before else nil,
+		if typeof(paid) == "string" then paid else nil
+	)
+end
+
+-- Ours.
 local function shopState(): Shop.State
-	local bought = me:GetAttribute(Shop.BOUGHT_ATTRIBUTE)
-	local before = me:GetAttribute(Shop.BEFORE_ATTRIBUTE)
-	return Shop.fromLists(if typeof(bought) == "string" then bought else nil, if typeof(before) == "string" then before else nil)
+	return shopStateOf(me)
 end
 
 -- Our credits, when things cost them (the spike rounds).
@@ -142,6 +186,91 @@ local function stakes(arena: Instance?): MatchRules.Payout?
 	end
 	local streak = arena:GetAttribute("Streak" .. side)
 	return MatchRules.payout(format, round, if typeof(streak) == "number" then streak else 0)
+end
+
+-- Whether teammates buy for each other in what's played: the spike rounds,
+-- where guns cost credits (system 57).
+local function teamBuying(): boolean
+	return credits() ~= nil
+end
+
+-- The gun a player's asking their team for, and their plan (system 57).
+local function askOf(player: Player): string?
+	local id = player:GetAttribute(TeamBuy.REQUEST_ATTRIBUTE)
+	return if typeof(id) == "string" and id ~= "" then id else nil
+end
+
+local function planOf(player: Player): string?
+	local plan = player:GetAttribute(TeamBuy.PLAN_ATTRIBUTE)
+	return if typeof(plan) == "string" and plan ~= "" then plan else nil
+end
+
+-- Our side: us first, then the rest by name.
+local function team(): { Player }
+	local side = me:GetAttribute(ArenaConfig.SIDE)
+	local out = {}
+	for _, player in Players:GetPlayers() do
+		if player ~= me and side ~= nil and player:GetAttribute(ArenaConfig.SIDE) == side then
+			table.insert(out, player)
+		end
+	end
+	table.sort(out, function(a: Player, b: Player): boolean
+		return a.DisplayName < b.DisplayName
+	end)
+	table.insert(out, 1, me)
+	return out
+end
+
+-- A player's guns, primary and sidearm ("" for an empty slot), as the
+-- scoreboard has them (MatchConfig.LOADOUT).
+local function gunsOf(player: Player): { string }
+	local list = player:GetAttribute(MatchConfig.LOADOUT)
+	if typeof(list) ~= "string" then
+		return { "", "" }
+	end
+	local primary, sidearm = string.match(list, "^([^,]*),?(.*)$")
+	return { primary or "", sidearm or "" }
+end
+
+-- What a player has, as their card shows it: their primary, or else their
+-- sidearm, and their shield.
+local function kitOf(player: Player): string
+	local guns = gunsOf(player)
+	local gun = WeaponConfig.Defs[if guns[1] ~= "" then guns[1] else guns[2]]
+	local kind = player:GetAttribute(Shop.SHIELD_ATTRIBUTE)
+	local shield = if typeof(kind) == "string" then WeaponConfig.Shields[kind] else nil
+	local parts = {}
+	if gun then
+		table.insert(parts, string.upper(gun.name))
+	end
+	if shield then
+		table.insert(parts, string.upper(shield.name))
+	end
+	return if #parts > 0 then table.concat(parts, ", ") else "NOTHING"
+end
+
+-- A player's name, by id, or what to call one who's left.
+local function nameOf(id: number): string
+	local player = Players:GetPlayerByUserId(id)
+	return if player then player.DisplayName else "a teammate who's left"
+end
+
+-- Why we can't buy `player` the gun they're asking for now, with `wallet`
+-- credits (nil: not checked), or nil if we can.
+local function refusalFor(player: Player, wallet: number?): TeamBuy.Refusal?
+	local asked = askOf(player)
+	local item = if asked then Shop.item(asked) else nil
+	local ours, theirs = me:GetAttribute(ArenaConfig.SIDE), player:GetAttribute(ArenaConfig.SIDE)
+	return TeamBuy.refusal({
+		id = asked or "",
+		asked = asked,
+		same = player == me,
+		buyerSide = if typeof(ours) == "number" then ours else nil,
+		askerSide = if typeof(theirs) == "number" then theirs else nil,
+		holding = if item and item.kind == "weapon" then gunsOf(player)[tonumber(item.slot) :: number] else nil,
+		before = if item then shopStateOf(player).before[item.slot] else nil,
+		credits = wallet,
+	})
 end
 
 -- Whether deathmatch is played (system 26).
@@ -174,17 +303,43 @@ function BuyMenu.canBuy(): boolean
 	return typeof(me:GetAttribute(ArenaConfig.SIDE)) == "number" and open
 end
 
--- Asks the server to buy or sell an item, if the mode sells it. A gun
--- bought is drawn, once the server has put it in its slot.
-function BuyMenu.request(action: "buy" | "sell", id: string)
+-- Asks the server to buy or sell an item, if the mode sells it; or, for
+-- our team (system 57), to ask for a gun ("request", "" taking it back), to
+-- tell them our plan ("plan"), or to buy the gun `who` (a UserId) is
+-- asking for ("fulfil"). A gun bought is drawn, once the server has put it
+-- in its slot.
+function BuyMenu.request(action: "buy" | "sell" | "request" | "plan" | "fulfil", id: string, who: number?)
 	local item = Shop.item(id)
 	if item and not sold(item) then
 		return
 	end
-	Remotes.get().Buy:FireServer(action, id)
+	Remotes.get().Buy:FireServer(action, id, who)
 	local def = WeaponConfig.Defs[id]
 	if action == "buy" and def then
 		PlayerController.drawWhenGiven(def.slot, id)
+	end
+end
+
+-- A right click on a gun or a shield: sells it back if it was bought this
+-- buy phase; or else, where teammates buy for each other, a gun we don't
+-- have asks our team for it, or takes that back (system 57).
+function BuyMenu.rightClick(id: string)
+	local sim = PlayerController.sim
+	local loadout = if sim then sim.weapons.loadout else {}
+	local have = loadout[1] == id or loadout[2] == id
+	if bought()[id] or have or not teamBuying() or not TeamBuy.askable(id) then
+		BuyMenu.request("sell", id)
+	else
+		BuyMenu.request("request", id)
+	end
+end
+
+-- Buys a teammate the gun they're asking for (system 57), as BUY on their
+-- card does.
+function BuyMenu.buyFor(player: Player)
+	local asked = askOf(player)
+	if asked and player ~= me then
+		BuyMenu.request("fulfil", asked, player.UserId)
 	end
 end
 
@@ -440,7 +595,7 @@ local function makeTile(parent: Frame, id: string, name: string, price: number, 
 		BuyMenu.request("buy", id)
 	end)
 	button.MouseButton2Click:Connect(function()
-		BuyMenu.request("sell", id)
+		BuyMenu.rightClick(id)
 	end)
 	local tile = { id = id, item = item, button = button, stroke = stroke, tag = tag, name = nameLabel, price = priceLabel }
 	table.insert(tiles, tile)
@@ -620,8 +775,8 @@ function BuyMenu.start()
 		Position = UDim2.fromOffset(width - MARGIN - 300, 20),
 		Size = UDim2.fromOffset(300, 24),
 	})
-	Ui.label(root, {
-		Text = "Click to buy   Right-click to sell back what you bought this buy phase   B to close",
+	local help = Ui.label(root, {
+		Text = HELP,
 		TextSize = 13,
 		TextColor3 = Ui.DIM,
 		Position = UDim2.fromOffset(MARGIN, height - 28),
@@ -702,9 +857,185 @@ function BuyMenu.start()
 	local hint = Ui.label(panel, {
 		TextSize = 12,
 		TextColor3 = SELLABLE,
-		Position = UDim2.fromOffset(12, height - TOP - 44 - 30),
-		Size = UDim2.fromOffset(PANEL_W - 24, 18),
+		TextWrapped = true,
+		Position = UDim2.fromOffset(12, height - TOP - 44 - 44),
+		Size = UDim2.fromOffset(PANEL_W - 24, 34),
 	})
+
+	-- The team panel, left of the menu in the spike rounds (system 57): our
+	-- plan's buttons, then a card for each of our side.
+	local teamPanel = Ui.frame(root, {
+		Name = "Team",
+		Position = UDim2.fromOffset(-(TEAM_W + TEAM_GAP), 0),
+		Size = UDim2.fromOffset(TEAM_W, height),
+		BackgroundTransparency = 0.15,
+		Active = true,
+		Visible = false,
+	})
+	Ui.label(teamPanel, {
+		Text = "TEAM",
+		Font = Enum.Font.GothamBold,
+		TextSize = 28,
+		Position = UDim2.fromOffset(12, 14),
+		Size = UDim2.fromOffset(TEAM_W - 24, 32),
+	})
+	header(teamPanel, "Your plan", 12, TOP)
+	local planButtons: { [string]: TextButton } = {}
+	local planW = math.floor((TEAM_W - 24 - 2 * 6) / 3)
+	for i, key in TeamBuy.PLANS do
+		local button = Instance.new("TextButton")
+		button.Name = key
+		button.AutoButtonColor = false
+		button.BorderSizePixel = 0
+		button.BackgroundColor3 = TILE
+		button.Font = Enum.Font.GothamBold
+		button.TextSize = 11
+		button.Text = if key == "extra" then "EXTRA" else TeamBuy.TITLES[key]
+		button.Position = UDim2.fromOffset(12 + (i - 1) * (planW + 6), TOP + HEADER_H)
+		button.Size = UDim2.fromOffset(planW, 24)
+		button.Parent = teamPanel
+		button.MouseButton1Click:Connect(function()
+			BuyMenu.request("plan", key)
+		end)
+		planButtons[key] = button
+	end
+	local cardY = TOP + 2 * HEADER_H + 24 + GROUP_GAP
+	header(teamPanel, "Your side", 12, cardY - HEADER_H)
+	local cards: { Card } = {}
+	local cardW = TEAM_W - 24
+	for i = 1, MAX_CARDS do
+		local frame = Ui.frame(teamPanel, {
+			Name = "Card" .. i,
+			BackgroundColor3 = TILE,
+			BackgroundTransparency = 0.1,
+			Position = UDim2.fromOffset(12, cardY + (i - 1) * (CARD_H + GAP)),
+			Size = UDim2.fromOffset(cardW, CARD_H),
+			Visible = false,
+		})
+		local button = Instance.new("TextButton")
+		button.Name = "Buy"
+		button.AutoButtonColor = false
+		button.BorderSizePixel = 0
+		button.Font = Enum.Font.GothamBold
+		button.TextSize = 11
+		button.Position = UDim2.fromOffset(cardW - 70, CARD_H - 24)
+		button.Size = UDim2.fromOffset(62, 18)
+		button.Parent = frame
+		local card: Card = {
+			frame = frame,
+			name = Ui.label(frame, {
+				Font = Enum.Font.GothamBold,
+				TextSize = 13,
+				Position = UDim2.fromOffset(8, 6),
+				Size = UDim2.fromOffset(cardW - 86, 16),
+			}),
+			credits = Ui.label(frame, {
+				Font = Enum.Font.GothamBold,
+				TextSize = 13,
+				TextColor3 = GOLD,
+				TextXAlignment = Enum.TextXAlignment.Right,
+				Position = UDim2.fromOffset(cardW - 78, 6),
+				Size = UDim2.fromOffset(70, 16),
+			}),
+			kit = Ui.label(frame, {
+				TextSize = 11,
+				TextColor3 = Ui.DIM,
+				Position = UDim2.fromOffset(8, 23),
+				Size = UDim2.fromOffset(cardW - 16, 14),
+			}),
+			plan = Ui.label(frame, {
+				Font = Enum.Font.GothamBold,
+				TextSize = 10,
+				TextColor3 = GOLD,
+				Position = UDim2.fromOffset(8, 38),
+				Size = UDim2.fromOffset(cardW - 16, 12),
+			}),
+			ask = Ui.label(frame, {
+				Font = Enum.Font.GothamBold,
+				TextSize = 11,
+				TextColor3 = ASKED,
+				Position = UDim2.fromOffset(8, CARD_H - 21),
+				Size = UDim2.fromOffset(cardW - 84, 14),
+			}),
+			button = button,
+			player = nil,
+		}
+		button.MouseButton1Click:Connect(function()
+			local player = card.player
+			if player == me then
+				BuyMenu.request("request", "")
+			elseif player then
+				BuyMenu.buyFor(player)
+			end
+		end)
+		table.insert(cards, card)
+	end
+
+	-- A card's look for `player`, as we see it with `wallet` credits.
+	local function showCard(card: Card, player: Player, wallet: number?)
+		local mine = player == me
+		local money = player:GetAttribute(MatchConfig.CREDITS)
+		card.player = player
+		card.name.Text = player.DisplayName
+		card.name.TextColor3 = if mine then GOLD else Ui.TEXT
+		card.credits.Text = if typeof(money) == "number" then tostring(money) else ""
+		card.kit.Text = kitOf(player)
+		local plan = planOf(player)
+		card.plan.Text = if plan then TeamBuy.TITLES[plan] else ""
+		local asked = askOf(player)
+		local def = if asked then WeaponConfig.Defs[asked] else nil
+		card.ask.Text = if def and mine
+			then "YOU WANT " .. string.upper(def.name)
+			elseif def then string.format("WANTS %s  %d", string.upper(def.name), def.price.value)
+			else ""
+		local refusal = if def and not mine then refusalFor(player, wallet) else nil
+		card.button.Visible = def ~= nil and (mine or refusal == nil or refusal == "short")
+		card.button.Text = if mine then "CANCEL" elseif refusal == "short" then "SHORT" else "BUY"
+		card.button.BackgroundColor3 = if mine or refusal then TILE_HOVER else GOLD
+		card.button.TextColor3 = if mine then Ui.TEXT elseif refusal then SHORT else TILE
+	end
+
+	-- A teammate asking for a gun: the ping's blip (system 52), the menu
+	-- open or not.
+	local function watch(player: Player)
+		if player == me then
+			return
+		end
+		player:GetAttributeChangedSignal(TeamBuy.REQUEST_ATTRIBUTE):Connect(function()
+			local side = me:GetAttribute(ArenaConfig.SIDE)
+			if askOf(player) and teamBuying() and side ~= nil and player:GetAttribute(ArenaConfig.SIDE) == side then
+				GameSounds.playPing(false)
+			end
+		end)
+	end
+	for _, player in Players:GetPlayers() do
+		watch(player)
+	end
+	Players.PlayerAdded:Connect(watch)
+	-- A gun a teammate bought us is drawn, as one we bought is.
+	local gifts: { [string]: string } = {}
+	local function giftsChanged()
+		local s = shopState()
+		local now: { [string]: string } = {}
+		for slot, by in s.paid do
+			local id = s.bought[slot]
+			local def = if id then WeaponConfig.Defs[id] else nil
+			if id and def then
+				now[slot] = id .. "@" .. tostring(by)
+				local sim = PlayerController.sim
+				if gifts[slot] == now[slot] then
+					continue
+				elseif sim and sim.weapons.loadout[def.slot] == id then
+					PlayerController.selectSlot(def.slot)
+				else
+					PlayerController.drawWhenGiven(def.slot, id)
+				end
+			end
+		end
+		gifts = now
+	end
+	me:GetAttributeChangedSignal(Shop.BOUGHT_ATTRIBUTE):Connect(giftsChanged)
+	me:GetAttributeChangedSignal(Shop.PAID_ATTRIBUTE):Connect(giftsChanged)
 
 	local function setOpen(open: boolean)
 		-- Not over the settings menu, which has the cursor already.
@@ -737,12 +1068,35 @@ function BuyMenu.start()
 			setOpen(false)
 			return
 		end
-		local viewport = Workspace.CurrentCamera.ViewportSize
-		scale.Scale = math.min(1, (viewport.X - 40) / width, (viewport.Y - 40) / height)
-
 		local arenaOn = Workspace:GetAttribute(ArenaConfig.ON) == true
 		local arena = Workspace:FindFirstChild(ArenaConfig.MODEL)
 		local wallet = credits()
+		-- The team panel, beside the menu where teammates buy for each other
+		-- (system 57): the two together fit on screen.
+		local teamOn = wallet ~= nil
+		local extra = if teamOn then TEAM_W + TEAM_GAP else 0
+		local viewport = Workspace.CurrentCamera.ViewportSize
+		scale.Scale = math.min(1, (viewport.X - 40) / (width + extra), (viewport.Y - 40) / height)
+		root.Position = UDim2.new(0.5, extra / 2 * scale.Scale, 0.5, 0)
+		teamPanel.Visible = teamOn
+		help.Text = if teamOn then HELP_TEAM else HELP
+		local myAsk = if teamOn then askOf(me) else nil
+		if teamOn then
+			local myPlan = planOf(me)
+			for key, button in planButtons do
+				button.BackgroundColor3 = if myPlan == key then GOLD else TILE
+				button.TextColor3 = if myPlan == key then TILE else Ui.TEXT
+			end
+			local players = team()
+			for i, card in cards do
+				local player: Player? = players[i]
+				card.frame.Visible = player ~= nil
+				card.player = player
+				if player then
+					showCard(card, player, wallet)
+				end
+			end
+		end
 		if wallet then
 			local pay = stakes(arena)
 			status.Text = string.format("%d CREDITS", wallet)
@@ -780,10 +1134,16 @@ function BuyMenu.start()
 			tile.button.BackgroundTransparency = if cant or unsold then 0.55 else 0.1
 			tile.name.TextColor3 = if cant or unsold then Ui.DIM else Ui.TEXT
 			tile.price.TextColor3 = if cant then SHORT elseif unsold then Ui.DIM else GOLD
-			tile.stroke.Transparency = if owned then 0.1 else 1
-			tile.stroke.Color = if canSell then SELLABLE else OWNED
-			tile.tag.Text = if tile.id == inHand then "IN HAND" elseif owned then "OWNED" elseif unsold then "NOT SOLD" else ""
-			tile.tag.TextColor3 = if canSell then SELLABLE elseif unsold then Ui.DIM else OWNED
+			local asked = tile.id == myAsk
+			tile.stroke.Transparency = if owned or asked then 0.1 else 1
+			tile.stroke.Color = if canSell then SELLABLE elseif asked then ASKED else OWNED
+			tile.tag.Text = if tile.id == inHand
+				then "IN HAND"
+				elseif owned then "OWNED"
+				elseif asked then "REQUESTED"
+				elseif unsold then "NOT SOLD"
+				else ""
+			tile.tag.TextColor3 = if canSell then SELLABLE elseif asked then ASKED elseif unsold then Ui.DIM else OWNED
 		end
 		-- The abilities: the charges in our kit, as predicted, of its agent's;
 		-- with a kit of no agent's (deathmatch), those of the agent we play.
@@ -866,13 +1226,27 @@ function BuyMenu.start()
 			else
 				hint.Text = ""
 			end
+		elseif sellable[id] and state.paid[item.slot] then
+			local by = nameOf(state.paid[item.slot])
+			hint.Text = string.format("Bought for you by %s: right-click to sell it back, for their %d", by, Shop.refund(state, item))
 		elseif sellable[id] then
 			hint.Text = if wallet
 				then string.format("Bought this buy phase: right-click to sell it back for %d", Shop.refund(state, item))
 				else "Bought this buy phase: right-click to sell it back"
+		elseif myAsk == id then
+			hint.Text = "Asked your team for it: right-click to take that back"
+			hint.TextColor3 = ASKED
 		elseif short[id] then
-			hint.Text = string.format("Not enough credits: it costs %d", cost)
+			hint.Text = if teamOn and TeamBuy.askable(id)
+				then string.format("Not enough credits: it costs %d. Right-click to ask your team for it", cost)
+				else string.format("Not enough credits: it costs %d", cost)
 			hint.TextColor3 = SHORT
+		elseif wallet and state.paid[item.slot] and state.bought[item.slot] ~= id then
+			-- Over a gun a teammate bought us: what they paid goes back to them.
+			local owed, by = Shop.payback(state, item.slot)
+			local gift = WeaponConfig.Defs[state.bought[item.slot]]
+			local what = if gift then gift.name else "gun"
+			hint.Text = string.format("Buying it gives %s back the %d they paid for your %s", nameOf(by :: number), owed, what)
 		elseif wallet and state.before[item.slot] == id then
 			hint.Text = string.format("Yours already: buying it back refunds %d", -cost)
 		elseif wallet and cost ~= item.price then

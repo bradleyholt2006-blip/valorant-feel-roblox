@@ -35,6 +35,12 @@
 --                  then clears itself
 --   VFTestMenu     true opens the buy menu (if buying is open), false
 --                  closes it; then clears itself
+--   VFTestTeam     buying for teammates, in the spike rounds (system 57):
+--                  "ask vandal" right-clicks that gun in the buy menu (to
+--                  ask your team for it, or take that back), "buy <UserId>"
+--                  buys that teammate the gun they're asking for as BUY on
+--                  their card does, and "plan extra" presses that plan's
+--                  button ("save", "buy" or "extra"); then clears itself
 --   VFTestSlot     1 to 5: draws that slot as its number key does (3 is
 --                  the knife, 4 the spike while it's carried), or as X
 --                  does for 5, Blade Storm's knives; then clears itself
@@ -170,6 +176,19 @@ function TestAim.start(controller: any)
 				BuyMenu.request("sell", string.sub(buy, 2))
 			else
 				BuyMenu.request("buy", buy)
+			end
+		end
+		local teamBuy = player:GetAttribute("VFTestTeam")
+		if typeof(teamBuy) == "string" and teamBuy ~= "" then
+			player:SetAttribute("VFTestTeam", nil)
+			local verb, arg = string.match(teamBuy, "^(%a+)%s+(%S+)$")
+			local whom = if verb == "buy" then Players:GetPlayerByUserId(tonumber(arg) or 0) else nil
+			if verb == "ask" and arg then
+				BuyMenu.rightClick(arg)
+			elseif whom then
+				BuyMenu.buyFor(whom)
+			elseif verb == "plan" and arg then
+				BuyMenu.request("plan", arg)
 			end
 		end
 		local menu = player:GetAttribute("VFTestMenu")

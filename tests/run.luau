@@ -65,5 +65,6 @@ require("./combatreport")
 require("./indicators")
 require("./killbanner")
 require("./roundcallouts")
+require("./teambuy")
 
 H.finish()

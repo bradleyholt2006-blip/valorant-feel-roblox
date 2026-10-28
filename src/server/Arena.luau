@@ -22,7 +22,8 @@
 -- a survivor keeps their shield as it was into the next round, damaged or
 -- not. Each player's credits go to clients as a player attribute
 -- (MatchConfig.CREDITS), and each side's losses in a row as the arena
--- model's Streak1 and Streak2.
+-- model's Streak1 and Streak2. Teammates buy guns for each other there
+-- (system 57), each on their side (ShopServer.teamOf).
 --
 -- Guns on the ground (system 15, GroundGunsServer): each round of either
 -- starts with the ground cleared, and in the spike rounds the dead drop
@@ -1542,6 +1543,12 @@ function Arena.start()
 		local paid = MatchRules.spend(m, player.UserId, amount)
 		publish()
 		return paid
+	end
+	-- Whose side each player's on for buying for teammates: the spike
+	-- rounds', where guns cost credits.
+	ShopServer.teamOf = function(player: Player): number?
+		local m = match
+		return if m then Roster.sideOf(m, player.UserId) else nil
 	end
 	-- Every hit between players goes in the record.
 	table.insert(CombatServer.damageListeners, function(attacker, victim, amount: number)

@@ -23,6 +23,14 @@
 -- charge, up to what the kit holds (AbilitySim decides, through the
 -- server). A charge bought this buy phase can be sold back for its price,
 -- and another agent's kit (system 29) sells them all back.
+--
+-- Teammates buy guns for each other (system 57, TeamBuy): one bought for a
+-- teammate who asked for it goes into their slot as theirs, as if they'd
+-- bought it themselves ('giving them the funds to buy their own gun', a
+-- developer), but its price goes back to whoever paid for it: as it's sold
+-- back ('doing so will refund the player who fulfilled the request', Patch
+-- 1.10), and (ours) as something else bought into its slot sells it back.
+-- Dropped, it's gone, as any purchase is.
 
 local WeaponConfig = require("./WeaponConfig")
 local AbilityConfig = require("../Abilities/AbilityConfig")
@@ -41,6 +49,9 @@ export type State = {
 	-- the phase began, and what's been bought into it since.
 	before: { [string]: string },
 	bought: { [string]: string },
+	-- By slot, for a gun bought into it this buy phase by a teammate (system
+	-- 57): their id, whom it's refunded to.
+	paid: { [string]: number },
 	-- By ability id: the charges bought this buy phase.
 	charges: { [string]: number },
 	waiting: { Request }, -- oldest first
@@ -63,6 +74,9 @@ Shop.BEFORE_ATTRIBUTE = "VFBoughtOver"
 -- And the ability charges bought this buy phase: an ability's id for each
 -- (comma-separated, "updraft" or "cloudburst,cloudburst").
 Shop.CHARGES_ATTRIBUTE = "VFBoughtCharges"
+-- And who paid for each of `VFBought`'s, in its order: a teammate's id for a
+-- gun they bought for this player (system 57), or "" for the player.
+Shop.PAID_ATTRIBUTE = "VFBoughtBy"
 
 -- The item with this id, if it's on sale: any gun but not the knife, which
 -- everyone has, or the spike or an ultimate's or an ability's weapon, which
@@ -86,7 +100,7 @@ function Shop.item(id: string): Item?
 end
 
 function Shop.new(): State
-	return { before = {}, bought = {}, charges = {}, waiting = {} }
+	return { before = {}, bought = {}, paid = {}, charges = {}, waiting = {} }
 end
 
 -- A new buy phase: nothing bought in it yet. Requests held for the life it
@@ -94,6 +108,7 @@ end
 function Shop.reset(s: State)
 	table.clear(s.before)
 	table.clear(s.bought)
+	table.clear(s.paid)
 	table.clear(s.charges)
 end
 
@@ -129,11 +144,25 @@ function Shop.buy(s: State, item: Item, holding: string): boolean
 	if s.before[slot] == nil then
 		s.before[slot] = holding
 	end
+	s.paid[slot] = nil
 	if s.before[slot] == item.id then
 		s.before[slot] = nil
 		s.bought[slot] = nil
 	else
 		s.bought[slot] = item.id
+	end
+	return true
+end
+
+-- Buys the gun `item` into its slot, which holds `holding` now, for the
+-- player with a teammate's credits (system 57): `by`, the teammate's id.
+-- Returns false when there's nothing to do because it's there already.
+function Shop.give(s: State, item: Item, holding: string, by: number): boolean
+	if not Shop.buy(s, item, holding) then
+		return false
+	end
+	if s.bought[item.slot] == item.id then
+		s.paid[item.slot] = by
 	end
 	return true
 end
@@ -159,17 +188,26 @@ end
 -- What buying `item` costs now, a refund if negative: its price, less the
 -- price of what's been bought into its slot this buy phase, which goes back;
 -- and only that refund when it's what the slot began the phase with. An
--- ability's charge costs its price.
+-- ability's charge costs its price. A gun a teammate bought goes back to
+-- them, not off the price (system 57, Shop.payback).
 function Shop.cost(s: State, item: Item): number
 	if item.kind == "ability" then
 		return item.price
 	end
 	local slot = item.slot
-	local refund = priceOf(s.bought[slot])
+	local refund = if s.paid[slot] == nil then priceOf(s.bought[slot]) else 0
 	if s.bought[slot] ~= nil and s.before[slot] == item.id and s.bought[slot] ~= item.id then
-		return -refund
+		return if refund > 0 then -refund else 0
 	end
 	return item.price - refund
+end
+
+-- What's been bought into a slot this buy phase goes back for as it leaves
+-- it, sold back or with something else bought into the slot, and whom that
+-- refunds: nil for the player, or the teammate who bought it for them
+-- (system 57). Nothing for a slot nothing's been bought into.
+function Shop.payback(s: State, slot: string): (number, number?)
+	return priceOf(s.bought[slot]), s.paid[slot]
 end
 
 -- What selling `item` back refunds: its price, if it was bought this buy
@@ -226,6 +264,7 @@ function Shop.sell(s: State, item: Item): string?
 	local back = s.before[slot]
 	s.before[slot] = nil
 	s.bought[slot] = nil
+	s.paid[slot] = nil
 	return back
 end
 
@@ -237,6 +276,7 @@ end
 function Shop.forget(s: State, slot: string)
 	s.before[slot] = nil
 	s.bought[slot] = nil
+	s.paid[slot] = nil
 end
 
 local SLOTS = { "1", "2", Shop.SHIELD }
@@ -292,6 +332,19 @@ function Shop.beforeList(s: State): { string }
 	return out
 end
 
+-- Who paid for each of boughtList's, in its order: a teammate's id, or ""
+-- for the player (system 57).
+function Shop.paidList(s: State): { string }
+	local out = {}
+	for _, slot in SLOTS do
+		if s.bought[slot] then
+			local by = s.paid[slot]
+			table.insert(out, if by then tostring(by) else "")
+		end
+	end
+	return out
+end
+
 local function split(text: string): { string }
 	local out = {}
 	local from = 1
@@ -305,19 +358,24 @@ local function split(text: string): { string }
 	end
 end
 
--- A client's copy, from the two lists' attributes (boughtList and
--- beforeList, comma-separated), for Shop.cost.
-function Shop.fromLists(bought: string?, before: string?): State
+-- A client's copy, from the lists' attributes (boughtList, beforeList and
+-- paidList, comma-separated), for Shop.cost.
+function Shop.fromLists(bought: string?, before: string?, paid: string?): State
 	local s = Shop.new()
 	if not bought or bought == "" then
 		return s
 	end
 	local was = split(before or "")
+	local by = split(paid or "")
 	for i, id in split(bought) do
 		local item = Shop.item(id)
 		if item then
 			s.bought[item.slot] = id
 			s.before[item.slot] = was[i] or ""
+			local payer = tonumber(by[i] or "")
+			if payer then
+				s.paid[item.slot] = payer
+			end
 		end
 	end
 	return s
