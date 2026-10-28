@@ -418,6 +418,12 @@ Built one system at a time:
     within 3 m of reaching you, and a red diamond under the crosshair once it does. The health reads
     red at 30 or under, and a gun's magazine count at a quarter of its magazine or under -
     [research and design](docs/research/54-damage-indicators.md)
+55. **The kill banner**: each kill of an enemy brings up a banner low in the middle of the screen
+    with the kill's number in it and a mark for each kill up to the fifth, gold from the fifth on, a
+    little red X beside it for a headshot and the name of whoever was killed under it, with the kill
+    sound, higher with each kill. In the arena and the spike rounds it counts the round's kills, and
+    anywhere else a life's. Only the killer sees it, and an ability's kills have it too -
+    [research and design](docs/research/55-kill-banner.md)
 
 ## Running it
 
@@ -606,6 +612,9 @@ by an enemy's From the Shadows. PlayerGui's `VFIndicators` carries the red arcs 
 (`Hurt`, each as where on the ring it is, in whole degrees clockwise from the top), where the latest
 hit's is (`LastHurt`), the yellow chevrons (`Danger`) and whether the red diamond's up (`Critical`),
 and `VFCombatHud` whether the health and the magazine's count read low (`LowHealth` and `LowAmmo`).
+PlayerGui's `VFKillBanner` carries the latest banner's number (`Count`, 0 before one), the marks it
+lit (`Marks`), whether it was a headshot (`Headshot`), whose kill it was (`Victim`), its kill
+sound's playback speed (`Pitch`) and whether a banner's up (`Shown`).
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -675,10 +684,12 @@ marks: places, the sky and its reach, smokes, enemies in sight, guns and the spi
 calls and its pick, the look, the limit, and how a ping shows), the combat report (a volley's
 bullets by part, hits in the reports they touch by weapon and by part, bursts and burns, dummies,
 what nobody did and yourself, kills and deaths, the rows' order, whole points, a report's stretch,
-and the text checks read) and the damage and danger indicators (a hit's way and where it shows on
-the ring, arcs renewed and giving way, their fade, arcs pointing as you move, the pulse, fires and
-walls near and reaching you, low health and low ammo, and the text checks read) are pure Luau and
-run outside Roblox:
+and the text checks read), the damage and danger indicators (a hit's way and where it shows on the
+ring, arcs renewed and giving way, their fade, arcs pointing as you move, the pulse, fires and walls
+near and reaching you, low health and low ammo, and the text checks read) and the kill banner (which
+kills count, each killer's count by the life and by the round, the headshot mark, the marks and the
+top banner, how a banner comes up and fades, and the kill sound rising with the count) are pure Luau
+and run outside Roblox:
 
 ```
 luau tests/run.luau

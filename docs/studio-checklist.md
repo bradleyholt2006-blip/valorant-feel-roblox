@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-four
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-five
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -34,8 +34,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
-   three, section 55 three, section 56 one and then three, section 57 one and then two, and
-   section 58 one and then two.
+   three, section 55 three, section 56 one and then three, section 57 one and then two, section 58
+   one and then two, and section 59 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -4408,6 +4408,208 @@ window 1 before each check.
   top: the watch prints `danger` about `'-31'`, the way to the place on the wall nearest player 1,
   for the 8 s it stands, then `danger ''`. `critical` stays false, and player 1 doesn't burn.
 
+## 59. The kill banner
+
+From [55-kill-banner.md](research/55-kill-banner.md). One player on the course, then two on the
+course and in Skirmish. PlayerGui's `VFKillBanner` carries the latest banner: `Count`, its number,
+which of your kills it is (0 before one); `Marks`, the marks it lit; `Headshot`; `Victim`, whose
+kill it was; `Pitch`, its kill sound's playback speed; and `Shown`, whether a banner's up.
+`VFTestAimEntity` aims at an entity and `VFTestAimRegion` at its `head`, `body` or `legs`, until
+they're cleared, and `VFTestButtons` holds buttons while it's set: 128 the left button, 256 the
+right and 8192 Q. Set them in the server's command bar, and clear `VFTestButtons` again each time.
+To see the banner change as it happens, run this watch in a window's own command bar (in Play, with
+the command bar on the client): for 30 s it prints each change, with the seconds since it started.
+
+```lua
+local g = game.Players.LocalPlayer.PlayerGui
+local start, last = os.clock(), nil
+task.spawn(function()
+	while os.clock() - start < 30 do
+		local b = g.VFKillBanner
+		local now = string.format(
+			"count %s, marks %s, headshot %s, victim '%s', pitch %.2f, shown %s",
+			tostring(b:GetAttribute("Count")),
+			tostring(b:GetAttribute("Marks")),
+			tostring(b:GetAttribute("Headshot")),
+			tostring(b:GetAttribute("Victim")),
+			b:GetAttribute("Pitch") or 0,
+			tostring(b:GetAttribute("Shown"))
+		)
+		if now ~= last then
+			print(string.format("%.1f s: %s", os.clock() - start, now))
+			last = now
+		end
+		task.wait(0.05)
+	end
+end)
+```
+
+Press Play (F5), with one player, and keep the HUD on (F3). Play as Phoenix: press T, click
+PHOENIX's card and PICK PHOENIX, and close it with T (or set `VFTestAgents` to true, `VFTestAgent`
+to `phoenix`, then `VFTestAgent` to `lock`). Start at the spawn facing down the target lane
+(`VFTestYaw` 0), with the Vandal in hand. Dummy 1, the static dummy on the 10 m stripe, is
+4294901761; like you, it has 100 health and 50 of Heavy Armor, and it's back 2 s after it dies.
+Start the watch before each check.
+
+- **KB1 Nothing yet.** `Count` is 0 and `Shown` false, with no `Marks`, `Headshot`, `Victim` or
+  `Pitch`: the watch's first line reads
+  `count 0, marks nil, headshot nil, victim 'nil', pitch 0.00, shown false`. Nothing shows between
+  the crosshair and the ability bar.
+- **KB2 A headshot kill.** Run this in the server's command bar, which fires one shot at Dummy 1's
+  head:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestAimRegion", "head")
+  p:SetAttribute("VFTestAimEntity", 4294901761)
+  task.wait(0.6)
+  p:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 0)
+  task.wait(0.2)
+  p:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  Dummy 1 dies, the kill feed reading `<your name>   Vandal   HS   Dummy 1`, and the kill sound
+  plays, a bell. At once a banner comes up low in the middle of the screen, well above the ability
+  bar: a dark diamond outlined in white with a white `1` in it, a little red X off its top right
+  edge, a row of five short bars under it with the first lit white and the rest faint, and `Dummy 1`
+  in red under them. It comes up a little bigger and settles at once, shows whole for 1.5 s and
+  fades over the next half second. The watch prints
+  `count 1, marks 1, headshot true, victim 'Dummy 1', pitch 1.00`, with `shown true`, then
+  `shown false` 2 s after the kill. **Send:** a screenshot as the banner shows.
+
+- **KB3 A kill in the body.** Once Dummy 1's back, run this, which fires four shots at its body,
+  0.8 s apart:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestAimRegion", "body")
+  p:SetAttribute("VFTestAimEntity", 4294901761)
+  for _ = 1, 4 do
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  end
+  task.wait(0.2)
+  p:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  The fourth kills it, the kill feed reading `<your name>   Vandal   Dummy 1`, with no `HS`. The
+  banner comes up again, the same size as before: `2` in the diamond, two bars lit, and no red X.
+  The watch prints `count 2, marks 2, headshot false, victim 'Dummy 1', pitch 1.06`: the bell a
+  little higher.
+
+- **KB4 Up to five, and past it.** Run this, which kills Dummy 1 with a shot to the head four more
+  times, each once it's back:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestAimRegion", "head")
+  p:SetAttribute("VFTestAimEntity", 4294901761)
+  for _ = 1, 4 do
+  	task.wait(3)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  end
+  task.wait(0.2)
+  p:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  Four banners, 3.2 s apart, each with its red X. The watch prints
+  `count 3, marks 3, headshot true, victim 'Dummy 1', pitch 1.12`, then `count 4, marks 4` with
+  `pitch 1.18`, then `count 5, marks 5` with `pitch 1.24`, then `count 6, marks 5` with `pitch 1.24`
+  again, each with `shown true` and then `shown false`. The third and fourth are white like the
+  first two; the fifth is gold, its outline, its `5` and all five bars; and the sixth is gold too,
+  with `6` in the diamond and the same five bars lit. **Send:** a screenshot of the sixth.
+
+- **KB5 An ability's kill.** Once Dummy 1's back, run this, which has you draw Hot Hands (Q) and lob
+  it (the right button), to burst about 6.4 m ahead:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestButtons", 8192)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p:SetAttribute("VFTestButtons", 256)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 0)
+  ```
+
+  The fire spreads over Dummy 1, 3.6 m beyond the burst, and burns it, 60 a second in all; about 3 s
+  after the burst it dies, the kill feed reading `<your name>   Hot Hands   Dummy 1`. With it comes
+  the banner, gold, `7` in the diamond, all five bars lit and no red X: the watch prints
+  `count 7, marks 5, headshot false, victim 'Dummy 1', pitch 1.24`. The fire stops about 2 m short
+  of you, and nothing else dies.
+
+Then two players on the course: stop the game, start a Local Server with 2 players, as in section 9,
+and stay on the course, where everyone is everyone else's enemy. In a Local Server, player 1's id is
+4294967295 and player 2's 4294967294, and each window has its own command bar for the watch. Both
+start with the Vandal in hand. Player 1 stands at the spawn facing down the target lane (`VFTestYaw`
+0), and player 2 walks 5 m to the left of it (`pos` about `-5.00 0.00 0.00`), so the two see each
+other with nothing between, and window 1 sees Dummy 1.
+
+- **KB6 Only the killer, and a new life.** Start the watch in both windows, then run this in the
+  server's command bar, which has player 1 kill Dummy 1 with a shot to the head, player 2 kill
+  player 1 the same way, and player 1, once back, kill Dummy 1 again:
+
+  ```lua
+  local p1, p2 = game.Players.Player1, game.Players.Player2
+  local function shoot(p, id)
+  	p:SetAttribute("VFTestAimRegion", "head")
+  	p:SetAttribute("VFTestAimEntity", id)
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestAimEntity", nil)
+  end
+  shoot(p1, 4294901761)
+  task.wait(1)
+  shoot(p2, 4294967295)
+  task.wait(5)
+  shoot(p1, 4294901761)
+  ```
+
+  Window 1's watch prints `count 1, marks 1, headshot true, victim 'Dummy 1', pitch 1.00` with
+  `shown true`. As player 2 kills player 1, both kill feeds reading
+  `Player2   Vandal   HS   Player1`, window 2's watch prints
+  `count 1, marks 1, headshot true, victim 'Player1', pitch 1.00` with `shown true`, its banner
+  showing `Player1` in red, and window 1's nothing but its `shown false` as its own banner goes.
+  Player 1 is back 3 s later and kills Dummy 1 again: window 1's watch prints its first line again,
+  `count 1` with `shown true`, a new life's first kill and not a second; and window 2's nothing but
+  `shown false`.
+
+Then Skirmish: press P once in window 1. As round 1's buy phase starts, agent select comes up by
+itself: LOCK IN in both windows. Skip the buy phase (`VFMatchSkip`, in the server's command bar).
+Once round 1's live, bring the two players about 10 m apart in view of each other, with nothing
+between them. Both have the Vandal in hand and 100 health with 50 of Heavy Armor.
+
+- **KB7 By the round.** Start the watch in both windows, then run this, which has player 2 kill
+  player 1 with a shot to the head:
+
+  ```lua
+  local p2 = game.Players.Player2
+  p2:SetAttribute("VFTestAimRegion", "head")
+  p2:SetAttribute("VFTestAimEntity", 4294967295)
+  task.wait(0.6)
+  p2:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  Window 2's watch prints `count 1, marks 1, headshot true, victim 'Player1', pitch 1.00`, and
+  window 1's nothing after its first line. The round goes to player 2's side. Skip round 2's buy
+  phase, bring the two in view of each other again, start both watches again and run it again:
+  window 2's watch prints `count 1` again, round 2's first kill and not a second, and window 1's
+  nothing after its first line, `count 0`.
+
 ## Results
 
 ```
@@ -4802,6 +5004,13 @@ DI7 VFDroneHealth: ___; the watch while flying: ___; after C: ___
 DI8 the watch: ___; player 1's health and shield: ___
 DI9 the watch: ___; an arc: yes / no; the diamond: yes / no; the kill feed: ___
 DI10 the watch: ___; player 1 burned: yes / no
+KB1 Count ___, Shown ___; anything between the crosshair and the ability bar: yes / no
+KB2 the kill feed: ___; the watch: ___; the diamond's number ___, bars lit ___, a red X: yes / no, the name ___; gone after about ___ s
+KB3 the kill feed: ___; the watch: ___; a red X: yes / no; the same size: yes / no
+KB4 the watch: ___; gold from the fifth: yes / no; the sixth's number and bars lit: ___
+KB5 the kill feed: ___; the watch: ___; anything else died: yes / no
+KB6 window 1's watch: ___; window 2's watch: ___
+KB7 window 2's watch in round 1: ___; in round 2: ___; window 1's watch printed more: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -5145,3 +5354,10 @@ Didn't look right (IDs and what you saw):
 | 54 | A hit on the Owl Drone you fly: an arc on your ring, from the drone | DI7 |
 | 54 | A fire or a wall of fire near you: the yellow chevron on its side, pulsing; once it reaches you, the red diamond, and no arc for its burn | DI8, DI9, DI10 |
 | 54 | Low health and a low magazine reading red | DI2, DI6, DI9 |
+| 55 | A kill of a dummy on the course: the banner low in the middle with 1 in it and a mark lit, the dummy's name under it, and the kill sound; whole for 1.5 s, then fading | KB2 |
+| 55 | More kills in a life: each banner's number one more, the kill sound higher each time up to the fifth, and gold from the fifth | KB3, KB4 |
+| 55 | A headshot kill: the little red X; none for a body shot | KB2, KB3 |
+| 55 | A new life on the course: the count from 1 again | KB6 |
+| 55 | An ability's kill: a banner and the kill sound, as a gun's | KB5 |
+| 55 | In Skirmish: the count over the round, and from 1 again in the next | KB7 |
+| 55 | Only the killer seeing it | KB6, KB7 |

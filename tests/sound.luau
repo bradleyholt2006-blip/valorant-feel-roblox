@@ -310,7 +310,7 @@ do
 end
 
 do
-	check("each kill of a life raises the kill sound, up to the fifth", SoundMath.killPitch(1) == 1 and SoundMath.killPitch(2) > 1 and SoundMath.killPitch(5) == SoundMath.killPitch(9))
+	check("each kill counted raises the kill sound, up to the fifth", SoundMath.killPitch(1) == 1 and SoundMath.killPitch(2) > 1 and SoundMath.killPitch(5) == SoundMath.killPitch(9))
 end
 
 do

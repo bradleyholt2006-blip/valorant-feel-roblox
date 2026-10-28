@@ -201,8 +201,9 @@ SoundConfig.MaxGain = p(4, "estimate", "Most an asset is turned up to reach it (
 -- Network, 'Which sounds can your enemies hear').
 SoundConfig.MuteEnemiesInBuyPhase = true
 
--- Kills in a life step each kill sound up in pitch, like the reference's
--- kill sounds, which change with each kill in a round.
+-- Each kill the kill banner counts steps the kill sound up in pitch (system
+-- 55: of the round in the rounds, of the life elsewhere), like the
+-- reference's kill sounds, which change with each kill in a round.
 SoundConfig.KillPitchStep = p(0.06, "estimate", "Playback speed added per kill after the first, up to the fifth")
 
 -- A weapon given into another slot switches to it on your client at once, and

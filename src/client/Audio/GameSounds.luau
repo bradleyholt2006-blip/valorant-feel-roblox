@@ -15,8 +15,10 @@
 -- round at a time plays a part for each round; switching weapons cuts it
 -- off.
 --   hits     on the server's verdict, the shooter hears a body hit or a
---            headshot, once a round however many pellets hit, and a kill
---            sound that rises with each kill of a life
+--            headshot, once a round however many pellets hit
+--   kills    with each kill's banner (system 55, KillBannerView), the kill
+--            sound, rising with each kill the banner counts: of the round
+--            in the rounds, of the life elsewhere, an ability's kills too
 --   knives   your swings at once, and the blade striking the level where
 --            your client has it strike; its hit with the server's verdict,
 --            the blade going in for a body or the headshot sound for a head.
@@ -299,7 +301,6 @@ local lastDrawAt = -math.huge -- simulation time of the last draw sound
 -- whether it was switched to.
 local drawPending = false
 local drawSwitched = false
-local kills = 0
 local ownChannel: Channel? = nil
 local carried = false -- the spike, as of the last tick
 local ownGlideAt: number? = nil -- simulation time of your glide's last gust
@@ -451,7 +452,6 @@ local function onSpawn()
 	ownReload = nil
 	lastDrawAt = -math.huge
 	drawPending, drawSwitched = false, false
-	kills = 0
 	stopCue(ownChannel)
 	ownChannel = nil
 	carried = false
@@ -470,12 +470,6 @@ local function onVolley(volley: ClientShots.Volley)
 	local sounds = SoundConfig.Weapons[volley.weapon]
 	local body = if sounds and sounds.hit then sounds.hit else "hitBody"
 	ui(if head then "headshot" else body)
-	for _, hit in volley.hits do
-		if hit.killed then
-			kills += 1
-			ui("kill", SoundMath.killPitch(kills))
-		end
-	end
 end
 
 -- Everyone else -----------------------------------------------------------------
@@ -701,6 +695,14 @@ end
 -- A ping for your side (system 52): its blip, or the map's own sound.
 function GameSounds.playPing(map: boolean)
 	ui(if map then SoundConfig.Pings.map else SoundConfig.Pings.ping)
+end
+
+-- A kill of yours, the `count`th the kill banner counts (system 55): the
+-- kill sound, higher with each. Its playback speed.
+function GameSounds.playKill(count: number): number
+	local pitch = SoundMath.killPitch(count)
+	ui("kill", pitch)
+	return pitch
 end
 
 -- Settings ------------------------------------------------------------------------

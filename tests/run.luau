@@ -63,5 +63,6 @@ require("./glance")
 require("./pings")
 require("./combatreport")
 require("./indicators")
+require("./killbanner")
 
 H.finish()

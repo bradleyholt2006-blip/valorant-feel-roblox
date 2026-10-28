@@ -43,7 +43,8 @@
 -- 53), with what made it and how many of its bullets or blades struck each
 -- part. Every kill is told to killListeners, for the ability kit's points
 -- (system 17), with what made it (a single Blade Storm knife brings them
--- all back, system 19).
+-- all back, system 19), and the part its hit struck, for the kill banner's
+-- headshot mark (system 55).
 --
 -- A player who takes a hit and lives is told where it came from, alone,
 -- for the red arc on that side of their crosshair (the Hurt remote, system
@@ -119,8 +120,9 @@ CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, numbe
 -- Called with every kill, players' and dummies' alike: who did it (nil for
 -- the spike's blast and a spawn room's burn), who died, the weapon and the
 -- mode it fired in (a WeaponSim.Shot's; nil for a swing, the blast or a
+-- burn), and the part the hit that killed struck ("body" for a burst or a
 -- burn), before the death listeners.
-CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity, string, string?) -> () }
+CombatServer.killListeners = {} :: { (Entities.Entity?, Entities.Entity, string, string?, string) -> () }
 -- Whether an entity can't be hurt now (gun game's spawn protection, system
 -- 23): shots and swings go through it, as through a teammate.
 CombatServer.protected = nil :: ((Entities.Entity) -> boolean)?
@@ -208,7 +210,7 @@ local function damage(
 	end
 	if result.killed then
 		for _, listener in CombatServer.killListeners do
-			listener(attacker, victim, weapon, mode)
+			listener(attacker, victim, weapon, mode, region)
 		end
 		victim.onKilled(attacker)
 	end
