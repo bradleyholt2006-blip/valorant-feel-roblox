@@ -27,7 +27,7 @@ local Units = require(Shared.Units)
 export type View = {
 	layout: string, -- "" while there's no spike
 	state: string, -- Spike.STATE's values
-	carrier: number, -- UserId, 0 for none
+	carrier: number, -- id in the rules (a UserId, or a bot's), 0 for none
 	position: vector?, -- metres: lying, planted, or where it ended
 	plantedAt: number, -- server time
 	halfSaved: boolean,

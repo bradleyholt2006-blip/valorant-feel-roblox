@@ -585,40 +585,57 @@ function BotNav.path(nav: Nav, start: number, goal: number, extra: ((number) -> 
 	return nil
 end
 
+-- The moves a field's taken on by, out of each node as the nav keeps
+-- them, or, backward, into each node, for distances to nodes rather than
+-- from them (worked out once a nav).
+type Moves = { first: { number }, links: { number }, costs: { number } }
+local intos: { [Nav]: Moves } = setmetatable({}, { __mode = "k" }) :: any
+
+local function movesOf(nav: Nav, backward: boolean?): Moves
+	local first, links, costs = nav.first, nav.links, nav.costs
+	if not backward then
+		return { first = first, links = links, costs = costs }
+	end
+	local known = intos[nav]
+	if known then
+		return known
+	end
+	local n = #nav.xs
+	local counts = table.create(n + 1, 0)
+	for id = 1, n do
+		for k = first[id], first[id + 1] - 1 do
+			counts[links[k]] += 1
+		end
+	end
+	local inFirst = table.create(n + 1, 0)
+	local total = 1
+	for id = 1, n do
+		inFirst[id] = total
+		total += counts[id]
+	end
+	inFirst[n + 1] = total
+	local inLinks = table.create(total - 1, 0)
+	local inCosts = table.create(total - 1, 0)
+	local fill = table.clone(inFirst)
+	for id = 1, n do
+		for k = first[id], first[id + 1] - 1 do
+			local to = links[k]
+			inLinks[fill[to]] = id
+			inCosts[fill[to]] = costs[k]
+			fill[to] += 1
+		end
+	end
+	local moves = { first = inFirst, links = inLinks, costs = inCosts }
+	intos[nav] = moves
+	return moves
+end
+
 -- How far each node is on foot from the nodes `from` (or, backward, to
 -- them), in metres along the floor; math.huge for out of reach.
 function BotNav.distances(nav: Nav, from: { number }, backward: boolean?): { number }
-	local n = #nav.xs
-	local dist: { number } = table.create(n, math.huge)
-	local first, links, costs = nav.first, nav.links, nav.costs
-	-- Backward, the moves into each node.
-	local inFirst: { number }, inLinks: { number }, inCosts: { number } = first, links, costs
-	if backward then
-		local counts = table.create(n + 1, 0)
-		for id = 1, n do
-			for k = first[id], first[id + 1] - 1 do
-				counts[links[k]] += 1
-			end
-		end
-		inFirst = table.create(n + 1, 0)
-		local total = 1
-		for id = 1, n do
-			inFirst[id] = total
-			total += counts[id]
-		end
-		inFirst[n + 1] = total
-		inLinks = table.create(total - 1, 0)
-		inCosts = table.create(total - 1, 0)
-		local fill = table.clone(inFirst)
-		for id = 1, n do
-			for k = first[id], first[id + 1] - 1 do
-				local to = links[k]
-				inLinks[fill[to]] = id
-				inCosts[fill[to]] = costs[k]
-				fill[to] += 1
-			end
-		end
-	end
+	local dist: { number } = table.create(#nav.xs, math.huge)
+	local moves = movesOf(nav, backward)
+	local first, links, costs = moves.first, moves.links, moves.costs
 	local heap: Heap = { keys = {}, ids = {}, n = 0 }
 	for _, id in from do
 		dist[id] = 0
@@ -629,9 +646,9 @@ function BotNav.distances(nav: Nav, from: { number }, backward: boolean?): { num
 		if d > dist[id] then
 			continue
 		end
-		for k = inFirst[id], inFirst[id + 1] - 1 do
-			local other = inLinks[k]
-			local nd = d + inCosts[k]
+		for k = first[id], first[id + 1] - 1 do
+			local other = links[k]
+			local nd = d + costs[k]
 			if nd < dist[other] then
 				dist[other] = nd
 				push(heap, nd, other)
@@ -639,6 +656,63 @@ function BotNav.distances(nav: Nav, from: { number }, backward: boolean?): { num
 		end
 	end
 	return dist
+end
+
+-- A field of distances on foot from some nodes (or, backward, to them),
+-- worked out a little at a time (system 61), so a whole map's needn't be
+-- done in one server frame: begun by BotNav.begin and taken on by
+-- BotNav.extend. Its `dist` is the field: final for every node nearer
+-- than `reach`, and for every node once it's done.
+export type Field = { dist: { number }, heap: Heap, backward: boolean, reach: number, done: boolean }
+
+-- A field from nodes `from` (or, backward, to them), nothing yet worked
+-- out but them.
+function BotNav.begin(nav: Nav, from: { number }, backward: boolean?): Field
+	local dist: { number } = table.create(#nav.xs, math.huge)
+	local heap: Heap = { keys = {}, ids = {}, n = 0 }
+	for _, id in from do
+		dist[id] = 0
+	end
+	local moves = movesOf(nav, backward)
+	local first, links = moves.first, moves.links
+	for _, id in from do
+		-- Only those at their edge take it on: one with none but others of
+		-- them next to it can't.
+		for k = first[id], first[id + 1] - 1 do
+			if dist[links[k]] > 0 then
+				push(heap, 0, id)
+				break
+			end
+		end
+	end
+	return { dist = dist, heap = heap, backward = backward == true, reach = 0, done = heap.n == 0 }
+end
+
+-- Takes a field on by at most `pops` nodes, as BotNav.distances goes.
+-- Returns whether it's done.
+function BotNav.extend(nav: Nav, field: Field, pops: number): boolean
+	local dist, heap = field.dist, field.heap
+	local moves = movesOf(nav, field.backward)
+	local first, links, costs = moves.first, moves.links, moves.costs
+	local count = 0
+	while heap.n > 0 and count < pops do
+		count += 1
+		local d, id = pop(heap)
+		if d > dist[id] then
+			continue
+		end
+		field.reach = d
+		for k = first[id], first[id + 1] - 1 do
+			local other = links[k]
+			local nd = d + costs[k]
+			if nd < dist[other] then
+				dist[other] = nd
+				push(heap, nd, other)
+			end
+		end
+	end
+	field.done = heap.n == 0
+	return field.done
 end
 
 -- Whether the box walks straight from node a to node b with its feet on

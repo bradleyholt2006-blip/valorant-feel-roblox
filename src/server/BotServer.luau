@@ -26,6 +26,12 @@
 --     aside, so it stands still to shoot. A knife in hand runs at whoever
 --     it fights and slashes once they're in reach, and a sniper rifle is
 --     scoped for a fight
+--   * in the spike rounds (system 61), each side's plan has the spike in
+--     it: SpikeServer says what a bot may do with it each tick, as it
+--     does for a player, and hears what it did and when it dies; the bot's
+--     hands (BotSpike) draw it and hold Use to plant it, or hold Use by it
+--     to defuse it, and a bot sent to fetch it steps right onto it at the
+--     end
 --
 -- Each map's nav is built the first time it's played on, a few
 -- milliseconds a frame (BotNav's pause); until it's there, the bots on it
@@ -63,6 +69,7 @@ local BotBrain = require(Shared.Bots.BotBrain)
 local BotConfig = require(Shared.Bots.BotConfig)
 local BotMove = require(Shared.Bots.BotMove)
 local BotNav = require(Shared.Bots.BotNav)
+local BotSpike = require(Shared.Bots.BotSpike)
 local BotSpots = require(Shared.Bots.BotSpots)
 local BotTeam = require(Shared.Bots.BotTeam)
 local FogOfWar = require(Shared.Combat.FogOfWar)
@@ -77,6 +84,7 @@ local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local PlayerSim = require(Shared.PlayerSim)
 local Spike = require(Shared.Spike.Spike)
+local SpikeSim = require(Shared.Spike.SpikeSim)
 local Accuracy = require(Shared.Weapons.Accuracy)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
@@ -90,6 +98,7 @@ local FogServer = require(script.Parent.FogServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
 local MinimapServer = require(script.Parent.MinimapServer)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
+local SpikeServer = require(script.Parent.SpikeServer)
 local Tuning = require(script.Parent.Tuning)
 
 local TICK_RATE = MovementConfig.TickRate.value
@@ -101,6 +110,12 @@ local LOOK_AHEAD = 6 -- metres along its way a bot looks as it walks
 local NEAR_VIEW = math.rad(75) -- radians either side of its view an enemy's looked for in the level
 local SLASH_EXTRA = 0.3 -- metres past a slash's reach a bot with a knife starts it
 local SCOPE_FROM = 8 -- metres: a sniper rifle's scoped for a fight further than this
+-- Metres: how near the spot its job sends it to a bot is there, for a plant;
+-- and how near the point it's to step onto it walks straight at it, and
+-- how near that's on it.
+local THERE = 1
+local ONTO = 1.5
+local ON = 0.15
 local EYE = vector.create(0, 1.62, 0) -- standing (MovementConfig's standEyeHeight)
 local STUDIO = RunService:IsStudio()
 
@@ -300,6 +315,8 @@ local function died(bot: Bot, attacker: Entities.Entity?)
 	for _, listener in BotServer.deathListeners do
 		listener(bot.id, killer)
 	end
+	-- And the spike it carried, or the half of a defuse it reached.
+	SpikeServer.botDied(bot.id)
 end
 
 -- Puts a bot where its life starts, on its kit: a new life, or one fallen
@@ -523,10 +540,39 @@ local function spawnNodes(w: World, spots: { vector }?): { number }
 	return if spots then BotTeam.placesOf(w.nav, spots) else {}
 end
 
+-- How far a defuse under way has got (seconds of the 7), if one is.
+local function defusing(sim: PlayerSim.State): number?
+	local s = sim.spike
+	return if s.channel == SpikeSim.DEFUSING then SpikeSim.defuseProgress(s, sim.movement.tick * DT) else nil
+end
+
+-- The spike as the plans know it, in the map's frame (system 61): in play
+-- only while it's on the ground, carried or planted.
+local function spikeIn(w: World): BotTeam.Spike?
+	local now = SpikeServer.view()
+	if not now then
+		return nil
+	end
+	local state = now.state
+	if state ~= "dropped" and state ~= "carried" and state ~= "planted" then
+		return nil
+	end
+	local position = now.position
+	return {
+		state = state :: any,
+		at = if position then position - w.origin else nil,
+		carrier = if now.carrier then PlayerCodec.entityIdForUser(now.carrier) else nil,
+		site = if now.site ~= "" then now.site else nil,
+		detonateAt = now.detonateAt,
+		halfSaved = now.halfSaved,
+	}
+end
+
 -- Each side's plan, gone over: its bots' jobs.
 local function think(now: number, s: Situation, w: World)
 	local members: { [number]: { BotTeam.Member } } = {}
 	local sightings: { [number]: { BotTeam.Sighting } } = {}
+	local spike = spikeIn(w)
 	for _, bot in order do
 		local side = bot.side
 		if side == nil then
@@ -537,7 +583,11 @@ local function think(now: number, s: Situation, w: World)
 		if not bot.alive then
 			continue
 		end
-		table.insert(list, { id = bot.entity.id, bot = true, alive = true, feet = bot.sim.movement.position - w.origin })
+		local sim = bot.sim
+		table.insert(
+			list,
+			{ id = bot.entity.id, bot = true, alive = true, feet = sim.movement.position - w.origin, defusing = defusing(sim) }
+		)
 		local seen = sightings[side] or {}
 		sightings[side] = seen
 		for _, k in bot.brain.known do
@@ -552,7 +602,10 @@ local function think(now: number, s: Situation, w: World)
 		local sim = if list and PlayerSimServer.inPlay(player) then PlayerSimServer.getSim(player) else nil
 		local entity = PlayerSimServer.entityOf(player)
 		if list and sim and entity then
-			table.insert(list, { id = entity.id, bot = false, alive = true, feet = sim.movement.position - w.origin })
+			table.insert(
+				list,
+				{ id = entity.id, bot = false, alive = true, feet = sim.movement.position - w.origin, defusing = defusing(sim) }
+			)
 		end
 	end
 	for side in teams do
@@ -587,7 +640,7 @@ local function think(now: number, s: Situation, w: World)
 			teamRound[side] = s.round
 			BotTeam.round(t, now)
 		end
-		local orders = BotTeam.think(t, now, s.live, list, sightings[side] or {})
+		local orders = BotTeam.think(t, now, s.live, list, sightings[side] or {}, if role ~= "team" then spike else nil)
 		for _, m in list do
 			local bot = if m.bot then byEntity[m.id] else nil
 			if bot then
@@ -682,6 +735,20 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	local mover = bot.mover
 	local job = bot.order
 	local target = if brain.target then brain.known[brain.target] else nil
+	-- The spike in its hands (system 61): a plant or a defuse, as its job
+	-- says, once it's there.
+	local objective = SpikeServer.objectiveOf(bot.id)
+	local hands = BotSpike.NONE
+	if job then
+		local there = true
+		if w and job.goal then
+			local spot = BotNav.feet(w.nav, job.goal) + w.origin
+			there = vector.magnitude(vector.create(spot.x - feet.x, 0, spot.z - feet.z)) <= THERE and math.abs(spot.y - feet.y) < 1
+		end
+		hands = BotSpike.hands(job, there, sim, objective, (sim.movement.tick + 1) * DT, body.eye, BotBrain.fighting(brain))
+	end
+	local onto = if job and job.onto and w then job.onto + w.origin else nil
+	local toward = if onto then vector.create(onto.x - feet.x, 0, onto.z - feet.z) else nil
 	local buttons = 0
 	if def.melee and target then
 		-- A knife: straight at them, and a slash once they're in reach.
@@ -704,6 +771,20 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 		if mover then
 			BotMove.hold(mover)
 		end
+	elseif hands.still then
+		-- Planting or defusing: it stands where it is.
+		if mover then
+			BotMove.hold(mover)
+		end
+	elseif onto and toward and vector.magnitude(toward) <= ONTO and math.abs(onto.y - feet.y) < 1 then
+		-- Right onto the point its job says: the spike, to run over it.
+		local d = vector.magnitude(toward)
+		if d > ON then
+			buttons += keysFor(toward / d, act.yaw)
+		end
+		if mover then
+			BotMove.hold(mover)
+		end
 	elseif mover and w then
 		local step = BotMove.step(mover, t, feet - w.origin, if job then job.goal else nil)
 		local direction = step.direction
@@ -722,13 +803,19 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 			print(string.format("[VF] %s stuck at (%.1f, %.1f, %.1f), going another way", bot.name, at.x, at.y, at.z))
 		end
 	end
-	if act.crouch then
+	-- With the spike in hand or a plant or a defuse under way, the gun's
+	-- left alone: fire with the spike in hand would plant it.
+	local quiet = hands.quiet
+	if hands.use then
+		buttons += B.Use
+	end
+	if act.crouch and not quiet then
 		buttons += B.Crouch
 	end
-	if act.fire then
+	if act.fire and not quiet then
 		buttons += B.Fire
 	end
-	if act.reload then
+	if act.reload and not quiet then
 		buttons += B.Reload
 	end
 	-- The gun to have in hand: the one it fights with, or its sidearm when
@@ -741,10 +828,13 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	if not loaded(wpn, bot.slot) and bot.slot ~= 3 then
 		bot.slot = if loaded(wpn, main) then main elseif loaded(wpn, 2) then 2 else 3
 	end
+	if hands.slot then
+		bot.slot = hands.slot
+	end
 	-- A sniper rifle's scoped for a fight at range, and not otherwise: a
 	-- press, then let go.
 	local scope = false
-	if def.category == "sniper" then
+	if def.category == "sniper" and not quiet then
 		local far = target ~= nil and vector.magnitude(target.at - feet) > SCOPE_FROM
 		scope = (far and wpn.scoped == 0) or (not target and wpn.scoped ~= 0)
 	end
@@ -758,13 +848,13 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	local input = { seq = bot.seq, buttons = buttons, yaw = act.yaw, pitch = act.pitch, slot = bot.slot, viewTime = now }
 	local fieldsOf = PlayerSimServer.fields
 	local wallsAt = PlayerSimServer.barriers
-	local shots, swing = PlayerSim.step(
+	local shots, swing, spikeAct = PlayerSim.step(
 		sim,
 		input,
 		cfg,
 		world,
 		DT,
-		nil,
+		objective,
 		if fieldsOf then { fields = fieldsOf(), time = t } else nil,
 		if wallsAt then wallsAt(t) else nil
 	)
@@ -782,6 +872,9 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	end
 	if swing then
 		CombatServer.onSwing(bot.entity, swing, now)
+	end
+	if spikeAct then
+		SpikeServer.botActed(bot.id, spikeAct)
 	end
 end
 
@@ -898,6 +991,12 @@ function BotServer.standIn(id: number): Configuration?
 	return if bot then bot.standIn else nil
 end
 
+-- The side a bot's on, if any.
+function BotServer.side(id: number): number?
+	local bot = botOf(id)
+	return if bot then bot.side else nil
+end
+
 -- Puts a bot on a side, or on none.
 function BotServer.setSide(id: number, side: number?)
 	local bot = botOf(id)
@@ -976,6 +1075,29 @@ function BotServer.holding(id: number, slot: number): (string?, number?)
 	end
 	local w = bot.sim.weapons
 	return w.loadout[slot], w.equipped
+end
+
+-- Gives a bot the spike, in its slot and not drawn, or takes it from it,
+-- as PlayerSimServer.setSpike (system 61, SpikeServer).
+function BotServer.setSpike(id: number, carry: boolean)
+	local bot = botOf(id)
+	if not bot then
+		return
+	end
+	local sim = bot.sim
+	if carry then
+		WeaponSim.give(sim.weapons, Spike.SLOT, Spike.ID)
+	else
+		SpikeSim.take(sim.spike, sim.weapons, sim.movement.tick * DT)
+	end
+end
+
+-- Whether a bot means to pick the spike up: its job's to fetch it (system
+-- 61). Only then does running over it pick it up.
+function BotServer.fetching(id: number): boolean
+	local bot = botOf(id)
+	local job = if bot then bot.order else nil
+	return job ~= nil and job.task == "fetch"
 end
 
 -- Reloads the gun in a living bot's hand at once, as
@@ -1110,6 +1232,16 @@ function BotServer.start()
 	end
 	-- Bots on no Roblox team: the sides the arena put them on.
 	CombatServer.sideOf = sideOf
+	-- And they play for the spike (system 61).
+	SpikeServer.bots = {
+		ids = BotServer.ids,
+		has = BotServer.has,
+		sim = BotServer.getSim,
+		alive = BotServer.isAlive,
+		side = BotServer.side,
+		fetching = BotServer.fetching,
+		setSpike = BotServer.setSpike,
+	}
 end
 
 return BotServer

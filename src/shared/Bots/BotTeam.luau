@@ -20,6 +20,24 @@
 --   * with no player to follow, a side goes where its enemies were last
 --     seen, together, else from place to place over the map
 --
+-- And the spike (system 61), as the Counter-Strike bot plays for the bomb
+-- ('I'm going to plant the bomb', 'They dropped the bomb', 'I'm going to
+-- guard bombsite B', its radio lines, Booth):
+--   * a bot carrying it goes with the plan, and once through its way onto
+--     the site, plants it at the spot planned (BotSpots)
+--   * one lying on the ground is fetched by the bot nearest it: at once
+--     with no player on the side, else once it's lain there DEFER, the
+--     bots leaving it to a player first, as 'By default, bots defer key
+--     scenario objective to human Players' (Booth)
+--   * once it's planted, the attackers watch it, each from a spot with
+--     cover that sees it, and each gets out of the blast once there's only
+--     just time to on foot from where it is
+--   * the defenders retake: they gather at the site's ways back in, push
+--     in together, and the one nearest the spike defuses it while the rest
+--     stand round, watching the spots it's watched from. If even the
+--     nearest couldn't get there and defuse it in time, they get out of
+--     the blast instead, keeping their guns
+--
 -- Every bot's job is a node to walk to and a point to look at once it's
 -- there: BotMove takes it there, round walls and up stairs, and BotBrain
 -- looks and fights. Bots of a side never stand on the same spot: those
@@ -30,6 +48,7 @@
 local BotConfig = require("./BotConfig")
 local BotNav = require("./BotNav")
 local BotSpots = require("./BotSpots")
+local Spike = require("../Spike/Spike")
 
 local BotTeam = {}
 
@@ -37,7 +56,22 @@ local BotTeam = {}
 -- lone bot, in deathmatch) of the modes that respawn.
 export type Side = "attack" | "defend" | "team"
 
-export type Task = "wait" | "gather" | "push" | "take" | "hunt" | "hold" | "rotate" | "follow" | "roam"
+export type Task =
+	"wait"
+	| "gather"
+	| "push"
+	| "take"
+	| "hunt"
+	| "hold"
+	| "rotate"
+	| "follow"
+	| "roam"
+	| "fetch"
+	| "plant"
+	| "guard"
+	| "retake"
+	| "defuse"
+	| "clear"
 
 -- Someone on the side, as the server shows it: a bot or a player.
 export type Member = {
@@ -45,6 +79,19 @@ export type Member = {
 	bot: boolean,
 	alive: boolean,
 	feet: vector,
+	defusing: number?, -- a defuse under way: how far it's got, seconds of the 7 (system 61)
+}
+
+-- The spike as a side knows it (system 61), in the map's frame: lying on
+-- the ground, carried (by whom: an entity id), or planted (at which site,
+-- when it goes off, and whether a defuse has passed its half).
+export type Spike = {
+	state: "dropped" | "carried" | "planted",
+	at: vector?, -- where it lies, or was planted
+	carrier: number?,
+	site: string?,
+	detonateAt: number,
+	halfSaved: boolean,
 }
 
 -- Where an enemy was seen by someone on the side, and when.
@@ -52,12 +99,16 @@ export type Sighting = { at: vector, time: number }
 
 -- A bot's job this moment: where it walks to (nil to stay), where it looks
 -- once there (nil for wherever it's looking), and whether it walks
--- quietly.
+-- quietly. With the spike (system 61): a point to step right onto once
+-- near (the spike, to run over it), and whether a plant or a defuse goes
+-- on even under fire, there being no time to fight first.
 export type Order = {
 	task: Task,
 	goal: number?,
 	look: vector?,
 	walk: boolean,
+	onto: vector?,
+	commit: boolean?,
 }
 
 type Job = {
@@ -73,6 +124,10 @@ type Job = {
 	through: boolean, -- attackers: through its way in, on the push
 	site: string?, -- defenders: the site it holds
 	hold: number?, -- and which of its holds, in the order they're dealt
+	onto: vector?,
+	commit: boolean?,
+	back: number?, -- defenders: the way back in it takes, by number, after a plant
+	post: number?, -- the spot it was given to watch the spike from
 }
 
 type Phase = "gather" | "push" | "take" | "hunt"
@@ -100,6 +155,20 @@ export type Team = {
 	focus: number?,
 	focusAt: number,
 	focusFrom: vector?,
+	-- The spike (system 61): where the side's carrier plants this round,
+	-- by number in the site's places to plant; where it's been lying
+	-- and since when, and who's fetching it; once it's planted, when the
+	-- side first knew, where it is and the watch spots that see it; and
+	-- the defenders' retake, how far along, and who defuses.
+	plantPick: number,
+	lyingAt: vector?,
+	lyingSince: number,
+	fetcher: number?,
+	plantedSeen: number?,
+	plantedAt: vector?,
+	watching: { number },
+	retake: "gather" | "push",
+	defuser: number?,
 }
 
 local EYE = 1.62 -- standing (MovementConfig's standEyeHeight)
@@ -148,6 +217,31 @@ BotTeam.FOLLOW_FAR = 7
 BotTeam.FOLLOW_MOVE = 4
 -- How long a side keeps making for a place before choosing another.
 BotTeam.PLACE_TIME = 25
+-- The spike (system 61). With a player on the side alive, the bots leave
+-- it on the ground to them this long, of a live round, before the nearest
+-- goes for it (estimate: long enough for a player by it to pick it up),
+-- as the Counter-Strike bot doesn't 'get scenario items' when 'there is a
+-- human on the team' (bot_defer_to_human_items, on by default).
+BotTeam.DEFER = 5
+-- Out of the blast: this far from the spike, its radius and a margin;
+-- each attacker goes once what's left on it is no more than its way out
+-- at RUN and this to spare (estimates).
+BotTeam.BLAST = Spike.Params.blastRadius.value + 3
+BotTeam.CLEAR = 1.5
+-- The defenders' retake (estimates): they push this long after the plant
+-- at the latest, or with this much more time left than a defuse takes;
+-- the defuse goes on under fire once there's no more than COMMIT to
+-- spare; and they go for it only if it can be done in time at a run of
+-- RUN (metres a second: under a rifle's 5.4, for the turns on the way).
+BotTeam.RETAKE_BY = 12
+BotTeam.RETAKE_LATE = 14
+BotTeam.COMMIT = 2
+BotTeam.RUN = 5
+-- How many nodes of the ways out of a planted spike's blast and to it are
+-- worked out each time a side's plan is gone over (BotNav.extend): a few
+-- milliseconds at most, and each is done in 2 s on the maps there are,
+-- long before it's needed.
+BotTeam.OUT_STEPS = 2000
 
 local function feet(nav: BotNav.Nav, n: number): vector
 	return BotNav.feet(nav, n)
@@ -189,6 +283,15 @@ function BotTeam.new(nav: BotNav.Nav, plan: BotSpots.Plan?, side: Side, dice: Bo
 		focus = nil,
 		focusAt = -math.huge,
 		focusFrom = nil,
+		plantPick = 1,
+		lyingAt = nil,
+		lyingSince = 0,
+		fetcher = nil,
+		plantedSeen = nil,
+		plantedAt = nil,
+		watching = {},
+		retake = "gather",
+		defuser = nil,
 	}
 end
 
@@ -268,10 +371,19 @@ function BotTeam.round(team: Team, now: number)
 	team.focusFrom = nil
 	team.site = nil
 	team.ways = {}
+	team.lyingAt = nil
+	team.fetcher = nil
+	team.plantedSeen = nil
+	team.plantedAt = nil
+	team.watching = {}
+	team.retake = "gather"
+	team.defuser = nil
 	local plan = team.plan
 	if team.side == "attack" and plan and #plan.sites > 0 then
 		local site = plan.sites[math.floor(team.dice() * #plan.sites) + 1]
 		BotTeam.aim(team, site.name)
+		-- Which of its places to plant, if the spike's planted there.
+		team.plantPick = math.floor(team.dice() * BotSpots.PLANTS) + 1
 	end
 end
 
@@ -379,10 +491,431 @@ local function deal(team: Team, bots: { Member }, centre: number): { [number]: n
 	return out
 end
 
+-- The spike (system 61) ------------------------------------------------------------------
+
+-- A bot's job, a new one if it has none.
+local function jobOf(team: Team, m: Member): Job
+	local job = team.jobs[m.id]
+	if not job then
+		job = { task = "wait", walk = false, through = false }
+		team.jobs[m.id] = job
+	end
+	return job :: Job
+end
+
+-- Spots from `spots` for `bots`: each keeps the one it had, the rest take
+-- the first free, in id order; any left over get none.
+local function post(team: Team, bots: { Member }, spots: { number }): { [number]: number }
+	local free: { [number]: boolean } = {}
+	for _, n in spots do
+		free[n] = true
+	end
+	local out: { [number]: number } = {}
+	for _, m in bots do
+		local had = jobOf(team, m).post
+		if had and free[had] then
+			out[m.id] = had
+			free[had] = false
+		end
+	end
+	for _, m in bots do
+		if out[m.id] == nil then
+			for _, n in spots do
+				if free[n] then
+					out[m.id] = n
+					free[n] = false
+					break
+				end
+			end
+		end
+		jobOf(team, m).post = out[m.id]
+	end
+	return out
+end
+
+-- The way out of the blast of a spike planted at `at`, on a map: a field
+-- of distances on foot to every node further than BLAST from it, worked
+-- out a little each time a side's plan is gone over, and shared by both
+-- sides.
+local outs: { [BotNav.Nav]: { at: vector, field: BotNav.Field } } = setmetatable({}, { __mode = "k" }) :: any
+
+local function outOf(nav: BotNav.Nav, at: vector): BotNav.Field
+	local known = outs[nav]
+	if known and vector.magnitude(known.at - at) < 0.1 then
+		return known.field
+	end
+	local from = {}
+	for n = 1, #nav.xs do
+		local dx, dz = nav.xs[n] - at.x, nav.zs[n] - at.z
+		if dx * dx + dz * dz > BotTeam.BLAST * BotTeam.BLAST then
+			table.insert(from, n)
+		end
+	end
+	local field = BotNav.begin(nav, from, true)
+	outs[nav] = { at = at, field = field }
+	return field
+end
+
+-- The way to a spike planted at `at`, on a map: a field of distances on
+-- foot to node `by`, where its defuser goes, worked out as the way out
+-- is.
+local tos: { [BotNav.Nav]: { at: vector, field: BotNav.Field } } = setmetatable({}, { __mode = "k" }) :: any
+
+local function toward(nav: BotNav.Nav, at: vector, by: number): BotNav.Field
+	local known = tos[nav]
+	if known and vector.magnitude(known.at - at) < 0.1 then
+		return known.field
+	end
+	local field = BotNav.begin(nav, { by }, true)
+	tos[nav] = { at = at, field = field }
+	return field
+end
+
+-- How far it is from node n on `field`: as far as that's been worked
+-- out, at least.
+local function along(field: BotNav.Field, n: number?): number
+	if n == nil then
+		return 0
+	end
+	local d = field.dist[n]
+	return if field.done or d < field.reach then d else field.reach
+end
+
+-- Out of the blast of the spike at `at`, the nearest way: the way's worked
+-- out once.
+local function clear(team: Team, m: Member, at: vector)
+	local job = jobOf(team, m)
+	if job.task ~= "clear" or job.goal == nil then
+		local nav = team.nav
+		local field = outOf(nav, at)
+		if not field.done then
+			-- Needed now: the rest of it at once.
+			BotNav.extend(nav, field, math.huge)
+		end
+		local n = nodeOf(team, m.feet)
+		job.goal = if n then BotSpots.down(nav, field.dist, n, math.huge) else nil
+	end
+	job.task = "clear"
+	job.look = nil
+	job.walk = false
+end
+
+-- The site the spike's planted at: the one it says, else the nearest.
+local function plantedSite(team: Team, spike: Spike): BotSpots.Site?
+	local plan = team.plan :: BotSpots.Plan
+	local named = if spike.site then BotSpots.site(plan, spike.site) else nil
+	if named then
+		return named
+	end
+	local n = if spike.at then nodeOf(team, spike.at) else nil
+	local nearest: BotSpots.Site? = plan.sites[1]
+	local bestField = math.huge
+	for _, s in plan.sites do
+		local d = if n then s.field[n] else math.huge
+		if d < bestField then
+			nearest, bestField = s, d
+		end
+	end
+	return nearest
+end
+
+-- The site's watch spots that see the spike where it's planted, worked out
+-- once a plant.
+local function watching(team: Team, site: BotSpots.Site, at: vector): { number }
+	local known = team.plantedAt
+	if known and vector.magnitude(known - at) < 0.1 then
+		return team.watching
+	end
+	local out = {}
+	local low = at + vector.create(0, BotSpots.LOW, 0)
+	for _, n in site.watches do
+		if BotNav.sees(team.nav, head(team.nav, n), low) then
+			table.insert(out, n)
+		end
+	end
+	team.plantedAt = at
+	team.watching = out
+	return out
+end
+
+-- The attackers' spike before it's planted: lying on the ground, the bot
+-- nearest goes for it (at once with no player on the side alive, else once
+-- it's lain there DEFER of a live round); carried by a bot, that bot
+-- plants it at the spot planned, once through its way onto the site.
+local function carry(team: Team, now: number, bots: { Member }, players: { Member }, spike: Spike, site: BotSpots.Site)
+	local nav = team.nav
+	local plan = team.plan :: BotSpots.Plan
+	local lying = if spike.state == "dropped" then spike.at else nil
+	if lying then
+		local seen = team.lyingAt
+		if seen == nil or vector.magnitude(seen - lying) > 0.5 then
+			team.lyingAt = lying
+			team.lyingSince = now
+			team.fetcher = nil
+		end
+	else
+		team.lyingAt = nil
+		team.fetcher = nil
+	end
+	if lying and (#players == 0 or now - math.max(team.lyingSince, team.began or now) >= BotTeam.DEFER) then
+		local fetcher: Member? = nil
+		local nearest = math.huge
+		for _, m in bots do
+			local d = vector.magnitude(m.feet - lying)
+			if m.id == team.fetcher then
+				fetcher, nearest = m, -1
+			elseif d < nearest then
+				fetcher, nearest = m, d
+			end
+		end
+		if fetcher then
+			team.fetcher = fetcher.id
+			local job = jobOf(team, fetcher)
+			job.task = "fetch"
+			job.goal = BotSpots.reachableNear(nav, plan.attack, lying, 2) or nodeOf(team, lying)
+			job.look = nil
+			job.walk = false
+			job.onto = lying
+		end
+	end
+	if #site.plants == 0 then
+		return
+	end
+	for _, m in bots do
+		local job = jobOf(team, m)
+		if m.id == spike.carrier and team.phase ~= "gather" and (job.through or team.phase ~= "push") then
+			local n = site.plants[(team.plantPick - 1) % #site.plants + 1]
+			job.task = "plant"
+			job.goal = n
+			-- Watching the way the defenders come back from their spawn.
+			job.look = head(nav, BotSpots.down(nav, plan.defend, n, 12))
+			job.walk = false
+			job.onto = feet(nav, n)
+		end
+	end
+end
+
+-- Whether attacker `m` must be on its way out of the blast now, with
+-- `left` on the spike: its way out from where it is, or from where it's
+-- going, takes all but CLEAR of that at RUN. Once on its way, it keeps on.
+local function leaving(team: Team, m: Member, out: BotNav.Field, left: number): boolean
+	local job = team.jobs[m.id]
+	if job and job.task == "clear" then
+		return true
+	end
+	local way = math.max(along(out, nodeOf(team, m.feet)), along(out, if job then job.goal else nil))
+	return left <= way / BotTeam.RUN + BotTeam.CLEAR
+end
+
+-- The attackers once it's planted: each to a spot that sees it, the
+-- site's best first (BotSpots' watches), the rest round it, all watching
+-- where a defuser would be; each out of the blast once there's only just
+-- time to get out.
+local function guard(team: Team, now: number, bots: { Member }, spike: Spike)
+	local nav = team.nav
+	local plan = team.plan :: BotSpots.Plan
+	local at = spike.at :: vector
+	local out = outOf(nav, at)
+	BotNav.extend(nav, out, BotTeam.OUT_STEPS)
+	local left = spike.detonateAt - now
+	local staying: { Member } = {}
+	for _, m in bots do
+		if leaving(team, m, out, left) then
+			clear(team, m, at)
+		else
+			table.insert(staying, m)
+		end
+	end
+	if #staying == 0 then
+		return
+	end
+	local site = plantedSite(team, spike)
+	local posts = post(team, staying, if site then watching(team, site, at) else {})
+	local rest: { Member } = {}
+	for _, m in staying do
+		if posts[m.id] == nil then
+			table.insert(rest, m)
+		end
+	end
+	local centre = BotSpots.reachableNear(nav, plan.attack, at, 3) or nodeOf(team, at)
+	local round: { [number]: number } = if #rest > 0 and centre then deal(team, rest, centre) else {}
+	for _, m in staying do
+		local job = jobOf(team, m)
+		job.task = "guard"
+		job.goal = posts[m.id] or round[m.id]
+		job.look = at + vector.create(0, 1, 0)
+		job.walk = false
+	end
+end
+
+-- The defenders once it's planted: the retake. They gather at the site's
+-- ways back in from their spawn (any on the site already stay where they
+-- are), push in together once most are there or the clock says so, and
+-- the one nearest the spike defuses it, unless a player's at it, while the
+-- rest stand round it, each watching one of the spots it's watched from.
+-- If even the nearest couldn't get there and defuse it in time, they get
+-- out of the blast.
+local function retake(team: Team, now: number, bots: { Member }, players: { Member }, spike: Spike)
+	local nav = team.nav
+	local plan = team.plan :: BotSpots.Plan
+	local at = spike.at :: vector
+	local site = plantedSite(team, spike)
+	if not site then
+		return
+	end
+	local s = site :: BotSpots.Site
+	team.plantedSeen = team.plantedSeen or now
+	BotNav.extend(nav, outOf(nav, at), BotTeam.OUT_STEPS)
+	local left = spike.detonateAt - now
+	local full = Spike.Params.defuseTime.value
+	local need = Spike.defuseTime(spike.halfSaved)
+	local target = BotSpots.reachableNear(nav, plan.defend, at, 2) or nodeOf(team, at)
+	local to = if target then toward(nav, at, target) else nil
+	if to then
+		BotNav.extend(nav, to, BotTeam.OUT_STEPS)
+	end
+	-- Who defuses: the one who has been while alive, else the nearest.
+	local defuser: Member? = nil
+	local nearest = math.huge
+	for _, m in bots do
+		local d = vector.magnitude(m.feet - at)
+		if m.id == team.defuser then
+			defuser, nearest = m, -1
+		elseif d < nearest then
+			defuser, nearest = m, d
+		end
+	end
+	local player = false
+	for _, p in players do
+		player = player or p.defusing ~= nil
+	end
+	if player then
+		defuser = nil
+	end
+	team.defuser = if defuser then defuser.id else nil
+	-- Too late for it: out of the blast. A defuse under way needs only
+	-- what's left of it; else the defuser's way there on foot, and the
+	-- defuse.
+	if defuser then
+		local d = defuser :: Member
+		local way = vector.magnitude(d.feet - at)
+		if to then
+			way = math.max(way, along(to, nodeOf(team, d.feet)))
+		end
+		local still = if d.defusing then full - d.defusing else need + way / BotTeam.RUN
+		if left < still then
+			for _, m in bots do
+				clear(team, m, at)
+			end
+			return
+		end
+	end
+	-- Each bot's way back in: the one it has, else the one the fewest have.
+	local ways = if #s.retakes > 0 then s.retakes else s.entrances
+	local counts: { number } = {}
+	for k = 1, #ways do
+		counts[k] = 0
+	end
+	for _, m in bots do
+		local b = jobOf(team, m).back
+		if b and counts[b] then
+			counts[b] += 1
+		end
+	end
+	local byWay: { [number]: { Member } } = {}
+	for _, m in bots do
+		local job = jobOf(team, m)
+		if #ways > 0 and (job.back == nil or counts[job.back :: number] == nil) then
+			local best, fewest = 1, math.huge
+			for k = 1, #ways do
+				if counts[k] < fewest then
+					best, fewest = k, counts[k]
+				end
+			end
+			job.back = best
+			job.through = false
+			counts[best] += 1
+		end
+		if job.back then
+			byWay[job.back :: number] = byWay[job.back :: number] or {}
+			table.insert(byWay[job.back :: number], m)
+		end
+	end
+	local function inside(m: Member): boolean
+		local n = nodeOf(team, m.feet)
+		return n ~= nil and s.field[n] <= BotSpots.AREA
+	end
+	local stage: { [number]: number } = {}
+	for b, group in byWay do
+		for id, n in deal(team, group, ways[b].stage) do
+			stage[id] = n
+		end
+	end
+	if team.retake == "gather" then
+		local there = 0
+		for _, m in bots do
+			if inside(m) or near(team, m, stage[m.id], BotTeam.THERE) then
+				there += 1
+			end
+		end
+		local late = now >= (team.plantedSeen :: number) + BotTeam.RETAKE_BY or left <= need + BotTeam.RETAKE_LATE
+		if #ways == 0 or #bots > 0 and there >= math.ceil(#bots * BotTeam.GATHERED) or late then
+			team.retake = "push"
+		end
+	end
+	-- Those round the spike, and the spots each watches.
+	local covering: { Member } = {}
+	for _, m in bots do
+		if m ~= defuser then
+			table.insert(covering, m)
+		end
+	end
+	local round: { [number]: number } = if target and #covering > 0 then deal(team, covering, target) else {}
+	local spots = watching(team, s, at)
+	for k, m in bots do
+		local job = jobOf(team, m)
+		local way = if job.back then ways[job.back :: number] else nil
+		job.task = "retake"
+		job.walk = false
+		if team.retake == "gather" then
+			if inside(m) or not way then
+				job.goal = nil
+				job.look = at + vector.create(0, 1, 0)
+			else
+				local w = way :: BotSpots.Entrance
+				job.goal = stage[m.id]
+				job.look = head(nav, w.node)
+				job.walk = near(team, m, stage[m.id], BotTeam.QUIET)
+			end
+			continue
+		end
+		-- In through its way, then to the spike or round it.
+		if way and not job.through and (near(team, m, way.node, BotTeam.THERE) or inside(m)) then
+			job.through = true
+		end
+		local entry = if way and not job.through then way.node else nil
+		if m == defuser then
+			job.task = "defuse"
+			job.goal = entry or target
+			job.look = at + vector.create(0, BotSpots.LOW, 0)
+			local d = defuser :: Member
+			local still = if d.defusing then full - d.defusing else need
+			job.commit = left < still + BotTeam.COMMIT
+		else
+			job.goal = entry or round[m.id]
+			job.look = if #spots > 0 then head(nav, spots[(k - 1) % #spots + 1]) else at + vector.create(0, 1, 0)
+		end
+	end
+end
+
 -- The attackers: the plan, followed.
-local function attack(team: Team, now: number, bots: { Member }, players: { Member }, sightings: { Sighting })
+local function attack(team: Team, now: number, bots: { Member }, players: { Member }, sightings: { Sighting }, spike: Spike?)
 	local plan = team.plan :: BotSpots.Plan
 	local nav = team.nav
+	if spike and spike.state == "planted" and spike.at then
+		guard(team, now, bots, spike)
+		return
+	end
 	if team.site == nil then
 		return
 	end
@@ -517,14 +1050,21 @@ local function attack(team: Team, now: number, bots: { Member }, players: { Memb
 			job.walk = false
 		end
 	end
+	if spike then
+		carry(team, now, bots, players, spike, site)
+	end
 end
 
 -- The defenders: a site and a hold each, and over to a site the attackers
 -- turn up at.
-local function defend(team: Team, now: number, bots: { Member }, sightings: { Sighting })
+local function defend(team: Team, now: number, bots: { Member }, players: { Member }, sightings: { Sighting }, spike: Spike?)
 	local plan = team.plan :: BotSpots.Plan
 	local sites = plan.sites
 	if #sites == 0 then
+		return
+	end
+	if spike and spike.state == "planted" and spike.at then
+		retake(team, now, bots, players, spike)
 		return
 	end
 	-- Where attackers have been seen.
@@ -716,8 +1256,16 @@ end
 
 -- What each of the side's living bots does now, by id. `live`: the round's
 -- under way (else they wait in spawn, as in the buy phase); `sightings`:
--- where the side has seen its enemies lately.
-function BotTeam.think(team: Team, now: number, live: boolean, members: { Member }, sightings: { Sighting }): { [number]: Order }
+-- where the side has seen its enemies lately; `spike`: the spike, in the
+-- spike rounds, as the side knows it (system 61).
+function BotTeam.think(
+	team: Team,
+	now: number,
+	live: boolean,
+	members: { Member },
+	sightings: { Sighting },
+	spike: Spike?
+): { [number]: Order }
 	local bots, players = sorted(members)
 	local out: { [number]: Order } = {}
 	if not live then
@@ -731,17 +1279,21 @@ function BotTeam.think(team: Team, now: number, live: boolean, members: { Member
 		team.began = now
 		team.pushAt = now + BotTeam.PUSH_BY + (team.dice() * 2 - 1) * BotTeam.PUSH_SPREAD
 	end
+	for _, job in team.jobs do
+		job.onto = nil
+		job.commit = nil
+	end
 	if team.side == "attack" and team.plan then
-		attack(team, now, bots, players, sightings)
+		attack(team, now, bots, players, sightings, spike)
 	elseif team.side == "defend" and team.plan then
-		defend(team, now, bots, sightings)
+		defend(team, now, bots, players, sightings, spike)
 	else
 		together(team, now, bots, players, sightings)
 	end
 	for _, m in bots do
 		local job = team.jobs[m.id]
 		if job then
-			out[m.id] = { task = job.task, goal = job.goal, look = job.look, walk = job.walk }
+			out[m.id] = { task = job.task, goal = job.goal, look = job.look, walk = job.walk, onto = job.onto, commit = job.commit }
 		end
 	end
 	return out

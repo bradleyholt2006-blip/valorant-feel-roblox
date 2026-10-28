@@ -17,6 +17,16 @@
 --   * each entrance's staging spot: on the attackers' way to it, a few
 --     metres short of it, where they gather before they push
 --
+-- And for the spike (system 61), as the Counter-Strike bot hides 'to
+-- guard a location' at a Hiding Spot (Booth):
+--   * where to plant it: in the plant area, beside cover, out of sight of
+--     the defenders' ways back in, so a defuser has to come out to it
+--   * the defenders' ways back in from their spawn, found as the
+--     attackers' ways in are, with their staging spots: a retake's
+--   * where to watch it from once it's planted: beside cover, a fight's
+--     distance off, seeing where it's planted, and seen from as few of
+--     the ways back in as can be
+--
 -- How far each node is from each side's spawn is kept too: the time the
 -- enemy can first be somewhere, as the NAV format keeps each area's
 -- 'Earliest occupy times for teams' (the Valve Developer Community).
@@ -50,6 +60,9 @@ export type Site = {
 	entrances: { Entrance },
 	holds: { Hold },
 	area: { number }, -- the nodes of its area
+	plants: { number }, -- where to plant the spike, best first
+	retakes: { Entrance }, -- the defenders' ways in from their spawn
+	watches: { number }, -- where to watch a planted spike from, best first
 }
 
 export type Plan = {
@@ -89,6 +102,21 @@ BotSpots.LONGER = 1.6
 -- apart.
 BotSpots.HOLDS = 4
 BotSpots.APART = 3
+-- Where to plant (estimates): this far inside the plant area's edge, so
+-- feet that stop short of the spot are in it; how many spots are kept, and
+-- how far apart.
+BotSpots.INSET = 0.6
+BotSpots.PLANTS = 3
+BotSpots.PLANTS_APART = 2.5
+-- Where to watch a planted spike from (estimates): how far from it at the
+-- nearest and furthest, the distance liked best, and how many spots are
+-- kept, at least APART apart.
+BotSpots.WATCH_NEAREST = 5
+BotSpots.WATCH_FURTHEST = 20
+BotSpots.WATCH_BEST = 10
+BotSpots.WATCHES = 8
+-- Where on the ground the spike is looked at: a little over the floor.
+BotSpots.LOW = 0.3
 
 local EYE = 1.62 -- standing (MovementConfig's standEyeHeight)
 local WAIST = 0.9
@@ -123,7 +151,7 @@ end
 -- How many solids an eye can't see through are beside node n, within a
 -- metre round the box: a holder's cover. Low cover counts as much as a
 -- wall: a crouch behind it, or a head over it, is all that shows.
-local function coverAt(nav: BotNav.Nav, n: number): number
+function BotSpots.coverAt(nav: BotNav.Nav, n: number): number
 	local p = feet(nav, n)
 	local count = 0
 	local dirs = { vector.create(1, 0, 0), vector.create(-1, 0, 0), vector.create(0, 0, 1), vector.create(0, 0, -1) }
@@ -155,12 +183,14 @@ local function around(nav: BotNav.Nav, n: number, radius: number, visit: (number
 	end
 end
 
--- A site's entrances: the ways the attackers come into its area, each the
--- first node of its area on a shortest way in from their spawn. The first
--- is the shortest way of all; each next keeps away from the last stretch
--- of the ways found before it, as a second way round would, and counts if
--- it comes in somewhere else and isn't much longer.
-local function entrancesOf(nav: BotNav.Nav, attack: { number }, starts: { number }, site: Site): { Entrance }
+-- A site's entrances from a side's spawn: the ways that side comes into
+-- its area, each the first node of its area on a shortest way in from
+-- `starts`, the spawn's nodes, whose field is `spawn`. The first is the
+-- shortest way of all; each next keeps away from the last stretch of the
+-- ways found before it, as a second way round would, and counts if it
+-- comes in somewhere else and isn't much longer. `pause`, if given, is
+-- called after each way.
+local function entrancesOf(nav: BotNav.Nav, spawn: { number }, starts: { number }, site: Site, pause: (() -> ())?): { Entrance }
 	local inArea: { [number]: boolean } = {}
 	for _, n in site.area do
 		inArea[n] = true
@@ -194,7 +224,7 @@ local function entrancesOf(nav: BotNav.Nav, attack: { number }, starts: { number
 		if not entry then
 			break
 		end
-		local length = attack[entry]
+		local length = spawn[entry]
 		-- The way's length on foot to the entry, detours and all.
 		local walked = 0
 		for k = 2, index do
@@ -227,6 +257,9 @@ local function entrancesOf(nav: BotNav.Nav, attack: { number }, starts: { number
 				avoid[other] = true
 			end)
 		end
+		if pause then
+			pause()
+		end
 	end
 	return out
 end
@@ -234,8 +267,9 @@ end
 -- The spots to hold each of a site's entrances from: in its area, seeing
 -- the entrance from between NEAREST and FURTHEST, scored by how near the
 -- best distance, how much cover is beside them and how few other
--- entrances see them, the best few at least APART apart.
-local function holdsOf(nav: BotNav.Nav, defend: { number }, site: Site): { Hold }
+-- entrances see them, the best few at least APART apart. `pause`, if
+-- given, is called after each entrance's.
+local function holdsOf(nav: BotNav.Nav, defend: { number }, site: Site, pause: (() -> ())?): { Hold }
 	local out: { Hold } = {}
 	for index, entrance in site.entrances do
 		local scored: { { node: number, score: number, low: boolean, distance: number } } = {}
@@ -261,7 +295,7 @@ local function holdsOf(nav: BotNav.Nav, defend: { number }, site: Site): { Hold 
 					open += 1
 				end
 			end
-			local cover = coverAt(nav, n)
+			local cover = BotSpots.coverAt(nav, n)
 			local score = -math.abs(distance - BotSpots.BEST) / 3 + math.min(cover, 2) * 1.5 - open * 2.5 + (if low then 2 else 0)
 			table.insert(scored, { node = n, score = score, low = low, distance = distance })
 		end
@@ -297,6 +331,9 @@ local function holdsOf(nav: BotNav.Nav, defend: { number }, site: Site): { Hold 
 				kept += 1
 			end
 		end
+		if pause then
+			pause()
+		end
 	end
 	return out
 end
@@ -325,6 +362,109 @@ local function reachableNear(nav: BotNav.Nav, field: { number }, p: vector, radi
 end
 BotSpots.reachableNear = reachableNear
 
+-- Where the spike is looked at, lying at node n's feet.
+local function low(nav: BotNav.Nav, n: number): vector
+	return feet(nav, n) + vector.create(0, BotSpots.LOW, 0)
+end
+
+-- How many of the ways back in see a point: of the heads that would come
+-- through them.
+local function seenBack(nav: BotNav.Nav, site: Site, p: vector): number
+	local count = 0
+	for _, e in site.retakes do
+		if BotNav.sees(nav, e.aim, p) then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- The best of `scored`, at most `most` of them and at least `apart` metres
+-- apart, best first.
+local function topOf(nav: BotNav.Nav, scored: { { node: number, score: number } }, most: number, apart: number): { number }
+	table.sort(scored, function(a, b): boolean
+		if a.score ~= b.score then
+			return a.score > b.score
+		end
+		return a.node < b.node
+	end)
+	local out: { number } = {}
+	for _, s in scored do
+		if #out >= most then
+			break
+		end
+		local p = feet(nav, s.node)
+		local free = true
+		for _, other in out do
+			if vector.magnitude(feet(nav, other) - p) < apart then
+				free = false
+				break
+			end
+		end
+		if free then
+			table.insert(out, s.node)
+		end
+	end
+	return out
+end
+
+-- Where to plant on a site: nodes of its plant area (centre (x, z), `sx`
+-- by `sz` across, on the floor at `y`) the attackers get to, kept INSET
+-- from its edge, scored by how few of the ways back in see the spike
+-- there, how much cover is beside it and how near the middle it is.
+local function plantsOf(nav: BotNav.Nav, attack: { number }, site: Site, s: any, y: number): { number }
+	local hx, hz = s.sx / 2 - BotSpots.INSET, s.sz / 2 - BotSpots.INSET
+	local scored: { { node: number, score: number } } = {}
+	for _, n in site.area do
+		local dx, dz = nav.xs[n] - s.x, nav.zs[n] - s.z
+		local up = nav.ys[n] - y
+		if math.abs(dx) > hx or math.abs(dz) > hz or up < -0.05 or up > 1.9 or attack[n] == math.huge then
+			continue
+		end
+		local seen = seenBack(nav, site, low(nav, n))
+		local cover = BotSpots.coverAt(nav, n)
+		local score = -3 * seen + 1.5 * math.min(cover, 2) - math.sqrt(dx * dx + dz * dz) / 5
+		table.insert(scored, { node = n, score = score })
+	end
+	return topOf(nav, scored, BotSpots.PLANTS, BotSpots.PLANTS_APART)
+end
+
+-- Where to watch a planted spike from: nodes the attackers get to, a
+-- metre apart, from WATCH_NEAREST to WATCH_FURTHEST of the best place to
+-- plant, seeing it, with cover beside them; scored by how near the best
+-- distance, how much cover, how many of the other places to plant they
+-- see too, and how few of the ways back in see them.
+local function watchesOf(nav: BotNav.Nav, attack: { number }, site: Site): { number }
+	local first = site.plants[1] or site.centre
+	local at = low(nav, first)
+	local every = math.max(math.round(1 / nav.options.cell), 1)
+	local scored: { { node: number, score: number } } = {}
+	for n, d in site.field do
+		local grid = nav.ci[n] % every == 0 and nav.cj[n] % every == 0
+		if not grid or d > BotSpots.AREA + BotSpots.WATCH_FURTHEST or attack[n] == math.huge then
+			continue
+		end
+		local eye = feet(nav, n) + vector.create(0, EYE, 0)
+		local distance = vector.magnitude(at - eye)
+		if distance < BotSpots.WATCH_NEAREST or distance > BotSpots.WATCH_FURTHEST or not BotNav.sees(nav, eye, at) then
+			continue
+		end
+		local cover = BotSpots.coverAt(nav, n)
+		if cover == 0 then
+			continue
+		end
+		local others = 0
+		for k = 2, #site.plants do
+			if BotNav.sees(nav, eye, low(nav, site.plants[k])) then
+				others += 1
+			end
+		end
+		local score = -math.abs(distance - BotSpots.WATCH_BEST) / 3 + 1.5 * math.min(cover, 2) + others - 1.5 * seenBack(nav, site, eye)
+		table.insert(scored, { node = n, score = score })
+	end
+	return topOf(nav, scored, BotSpots.WATCHES, BotSpots.APART)
+end
+
 -- The nodes the spots of each side's spawn stand on, as `spots` has them.
 local function spawnNodes(nav: BotNav.Nav, spots: { { feet: vector, yaw: number } }): { number }
 	local out = {}
@@ -351,7 +491,8 @@ function BotSpots.ofMap(map: any, pause: (() -> ())?): Plan
 	if pause then
 		pause()
 	end
-	local defend = BotNav.distances(nav, spawnNodes(nav, map.spots("defend")))
+	local defenders = spawnNodes(nav, map.spots("defend"))
+	local defend = BotNav.distances(nav, defenders)
 	if pause then
 		pause()
 	end
@@ -369,9 +510,25 @@ function BotSpots.ofMap(map: any, pause: (() -> ())?): Plan
 				table.insert(area, n)
 			end
 		end
-		local site: Site = { name = s.site, centre = centre, field = field, entrances = {}, holds = {}, area = area }
-		site.entrances = entrancesOf(nav, attack, attackers, site)
-		site.holds = holdsOf(nav, defend, site)
+		if pause then
+			pause()
+		end
+		local site: Site = {
+			name = s.site,
+			centre = centre,
+			field = field,
+			entrances = {},
+			holds = {},
+			area = area,
+			plants = {},
+			retakes = {},
+			watches = {},
+		}
+		site.entrances = entrancesOf(nav, attack, attackers, site, pause)
+		site.holds = holdsOf(nav, defend, site, pause)
+		site.retakes = entrancesOf(nav, defend, defenders, site, pause)
+		site.plants = plantsOf(nav, attack, site, s, y)
+		site.watches = watchesOf(nav, attack, site)
 		table.insert(sites, site)
 		if pause then
 			pause()

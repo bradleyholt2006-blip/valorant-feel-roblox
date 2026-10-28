@@ -69,5 +69,6 @@ require("./teambuy")
 require("./mapkit")
 require("./heights")
 require("./bots")
+require("./botspike")
 
 H.finish()

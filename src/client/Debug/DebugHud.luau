@@ -43,6 +43,7 @@ local MinimapView = require(script.Parent.Parent.MinimapView)
 local ClientSpike = require(script.Parent.Parent.ClientSpike)
 local NetSim = require(script.Parent.Parent.NetSim)
 local Visuals = require(script.Parent.Parent.Visuals)
+local Who = require(script.Parent.Parent.Who)
 
 local B = MovementSim.Buttons
 
@@ -64,8 +65,9 @@ local function spikeLine(sim: PlayerSim.State?): string
 	local text = state
 	local at = view.position
 	if state == "carried" then
-		local who = Players:GetPlayerByUserId(view.carrier)
-		text = if view.carrier == Players.LocalPlayer.UserId then "carried by you" else "carried by " .. (if who then who.Name else "?")
+		-- A player or a bot (system 61).
+		local who = Who.find(view.carrier)
+		text = if view.carrier == Players.LocalPlayer.UserId then "carried by you" else "carried by " .. (if who then who.name else "?")
 	elseif state == "dropped" and at then
 		text = string.format("on the ground at %.1f %.1f m", at.x, at.z)
 	elseif state == "planted" then

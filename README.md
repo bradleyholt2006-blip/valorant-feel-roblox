@@ -461,6 +461,13 @@ Built one system at a time:
     and up stairs and getting out of anywhere they stick. There are four skills; the default,
     Normal, loses to a player who checks their corners -
     [research and design](docs/research/60-bots.md)
+61. **Bots and the spike**: bots play for the spike in the spike rounds. Attackers pick it up, carry
+    it with their plan and plant it on the site they chose, out of sight of the defenders' ways back
+    in, then watch it from cover, and each gets out of the blast in time. Defenders gather at the
+    ways back in, push in together, and one defuses it while the rest cover them, or they all get
+    out of the blast when it's too late. Players come first: the bots leave a spike on the ground to
+    a player on their side for 5 s, a player carrying it plants it where they choose, and a player
+    defusing it is left to it - [research and design](docs/research/61-bots-and-the-spike.md)
 
 ## Running it
 
@@ -748,7 +755,9 @@ looked across in three dimensions: every floor reached and left, each side's run
 its raised places and its window see, and how open its sites are) and bots (how many fill a match
 and which leave, what they buy, what they see and how fast, their turns by Fitts's law, duels by
 skill, checking corners, walking every map round its walls without getting stuck, and going round a
-map together) are pure Luau and run outside Roblox:
+map together) and bots playing for the spike (who goes for it, a bot's hands planting and defusing
+it, an attack on every map and a retake of every site, and getting out of the blast) are pure Luau
+and run outside Roblox:
 
 ```
 luau tests/run.luau
@@ -763,8 +772,8 @@ and the outline's tint by distance; the arena's size and how much of it each spa
 footstep curve, steps per second by weapon, and the filters for walls and distance; cm/360 at
 the default sensitivity, unzoomed and scoped; how long each side takes to reach each spike map's
 sites; how fast each skill of bot notices, turns, fires and kills, and how long bots take to walk
-each map) and runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox
-definitions.
+each map, to plant the spike on it and to retake each of its sites) and runs the test suites. CI
+also type-checks everything with `luau-lsp` and Roblox definitions.
 
 ## Rules for this project
 

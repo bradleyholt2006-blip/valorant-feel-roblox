@@ -22,6 +22,14 @@
 -- is on one of the rounds' maps (system 25), and Arena says which. Every
 -- player's context carries the Ultimate Orbs up too (system 49), as
 -- OrbServer says, for their simulation to take.
+--
+-- Bots play for it as players do (system 61): each is told what it may do
+-- with it each tick and plants and defuses it in its own simulation
+-- (BotServer, which says here what happened), and dies with it as a player
+-- does. Who carries it goes by their id in the rules, a player's UserId or
+-- a bot's. A bot picks it up only when it means to (its job is to fetch
+-- it, BotTeam), so it never takes it from under a player who's going for
+-- it.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -34,6 +42,9 @@ local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local RobloxSpike = require(Shared.Spike.RobloxSpike)
 local Units = require(Shared.Units)
+
+local PlayerCodec = require(Shared.Net.PlayerCodec)
+local PlayerSim = require(Shared.PlayerSim)
 
 local Entities = require(script.Parent.Entities)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
@@ -64,11 +75,38 @@ local SpikeServer = {}
 -- 17: the ultimate's points).
 SpikeServer.objectiveListeners = {} :: { (Player, "planted" | "defused") -> () }
 
+-- The bots (system 61, BotServer): their ids in the rules, whether one's
+-- still there, its simulation, life and side, whether it means to pick
+-- the spike up, and putting the spike in its fourth slot or taking it out.
+export type Bots = {
+	ids: () -> { number },
+	has: (id: number) -> boolean,
+	sim: (id: number) -> PlayerSim.State?,
+	alive: (id: number) -> boolean,
+	side: (id: number) -> number?,
+	fetching: (id: number) -> boolean,
+	setSpike: (id: number, carry: boolean) -> (),
+}
+SpikeServer.bots = nil :: Bots?
+
+-- The spike as the bots' plans know it (system 61): what it's doing, where
+-- it lies or was planted (metres, in the place), who carries it (their id
+-- in the rules), the site it's planted at, when it goes off and whether a
+-- defuse has passed its half.
+export type View = {
+	state: State,
+	position: vector?,
+	carrier: number?,
+	site: string,
+	detonateAt: number,
+	halfSaved: boolean,
+}
+
 local layout: string? = nil -- the sites in play; nil while there's no spike
 local zones: { Spike.Zone } = {}
 local startAt = Spike.CourseStart
 local state: State = "none"
-local carrier: Player? = nil
+local carrier: number? = nil -- who carries it, by their id in the rules
 local carrierFeet: vector? = nil -- where the carrier was last frame
 local position: vector? = nil -- metres: lying, planted, or where it ended
 local plantedAt = 0
@@ -79,7 +117,7 @@ local endedAt = 0
 local respawnAt: number? = nil
 local blastFrom: number? = nil -- while the blast grows: when it started
 -- Dropped it and hasn't stepped off it yet, so doesn't pick it straight up.
-local stepOff: Player? = nil
+local stepOff: number? = nil
 -- The spike rounds, while they're played: who hears of the spike, the side
 -- attacking (0 on the course: anyone may carry and defuse it) and whether a
 -- plant is open.
@@ -100,7 +138,7 @@ local forBystanders: Spike.Context = Spike.NONE
 local function publish()
 	Workspace:SetAttribute(Spike.LAYOUT, layout or "")
 	Workspace:SetAttribute(Spike.STATE, state)
-	Workspace:SetAttribute(Spike.CARRIER, if carrier then carrier.UserId else 0)
+	Workspace:SetAttribute(Spike.CARRIER, carrier or 0)
 	Workspace:SetAttribute(Spike.POSITION, if position then Units.asVector3(position) else nil)
 	Workspace:SetAttribute(Spike.PLANTED_AT, plantedAt)
 	Workspace:SetAttribute(Spike.HALF, halfSaved)
@@ -134,21 +172,61 @@ local function now(): number
 	return Workspace:GetServerTimeNow()
 end
 
-local function sideOf(player: Player): number?
+-- Players and bots alike, by their ids in the rules: a player, if it's
+-- one, and anyone's simulation, life and side.
+local function playerOf(id: number): Player?
+	return if PlayerCodec.isBotRule(id) then nil else Players:GetPlayerByUserId(id)
+end
+
+local function simOf(id: number): PlayerSim.State?
+	local player = playerOf(id)
+	local bots = SpikeServer.bots
+	if player then
+		return PlayerSimServer.getSim(player)
+	end
+	return if bots then bots.sim(id) else nil
+end
+
+local function isAlive(id: number): boolean
+	local player = playerOf(id)
+	local bots = SpikeServer.bots
+	if player then
+		return PlayerSimServer.isAlive(player)
+	end
+	return bots ~= nil and bots.alive(id)
+end
+
+local function sideOf(id: number): number?
+	local player = playerOf(id)
+	local bots = SpikeServer.bots
+	if not player then
+		return if bots then bots.side(id) else nil
+	end
 	local side = player:GetAttribute(ArenaConfig.SIDE)
 	return if typeof(side) == "number" then side else nil
 end
 
--- Whether a player may pick the spike up: the attackers in the spike rounds,
--- anyone on the course.
-local function mayCarry(player: Player): boolean
-	return attackers == 0 or sideOf(player) == attackers
+-- Whether someone may pick the spike up: the attackers in the spike
+-- rounds, anyone on the course.
+local function mayCarry(id: number): boolean
+	return attackers == 0 or sideOf(id) == attackers
 end
 
--- Whether a player may defuse it: the defenders in the spike rounds, anyone
+-- Whether someone may defuse it: the defenders in the spike rounds, anyone
 -- on the course.
-local function mayDefuse(player: Player): boolean
-	return attackers == 0 or sideOf(player) == 3 - attackers
+local function mayDefuse(id: number): boolean
+	return attackers == 0 or sideOf(id) == 3 - attackers
+end
+
+-- Puts the spike in someone's fourth slot, or takes it out.
+local function setSpike(id: number, carry: boolean)
+	local player = playerOf(id)
+	local bots = SpikeServer.bots
+	if player then
+		PlayerSimServer.setSpike(player, carry)
+	elseif bots then
+		bots.setSpike(id, carry)
+	end
 end
 
 -- Takes the spike from whoever carries it.
@@ -157,7 +235,7 @@ local function takeBack()
 	carrier = nil
 	carrierFeet = nil
 	if who then
-		PlayerSimServer.setSpike(who, false)
+		setSpike(who, false)
 	end
 end
 
@@ -181,9 +259,9 @@ local function fresh()
 	lay(startAt)
 end
 
--- Hands the spike to a player: run over, or the debug give.
-local function hand(player: Player)
-	if carrier == player then
+-- Hands the spike to someone: run over, or the debug give.
+local function hand(id: number)
+	if carrier == id then
 		return
 	end
 	takeBack()
@@ -193,12 +271,12 @@ local function hand(player: Player)
 	respawnAt = nil
 	blastFrom = nil
 	stepOff = nil
-	carrier = player
+	carrier = id
 	state = "carried"
 	position = nil
-	local sim = PlayerSimServer.getSim(player)
+	local sim = simOf(id)
 	carrierFeet = if sim then sim.movement.position else nil
-	PlayerSimServer.setSpike(player, true)
+	setSpike(id, true)
 	publish()
 end
 
@@ -223,10 +301,21 @@ local function setLayout(name: string?)
 	end
 end
 
-local function onAct(player: Player, act: SpikeSim.Act)
+-- The plant or the defuse that counts, to whoever hears of who made it
+-- (a player: bots have no ultimate to earn).
+local function made(id: number, kind: "planted" | "defused")
+	local player = playerOf(id)
+	if player then
+		for _, listener in SpikeServer.objectiveListeners do
+			listener(player, kind)
+		end
+	end
+end
+
+local function onAct(id: number, act: SpikeSim.Act)
 	local time = now()
 	if act.kind == "planted" then
-		if state ~= "carried" or carrier ~= player then
+		if state ~= "carried" or carrier ~= id then
 			return
 		end
 		carrier = nil
@@ -238,14 +327,12 @@ local function onAct(player: Player, act: SpikeSim.Act)
 		detonateAt = time + P.detonateTime.value
 		halfSaved = false
 		publish()
-		for _, listener in SpikeServer.objectiveListeners do
-			listener(player, "planted")
-		end
+		made(id, "planted")
 		if events then
 			events.planted(detonateAt)
 		end
 	elseif act.kind == "dropped" then
-		if state ~= "carried" or carrier ~= player then
+		if state ~= "carried" or carrier ~= id then
 			return
 		end
 		-- Thrown a little ahead, stopped short of a wall, landing where it falls.
@@ -254,7 +341,7 @@ local function onAct(player: Player, act: SpikeSim.Act)
 		carrier = nil -- the simulation has let go of it already
 		carrierFeet = nil
 		lay(from + dir * RobloxSpike.reach(from, dir, P.dropForward.value))
-		stepOff = player
+		stepOff = id
 	elseif act.kind == "defused" then
 		-- Too late if it went off first.
 		if state ~= "planted" or time >= detonateAt then
@@ -266,9 +353,7 @@ local function onAct(player: Player, act: SpikeSim.Act)
 		-- The spike rounds put a new one down as the next round starts.
 		respawnAt = if events then nil else time + P.courseRespawn.value
 		publish()
-		for _, listener in SpikeServer.objectiveListeners do
-			listener(player, "defused")
-		end
+		made(id, "defused")
 		if events then
 			events.defused(time)
 		end
@@ -280,8 +365,8 @@ local function onAct(player: Player, act: SpikeSim.Act)
 	end
 end
 
-local function onDeath(player: Player)
-	local sim = PlayerSimServer.getSim(player)
+local function onDeath(id: number)
+	local sim = simOf(id)
 	-- A defuse cut short by death keeps its half, as one let go of does.
 	if sim and state == "planted" and not halfSaved then
 		if SpikeSim.defuseProgress(sim.spike, sim.movement.tick * DT) >= P.defuseHalf.value - EPS then
@@ -289,7 +374,7 @@ local function onDeath(player: Player)
 			publish()
 		end
 	end
-	if carrier == player then
+	if carrier == id then
 		lay(if sim then sim.movement.position else carrierFeet or startAt)
 	end
 end
@@ -328,24 +413,38 @@ local function blast(time: number, from: number)
 	end
 end
 
--- Running over a spike on the ground picks it up, for anyone in play.
+-- Running over a spike on the ground picks it up, for anyone in play: a
+-- player, or a bot that means to.
 local function pickUp()
 	local lying = position
 	if state ~= "dropped" or not lying then
 		return
 	end
-	for _, player in Players:GetPlayers() do
-		local sim = PlayerSimServer.getSim(player)
-		if not sim or not PlayerSimServer.inPlay(player) then
-			continue
-		end
-		local over = Spike.runsOver(sim.movement.position, lying)
-		if player == stepOff then
-			if not over then
+	local function over(id: number, sim: PlayerSim.State): boolean
+		local on = Spike.runsOver(sim.movement.position, lying)
+		if id == stepOff then
+			if not on then
 				stepOff = nil
 			end
-		elseif over and mayCarry(player) then
-			hand(player)
+			return false
+		end
+		return on and mayCarry(id)
+	end
+	for _, player in Players:GetPlayers() do
+		local sim = PlayerSimServer.getSim(player)
+		if sim and PlayerSimServer.inPlay(player) and over(player.UserId, sim) then
+			hand(player.UserId)
+			return
+		end
+	end
+	local bots = SpikeServer.bots
+	if not bots then
+		return
+	end
+	for _, id in bots.ids() do
+		local sim = bots.sim(id)
+		if sim and bots.alive(id) and bots.fetching(id) and over(id, sim) then
+			hand(id)
 			return
 		end
 	end
@@ -358,9 +457,13 @@ function SpikeServer.step(time: number)
 	end
 	if state == "carried" then
 		local who = carrier
-		local sim = who and PlayerSimServer.getSim(who)
-		if who and sim and PlayerSimServer.isAlive(who) and SpikeSim.carrying(sim.weapons) then
+		local sim = if who then simOf(who) else nil
+		if who and sim and isAlive(who) and SpikeSim.carrying(sim.weapons) then
 			carrierFeet = sim.movement.position
+		elseif who and PlayerCodec.isBotRule(who) and not (SpikeServer.bots and SpikeServer.bots.has(who)) then
+			-- A bot gone, with its simulation: where it was.
+			carrier = nil
+			lay(carrierFeet or startAt)
 		else
 			-- Lost some other way (a fall out of the world starts a new
 			-- life): back to the start.
@@ -456,28 +559,66 @@ function SpikeServer.reset()
 	end
 end
 
+-- What someone may do with the spike this tick, by their id in the rules:
+-- a player's simulation is told (PlayerSimServer), and a bot's (system 61,
+-- BotServer).
+function SpikeServer.objectiveOf(id: number): Spike.Context
+	if id == carrier then
+		return forCarrier
+	end
+	return if mayDefuse(id) then forOthers else forBystanders
+end
+
+-- What happened with the spike in a bot's simulation (system 61): a plant,
+-- a defuse, or a defuse let go of.
+function SpikeServer.botActed(id: number, act: SpikeSim.Act)
+	onAct(id, act)
+end
+
+-- A bot's death (system 61), as a player's: the half of a defuse it cut
+-- short is kept, and the spike it carried lies where it fell.
+function SpikeServer.botDied(id: number)
+	onDeath(id)
+end
+
+-- The spike as the bots' plans know it, in the spike rounds; nil else.
+function SpikeServer.view(): View?
+	if layout == nil or events == nil then
+		return nil
+	end
+	return {
+		state = state,
+		position = position,
+		carrier = carrier,
+		site = site,
+		detonateAt = detonateAt,
+		halfSaved = halfSaved,
+	}
+end
+
 function SpikeServer.start()
 	PlayerSimServer.objectiveFor = function(player: Player): Spike.Context
-		if player == carrier then
-			return forCarrier
-		end
-		return if mayDefuse(player) then forOthers else forBystanders
+		return SpikeServer.objectiveOf(player.UserId)
 	end
 	PlayerSimServer.spikeGive = function(player: Player)
 		-- In the spike rounds, never one that's planted or has gone off.
 		local free = events == nil or state == "dropped" or state == "carried"
-		if layout ~= nil and free and PlayerSimServer.isAlive(player) and mayCarry(player) then
-			hand(player)
+		if layout ~= nil and free and PlayerSimServer.isAlive(player) and mayCarry(player.UserId) then
+			hand(player.UserId)
 		end
 	end
-	table.insert(PlayerSimServer.spikeListeners, onAct)
-	table.insert(PlayerSimServer.deathListeners, onDeath)
+	table.insert(PlayerSimServer.spikeListeners, function(player: Player, act: SpikeSim.Act)
+		onAct(player.UserId, act)
+	end)
+	table.insert(PlayerSimServer.deathListeners, function(player: Player)
+		onDeath(player.UserId)
+	end)
 	Players.PlayerRemoving:Connect(function(player)
-		if carrier == player then
+		if carrier == player.UserId then
 			carrier = nil -- gone, with their simulation
 			lay(carrierFeet or startAt)
 		end
-		if stepOff == player then
+		if stepOff == player.UserId then
 			stepOff = nil
 		end
 	end)
