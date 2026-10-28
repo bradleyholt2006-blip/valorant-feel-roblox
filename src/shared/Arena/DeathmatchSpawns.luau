@@ -82,11 +82,13 @@ function DeathmatchSpawns.spots(map: MapPlan.Map): { Spot }
 		return false
 	end
 	-- Floor under the whole square, sampled closer than the 1 m rooms are
-	-- laid on, so no corner of wall can come between the samples.
+	-- laid on, so no corner of wall can come between the samples, and all
+	-- of it as high (system 59): no edge of a raised floor and no flight.
 	local function clearAt(x: number, z: number): boolean
+		local y = map.floorAt(x, z)
 		for _, dx in { -clear, 0, clear } do
 			for _, dz in { -clear, 0, clear } do
-				if not map.onFloor(x + dx, z + dz) then
+				if not map.onFloor(x + dx, z + dz) or map.floorAt(x + dx, z + dz) ~= y then
 					return false
 				end
 			end
@@ -118,7 +120,7 @@ function DeathmatchSpawns.spots(map: MapPlan.Map): { Spot }
 				for _, yaw in WAYS do
 					table.insert(open, openAhead(x, z, yaw))
 				end
-				table.insert(out, { feet = vector.create(x, 0, z), open = open })
+				table.insert(out, { feet = vector.create(x, map.floorAt(x, z) or 0, z), open = open })
 			end
 			z += spacing
 		end

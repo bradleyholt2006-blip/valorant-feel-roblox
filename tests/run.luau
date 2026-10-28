@@ -67,5 +67,6 @@ require("./killbanner")
 require("./roundcallouts")
 require("./teambuy")
 require("./mapkit")
+require("./heights")
 
 H.finish()

@@ -90,7 +90,8 @@ MapKit.Pieces = {
 	},
 } :: { [string]: Piece }
 
--- The looks of a dressed map's floor, by zone, and of its walls.
+-- The looks of a dressed map's floor, by zone, and of its walls; of its
+-- decks and its railings too (system 59).
 MapKit.Themes = {
 	wall = { colour = { 214, 205, 190 }, material = "Plaster", penetration = "solid", solid = true },
 	plain = { colour = { 120, 122, 128 }, material = "Concrete", penetration = "solid", solid = true },
@@ -100,11 +101,13 @@ MapKit.Themes = {
 	a = { colour = { 182, 154, 114 }, material = "Concrete", penetration = "solid", solid = true },
 	b = { colour = { 122, 146, 152 }, material = "Concrete", penetration = "solid", solid = true },
 	hall = { colour = { 142, 122, 98 }, material = "WoodPlanks", penetration = "solid", solid = true },
+	deck = { colour = { 104, 110, 118 }, material = "DiamondPlate", penetration = "solid", solid = true },
+	rail = { colour = { 176, 166, 150 }, material = "Concrete", penetration = "solid", solid = true },
 } :: { [string]: Look }
 
 -- The looks of dressing (MapPlan.Dressing), by its style. What's solid
--- blocks movement, sight and shots, and is all out of reach overhead; signs
--- and lights are for show.
+-- blocks movement, sight and shots, and is all out of reach overhead; signs,
+-- lights and the steps over a flight of stairs' slope are for show.
 MapKit.Styles = {
 	roof = { colour = { 112, 108, 106 }, material = "Metal", penetration = "solid", solid = true },
 	lintel = { colour = { 168, 156, 140 }, material = "Concrete", penetration = "solid", solid = true },
@@ -113,6 +116,7 @@ MapKit.Styles = {
 	crane = { colour = { 232, 174, 36 }, material = "Metal", penetration = "solid", solid = true },
 	sign = { colour = { 40, 44, 54 }, material = "SmoothPlastic", penetration = "solid", solid = false },
 	light = { colour = { 255, 238, 206 }, material = "Neon", penetration = "solid", solid = false },
+	step = { colour = { 160, 152, 142 }, material = "Concrete", penetration = "solid", solid = false },
 } :: { [string]: Look }
 
 -- How high the middle of a tree's leaves is, their underside above a

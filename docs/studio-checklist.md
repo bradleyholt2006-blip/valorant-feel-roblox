@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-eight
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-nine
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -36,7 +36,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
    three, section 55 three, section 56 one and then three, section 57 one and then two, section 58
    one and then two, section 59 one and then two, section 60 two and then three, section 61 three,
-   and section 62 one and then two.
+   section 62 one and then two, and section 63 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -4962,15 +4962,16 @@ send(p1, "VFTestTeam", "buy 4294967293")
 
 ## 62. Wharf
 
-From [58-wharf.md](research/58-wharf.md). Wharf, the fourth spike map, is the first one dressed:
-each zone's floor in its own look, roofs over three halls with a light under each, lintels over the
-spawns' doors and the sites' chokes, buildings, a tower and a crane past its walls, a sign at each
-site, and its cover as pieces of a kit (crates, crate stacks, containers, barrels, planters, hedges
-and trees). Each piece is still a box, as on the other maps, but an unseen one: what shows over it
-is only for show, the kit's placeholder or a model from ServerStorage's `VFMapKit` folder.
-Workspace's `VFMatchMap`, set from the server's command bar, starts the spike rounds on the map it
-names rather than one at random. The scripts below place things in metres from Wharf's corner of the
-place, `-600, 0, 0`, at 0.28 m a stud.
+From [58-wharf.md](research/58-wharf.md), on Wharf as system 59 rebuilt it
+([59-wharf-heights.md](research/59-wharf-heights.md)); section 63 checks its heights. Wharf, the
+fourth spike map, is the first one dressed: each zone's floor in its own look, roofs over six rooms
+with a light under each, lintels over the spawns' doors and the sites' chokes, buildings, a tower
+and a crane past its walls, a sign at each site, and its cover as pieces of a kit (crates, crate
+stacks, containers, barrels, planters, a hedge and a tree). Each piece is still a box, as on the
+other maps, but an unseen one: what shows over it is only for show, the kit's placeholder or a model
+from ServerStorage's `VFMapKit` folder. Workspace's `VFMatchMap`, set from the server's command bar,
+starts the spike rounds on the map it names rather than one at random. The scripts below place
+things in metres from Wharf's corner of the place, `-600, 0, 0`, at 0.28 m a stud.
 
 Start a Local Server with 1 player, as in section 9.
 
@@ -4986,8 +4987,8 @@ Start a Local Server with 1 player, as in section 9.
   print("spike", workspace:GetAttribute("VFSpikeLayout"), workspace:GetAttribute("VFSpikePosition"))
   ```
 
-  The Output shows `[VF] Arena on: the spike rounds, Standard, on Wharf`, then `pieces 39` and
-  `spike wharf -600, 0, 42.5`: the Kit folder has a model for each of the 39 pieces of cover, and
+  The Output shows `[VF] Arena on: the spike rounds, Standard, on Wharf`, then `pieces 57` and
+  `spike wharf -600, 0, 46.5`: the Kit folder has a model for each of the 57 pieces of cover, and
   the spike's sites and start are Wharf's. Round 1's buy phase names `WHARF` first on its line, and
   player 1 is on the red floor marked ATTACKERS, behind red barriers, with the spike in front of
   them. In the Explorer, `Workspace.VFSpikeMap` holds four models: Outpost, Quarry, Foundry and
@@ -4999,12 +5000,12 @@ Start a Local Server with 1 player, as in section 9.
 
   ```lua
   local views = {
-  	{ "from above", 0, 90, 85, -2, 0, -2 },
-  	{ "mid, from the attackers' door", 0, 1.62, 37, 0, 1.62, 0 },
-  	{ "A main", -30, 1.62, 33, -30.5, 1.62, 0 },
-  	{ "A, from its choke", -30.5, 1.62, 1, -42, 1.62, -20 },
-  	{ "B, from its choke", 35.5, 1.62, -1, 36, 1.62, -27 },
-  	{ "mid, from the defenders' side", 8, 1.62, -30, 4, 1.62, 10 },
+  	{ "from above", 0, 90, 85, 0, 0, 0 },
+  	{ "mid, from the attackers' door", 0, 1.62, 41, 6, 1.62, 26 },
+  	{ "A main", -33.5, 1.62, 47, -35.5, 1.62, 18 },
+  	{ "A, from A short", -27, 1.62, -12.5, -45, 2, -22 },
+  	{ "B, from hookah's door", 27.5, 1.62, -18.5, 45, 1.62, -20 },
+  	{ "mid, from the defenders' side", 10.5, 1.62, -36.5, 10.5, 1.62, -5 },
   }
   local function at(x, y, z)
   	return Vector3.new(-600 + x, y, z) / 0.28
@@ -5019,21 +5020,25 @@ Start a Local Server with 1 player, as in section 9.
   - From above: the whole map, the attackers' spawn at the bottom and the defenders' at the top, A
     on the left and B on the right. Each zone's floor has its own look: dark asphalt on the
     attackers' side, blue-grey slate on the defenders', pale paving in mid, warm concrete at A and
-    cool grey concrete at B. Three halls, A main, the arcade between A and the plaza and the market
-    between top mid and B, are under flat metal roofs. The walls are cream, and on them, between the
-    lanes, stand the warehouse, the terminal, the sheds and the customs house, with the tower
-    between top mid and B and the yellow crane straddling B.
-  - Mid, from the attackers' door: mid bottom's crate and barrels, then the plaza, its tree in the
-    middle with its leaves well overhead, hedges and planters to either side and a smaller tree at
-    each near corner.
+    cool grey concrete at B. Six rooms are under flat metal roofs: A main, the link from mid to A,
+    heaven at the back of A, the window room at the top of mid, the market and hookah, and heaven's
+    deck, a grey metal plate, stands out from its roof over the back of A. The walls are cream, and
+    on them, between the lanes, stand the warehouse, the sheds, the customs house, the terminal and
+    the offices, with the tower between top mid and B and the yellow crane straddling B.
+  - Mid, from the attackers' door: mid bottom, a container on the left, and the street turning right
+    ahead past a crate stack, so nothing further up mid is in sight.
   - A main: the hall's wooden floor under its roof, lit by the light along the roof's middle, a
-    crate, a crate stack and barrels along its sides, and at its far end the lintel over A's choke.
-  - A, from its choke: A's concrete and its plant area, the container on the default, crates and
-    barrels about the site and the A sign on the back wall.
-  - B, from its choke: B's concrete and its plant area, the crate stack on the default with a
-    container behind it, the B sign on the back wall and the crane's legs either side of the site.
-  - Mid, from the defenders' side: top mid's way north to the plaza with a crate stack at its side,
-    the market's roof and the tower to the right and the customs house over the wall to the left.
+    crate close on the left, barrels on the right and a crate stack further along on the left, and
+    the sheds over the wall at the far end, where the hall turns west.
+  - A, from A short: A's concrete and its plant area, the container on the default ahead, crates and
+    a crate stack about the site, barrels close on the right, and across the back of the site on the
+    right heaven's deck with its railing, its roof over it, and the A sign on the back wall.
+  - B, from hookah's door: B's concrete and its plant area, the crate stack on the default with a
+    crate beside it, another crate stack beyond, the container by the end of B long on the right,
+    the platform across the back on the left with a crate on it and the B sign on the wall over it,
+    and ahead, past the wall, one of the crane's legs, its beam overhead.
+  - Mid, from the defenders' side: top mid's way south to the courtyard, a crate at its left side,
+    and in the courtyard ahead the tree, a crate beyond it.
 
   Nothing floats, sinks into the floor, pokes through a wall or flickers where two surfaces meet.
   **Send:** the six screenshots, and whether it looks like a place: too plain, about right or too
@@ -5042,7 +5047,7 @@ Start a Local Server with 1 player, as in section 9.
 - **WF3 The kit's pieces.** Run this in the server's command bar. It counts the Kit folder's models
   by piece, and the parts in them a step or a shot could meet, then casts five rays at a standing
   player's eye height (1.62 m), a crouching one's (1.1 m) or 2.4 m: over and at mid bottom's crate,
-  at A main's crate stack, at A's container and through the plaza tree's trunk:
+  at A main's crate stack, at A's container and through the courtyard tree's trunk:
 
   ```lua
   local by, solid = {}, 0
@@ -5071,15 +5076,15 @@ Start a Local Server with 1 player, as in section 9.
   	end
   	print(name, what)
   end
-  ray("standing, crate:", -4, 1.62, 35, -4, 27)
-  ray("crouched, crate:", -4, 1.1, 35, -4, 27)
-  ray("standing, stack:", -27.7, 1.62, 21, -27.7, 11)
+  ray("standing, crate:", 5, 1.62, 40.4, 9.9, 40.4)
+  ray("crouched, crate:", 5, 1.1, 40.4, 9.9, 40.4)
+  ray("standing, stack:", -36.7, 1.62, 30, -36.7, 21)
   ray("2.4 m, container:", -39, 2.4, -9, -39, -21)
-  ray("the trunk:", -3, 2.2, 6, 3, 6)
+  ray("the trunk:", 5, 2.2, -7, 11, -7)
   ```
 
-  The Output lists `Crate 9`, `CrateStack 7`, `Container 8`, `Barrels 7`, `Planter 3`, `Hedge 2` and
-  `Tree 3`, in any order, then `in the way: 0`, then `standing, crate: nothing`,
+  The Output lists `Crate 22`, `CrateStack 12`, `Container 8`, `Barrels 11`, `Planter 2`, `Hedge 1`
+  and `Tree 1`, in any order, then `in the way: 0`, then `standing, crate: nothing`,
   `crouched, crate: MidBottomCrate soft`, `standing, stack: AMainStack soft`,
   `2.4 m, container: ADefault hard` and `the trunk: nothing`: a standing player sees and shoots over
   a low piece, a high or tall one hides them, and only the boxes stop anything. In the Explorer,
@@ -5116,7 +5121,7 @@ Start a Local Server with 1 player, as in section 9.
   	return n
   end
   print("swapped:", swapped(), "box solid:", wharf.MidBottomCrate.CanCollide)
-  local eye, spot = Vector3.new(-600, 4, 36) / 0.28, Vector3.new(-604, 0.6, 31) / 0.28
+  local eye, spot = Vector3.new(-596, 4, 36) / 0.28, Vector3.new(-591.6, 0.6, 40.4) / 0.28
   workspace.CurrentCamera.CFrame = CFrame.lookAt(eye, spot)
   task.wait(8)
   kit:Destroy()
@@ -5124,7 +5129,7 @@ Start a Local Server with 1 player, as in section 9.
   print("swapped:", swapped())
   ```
 
-  The Output shows `swapped: 9 box solid: true`, and in the view mid bottom's crate is a magenta
+  The Output shows `swapped: 22 box solid: true`, and in the view mid bottom's crate is a magenta
   block as long as the crate, standing on the floor where it was, with the unseen box still there to
   stop players and shots. Then `swapped: 0`, and the crate is back as it was.
 
@@ -5133,13 +5138,155 @@ Start a Local Server with 1 player, as in section 9.
   buy phase, each player walks into each of their spawn's three doors: each stops at a barrier
   across the middle of the door, under its lintel. From anywhere in either spawn, nothing of the
   other one is in sight. Skip the buy phase (`VFMatchSkip`). Player 1 picks up the spike and runs
-  with the knife out of the spawn's door toward A, across A lobby, down A main and through A's
-  choke, and plants it in A's plant area: `SPIKE` shows in the bar. Player 2 runs with the knife out
-  of their spawn's door toward A, along the A hall and up A's back way.
-  [58-wharf.md](research/58-wharf.md) has the attackers reaching A's plant area in 11.5 s and the
-  defenders in 7.1 s. Then walk the rest: B's way, through B lobby, B main and B's choke, and mid's,
-  through mid bottom, the plaza and top mid. **Send:** each player's time to A, anything in the way
-  or too tight, and whether the map feels too big, about right or too small for five a side.
+  with the knife out of the spawn's door toward A, across A lobby, down A main, round its bends and
+  through its door onto A, and plants it in A's plant area: `SPIKE` shows in the bar. Player 2 runs
+  with the knife out of their spawn's door toward A, along the A hall and through A's back.
+  [59-wharf-heights.md](research/59-wharf-heights.md) has the attackers reaching A's plant area in
+  14.3 s and the defenders in 7.8 s. Then walk the rest: B's ways, through B lobby, its doors and B
+  long, and through mid, the market and hookah; and mid's, through mid bottom, the lane, the
+  courtyard and top mid. **Send:** each player's time to A, anything in the way or too tight, and
+  whether the map feels too big, about right or too small for five a side.
+
+## 63. Wharf's heights
+
+From [59-wharf-heights.md](research/59-wharf-heights.md). System 59 gave the spike maps heights and
+rebuilt Wharf with them: heaven at the back of A, a roofed room 3.2 m up with a railed deck over the
+site and hell under the deck; a window room 3 m up looking down mid; a platform 1.6 m up across the
+back of B; and hookah, a room off the market with a door and a window onto B. Each stair and ramp is
+a WedgePart turned to rise toward its head, and a flight of stairs hides its wedge under steps that
+are only for show. The scripts place things as section 62's do.
+
+Start a Local Server with 1 player, as in section 9.
+
+- **WH1 The heights, built.** In the server's command bar, run this. It counts the steps and the
+  railings, measures the decks, and for each wedge reads the height of its top 1 m in from its foot
+  and 1 m in from its head:
+
+  ```lua
+  workspace:SetAttribute("VFMatchMap", "wharf")
+  workspace:SetAttribute("VFArenaMode", "spike")
+  workspace:SetAttribute("VFMatchFormat", "standard")
+  workspace:SetAttribute("VFArenaOn", true)
+  task.wait(2)
+  local wharf = workspace.VFSpikeMap.Wharf
+  local steps, rails = 0, 0
+  for _, p in wharf:GetChildren() do
+  	if string.find(p.Name, "Step$") then
+  		steps += 1
+  	elseif string.find(p.Name, "Rail$") then
+  		rails += 1
+  	end
+  end
+  local deck, drop = wharf.HeavenDeck.Size.Y * 0.28, wharf.HeavenDrop.Size.Y * 0.28
+  local thick = string.format("%.1f m and %.1f m thick", deck, drop)
+  print(string.format("steps %d, rails %d, decks %s", steps, rails, thick))
+  local params = RaycastParams.new()
+  params.FilterType = Enum.RaycastFilterType.Include
+  for _, p in wharf:GetChildren() do
+  	if p:IsA("WedgePart") then
+  		params.FilterDescendantsInstances = { p }
+  		-- 1 m in from either end, along the way it rises
+  		local along = -p.CFrame.LookVector * (p.Size.Z / 2 - 1 / 0.28)
+  		local function top(sign)
+  			local from = p.Position + along * sign + Vector3.new(0, 40, 0)
+  			local hit = workspace:Raycast(from, Vector3.new(0, -80, 0), params)
+  			return if hit then hit.Position.Y * 0.28 else -1
+  		end
+  		print(p.Name, p.Transparency, string.format("foot %.1f m, head %.1f m", top(-1), top(1)))
+  	end
+  end
+  ```
+
+  The Output shows `steps 47, rails 2, decks 0.3 m and 0.3 m thick`, then, in any order,
+  `HeavenStairs 1 foot 0.4 m, head 2.8 m`, `SiteStairs 1 foot 0.4 m, head 2.8 m`,
+  `WindowStairs 1 foot 0.4 m, head 2.6 m`, `BRamp 0 foot 0.3 m, head 1.3 m` and
+  `BElbowRamp 0 foot 0.3 m, head 1.3 m`: each wedge rises toward its head, the stairs' three unseen
+  under their steps and the ramps' two seen. A wedge whose foot reads higher than its head is turned
+  the wrong way: note which, and stop here, as the walks below need them the right way.
+
+- **WH2 The heights, seen.** Run this in the server's command bar, as WF2's views:
+
+  ```lua
+  local views = {
+  	{ "A, from A main's door", -47.5, 1.62, -6.5, -44, 3.5, -28 },
+  	{ "heaven's deck", -50.5, 4.82, -28, -36, 3.5, -27 },
+  	{ "mid, from the end of the lane", 0.5, 1.62, 1.5, 0, 4.9, -12.5 },
+  	{ "mid, from the window", 0, 4.62, -13.4, 0.5, 1.62, 12 },
+  	{ "hookah, from B's site", 35, 1.62, -11, 27.5, 1.6, -15 },
+  	{ "B's platform, from the top of the defenders' ramp", 43, 3.22, -33.5, 40, 1, -14 },
+  }
+  local function at(x, y, z)
+  	return Vector3.new(-600 + x, y, z) / 0.28
+  end
+  for _, v in views do
+  	print(v[1])
+  	workspace.CurrentCamera.CFrame = CFrame.lookAt(at(v[2], v[3], v[4]), at(v[5], v[6], v[7]))
+  	task.wait(8)
+  end
+  ```
+
+  - A, from A main's door: a crate stack close on the right, and ahead, across the back of the site,
+    heaven's deck 3.2 m up with its railing along the front, the stairs up to it along the site's
+    west wall on the left, heaven's roof over the room behind the deck, the A sign on the wall over
+    the deck, and under the deck, hell, open to the site.
+  - Heaven's deck: the deck's metal floor ahead, its railing along the right-hand side stopping
+    short of the far end, the gap there open to the site below, and a railing across the far end;
+    the site below to the right, and the customs house over the wall ahead.
+  - Mid, from the end of the lane: the courtyard ahead, open down the middle, and over its far side
+    the window room's frame, 4 m wide and 3 m up, with the room's roof over it; barrels on the left
+    by the way to A, and the tree on the right.
+  - Mid, from the window: through the frame, the courtyard below and the lane running away from it
+    toward the attackers' side, a planter on its left and a crate stack on its right, nothing across
+    it; the tree off to the left, none of its leaves over the lane, and the warehouse over the wall
+    to the right.
+  - Hookah, from B's site: hookah's front, its window 3 m wide with its sill 0.75 m up and its top
+    2.7 m, and to its right the door under its lintel, with barrels by it; a crate close on the
+    left, and the crane's leg over hookah's roof.
+  - B's platform, from the top of the defenders' ramp: the platform's floor ahead, a crate on it to
+    the left, and its front open, with no railing, over the site below: the crate stack on the
+    default, another crate stack, the container by the end of B long to the left and B long running
+    away beyond it.
+
+  Nothing floats, sinks into the floor, pokes through a wall or flickers where two surfaces meet,
+  and each flight's steps sit on its slope, none hanging over it or sunk into it. **Send:** the six
+  screenshots.
+
+- **WH3 Walking them.** Stop the game, start a Local Server with 2 players, as in section 9, and run
+  WH1's first four lines in the server's command bar. Player 1 attacks and player 2 defends. Skip
+  each buy phase (`VFMatchSkip`); if a round ends before the walks do, carry on in the next. Walk
+  with the knife out, running up and down every stair and ramp on the way:
+  - Player 1: down A main onto A's site, and up the stairs along the site's west wall onto heaven's
+    deck. Run into the railing along the deck's front: it holds. Walk east along the deck, past the
+    railing's end, and off its front: a drop into the site. From the site, jump at the deck's edge:
+    there's no way back up but the stairs. Then through A short, the link, the courtyard and the
+    market into hookah, and jump through its window onto B, and back: one jump each way.
+  - Player 2: out of the spawn's A door, along the A hall to A's back, up heaven's stairs into its
+    room and out onto the deck, and back down. Out of the spawn's middle door, up the window room's
+    stairs, and at the frame jump: it's too high to climb through. Then out of the spawn's B door,
+    along the B hall and up the ramp at its end onto B's platform, off its front onto the site, up
+    the ramp from the site back onto it, and from the site jump at the platform's front: there's no
+    way up but the ramps.
+
+  Every stair and ramp rises toward its head, and running up or down it there's no stop, stumble or
+  hop. **Send:** anything that stopped or tripped either player, and any flight that looked or felt
+  wrong.
+
+- **WH4 Seen from below.** In the next round (skip its buy phase), player 2 goes up to heaven's deck
+  and stands at the railing, then crouches, while player 1 stands in A's plant area, where they can
+  see the deck, and looks up at it: standing, player 2's head shows over the railing, and crouching,
+  they're hidden. Then the same at the window: player 2 stands at the frame, then crouches, and
+  player 1 stands where the lane opens into the courtyard: standing, player 2's head shows in the
+  frame, and crouching, they're out of sight. Standing at the frame, player 2 sees down the whole
+  lane, with nothing across it. **Send:** player 1's screenshots, standing and crouching at each,
+  and player 2's down the lane.
+
+- **WH5 The runs, and how it plays.** At the start of a round's live phase, both with the knife out,
+  player 1 runs from the spawn down A main to A's plant area and player 2 along the A hall and
+  through A's back to it; [59-wharf-heights.md](research/59-wharf-heights.md) has them at 14.3 s and
+  7.8 s. In another round, player 1 runs the quickest way to B, up mid's lane, across the courtyard,
+  along the market and through hookah's window, and player 2 along the B hall and through B's back:
+  13.2 s and 7.9 s. **Send:** each time, whether heaven, the window and the platform each look worth
+  taking for what they cost, and whether A or B looks the easier to take.
 
 ## Results
 
@@ -5561,6 +5708,11 @@ WF2 the six views: ___; anything floating, sunk, poking through or flickering: _
 WF3 the counts: ___; in the way: ___; the five rays: ___; MidBottomCrate's Transparency, CanCollide and VFKitPiece: ___
 WF4 the first line: ___; the magenta crate: ___; the second line: ___; the crate after: ___
 WF5 held at every door: yes / no; the other spawn in sight: yes / no; the plant at A: yes / no; player 1's time: ___ s, player 2's: ___ s; in the way or too tight: ___; too big, about right or too small: ___
+WH1 the Output: ___
+WH2 the six views: ___; anything floating, sunk, poking through or flickering: ___; the steps on their slopes: ___
+WH3 player 1, the stairs, the railing, the drop and back up: ___; hookah's window: ___; player 2, heaven's stairs, the window's stairs and frame, the ramps and the platform: ___; anything that stopped or tripped: ___
+WH4 heaven's railing, standing / crouched: ___ / ___; the window's frame, standing / crouched: ___ / ___; the lane from the frame: ___
+WH5 A: player 1 ___ s, player 2 ___ s; B: player 1 ___ s, player 2 ___ s; heaven, the window and the platform worth taking: ___; A or B easier to take: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -5930,3 +6082,9 @@ Didn't look right (IDs and what you saw):
 | 58 | A model in ServerStorage's VFMapKit folder fitted over every piece of its name | WF4 |
 | 58 | Each side's way to each site, the barriers, and no sight of one spawn from the other | WF5 |
 | 58 | How it feels at five a side: too big, about right or too small | WF5 |
+| 59 | The wedges: each stair and ramp rising toward its head, walked up and down at a run without a stop or a hop | WH1, WH3 |
+| 59 | The look of the heights: heaven, its deck and railing and hell under it, the window room and its frame, B's platform, hookah's window, the steps over the stairs | WH2 |
+| 59 | Heaven's railing holding, its gap to drop through, and no climbing back onto the deck or the platform | WH3 |
+| 59 | Jumping through hookah's window | WH3 |
+| 59 | From the window and heaven, standing shows a head over the frame or the railing, and crouching hides it | WH4 |
+| 59 | Each side's run to each site, and how the map feels at five a side | WF5, WH5 |

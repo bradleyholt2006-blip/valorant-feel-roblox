@@ -444,6 +444,13 @@ Built one system at a time:
     and trees). A Model named after a piece, in a Folder named `VFMapKit` in ServerStorage, is
     fitted over every piece of that name, while the piece's box still decides where anyone can go,
     see or shoot - [research and design](docs/research/58-wharf.md)
+59. **Heights**: the spike maps can have rooms raised off the ground, decks over a room's floor,
+    stairs and ramps from one floor to another, railings and windows, and Wharf is rebuilt with them
+    to measurements of Counter-Strike's maps: a heaven over A's site with hell under it, a window
+    room looking down mid, a platform across the back of B, a long lane to B, and a room by B with a
+    door and a window to vault through. The offline tests walk it in three dimensions, timing each
+    side's runs to each site and checking what its raised places see -
+    [research and design](docs/research/59-wharf-heights.md)
 
 ## Running it
 
@@ -454,12 +461,12 @@ Built one system at a time:
    to the left, and the spike's two sites are 26 m behind you, with the spike waiting 4 m
    behind. In a place made from the Baseplate template, delete its `Baseplate` and
    `SpawnLocation` first.
-4. The arena is built beside the course, off to its right, and the spike rounds' three maps off
+4. The arena is built beside the course, off to its right, and the spike rounds' four maps off
    to its left. A live server starts the arena by itself; in Studio you start on the course, and
    P puts everyone in the server in the arena: you spawn in your side's room and wait there for an
    opponent, and whoever joins goes on the side with fewer players. After each match everyone
    votes for the next of Skirmish's three maps. P again starts gun game in the same hall, P again
-   the spike rounds, on three maps of their own with the same vote, P again their shorter
+   the spike rounds, on four maps of their own with the same vote, P again their shorter
    Swiftplay format, and P again puts everyone back on the course. A live server opens on the
    Play menu, and only once you press PLAY are you in a match; in Studio M opens the menu, where
    PLAY for another mode switches the server to it, as P does. Both deathmatches are only on the
@@ -716,10 +723,13 @@ kills count, each killer's count by the life and by the round, the headshot mark
 top banner, how a banner comes up and fades, and the kill sound rising with the count), the
 round-end callouts (what makes each, which one a round won with several gets, the sides too small
 for them, deaths that don't count, a life brought back and someone leaving, what each side's banner
-says, and a loadout's worth) and buying for teammates (what can be asked for, asking and taking it
+says, and a loadout's worth), buying for teammates (what can be asked for, asking and taking it
 back, plans, when a request can be bought and by whom, and whose credits go where as a gun bought
-for a teammate is sold back, replaced or dropped) and the map kit (each piece's placeholder inside
-its box, the looks, Wharf's zones, and its dressing out of reach) are pure Luau and run outside
+for a teammate is sold back, replaced or dropped), the map kit (each piece's placeholder inside its
+box, the looks, Wharf's zones, and its dressing out of reach) and heights on the spike maps (raised
+floors, decks, stairs, ramps, railings and windows as a map's plan builds them, and Wharf walked and
+looked across in three dimensions: every floor reached and left, each side's runs to each site, what
+its raised places and its window see, and how open its sites are) are pure Luau and run outside
 Roblox:
 
 ```

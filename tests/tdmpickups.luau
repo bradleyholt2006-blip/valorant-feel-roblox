@@ -15,6 +15,7 @@ local SpikeMaps = require("../src/shared/Match/SpikeMaps")
 local MovementConfig = require("../src/shared/Movement/MovementConfig")
 local WeaponConfig = require("../src/shared/Weapons/WeaponConfig")
 local H = require("./Harness")
+local Levels = require("./Levels")
 
 local check = H.check
 
@@ -101,7 +102,8 @@ end
 local function solids(map: any): { any }
 	local out = {}
 	for _, part in map.parts() do
-		if part.kind == "wall" or part.kind == "cover" then
+		local kind = part.kind
+		if kind == "wall" or kind == "cover" or kind == "deck" or kind == "flight" or kind == "rail" then
 			table.insert(out, part)
 		end
 	end
@@ -210,11 +212,13 @@ local function runs(map: any): (number, number) -> (number, number) -> number
 	end
 end
 
--- Whether a pickup at (x, z) is clear by a metre all round: floor under it,
--- and no wall or cover within a metre.
+-- Whether a pickup at (x, z) is clear by a metre all round: the ground
+-- floor under it, and no wall, cover or height (system 59) within a metre.
 local function clear(map: any, parts: { any }, x: number, z: number): boolean
-	if not (map.onFloor(x - 1, z) and map.onFloor(x + 1, z) and map.onFloor(x, z - 1) and map.onFloor(x, z + 1)) then
-		return false
+	for _, d in { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } } do
+		if map.floorAt(x + d[1], z + d[2]) ~= 0 then
+			return false
+		end
 	end
 	for _, part in parts do
 		if gap(part, x, z, 1) < 0 then
@@ -272,10 +276,23 @@ do
 				apart = apart and vector.magnitude(all[a] - all[b]) >= 5
 			end
 		end
-		-- As quick a run from either side's spawn.
-		local walk = runs(map)
-		local attack, defend = map.spots("attack")[1].feet, map.spots("defend")[1].feet
-		local fromAttack, fromDefend = walk(attack.x, attack.z), walk(defend.x, defend.z)
+		-- As quick a run from either side's spawn, on a map with heights up
+		-- and down them (system 59).
+		local fromAttack: (number, number) -> number, fromDefend: (number, number) -> number
+		if map.raised then
+			local level, run = Levels.ofMap(map), Levels.runsOf(map)
+			local function along(list: { number }): (number, number) -> number
+				return function(x: number, z: number): number
+					local id = Levels.nodeAt(level, x, z, 0)
+					return if id then list[id] else math.huge
+				end
+			end
+			fromAttack, fromDefend = along(run.attack), along(run.defend)
+		else
+			local walk = runs(map)
+			local attack, defend = map.spots("attack")[1].feet, map.spots("defend")[1].feet
+			fromAttack, fromDefend = walk(attack.x, attack.z), walk(defend.x, defend.z)
+		end
 		local sum = 0
 		local lines = {}
 		for _, at in all do
