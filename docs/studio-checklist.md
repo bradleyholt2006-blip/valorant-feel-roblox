@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-seven
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-eight
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -35,8 +35,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
    three, section 55 three, section 56 one and then three, section 57 one and then two, section 58
-   one and then two, section 59 one and then two, section 60 two and then three, and section 61
-   three.
+   one and then two, section 59 one and then two, section 60 two and then three, section 61 three,
+   and section 62 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -4960,6 +4960,187 @@ send(p1, "VFTestTeam", "buy 4294967293")
   `SHORT`. Player 1's BUY then changes nothing: the watch prints nothing more, player 1 keeping
   1800.
 
+## 62. Wharf
+
+From [58-wharf.md](research/58-wharf.md). Wharf, the fourth spike map, is the first one dressed:
+each zone's floor in its own look, roofs over three halls with a light under each, lintels over the
+spawns' doors and the sites' chokes, buildings, a tower and a crane past its walls, a sign at each
+site, and its cover as pieces of a kit (crates, crate stacks, containers, barrels, planters, hedges
+and trees). Each piece is still a box, as on the other maps, but an unseen one: what shows over it
+is only for show, the kit's placeholder or a model from ServerStorage's `VFMapKit` folder.
+Workspace's `VFMatchMap`, set from the server's command bar, starts the spike rounds on the map it
+names rather than one at random. The scripts below place things in metres from Wharf's corner of the
+place, `-600, 0, 0`, at 0.28 m a stud.
+
+Start a Local Server with 1 player, as in section 9.
+
+- **WF1 On Wharf.** In the server's command bar, run this:
+
+  ```lua
+  workspace:SetAttribute("VFMatchMap", "wharf")
+  workspace:SetAttribute("VFArenaMode", "spike")
+  workspace:SetAttribute("VFMatchFormat", "standard")
+  workspace:SetAttribute("VFArenaOn", true)
+  task.wait(2)
+  print("pieces", #workspace.VFSpikeMap.Wharf.Kit:GetChildren())
+  print("spike", workspace:GetAttribute("VFSpikeLayout"), workspace:GetAttribute("VFSpikePosition"))
+  ```
+
+  The Output shows `[VF] Arena on: the spike rounds, Standard, on Wharf`, then `pieces 39` and
+  `spike wharf -600, 0, 42.5`: the Kit folder has a model for each of the 39 pieces of cover, and
+  the spike's sites and start are Wharf's. Round 1's buy phase names `WHARF` first on its line, and
+  player 1 is on the red floor marked ATTACKERS, behind red barriers, with the spike in front of
+  them. In the Explorer, `Workspace.VFSpikeMap` holds four models: Outpost, Quarry, Foundry and
+  Wharf.
+
+- **WF2 Its look.** Run this in the server's command bar. It moves the server window's view to six
+  places in turn, 8 s at each, and prints each one's name as it gets there (if the view doesn't
+  move, fly the server window's camera to each instead):
+
+  ```lua
+  local views = {
+  	{ "from above", 0, 90, 85, -2, 0, -2 },
+  	{ "mid, from the attackers' door", 0, 1.62, 37, 0, 1.62, 0 },
+  	{ "A main", -30, 1.62, 33, -30.5, 1.62, 0 },
+  	{ "A, from its choke", -30.5, 1.62, 1, -42, 1.62, -20 },
+  	{ "B, from its choke", 35.5, 1.62, -1, 36, 1.62, -27 },
+  	{ "mid, from the defenders' side", 8, 1.62, -30, 4, 1.62, 10 },
+  }
+  local function at(x, y, z)
+  	return Vector3.new(-600 + x, y, z) / 0.28
+  end
+  for _, v in views do
+  	print(v[1])
+  	workspace.CurrentCamera.CFrame = CFrame.lookAt(at(v[2], v[3], v[4]), at(v[5], v[6], v[7]))
+  	task.wait(8)
+  end
+  ```
+
+  - From above: the whole map, the attackers' spawn at the bottom and the defenders' at the top, A
+    on the left and B on the right. Each zone's floor has its own look: dark asphalt on the
+    attackers' side, blue-grey slate on the defenders', pale paving in mid, warm concrete at A and
+    cool grey concrete at B. Three halls, A main, the arcade between A and the plaza and the market
+    between top mid and B, are under flat metal roofs. The walls are cream, and on them, between the
+    lanes, stand the warehouse, the terminal, the sheds and the customs house, with the tower
+    between top mid and B and the yellow crane straddling B.
+  - Mid, from the attackers' door: mid bottom's crate and barrels, then the plaza, its tree in the
+    middle with its leaves well overhead, hedges and planters to either side and a smaller tree at
+    each near corner.
+  - A main: the hall's wooden floor under its roof, lit by the light along the roof's middle, a
+    crate, a crate stack and barrels along its sides, and at its far end the lintel over A's choke.
+  - A, from its choke: A's concrete and its plant area, the container on the default, crates and
+    barrels about the site and the A sign on the back wall.
+  - B, from its choke: B's concrete and its plant area, the crate stack on the default with a
+    container behind it, the B sign on the back wall and the crane's legs either side of the site.
+  - Mid, from the defenders' side: top mid's way north to the plaza with a crate stack at its side,
+    the market's roof and the tower to the right and the customs house over the wall to the left.
+
+  Nothing floats, sinks into the floor, pokes through a wall or flickers where two surfaces meet.
+  **Send:** the six screenshots, and whether it looks like a place: too plain, about right or too
+  busy.
+
+- **WF3 The kit's pieces.** Run this in the server's command bar. It counts the Kit folder's models
+  by piece, and the parts in them a step or a shot could meet, then casts five rays at a standing
+  player's eye height (1.62 m), a crouching one's (1.1 m) or 2.4 m: over and at mid bottom's crate,
+  at A main's crate stack, at A's container and through the plaza tree's trunk:
+
+  ```lua
+  local by, solid = {}, 0
+  for _, m in workspace.VFSpikeMap.Wharf.Kit:GetChildren() do
+  	local piece = m:GetAttribute("VFKitPiece")
+  	by[piece] = (by[piece] or 0) + 1
+  	for _, p in m:GetDescendants() do
+  		if p:IsA("BasePart") and (p.CanCollide or p.CanQuery or p.CanTouch) then
+  			solid += 1
+  		end
+  	end
+  end
+  for piece, n in by do
+  	print(piece, n)
+  end
+  print("in the way:", solid)
+  local function at(x, y, z)
+  	return Vector3.new(-600 + x, y, z) / 0.28
+  end
+  local function ray(name, x0, y, z0, x1, z1)
+  	local from = at(x0, y, z0)
+  	local hit = workspace:Raycast(from, at(x1, y, z1) - from)
+  	local what = "nothing"
+  	if hit then
+  		what = hit.Instance.Name .. " " .. tostring(hit.Instance:GetAttribute("VFPenetration"))
+  	end
+  	print(name, what)
+  end
+  ray("standing, crate:", -4, 1.62, 35, -4, 27)
+  ray("crouched, crate:", -4, 1.1, 35, -4, 27)
+  ray("standing, stack:", -27.7, 1.62, 21, -27.7, 11)
+  ray("2.4 m, container:", -39, 2.4, -9, -39, -21)
+  ray("the trunk:", -3, 2.2, 6, 3, 6)
+  ```
+
+  The Output lists `Crate 9`, `CrateStack 7`, `Container 8`, `Barrels 7`, `Planter 3`, `Hedge 2` and
+  `Tree 3`, in any order, then `in the way: 0`, then `standing, crate: nothing`,
+  `crouched, crate: MidBottomCrate soft`, `standing, stack: AMainStack soft`,
+  `2.4 m, container: ADefault hard` and `the trunk: nothing`: a standing player sees and shoots over
+  a low piece, a high or tall one hides them, and only the boxes stop anything. In the Explorer,
+  `Workspace.VFSpikeMap.Wharf.MidBottomCrate` has Transparency 1, CanCollide on and `VFKitPiece`
+  `Crate`. In the server window's view, every piece's placeholder sits on the floor in its box.
+
+- **WF4 A model of your own.** ServerStorage has no `VFMapKit` folder until one is made (if BRINK
+  has one already, note what's in it and skip this check). Run this in the server's command bar. It
+  makes the folder with a model named `Crate`, a single magenta block, and puts it in ServerStorage
+  whole, then counts the crates showing it, looks at mid bottom's crate for 8 s, and takes the
+  folder out again:
+
+  ```lua
+  local kit = Instance.new("Folder")
+  kit.Name = "VFMapKit"
+  local crate = Instance.new("Model")
+  crate.Name = "Crate"
+  local part = Instance.new("Part")
+  part.Size = Vector3.new(4, 2, 2)
+  part.Color = Color3.fromRGB(255, 0, 255)
+  part.Anchored = true
+  part.Parent = crate
+  crate.Parent = kit
+  kit.Parent = game.ServerStorage
+  task.wait(1)
+  local wharf = workspace.VFSpikeMap.Wharf
+  local function swapped()
+  	local n = 0
+  	for _, m in wharf.Kit:GetChildren() do
+  		if m:FindFirstChild("Part") then
+  			n += 1
+  		end
+  	end
+  	return n
+  end
+  print("swapped:", swapped(), "box solid:", wharf.MidBottomCrate.CanCollide)
+  local eye, spot = Vector3.new(-600, 4, 36) / 0.28, Vector3.new(-604, 0.6, 31) / 0.28
+  workspace.CurrentCamera.CFrame = CFrame.lookAt(eye, spot)
+  task.wait(8)
+  kit:Destroy()
+  task.wait(1)
+  print("swapped:", swapped())
+  ```
+
+  The Output shows `swapped: 9 box solid: true`, and in the view mid bottom's crate is a magenta
+  block as long as the crate, standing on the floor where it was, with the unseen box still there to
+  stop players and shots. Then `swapped: 0`, and the crate is back as it was.
+
+- **WF5 Two players.** Stop the game, start a Local Server with 2 players, as in section 9, and run
+  WF1's first four lines in the server's command bar. Player 1 attacks and player 2 defends. In the
+  buy phase, each player walks into each of their spawn's three doors: each stops at a barrier
+  across the middle of the door, under its lintel. From anywhere in either spawn, nothing of the
+  other one is in sight. Skip the buy phase (`VFMatchSkip`). Player 1 picks up the spike and runs
+  with the knife out of the spawn's door toward A, across A lobby, down A main and through A's
+  choke, and plants it in A's plant area: `SPIKE` shows in the bar. Player 2 runs with the knife out
+  of their spawn's door toward A, along the A hall and up A's back way.
+  [58-wharf.md](research/58-wharf.md) has the attackers reaching A's plant area in 11.5 s and the
+  defenders in 7.1 s. Then walk the rest: B's way, through B lobby, B main and B's choke, and mid's,
+  through mid bottom, the plaza and top mid. **Send:** each player's time to A, anything in the way
+  or too tight, and whether the map feels too big, about right or too small for five a side.
+
 ## Results
 
 ```
@@ -5375,6 +5556,11 @@ TB4 the watch: ___
 TB5 the watch: ___
 TB6 the watch: ___; window 1's EXTRA button: ___; player 1's card in window 3: ___
 TB7 the watch after the Spectre: ___; after the Stinger: ___; player 3's card in window 1: ___; after the last BUY: ___
+WF1 the Output: ___; the buy phase's line: ___; player 1 behind the barriers with the spike: yes / no
+WF2 the six views: ___; anything floating, sunk, poking through or flickering: ___; too plain, about right or too busy: ___
+WF3 the counts: ___; in the way: ___; the five rays: ___; MidBottomCrate's Transparency, CanCollide and VFKitPiece: ___
+WF4 the first line: ___; the magenta crate: ___; the second line: ___; the crate after: ___
+WF5 held at every door: yes / no; the other spawn in sight: yes / no; the plant at A: yes / no; player 1's time: ___ s, player 2's: ___ s; in the way or too tight: ___; too big, about right or too small: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -5737,3 +5923,10 @@ Didn't look right (IDs and what you saw):
 | 57 | The other side can't buy it | TB5 |
 | 57 | Asking again takes it back; a plan on the card, gone when picked again | TB6 |
 | 57 | Buying another gun over one bought for you: the buyer's credits back; a request for more than the buyer has: SHORT, and nothing bought | TB7 |
+| 58 | Wharf is built off the course's left, past Foundry, and the spike rounds start on it with `VFMatchMap` set to `wharf` | WF1 |
+| 58 | Its look: the zones' floors, the walls, the roofs and their lights, the lintels, the buildings, the tower, the crane and the signs | WF2 |
+| 58 | The kit's placeholders: each piece's look, over its box, and nothing of it in the way of a shot or a step | WF2, WF3 |
+| 58 | The cover: low pieces shot over standing, high and tall ones hiding a standing player | WF3 |
+| 58 | A model in ServerStorage's VFMapKit folder fitted over every piece of its name | WF4 |
+| 58 | Each side's way to each site, the barriers, and no sight of one spawn from the other | WF5 |
+| 58 | How it feels at five a side: too big, about right or too small | WF5 |

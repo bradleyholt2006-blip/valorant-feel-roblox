@@ -1,10 +1,10 @@
 --!strict
 -- Rounds played for the spike (system 13): the standard match's rounds,
 -- halves, overtime and formats, and the maps they're played on, Outpost,
--- Quarry and Foundry (system 25): each one every room reachable, no
--- sightline from one spawn into the other, barriers that hold each side in,
--- the defenders nearer the sites, Outpost mirrored left to right, and every
--- number labelled.
+-- Quarry and Foundry (system 25) and Wharf (system 58): each one every room
+-- reachable, no sightline from one spawn into the other, barriers that hold
+-- each side in, the defenders nearer the sites, Outpost mirrored left to
+-- right, and every number labelled.
 
 local MapPlan = require("../src/shared/Match/MapPlan")
 local MatchConfig = require("../src/shared/Match/MatchConfig")
@@ -352,7 +352,7 @@ end
 do
 	-- Each by its own key, all different, and the spike knowing each one's
 	-- sites.
-	local listed = #SpikeMaps.MAPS == 3
+	local listed = #SpikeMaps.MAPS == 4
 	local names: { [string]: boolean } = {}
 	for _, key in SpikeMaps.MAPS do
 		local map = SpikeMaps.Maps[key]
@@ -365,7 +365,7 @@ do
 	for _ in SpikeMaps.Maps do
 		count += 1
 	end
-	check("three maps for the spike rounds, each by its own key, and the spike knows each one's sites", listed and count == #SpikeMaps.MAPS)
+	check("four maps for the spike rounds, each by its own key, and the spike knows each one's sites", listed and count == #SpikeMaps.MAPS)
 	check("Outpost is the first", SpikeMaps.MAPS[1] == "outpost" and SpikeMaps.Maps.outpost == MatchMap)
 
 	-- Where they stand in the place: apart, and well off the course's left

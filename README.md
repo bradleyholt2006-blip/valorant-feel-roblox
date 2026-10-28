@@ -438,6 +438,12 @@ Built one system at a time:
     for a request. The buyer pays, and the gun's the teammate's as if they'd bought it; selling it
     back, or buying another gun over it, gives the buyer their credits back -
     [research and design](docs/research/57-team-buying.md)
+58. **Wharf**: a fourth spike map, for five a side, and the first dressed one: a harbour, with a
+    warehouse yard at A, a garden plaza in mid and a container yard at B under a gantry crane. Its
+    cover is a kit of placeholder props (crates, crate stacks, containers, barrels, planters, hedges
+    and trees). A Model named after a piece, in a Folder named `VFMapKit` in ServerStorage, is
+    fitted over every piece of that name, while the piece's box still decides where anyone can go,
+    see or shoot - [research and design](docs/research/58-wharf.md)
 
 ## Running it
 
@@ -547,51 +553,50 @@ nineteen clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
 From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame`, `spike`, `deathmatch` or
 `teamdeathmatch`), `VFMatchFormat` (`standard`, `competitive` or `swiftplay`) and `VFArenaOn`
-choose what's played, and `VFMatchSkip`
-set true ends the phase under way (a buy phase, a round, the wait for the next, a gun game match,
-the victory screen or the vote; a Skirmish round goes to side 1, and a gun game match to whoever is
-furthest up). The arena's model says which map is played (`Map`: `A`, `B` or `C` in the arena,
-and `outpost`, `quarry` or `foundry` in the spike rounds, whose maps are models in Workspace's
-`VFSpikeMap`), and during the vote the maps to pick from and their votes (`VoteMaps`, `Votes`),
-with each player's own vote as `VFMapVote`. In gun game it also has the match's guns, a level
-each (`Ladder`, as `vandal,phantom,...`), and the UserId of whoever is furthest up, or won
-(`Leader`), and each player's level is their `VFGunLevel` attribute, with `VFProtected` true while
-their spawn protection lasts. In the spike
-rounds each player's credits are their `VFCredits` attribute, and each side's losses in a row
-`Streak1` and `Streak2` on the arena's model. Every gun on the ground is a part in Workspace's
-`VFGroundGuns`, with its `Weapon`, `Ammo` and `Reserve` as attributes. Each player's record is in
-their attributes too: `VFKills`, `VFDeaths`, `VFAssists`, `VFScore`, `VFRounds`, `VFAlive` and
-`VFLoadout` in either, and `VFStartCredits` in the spike rounds. `VFInLine` is a player's place in
-line while both sides are full. Each player's ability kit is their
-`VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the ultimate's points), with
-what's under way after it (`storm` while Blade Storm lasts, `glide` while you glide, `equip`
-while Curveball's flare, Hot Hands' fireball, Blaze's flame, the Healing Orb or the Slow Orb is in
-hand, `bend` while a Blaze wall is bent, `back` while Run it Back runs, and `away` and `rise`
-through its return), and `VFTestBuy` set to `updraft` buys a charge. Where a kit's charges come
-back over time, when each of C, Q and E next has one is the player's `VFRecharge` attribute
-(server time, 0 for none coming). A player's agent is their `VFAgent` attribute, what
+choose what's played, `VFMatchMap` (`outpost`, `quarry`, `foundry` or `wharf`) the spike rounds'
+first map, and `VFMatchSkip` set true ends the phase under way (a buy phase, a round, the wait for
+the next, a gun game match, the victory screen or the vote; a Skirmish round goes to side 1, and a
+gun game match to whoever is furthest up). The arena's model says which map is played (`Map`: `A`,
+`B` or `C` in the arena, and `outpost`, `quarry`, `foundry` or `wharf` in the spike rounds, whose
+maps are models in Workspace's `VFSpikeMap`), and during the vote the maps to pick from and their
+votes (`VoteMaps`, `Votes`), with each player's own vote as `VFMapVote`. In gun game it also has the
+match's guns, a level each (`Ladder`, as `vandal,phantom,...`), and the UserId of whoever is
+furthest up, or won (`Leader`), and each player's level is their `VFGunLevel` attribute, with
+`VFProtected` true while their spawn protection lasts. In the spike rounds each player's credits are
+their `VFCredits` attribute, and each side's losses in a row `Streak1` and `Streak2` on the arena's
+model. Every gun on the ground is a part in Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo`
+and `Reserve` as attributes. Each player's record is in their attributes too: `VFKills`, `VFDeaths`,
+`VFAssists`, `VFScore`, `VFRounds`, `VFAlive` and `VFLoadout` in either, and `VFStartCredits` in the
+spike rounds. `VFInLine` is a player's place in line while both sides are full. Each player's
+ability kit is their `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the
+ultimate's points), with what's under way after it (`storm` while Blade Storm lasts, `glide` while
+you glide, `equip` while Curveball's flare, Hot Hands' fireball, Blaze's flame, the Healing Orb or
+the Slow Orb is in hand, `bend` while a Blaze wall is bent, `back` while Run it Back runs, and
+`away` and `rise` through its return), and `VFTestBuy` set to `updraft` buys a charge. Where a kit's
+charges come back over time, when each of C, Q and E next has one is the player's `VFRecharge`
+attribute (server time, 0 for none coming). A player's agent is their `VFAgent` attribute, what
 they've selected while they can pick `VFAgentSelected`, where they stand `VFAgentPick` (`free`,
-`open` or `locked`, unset where nobody picks), and while their window's open, when it closes
-(server time) `VFAgentCloses`. A teammate's `locked` agent is taken from the rest of their side
-(system 48), and `VFTestAgent` set to a taken agent is refused. Where a player's last Cloudburst
-burst is their `VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the
-air and each cloud as parts. Where a player's last Curveball popped is their `VFLastFlare` attribute
-(metres), and their blind their `VFBlind` (when it began, when its white ends and when it's gone, in
-server time); `Workspace.VFFlares` holds each flare in the air and each pop as parts. Where a
-player's last Hot Hands burst is their `VFLastFire` attribute (the floor under it, in metres), and
+`open` or `locked`, unset where nobody picks), and while their window's open, when it closes (server
+time) `VFAgentCloses`. A teammate's `locked` agent is taken from the rest of their side (system 48),
+and `VFTestAgent` set to a taken agent is refused. Where a player's last Cloudburst burst is their
+`VFLastCloud` attribute (metres), and `Workspace.VFClouds` holds each throw in the air and each
+cloud as parts. Where a player's last Curveball popped is their `VFLastFlare` attribute (metres),
+and their blind their `VFBlind` (when it began, when its white ends and when it's gone, in server
+time); `Workspace.VFFlares` holds each flare in the air and each pop as parts. Where a player's last
+Hot Hands burst is their `VFLastFire` attribute (the floor under it, in metres), and
 `Workspace.VFFires` holds each fireball in the air, each burst and each fire as parts. The far end
 of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Workspace.VFWalls`
 holds each wall's run on its way and each wall as models. Where a player last cast Run it Back is
 their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each mark as a model, its
 `Entity` attribute whose it is. Whom a player last healed with the Healing Orb is their `VFLastHeal`
 attribute (the healed player's name). Where a player's last Slow Orb burst is their `VFLastSlow`
-attribute (the floor under it, in metres), whether their last tick was slowed their `VFSlowed`,
-and `Workspace.VFSlows` holds each orb in the air, each burst and each field of ice. Where a
-player's last Dark Cover smoke went is their `VFLastSmoke` attribute (the floor under its mark, in
-metres), and `Workspace.VFClouds` holds each smoke and, with its orb in hand, its mark. Whom a
-player's last Paranoia orb touched is their `VFLastParanoia` attribute (their names, in the order it
-touched them), and their nearsight their `VFNearsight` (when it began, when it stops being whole and
-when it's gone, in server time); `Workspace.VFParanoia` holds each orb in flight, the dark round the
+attribute (the floor under it, in metres), whether their last tick was slowed their `VFSlowed`, and
+`Workspace.VFSlows` holds each orb in the air, each burst and each field of ice. Where a player's
+last Dark Cover smoke went is their `VFLastSmoke` attribute (the floor under its mark, in metres),
+and `Workspace.VFClouds` holds each smoke and, with its orb in hand, its mark. Whom a player's last
+Paranoia orb touched is their `VFLastParanoia` attribute (their names, in the order it touched
+them), and their nearsight their `VFNearsight` (when it began, when it stops being whole and when
+it's gone, in server time); `Workspace.VFParanoia` holds each orb in flight, the dark round the
 camera and each wisp. Where a player's last Shrouded Step takes them is their `VFLastStep` attribute
 (the floor, in metres), and `Workspace.VFStep` holds its targeter, and others' windups, their going,
 the floor they're going to and their arrival. Where a player's last From the Shadows takes them is
@@ -633,7 +638,8 @@ sound's playback speed (`Pitch`) and whether a banner's up (`Shown`). The arena'
 (`Callout`: `ace`, `teamAce`, `flawless`, `clutch` or `thrifty`), and PlayerGui's `VFArenaBanner`
 the banner's words (`Title`). Each player carries the gun they're asking their team for
 (`VFRequest`), their plan (`VFPlan`: `save`, `buy` or `extra`) and who paid for each of `VFBought`'s
-(`VFBoughtBy`: a teammate's UserId, or "" for themselves).
+(`VFBoughtBy`: a teammate's UserId, or "" for themselves). Each piece of a dressed map's kit, its
+box and its model, carries `VFKitPiece`, the piece's name.
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -712,7 +718,9 @@ round-end callouts (what makes each, which one a round won with several gets, th
 for them, deaths that don't count, a life brought back and someone leaving, what each side's banner
 says, and a loadout's worth) and buying for teammates (what can be asked for, asking and taking it
 back, plans, when a request can be bought and by whom, and whose credits go where as a gun bought
-for a teammate is sold back, replaced or dropped) are pure Luau and run outside Roblox:
+for a teammate is sold back, replaced or dropped) and the map kit (each piece's placeholder inside
+its box, the looks, Wharf's zones, and its dressing out of reach) are pure Luau and run outside
+Roblox:
 
 ```
 luau tests/run.luau

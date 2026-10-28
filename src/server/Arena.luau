@@ -147,7 +147,8 @@
 -- off. So do Workspace's attributes, set from the server, which is how
 -- scripted checks do it, and which tell clients what's on: VFArenaOn,
 -- VFArenaMode ("skirmish", "gungame", "deathmatch", "teamdeathmatch" or
--- "spike") and VFMatchFormat (a key of MatchConfig.Formats). The phase and
+-- "spike") and VFMatchFormat (a key of MatchConfig.Formats); VFMatchMap
+-- has the spike rounds' first match on the map it names. The phase and
 -- the score go to clients as attributes on the arena's model, whichever is
 -- played.
 
@@ -204,6 +205,7 @@ local OrbServer = require(script.Parent.OrbServer)
 local ReportServer = require(script.Parent.ReportServer)
 local BannerServer = require(script.Parent.BannerServer)
 local CalloutServer = require(script.Parent.CalloutServer)
+local MapDresser = require(script.Parent.MapDresser)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -380,7 +382,8 @@ end
 
 -- Builds the arena from ArenaLayout, with Skirmish A's cover until a match
 -- is played on another, and each of the spike rounds' maps (SpikeMaps) in a
--- model of its own, unless the place already has them.
+-- model of its own, unless the place already has them, a dressed one in its
+-- look (MapDresser, system 58).
 function Arena.buildIfMissing()
 	if not Workspace:FindFirstChild(ArenaConfig.MODEL) then
 		local root = newModel(ArenaConfig.MODEL)
@@ -426,7 +429,9 @@ function Arena.buildIfMissing()
 			local p = newPart(spec.name, spec.size, plan.origin + spec.center, spec.yaw)
 			p.Color = COLOURS[spec.kind] or COLOURS.wall
 			local role = spec.role
-			if spec.kind == "cover" then
+			if MapDresser.dress(p, spec, root, plan.origin) then
+				-- A dressed map's floor, walls, kit and dressing: MapDresser's (system 58).
+			elseif spec.kind == "cover" then
 				p.Color = if spec.size.y < plan.Heights.high.value then MAP_COLOURS.low else MAP_COLOURS.high
 			elseif spec.kind == "marking" then
 				marking(p)
@@ -1015,7 +1020,13 @@ local function begin(wanted: Mode, format: string)
 	elseif wanted == "teamdeathmatch" then
 		tdm = TeamDeathmatchRules.new()
 	else
-		match = MatchRules.new(format)
+		local m = MatchRules.new(format)
+		-- A scripted check's map, if it names one (system 58).
+		local asked = Workspace:GetAttribute(MatchConfig.MAP)
+		if typeof(asked) == "string" and SpikeMaps.Maps[asked] then
+			m.map = asked
+		end
+		match = m
 	end
 	table.clear(kitMatch)
 	seenMatch, seenRound = 0, 0

@@ -120,7 +120,7 @@ end
 
 do
 	local s = DeathmatchRules.new(nil, dice(2))
-	check("the first match is on one of the spike rounds' maps, at random", s.map == SpikeMaps.MAPS[2] and #s.maps == 3)
+	check("the first match is on one of the spike rounds' maps, at random", s.map == SpikeMaps.MAPS[2] and #s.maps == 4)
 	local first = DeathmatchRules.join(s, 10, 0)
 	check("alone, someone waits for an opponent, and spawns at once", s.phase == "waiting" and sorted(first) == "10")
 	local both = DeathmatchRules.join(s, 20, 5)
@@ -253,7 +253,7 @@ do
 	DeathmatchRules.step(s, 10 + A.matchOverTime.value)
 	local vote = s.vote
 	check(
-		"after the victory screen, a vote for 15 s between all three maps",
+		"after the victory screen, a vote for 15 s between three of the maps",
 		s.phase == "vote" and vote ~= nil and #vote.options == 3 and s.phaseEndsAt == 10 + A.matchOverTime.value + A.voteTime.value
 	)
 	check("anyone playing votes", DeathmatchRules.vote(s, 2, 3) and DeathmatchRules.vote(s, 3, 3))

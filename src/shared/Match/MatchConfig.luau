@@ -28,6 +28,10 @@ local MatchConfig = {}
 -- format the next match is played in (a key of MatchConfig.Formats).
 MatchConfig.MODEL = "VFSpikeMap"
 MatchConfig.FORMAT = "VFMatchFormat"
+-- Workspace's attribute that, set from the server to a key of
+-- SpikeMaps.Maps before the spike rounds begin, has their first match played
+-- on that map rather than one at random: for scripted checks (system 58).
+MatchConfig.MAP = "VFMatchMap"
 -- Workspace's attribute that, set true from the server, ends the phase being
 -- played now and clears itself (MatchRules.skip, or in Skirmish
 -- ArenaRules.skip): for scripted checks, which would otherwise wait out
