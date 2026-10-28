@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-one
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -33,8 +33,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    then two, then three for their last check, section 37 one and then two, section 38 one, then
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
-   sections 44 to 51 one and then three, section 52 three, section 53 two, and section 54 two and
-   then three.
+   sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
+   three, and section 55 three.
 
 | Key | What it does |
 | --- | --- |
@@ -3798,6 +3798,70 @@ LOCK IN in window 1, and let the other windows' 10 s run out.
   ends `X0/8`, with no kill's point, and player 3's `X0/8`. Clear `VFTestAimPoint`, and skip what's
   left of round 1: as round 2's buy phase starts, player 3's `VFKit` still ends `X0/8`.
 
+## 55. Agents and ultimates at a glance
+
+From [51-at-a-glance.md](research/51-at-a-glance.md). Three players in the spike rounds, then in gun
+game. Each tile beside the top bar's score has its player's agent by the first two letters of its
+name (`JE` Jett, `PH` Phoenix, `SA` Sage, `OM` Omen, `SO` Sova), or in gun game the first two
+letters of the player's name. Under your side's tiles is a white bar as full as each one's health,
+and under anyone's a gold diamond while their ultimate's ready. PlayerGui's `VFArenaHud` carries
+`Yours` and `Theirs`, the tiles in the order of the players' names: each tile's letters, then its
+health where it's shown, `dead` and `ready` (`SO 100 ready, JE 74`). The scoreboard has a box with
+each player's agent before their name, and under `ULT` their ultimate's points and what it needs
+(`3/8`), or `READY` in gold. While it's open, PlayerGui's `VFScoreboard` carries `Ult`, its rows in
+order (`SO Player1 READY, JE Player3 0/8`). `VFTestBoard` set to true holds the scoreboard open as
+Tab does, and false lets it go. `VFTestGive` set to `ultimate` fills the points, and `VFTestAgent`
+set to an agent's id selects it, or set to `lock` locks in (section 52). `VFMatchSkip` set true on
+Workspace skips a buy phase, or what's left of a round, which the defenders win (section 17).
+
+Start a Local Server with 3 players, as in section 9, and press P three times in window 1 (Skirmish,
+gun game, then the spike rounds). Players 1 and 3 share a side, as in section 52, and attack first,
+and player 2 defends. As round 1's buy phase starts, agent select comes up by itself: click SOVA and
+LOCK IN in window 1, and SAGE and LOCK IN in window 2 (or set `VFTestAgent` to the agent's id and
+then to `lock`), and let window 3's 10 s run out, on Jett.
+
+- **GA1 The top bar.** Once agent select has gone in every window, window 1's top bar has `SO` and
+  `JE` left of the score, in your side's colour, each with a full white bar under it, and `SA` right
+  of it, in the other side's colour, with no bar. Window 1's `VFArenaHud`: `Yours` reads
+  `SO 100, JE 100` and `Theirs` `SA`. Window 2's: `Yours` reads `SA 100` and `Theirs` `SO, JE`.
+- **GA2 The scoreboard.** Set `VFTestBoard` to true in window 1 (or hold Tab). Each row starts with
+  a box in its side's colour with the agent's letters: `SO` for Player1 and `JE` for Player3 in your
+  side's table, and `SA` for Player2 in the other. Under `ULT`, Player1 and Player3 have `0/8` and
+  Player2 `0/7`. `VFScoreboard`'s `Ult` reads `SO Player1 0/8, JE Player3 0/8, SA Player2 0/7`. Set
+  `VFTestBoard` to false: `Ult` is gone.
+- **GA3 Ready.** Set `VFTestGive` to `ultimate` in window 1: a gold diamond comes up under `SO`, and
+  window 1's `Yours` reads `SO 100 ready, JE 100`. In window 2 a gold diamond is under `SO` too, and
+  `Theirs` reads `SO ready, JE`. Set `VFTestBoard` to true in window 2: Player1's `ULT` reads
+  `READY` in gold, and `Ult` reads `SA Player2 0/7, SO Player1 READY, JE Player3 0/8`. Set
+  `VFTestBoard` to false.
+- **GA4 Health.** Skip the buy phase. Player 2 shoots player 3 once in the body with the Classic,
+  from within 30 m: in window 1 `JE`'s bar drops to about three quarters, and `Yours` reads
+  `SO 100 ready, JE 74` (78 for a leg, 22 for the head); in window 2 `Theirs` still reads
+  `SO ready, JE`, with no bars. Player 2 then kills player 3: in window 1 `JE`'s tile dims and its
+  bar empties, `Yours` reading `SO 100 ready, JE 0 dead`, and in window 2 `Theirs` reads
+  `SO ready, JE dead`. Set `VFTestBoard` to true in window 2: Player3's row and box are dimmed, and
+  `Ult` reads `SA Player2 1/7, SO Player1 READY, JE Player3 0/8`, Player2's `1/7` the kill's point.
+  Set `VFTestBoard` to false.
+- **GA5 The victory screen.** In the server's command bar run this, which skips to the end of the
+  match, the defenders winning every round from here. As it ends, the scoreboard comes up by itself
+  in every window with `MAP VOTE IN 10` under it: each row still has its agent's box, but there's no
+  `ULT` column, nor its title, and `VFScoreboard` has no `Ult`.
+
+  ```lua
+  for _ = 1, 150 do
+  	if workspace.VFArena:GetAttribute("Phase") == "matchOver" then break end
+  	workspace:SetAttribute("VFMatchSkip", true)
+  	task.wait(0.3)
+  end
+  ```
+
+- **GA6 Gun game.** Press P four times in window 1 (the spike rounds in Swiftplay's format, off,
+  Skirmish, then gun game). Every tile beside the score reads `PL`, the first two letters of the
+  players' names, and none has a diamond, though your side's still have their health bars: `Yours`
+  lists a `PL 100` for each player on your side, and `Theirs` a `PL` for each on the other. Set
+  `VFTestBoard` to true: no row has a box before its name, there's no `ULT` column, and
+  `VFScoreboard` has no `Ult`. Set `VFTestBoard` to false.
+
 ## Results
 
 ```
@@ -4154,6 +4218,12 @@ UP6 the score before round 9: ___; round 9's line: ___; VFKit then, player 1's: 
 UP7 player 1's VFKit in round 1: ___; in round 13: ___
 UP8 the score before round 25: ___; round 25's line: ___; player 1's VFKit: ___
 UP9 player 3's health after the first bolt: ___; player 1's VFKit after the kill: ___; player 3's in round 2's buy phase: ___
+GA1 window 1's Yours: ___, Theirs: ___; window 2's Yours: ___, Theirs: ___
+GA2 the boxes' letters and colours: ___; ULT: ___; Ult: ___
+GA3 window 1's Yours: ___; window 2's Theirs: ___; Player1's ULT there: ___, in gold: yes / no; Ult: ___
+GA4 window 1's Yours after the shot: ___, after the kill: ___; window 2's Theirs: ___; Ult: ___
+GA5 on the victory screen, the agents' boxes: shown / gone; ULT: shown / gone; Ult: ___
+GA6 gun game's tiles: ___; Yours: ___, Theirs: ___; the boxes and ULT: shown / gone
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4470,3 +4540,9 @@ Didn't look right (IDs and what you saw):
 | 50 | The half wiping a full ultimate, and a death in its last round earning nothing across it | UP5 |
 | 50 | A sudden death's start 3 short of full, whatever was had | UP6, UP8 |
 | 50 | The standard format: none at the start, none after the half, and 3 short in its sudden death | UP7, UP8 |
+| 51 | Each player's agent on the top bar, yours and theirs, by its first two letters | GA1 |
+| 51 | Your side's health under its tiles, emptied by damage and death; none under the other side's | GA1, GA4 |
+| 51 | A gold diamond under anyone's tile while their ultimate's ready, an enemy's too | GA3, GA4 |
+| 51 | The scoreboard's agents and ULT, both sides', live, with `READY` in gold once full | GA2, GA3, GA4 |
+| 51 | The victory screen keeping the agents, without the ULT | GA5 |
+| 51 | Gun game: names' letters on the top bar, and no agents or ULT on the scoreboard | GA6 |

@@ -30,6 +30,14 @@
 -- Team Deathmatch (system 27) has no rounds, so its combat score is the
 -- match's, under SCORE, and a match it ends level is a DRAW.
 --
+-- Each row also has the player's agent, in a box in their side's colour as
+-- their tile on the top bar has it (system 51, Glance.badge), and under ULT
+-- their ultimate, both sides' alike, as the reference's has it: how far
+-- along it is ("3/8"), or READY in gold (AbilityConfig.ULT_ATTRIBUTE).
+-- Neither shows in gun game or deathmatch, where nobody plays an agent,
+-- nor the ultimate on the victory screen. While it's open, its Ult
+-- attribute lists each row's agent, name and ultimate, for scripted checks.
+--
 -- Everything comes from the player attributes the server keeps (Arena), and
 -- each player's shield from what combat events have said of it. While either
 -- is on, Roblox's own player list, which Tab would open, is off.
@@ -42,6 +50,9 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
+local AgentSelect = require(Shared.Abilities.AgentSelect)
+local Glance = require(Shared.Abilities.Glance)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
@@ -63,7 +74,7 @@ Scoreboard.held = false
 
 local ROWS = 5 -- a side, at most
 local FFA_ROWS = DeathmatchConfig.Rules.players.value -- deathmatch's one table, at most
-local WIDTH = 640
+local WIDTH = 700
 local ROW_H, ROW_GAP = 28, 2
 local HEADER_H = 34
 local SIDE_GAP = 12
@@ -75,13 +86,15 @@ type Column = { key: string, title: string, x: number, width: number, align: Enu
 local CENTRE = Enum.TextXAlignment.Center
 local LEFT = Enum.TextXAlignment.Left
 local COLUMNS: { Column } = {
-	{ key = "name", title = "NAME", x = 16, width = 200, align = LEFT },
-	{ key = "k", title = "K", x = 220, width = 40, align = CENTRE },
-	{ key = "d", title = "D", x = 260, width = 40, align = CENTRE },
-	{ key = "a", title = "A", x = 300, width = 40, align = CENTRE },
-	{ key = "acs", title = "ACS", x = 344, width = 56, align = CENTRE },
-	{ key = "credits", title = "CREDITS", x = 404, width = 76, align = CENTRE },
-	{ key = "loadout", title = "LOADOUT", x = 492, width = 140, align = LEFT },
+	{ key = "agent", title = "", x = 16, width = 28, align = CENTRE },
+	{ key = "name", title = "NAME", x = 52, width = 164, align = LEFT },
+	{ key = "ult", title = "ULT", x = 220, width = 56, align = CENTRE },
+	{ key = "k", title = "K", x = 280, width = 40, align = CENTRE },
+	{ key = "d", title = "D", x = 320, width = 40, align = CENTRE },
+	{ key = "a", title = "A", x = 360, width = 40, align = CENTRE },
+	{ key = "acs", title = "ACS", x = 404, width = 56, align = CENTRE },
+	{ key = "credits", title = "CREDITS", x = 464, width = 76, align = CENTRE },
+	{ key = "loadout", title = "LOADOUT", x = 552, width = 140, align = LEFT },
 }
 
 type Row = { frame: Frame, strip: Frame, cells: { [string]: TextLabel } }
@@ -214,7 +227,23 @@ local function newRow(parent: Instance, y: number): Row
 			TextTruncate = Enum.TextTruncate.AtEnd,
 		})
 	end
+	-- The agent's a box, as their tile on the top bar is (system 51).
+	local agent = cells.agent
+	agent.Size = UDim2.new(0, agent.Size.X.Offset, 1, -8)
+	agent.Position += UDim2.fromOffset(0, 4)
+	agent.Font = Enum.Font.GothamBold
+	agent.TextSize = 12
 	return { frame = frame, strip = strip, cells = cells }
+end
+
+-- A row's agent, in a box in its side's colour, dimmed once they're dead,
+-- as their tile on the top bar has it; or nothing (`badge` "").
+local function showAgent(cell: TextLabel, badge: string, colour: Color3, alive: boolean)
+	cell.Text = badge
+	cell.BackgroundColor3 = if alive then colour else Ui.PANEL
+	cell.BackgroundTransparency = if badge == "" then 1 elseif alive then 0.15 else 0.35
+	cell.TextColor3 = if alive then Ui.PANEL else colour
+	cell.TextTransparency = if alive then 0 else 0.5
 end
 
 -- The panel's height with `rows` rows in each of its `tables` (two, a side,
@@ -287,12 +316,15 @@ function Scoreboard.start()
 		panel.Visible = on and arena ~= nil and not PlayMenu.open and (Scoreboard.held or phase == "matchOver")
 		footer.Visible = panel.Visible and over
 		if not panel.Visible or not arena then
+			gui:SetAttribute("Ult", nil)
 			return
 		end
 		local spike = arena:GetAttribute("Mode") == "spike"
 		local gunGame = arena:GetAttribute("Mode") == "gungame"
 		local deathmatch = arena:GetAttribute("Mode") == "deathmatch"
 		local teamDeathmatch = arena:GetAttribute("Mode") == "teamdeathmatch"
+		-- Whether everyone plays an agent (system 51).
+		local agents = not gunGame and not deathmatch
 		local ladder = {}
 		if gunGame then
 			local text = arena:GetAttribute("Ladder")
@@ -358,6 +390,7 @@ function Scoreboard.start()
 		-- MVPs where the guns go.
 		titles.credits.Visible = spike and not over
 		titles.loadout.Visible = not over
+		titles.ult.Visible = agents and not over
 		titles.acs.Text = if gunGame then "LEVEL" elseif deathmatch then "PLACE" elseif teamDeathmatch then "SCORE" else "ACS"
 		titles.loadout.Text = if gunGame then "GUN" else "LOADOUT"
 
@@ -384,6 +417,8 @@ function Scoreboard.start()
 				row.frame.BackgroundColor3 = if mine then MINE else Ui.PANEL
 				row.strip.BackgroundColor3 = if mine then ally else enemy
 				row.strip.BackgroundTransparency = if alive then 0 else 0.6
+				showAgent(cells.agent, "", enemy, alive)
+				cells.ult.Text = ""
 				cells.name.Text = player.DisplayName
 				cells.name.TextColor3 = if mine then GOLD else Ui.TEXT
 				cells.name.TextTransparency = if alive then 0 else 0.5
@@ -402,6 +437,7 @@ function Scoreboard.start()
 					cells.loadout.TextColor3 = Ui.TEXT
 				end
 			end
+			gui:SetAttribute("Ult", nil)
 			return
 		end
 		for _, row in ffa do
@@ -416,6 +452,7 @@ function Scoreboard.start()
 			mvpTable = 2
 		end
 		panel.Size = UDim2.fromOffset(WIDTH, heightFor(shown))
+		local listed = {}
 		for i, rows in sides do
 			local ours = i == 1 and playing
 			local colour = if i == 1 then ally else enemy
@@ -440,6 +477,16 @@ function Scoreboard.start()
 				row.frame.BackgroundColor3 = if mine then MINE else Ui.PANEL
 				row.strip.BackgroundColor3 = colour
 				row.strip.BackgroundTransparency = if alive then 0 else 0.6
+				-- Their agent, and while the match is on their ultimate.
+				local letters = if agents then Glance.badge(player:GetAttribute(AgentSelect.AGENT), player.DisplayName) else ""
+				showAgent(cells.agent, letters, colour, alive)
+				local ult = if agents and not over then Glance.cell(player:GetAttribute(AbilityConfig.ULT_ATTRIBUTE)) else ""
+				cells.ult.Text = ult
+				cells.ult.TextColor3 = if ult == Glance.READY then GOLD else Ui.TEXT
+				cells.ult.TextTransparency = if alive then 0 else 0.5
+				if agents and not over then
+					table.insert(listed, letters .. " " .. player.DisplayName .. (if ult ~= "" then " " .. ult else ""))
+				end
 				cells.name.Text = player.DisplayName
 				cells.name.TextColor3 = if mine then GOLD else Ui.TEXT
 				cells.name.TextTransparency = if alive then 0 else 0.5
@@ -464,6 +511,7 @@ function Scoreboard.start()
 				end
 			end
 		end
+		gui:SetAttribute("Ult", if agents and not over then table.concat(listed, ", ") else nil)
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)

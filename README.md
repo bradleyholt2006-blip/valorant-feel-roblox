@@ -389,6 +389,11 @@ Built one system at a time:
     whatever they had, and a death's point comes as the next round starts. Only a death at an
     enemy's hands earns one, not the spike's blast, a teammate's ability or your own -
     [research and design](docs/research/50-ultimate-points.md)
+51. **Agents and ultimates at a glance**: the tiles either side of the top bar's score show each
+    player's agent by the first two letters of its name, with your side's health under them and a
+    gold diamond under anyone's whose ultimate is ready, an enemy's too. The scoreboard has each
+    player's agent in a box before their name and their ultimate under ULT, how far along it is
+    (`3/8`) or READY, for both sides - [research and design](docs/research/51-at-a-glance.md)
 
 ## Running it
 
@@ -627,9 +632,10 @@ sent out, its flight, its ceiling, walls, Sova held, its darts, how it ends, the
 in it, its ids, and the wire), one of each agent on a side (what's taken, a selection moved off it,
 the time running out, the other side, a key for each side, back in a match, fewer agents than
 places, and halftime), the spike rounds' Ultimate Orbs (where they stand, which are up, whose feet
-reach one, the taking, a defuse first, and the wire) and the ultimate's points across a match (each
-round's kind, a match's, a half's and an overtime round's start, and a death's point paid) are pure
-Luau and run outside Roblox:
+reach one, the taking, a defuse first, and the wire), the ultimate's points across a match (each
+round's kind, a match's, a half's and an overtime round's start, and a death's point paid) and each
+player's agent and ultimate at a glance (the ultimate as everyone reads it, a kit charging, each
+agent's letters, a health bar, and the top bar's tiles) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
