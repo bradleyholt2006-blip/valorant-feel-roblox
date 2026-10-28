@@ -80,6 +80,10 @@ AbilityConfig.KIT_ATTRIBUTE = "VFKit"
 -- over time (system 28): when C, Q and E each next has a charge back, in
 -- server time, 0 for none coming ("0,812.5,0").
 AbilityConfig.RECHARGE_ATTRIBUTE = "VFRecharge"
+-- And the one it keeps each player's ultimate in for everyone to see, on
+-- the top bar and the scoreboard (system 51), as Glance.ultimate writes it:
+-- its points and what it needs ("3/8"), or "" with none.
+AbilityConfig.ULT_ATTRIBUTE = "VFUlt"
 
 local SHACKNEWS = "Shacknews' default key bindings"
 AbilityConfig.KeySources = {

@@ -32,8 +32,13 @@
 --
 -- Either side of the top bar, who's alive (system 16): a tile for each
 -- player, yours on the left and theirs on the right, as the reference's
--- agent portraits, with the first letters of their name, dimmed once
--- they're dead (MatchConfig.ALIVE).
+-- agent portraits, dimmed once they're dead (MatchConfig.ALIVE). Each has
+-- the first letters of their agent's name, or in gun game, where nobody
+-- plays one, of their own (system 51, Glance.badge). Under your side's is
+-- each one's health, and under anyone's a gold diamond while their
+-- ultimate's ready (AbilityConfig.ULT_ATTRIBUTE). The HUD's Yours and
+-- Theirs attributes list the tiles as Glance.describe has them, for
+-- scripted checks.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -49,6 +54,10 @@ local GunGameConfig = require(Shared.Arena.GunGameConfig)
 local TeamDeathmatchConfig = require(Shared.Arena.TeamDeathmatchConfig)
 local TeamDeathmatchRules = require(Shared.Arena.TeamDeathmatchRules)
 local MatchConfig = require(Shared.Match.MatchConfig)
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
+local AgentSelect = require(Shared.Abilities.AgentSelect)
+local Glance = require(Shared.Abilities.Glance)
+local PlayerCodec = require(Shared.Net.PlayerCodec)
 local MatchRules = require(Shared.Match.MatchRules)
 local SpikeMaps = require(Shared.Match.SpikeMaps)
 local PlayerSim = require(Shared.PlayerSim)
@@ -59,6 +68,7 @@ local Remotes = require(Shared.Net.Remotes)
 local Ui = require(script.Parent.Debug.Ui)
 local InputSampler = require(script.Parent.InputSampler)
 local PlayerController = require(script.Parent.PlayerController)
+local RemoteEntities = require(script.Parent.RemoteEntities)
 local Visuals = require(script.Parent.Visuals)
 
 local ArenaHud = {}
@@ -80,11 +90,14 @@ local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
 end
 
--- The players' tiles beside the top bar.
+-- The players' tiles beside the top bar, with the health bar and the
+-- ultimate's diamond under them (system 51).
 local TILE_W, TILE_H, TILE_GAP = 30, 38, 4
 local MAX_TILES = 5 -- a side
+local HEALTH_H, DIAMOND = 3, 7
+local MAX_HEALTH = WeaponConfig.Health.maxHealth.value
 
-type Tile = { frame: Frame, label: TextLabel }
+type Tile = { frame: Frame, label: TextLabel, health: Frame, fill: Frame, ready: Frame }
 
 local function newTile(gui: ScreenGui): Tile
 	local frame = Ui.frame(gui, { Size = UDim2.fromOffset(TILE_W, TILE_H), Visible = false })
@@ -95,12 +108,21 @@ local function newTile(gui: ScreenGui): Tile
 		TextXAlignment = Enum.TextXAlignment.Center,
 		TextYAlignment = Enum.TextYAlignment.Center,
 	})
-	return { frame = frame, label = label }
-end
-
--- A name's first two letters, for its tile.
-local function initials(player: Player): string
-	return string.upper(string.sub(player.DisplayName, 1, 2))
+	local health = Ui.frame(frame, {
+		Size = UDim2.new(1, 0, 0, HEALTH_H),
+		Position = UDim2.new(0, 0, 1, 3),
+		BackgroundTransparency = 0.2,
+	})
+	local fill = Ui.frame(health, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Ui.TEXT, BackgroundTransparency = 0 })
+	local ready = Ui.frame(frame, {
+		Size = UDim2.fromOffset(DIAMOND, DIAMOND),
+		Position = UDim2.new(0.5, -DIAMOND / 2, 1, 3 + HEALTH_H + 4),
+		Rotation = 45,
+		BackgroundColor3 = GOLD,
+		BackgroundTransparency = 0,
+		Visible = false,
+	})
+	return { frame = frame, label = label, health = health, fill = fill, ready = ready }
 end
 
 -- The players on a side, in the order their tiles go.
@@ -118,8 +140,19 @@ local function sideOf(side: number): { Player }
 end
 
 -- Puts a side's tiles beside a bar `width` wide: to its left (`left`) or
--- its right, nearest first, alive in the side's colour or dimmed.
-local function placeTiles(tiles: { Tile }, players: { Player }, colour: Color3, width: number, left: boolean)
+-- its right, nearest first, alive in the side's colour or dimmed, each with
+-- its agent (where `agents` are played) and its ultimate's diamond, and on
+-- your side (`yours`) its health. Returns them as Glance.describe lists them.
+local function placeTiles(
+	tiles: { Tile },
+	players: { Player },
+	colour: Color3,
+	width: number,
+	left: boolean,
+	yours: boolean,
+	agents: boolean
+): string
+	local listed = {}
 	for i, tile in tiles do
 		local player: Player? = players[i]
 		if not player then
@@ -133,10 +166,23 @@ local function placeTiles(tiles: { Tile }, players: { Player }, colour: Color3, 
 		local alive = player:GetAttribute(MatchConfig.ALIVE) ~= false
 		tile.frame.BackgroundColor3 = if alive then colour else Ui.PANEL
 		tile.frame.BackgroundTransparency = if alive then 0.15 else 0.35
-		tile.label.Text = initials(player)
+		local badge = Glance.badge(if agents then player:GetAttribute(AgentSelect.AGENT) else nil, player.DisplayName)
+		tile.label.Text = badge
 		tile.label.TextColor3 = if alive then Ui.PANEL else colour
 		tile.label.TextTransparency = if alive then 0 else 0.5
+		local health: number? = nil
+		if yours then
+			local hp = RemoteEntities.healthOf(PlayerCodec.entityIdForUser(player.UserId))
+			health = if alive then hp.health else 0
+		end
+		tile.health.Visible = health ~= nil
+		tile.fill.Size = UDim2.fromScale(Glance.share(health or 0, MAX_HEALTH), 1)
+		local ready = agents and Glance.ready(player:GetAttribute(AbilityConfig.ULT_ATTRIBUTE))
+		tile.ready.Visible = ready
+		tile.ready.BackgroundTransparency = if alive then 0 else 0.5
+		table.insert(listed, Glance.describe(badge, health, alive, ready))
 	end
+	return table.concat(listed, ", ")
 end
 
 local function clock(seconds: number): string
@@ -332,6 +378,8 @@ function ArenaHud.start()
 			subtitle.Visible = false
 			seenLevel, seenPhase = nil, nil
 			hideTiles()
+			gui:SetAttribute("Yours", nil)
+			gui:SetAttribute("Theirs", nil)
 			return
 		end
 		local other = 3 - side
@@ -363,9 +411,11 @@ function ArenaHud.start()
 		bar.Visible = true
 		if deathmatch then
 			hideTiles()
+			gui:SetAttribute("Yours", nil)
+			gui:SetAttribute("Theirs", nil)
 		else
-			placeTiles(tiles[1], sideOf(side), ally, width, true)
-			placeTiles(tiles[2], sideOf(other), enemy, width, false)
+			gui:SetAttribute("Yours", placeTiles(tiles[1], sideOf(side), ally, width, true, true, not gunGame))
+			gui:SetAttribute("Theirs", placeTiles(tiles[2], sideOf(other), enemy, width, false, false, not gunGame))
 			ours.Text = tostring(score[side])
 			theirs.Text = tostring(score[other])
 		end

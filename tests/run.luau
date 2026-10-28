@@ -59,5 +59,6 @@ require("./owldrone")
 require("./oneofeach")
 require("./ultorbs")
 require("./ultpoints")
+require("./glance")
 
 H.finish()

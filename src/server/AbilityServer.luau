@@ -61,7 +61,9 @@
 -- forming from a Shade as far as their own curves go.
 -- The caster's own client has predicted it already. Each kit
 -- is a player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
--- writes it), which scripted checks read.
+-- writes it), which scripted checks read, and so is each kit's ultimate
+-- (AbilityConfig.ULT_ATTRIBUTE, as Glance.ultimate writes it), which
+-- everyone's top bar and scoreboard read (system 51).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -70,6 +72,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local Glance = require(Shared.Abilities.Glance)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local FogOfWar = require(Shared.Combat.FogOfWar)
 local PlayerSim = require(Shared.PlayerSim)
@@ -121,6 +124,8 @@ local EVERYONE: { [string]: boolean } = { mark = true, rise = true, shadows = tr
 -- Since when each kit has been short of a charge with nothing under way.
 local shortSince: { [Player]: number } = {}
 local shown: { [Player]: string } = {}
+-- Each player's ultimate as last told (system 51).
+local shownUlt: { [Player]: string } = {}
 -- With a mode's own kit: when each kit's C, Q and E next have a charge back
 -- (server time, 0 for none coming), and what its attribute says of them.
 local due: { [Player]: { number } } = {}
@@ -375,6 +380,12 @@ function AbilityServer.step(now: number)
 			shown[player] = text
 			player:SetAttribute(AbilityConfig.KIT_ATTRIBUTE, text)
 		end
+		-- None where the kit has no abilities (gun game, deathmatch).
+		local ult = if AbilityServer.off then "" else Glance.ultimate(kit)
+		if shownUlt[player] ~= ult then
+			shownUlt[player] = ult
+			player:SetAttribute(AbilityConfig.ULT_ATTRIBUTE, ult)
+		end
 	end
 end
 
@@ -485,6 +496,7 @@ function AbilityServer.start()
 	Players.PlayerRemoving:Connect(function(player)
 		shortSince[player] = nil
 		shown[player] = nil
+		shownUlt[player] = nil
 		due[player] = nil
 		shownDue[player] = nil
 		chosen[player] = nil
