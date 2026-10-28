@@ -127,6 +127,7 @@ local COVER_LOW = Color3.fromRGB(122, 132, 148)
 local COVER_HIGH = Color3.fromRGB(168, 178, 194)
 local SITE = Color3.fromRGB(112, 100, 74)
 local SPAWN = Color3.fromRGB(66, 74, 86)
+local RAISED = Color3.fromRGB(112, 124, 144) -- floor over the ground: a raised room, a deck, a flight (system 59)
 local DARK = Color3.fromRGB(10, 10, 14)
 local SELF = Color3.fromRGB(255, 236, 140)
 local SPIKE = Color3.fromRGB(255, 150, 40)
@@ -512,6 +513,8 @@ local function build(layer: Layer, plan: Minimap.Plan, box: number, scale: numbe
 			colour, z = SITE, 2
 		elseif shape.kind == "spawn" then
 			colour, z = SPAWN, 2
+		elseif shape.kind == "raised" then
+			colour, z = RAISED, 2
 		end
 		local f = plainFrame(colour, z)
 		f.Name = shape.kind

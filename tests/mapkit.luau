@@ -2,7 +2,8 @@
 -- The kit a dressed spike map is built from, and Wharf, the first dressed
 -- map (system 58): each piece's placeholder inside its box, the looks, the
 -- zones of Wharf's floor, its dressing out of reach overhead, and the other
--- maps as they were.
+-- maps as they were. Over Wharf's raised floors (system 59), out of reach
+-- is over the highest floor there.
 
 local MapKit = require("../src/shared/Match/MapKit")
 local MapPlan = require("../src/shared/Match/MapPlan")
@@ -20,6 +21,7 @@ local EPS = 1e-6
 local MATERIALS = {
 	Asphalt = true,
 	Concrete = true,
+	DiamondPlate = true,
 	Ground = true,
 	LeafyGrass = true,
 	Metal = true,
@@ -208,11 +210,14 @@ do
 		if part.kind == "dressing" and style then
 			local a, b, c, d = footprint(part)
 			local bottom = part.center.y - part.size.y / 2
-			local overFloor = false
+			local overFloor, floorTop = false, -math.huge
 			for _, at in cells(a, b, c, d) do
 				overFloor = overFloor or wharf.onFloor(at.x, at.z)
+				for _, y in wharf.levelsAt(at.x, at.z) do
+					floorTop = math.max(floorTop, y)
+				end
 			end
-			if style.solid and overFloor and bottom < clearance - EPS then
+			if style.solid and overFloor and bottom < floorTop + clearance - EPS then
 				reach = false
 				print("    in reach over the floor: " .. part.name)
 			end
@@ -232,7 +237,7 @@ do
 					and math.abs(c - room.x1) < EPS
 					and math.abs(b - room.z0) < EPS
 					and math.abs(d - room.z1) < EPS
-					and math.abs(bottom - clearance) < EPS
+					and math.abs(bottom - (room.y or 0) - clearance) < EPS
 			end
 		end
 	end
@@ -242,7 +247,7 @@ do
 			roofed += 1
 		end
 	end
-	check("everything solid over its floor is out of reach overhead, from 3.4 m up", reach)
+	check("everything solid over its floor is out of reach overhead, 3.4 m over the highest floor there", reach)
 	check("its buildings and its tower stand on the walls, over no floor", stands)
 	check("each roofed room has its roof, with a light under it", roofed >= 3 and roofs == roofed and lights == roofed)
 	check("and each lintel spans its door, from 3.4 m up", lintels)

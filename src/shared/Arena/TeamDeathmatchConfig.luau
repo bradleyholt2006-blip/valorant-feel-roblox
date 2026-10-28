@@ -139,10 +139,14 @@ TeamDeathmatchConfig.Pickups = {
 		recovery = { at(-23, -12), at(17, -7) },
 		ultimate = { at(-43, 1), at(35, -3) },
 	},
+	-- Wharf's rebuilt (system 59): the spawners in A main's hall, either
+	-- side of mid's courtyard and in B long, the orbs where mid meets its
+	-- street and in the link to A, and the Ultimate Orbs up A main and B
+	-- long, nearer the attackers.
 	wharf = {
-		spawners = { at(-32, -2), at(-10, 2), at(10, 2), at(35, 6) },
-		recovery = { at(-19, -7), at(0, 0) },
-		ultimate = { at(-30.5, 3), at(31, 10) },
+		spawners = { at(-46.5, 1.5), at(-7.5, -6.5), at(6.5, -1.5), at(48.5, 2.5) },
+		recovery = { at(-14.5, -10.5), at(0.5, 2.5) },
+		ultimate = { at(-47.5, 7.5), at(48.5, 8.5) },
 	},
 } :: { [string]: Pickups }
 TeamDeathmatchConfig.PickupsStatus = "estimate" :: Status

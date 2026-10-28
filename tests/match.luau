@@ -787,7 +787,8 @@ local function checkMap(map: MapPlan.Map): { [string]: { number } }
 	check("the defenders reach each site before the attackers can", nearer)
 
 	-- Every eye in one spawn against every eye in the other: something
-	-- taller than the eye is in the way.
+	-- across the eye's height is in the way, not a window's sill or the
+	-- wall over it (system 59).
 	local function eyes(name: string): { vector }
 		local room = map.room(name) :: MapPlan.Room
 		local out = {}
@@ -804,7 +805,7 @@ local function checkMap(map: MapPlan.Map): { [string]: { number } }
 	end
 	local tall = {}
 	for _, part in parts do
-		if solid(part, false) and part.center.y + part.size.y / 2 > EYE then
+		if solid(part, false) and part.center.y + part.size.y / 2 > EYE and part.center.y - part.size.y / 2 < EYE then
 			table.insert(tall, part)
 		end
 	end

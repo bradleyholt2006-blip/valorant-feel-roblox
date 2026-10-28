@@ -331,8 +331,9 @@ local function raise(parts: { BasePart }, up: boolean)
 	end
 end
 
-local function newPart(name: string, size: vector, center: vector, yaw: number): Part
-	local p = Instance.new("Part")
+-- A part, or a wedge (a flight's slope, system 59) rising toward its +z.
+local function newPart(name: string, size: vector, center: vector, yaw: number, wedge: boolean?): BasePart
+	local p: BasePart = if wedge then Instance.new("WedgePart") else Instance.new("Part")
 	p.Name = name
 	p.Anchored = true
 	p.Size = Units.toStuds(size)
@@ -343,7 +344,7 @@ local function newPart(name: string, size: vector, center: vector, yaw: number):
 	return p
 end
 
-local function marking(p: Part)
+local function marking(p: BasePart)
 	p.CanCollide = false
 	p.CanQuery = false
 	p.CanTouch = false
@@ -426,9 +427,14 @@ function Arena.buildIfMissing()
 		local root = newModel(plan.NAME)
 		local raised: { BasePart } = {}
 		for _, spec in plan.parts() do
-			local p = newPart(spec.name, spec.size, plan.origin + spec.center, spec.yaw)
+			local p = newPart(spec.name, spec.size, plan.origin + spec.center, spec.yaw, spec.wedge)
 			p.Color = COLOURS[spec.kind] or COLOURS.wall
 			local role = spec.role
+			if spec.hidden then
+				-- The slope walked on under a flight of stairs' steps.
+				p.Transparency = 1
+				p.CastShadow = false
+			end
 			if MapDresser.dress(p, spec, root, plan.origin) then
 				-- A dressed map's floor, walls, kit and dressing: MapDresser's (system 58).
 			elseif spec.kind == "cover" then

@@ -8,13 +8,14 @@
 --
 -- A plan is the floor seen from above: every room you can stand in, the
 -- walls over it, the cover on it, each spawn's floor and each site's plant
--- area, all in metres in the place, and the words written on it: each
--- site's letter, and the names of the places, for the big map (Riot: Show
--- Map Region Names "only affects the megamap", the UI Settings FAQ). The
--- arena's maps (ArenaLayout) and the spike maps (SpikeMaps) are both drawn
--- from their plans, so a map's minimap is always the map. The course has
--- no minimap, but Omen's From the Shadows (system 43) shows a map of it
--- all the same, from what its parts say (Minimap.planOf).
+-- area, what's raised over the ground (system 59: a raised room, a deck, a
+-- flight up to them), all in metres in the place, and the words written on
+-- it: each site's letter, and the names of the places, for the big map
+-- (Riot: Show Map Region Names "only affects the megamap", the UI Settings
+-- FAQ). The arena's maps (ArenaLayout) and the spike maps (SpikeMaps) are
+-- both drawn from their plans, so a map's minimap is always the map. The
+-- course has no minimap, but Omen's From the Shadows (system 43) shows a
+-- map of it all the same, from what its parts say (Minimap.planOf).
 --
 -- A view is how a box on the screen shows the plan: the point at its
 -- centre, how far the map is turned (clockwise, radians) and how many
@@ -37,7 +38,7 @@ local TeamDeathmatchRules = require("../Arena/TeamDeathmatchRules")
 export type Status = "confirmed" | "community" | "estimate"
 export type Param = { value: number, status: Status, source: string }
 
-export type Kind = "floor" | "wall" | "cover" | "spawn" | "site"
+export type Kind = "floor" | "wall" | "cover" | "spawn" | "site" | "raised"
 
 -- Something drawn: its middle and size across the floor (x along its own
 -- x, z along its own z; y unused), and how far it's turned about the
@@ -213,9 +214,9 @@ local function arenaPlan(key: string): Plan?
 	}
 end
 
--- A spike map's plan: its rooms, which are its floor, each spawn's floor,
--- each site's plant area and letter, its cover, and the names of its rooms
--- that aren't doors and aren't small.
+-- A spike map's plan: its rooms, which are its floor, what's raised over
+-- the ground, each spawn's floor, each site's plant area and letter, its
+-- cover, and the names of its rooms that aren't doors and aren't small.
 local function spikePlan(key: string): Plan?
 	local map = SpikeMaps.Maps[key]
 	if not map then
@@ -234,6 +235,17 @@ local function spikePlan(key: string): Plan?
 		if not string.find(r.name, "Door", 1, true) and area >= small - EPS then
 			table.insert(labels, { text = Minimap.regionName(r.name), at = f.center + origin, kind = "region" })
 		end
+	end
+	for _, r in map.rooms() do
+		if (r.y or 0) > 0 then
+			table.insert(shapes, moved(rect("raised", r.x0, r.z0, r.x1, r.z1), origin))
+		end
+	end
+	for _, d in map.Decks do
+		table.insert(shapes, moved(rect("raised", d.x0, d.z0, d.x1, d.z1), origin))
+	end
+	for _, f in map.Flights do
+		table.insert(shapes, moved(rect("raised", f.x0, f.z0, f.x1, f.z1), origin))
 	end
 	for _, spawn in { { role = "attack", room = "AttackerSpawn" }, { role = "defend", room = "DefenderSpawn" } } do
 		local r = map.room(spawn.room)
