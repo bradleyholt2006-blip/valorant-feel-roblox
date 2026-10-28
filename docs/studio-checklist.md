@@ -5591,6 +5591,112 @@ watch the bots.
   round, as a plant goes down and the retake starts, run `print(workspace:GetAttribute("VFBotMs"))`
   in the server's command bar a few times: well under the frame's 16.7. **Send:** the numbers.
 
+## 66. Taking over a bot
+
+From [62-taking-over-bots.md](research/62-taking-over-bots.md). System 62 lets a player who's down
+take over a living bot of their side for the rest of the round, as Counter-Strike's casual modes let
+the dead: in Skirmish, and in the spike rounds in the standard format and Swiftplay's, while a
+round's played, but not in Competitive's format, nor in the modes that respawn. Watching a bot on
+your side, the line under its name reads `F  take control`. F (or `VFTestTake` true) asks, the line
+reads `Taking control`, and as your new character loads you play on in the bot's body: where it
+stood, looking where it looked, with its guns and their rounds, the one in hand drawn, its health
+and shield, and the spike if it carried it. The bot's out of the round with no death, and plays
+again from the next on the starting kit. Your new character carries the body's kit as text in
+`VFSpawnKit` (each slot's gun, rounds and reserve, then after a semicolon the slot in hand) and its
+pitch in `VFSpawnPitch`.
+
+Start a Local Server with 1 player, as in section 9. This script, for the server's command bar,
+prints each bot and then you: side, whether alive, kills, deaths, guns and credits, and last your
+character's `VFSpawnKit` (nil for a life that wasn't a takeover):
+
+```lua
+local function show(who)
+	local line = { who.Name }
+	for _, key in { "VFArenaSide", "VFAlive", "VFKills", "VFDeaths", "VFLoadout", "VFCredits" } do
+		table.insert(line, tostring(who:GetAttribute(key)))
+	end
+	print(table.concat(line, "  "))
+end
+for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+	show(bot)
+end
+local me = game.Players:GetPlayers()[1]
+show(me)
+print(me.Character and me.Character:GetAttribute("VFSpawnKit"))
+```
+
+- **BC1 In Skirmish.** Run this in the server's command bar:
+
+  ```lua
+  workspace:SetAttribute("VFArenaMode", "skirmish")
+  workspace:SetAttribute("VFArenaOn", true)
+  ```
+
+  You and a bot are on one side, two bots on the other. Once round 1 is live, walk out at the other
+  side's bots without shooting and let them kill you. After `ELIMINATED`, you're watching your
+  side's bot, and the line under `SPECTATING  BOT ...` reads `F  take control`, not
+  `You play from the next round`. Run the script: that bot reads `true`, and you `false`. Press F:
+  the line reads `Taking control`, and in about a second you're playing again where the bot stood,
+  the view going on from where it looked with no jump, its gun in your hand, and its health and
+  shield on the HUD. Run the script again: the bot reads `false` with its kills and deaths as they
+  were, you `true` with your own, and the last line is the body's kit, as
+  `vandal:18:50,classic:12:36,knife:0:0,;1`, where the gun in hand's rounds and reserve are those in
+  the ammo box. The kill feed has nothing for the bot, and on the top bar its tile is greyed and
+  yours lit. Play the round out: in round 2 the bot's back. **Send:** the script's lines before and
+  after, and how the view and the HUD went.
+
+- **BC2 The spike.** In the server's command bar, set `VFArenaOn` to false, then `VFMatchMap` to
+  `outpost`, `VFArenaMode` to `spike` and `VFArenaOn` to true, as in section 65: you attack first.
+  In round 1's buy phase leave the spike where it lies and set `VFMatchSkip` to true; about 5 s into
+  the round one of your side's bots picks it up, and the debug HUD's `spike` line (F3) reads
+  `carried by BOT ...`. Go ahead of the bots, let the defenders kill you, then left- or right-click
+  until you watch the bot carrying it (if it falls first, try again next round). Press F: once
+  you're playing, the HUD's line reads `carried by` and your name, 4 draws the spike, and on the big
+  map (Caps Lock) the carrier's mark is on you. Run
+  `print(workspace:GetAttribute("VFSpikeCarrier"), game.Players:GetPlayers()[1].UserId)` in the
+  server's command bar: the same number twice. Plant it in a site (hold 4 in its plant area):
+  `SPIKE PLANTED`, as for any plant. In a later round, leave the spike to the bots and stay back;
+  once one's planted it (the HUD's line reads `planted at A` or `B`), get killed, watch a bot of
+  yours guarding it and press F: the line reads `F  take control` with the spike down too, and
+  you're in its body. **Send:** the two numbers, and whether both takeovers and your plant went
+  through.
+
+- **BC3 Afterwards.** Go on with BC2's match. In a round, take over a bot of yours as before and run
+  the script. Kill an enemy in the body and run it again: your kills went up by one, and the bot's
+  didn't. Live to the round's end, and run it as the next buy phase starts: your `VFLoadout` is the
+  body's guns, kept as a survivor keeps theirs, and the bot's is what it bought as it spawned, from
+  the starting kit (`,classic`) and its own credits, which went down by what it spent. In a round
+  where you take over a bot and die in it, the next buy phase finds you on `,classic`, as after any
+  death. **Send:** the script's lines.
+
+- **BC4 Where it isn't.** Set `VFArenaOn` to false, `VFMatchFormat` to `competitive` and `VFArenaOn`
+  to true. Once a round's live, get killed and watch a bot of yours: the line reads
+  `You play from the next round`, with no `F  take control`, and F does nothing. Do the same with
+  `VFMatchFormat` set to `swiftplay`: the line's back, and F takes the bot over. In either, once a
+  round's decided, the line's back to `You play from the next round` until the next. Then set
+  `VFArenaOn` to false, `VFArenaMode` to `teamdeathmatch` and `VFArenaOn` to true, and get killed:
+  while you watch a bot of yours, the line reads `You come back in a moment`, with no
+  `F  take control`. **Send:** what the line read in each.
+
+- **BC5 Two at once (optional).** This needs three players. Stop the game, start a Local Server with
+  3 players, and start the spike rounds from the server's command bar as in BC2, after
+  `VFMatchFormat` `standard`. Tab shows who's on player 1's side: player 3 should be, with three
+  bots; if not, use whichever two players share a side, and their names below. Once the round's
+  live, get players 1 and 3 killed (player 2 shoots them, or they walk into the other side's bots),
+  and in windows 1 and 3 left- or right-click until both watch the same bot. Then run this in the
+  server's command bar, which presses F for both at once:
+
+  ```lua
+  for _, name in { "Player1", "Player3" } do
+  	game.Players[name]:SetAttribute("VFTestTake", true)
+  end
+  ```
+
+  One of them plays on in the bot's body. The other's line reads `Taking control` for a moment, then
+  their view moves on, and they stay down for the round: their `VFAlive` stays false, nothing of
+  theirs stands anywhere, and their side has as many alive as before the takeover. **Send:** which
+  of them got it, and what the other saw.
+
 ## Results
 
 ```
@@ -6029,6 +6135,11 @@ BS2 dropped for a bot: ___; planted yourself: ___
 BS3 the HUD's line: ___; the mark on the bot: yes / no; SPIKE PLANTED for a bot's plant: yes / no
 BS4 the bots' retake: ___; with you defusing: ___
 BS5 VFBotMs around a plant on Wharf: ___
+BC1 the script before: ___; after: ___; the view and the HUD: ___
+BC2 the two numbers: ___ ___; the carrier's takeover, your plant, the takeover with it planted: ___
+BC3 kills: ___; your VFLoadout next round: ___; the bot's and its credits: ___; after dying in a body: ___
+BC4 Competitive: ___; Swiftplay: ___; once a round's decided: ___; Team Deathmatch: ___
+BC5 who got it: ___; what the other saw: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6416,3 +6527,9 @@ Didn't look right (IDs and what you saw):
 | 61 | Attackers watching the spike and leaving the blast in time; defenders retaking together and defusing, or leaving the blast when it's too late | BS1, BS2, BS4 |
 | 61 | A bot carrying the spike on the minimap for its side, and named in the debug HUD | BS3 |
 | 61 | What the bots cost the server around a plant | BS5 |
+| 62 | The line under a watched bot's name, F, and the new life in its body: where it stood, looking the same way, its gun in hand with its rounds, its health and shield, and the HUD showing them | BC1 |
+| 62 | The bot taken out of play with no death: gone, greyed on the top bar, its record as it was, and back the next round | BC1, BC3 |
+| 62 | The spike a bot carried, the player's and planted by them; a takeover with the spike planted | BC2 |
+| 62 | The record afterwards: kills in the body the player's, the body's guns kept if they live, and the bot on the starting kit | BC3 |
+| 62 | Not in Competitive, nor once a round's decided, nor in the modes that respawn; in Swiftplay and Skirmish | BC1, BC4 |
+| 62 | A takeover asked for as the bot's gone: no life, and watching goes on | BC5 |

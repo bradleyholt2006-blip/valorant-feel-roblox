@@ -293,6 +293,25 @@ function ArenaRules.revived(s: State, id: number): boolean
 	return true
 end
 
+-- Whether `id` can take over the bot `bot` now (system 62): while the
+-- round's played, `id` down and `bot` alive, on one side. The rules know no
+-- bots: the server says which is one.
+function ArenaRules.canTakeOver(s: State, id: number, bot: number): boolean
+	return s.phase == "live" and Roster.canTakeOver(s, id, bot)
+end
+
+-- `id` takes over `bot` (system 62): alive again in its place for the rest
+-- of the round, and it down, with no death in the record (Roster.takeOver),
+-- so each side has as many alive as before. Returns whether they did.
+function ArenaRules.tookOver(s: State, id: number, bot: number): boolean
+	if not ArenaRules.canTakeOver(s, id, bot) then
+		return false
+	end
+	Roster.takeOver(s, id, bot)
+	s.version += 1
+	return true
+end
+
 -- Moves the clock on. Returns who to spawn now.
 function ArenaRules.step(s: State, now: number): { number }
 	if s.phase == "waiting" then

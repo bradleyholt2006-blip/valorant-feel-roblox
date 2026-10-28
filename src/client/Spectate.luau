@@ -21,6 +21,10 @@
 -- from RemoteEntities, which leaves the watched player's blocks out of the
 -- view. Watching Sova fly his Owl Drone (system 47), the view's the
 -- drone's, as the snapshots show it (his `VFDroneId`).
+--
+-- Watching a bot on your side, F takes it over for the rest of the round
+-- (system 62, BotTakeover), where what's played lets the dead: the server
+-- starts your new life in its body, and the line under the name says so.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,7 +35,9 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DroneSim = require(Shared.Abilities.DroneSim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local BotTakeover = require(Shared.Bots.BotTakeover)
 local MatchConfig = require(Shared.Match.MatchConfig)
+local Remotes = require(Shared.Net.Remotes)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
 local Units = require(Shared.Units)
 
@@ -49,12 +55,18 @@ Spectate.watching = nil :: Who.Someone?
 
 -- Seconds a view stays put after a death before it moves on (estimate).
 local DEATH_HOLD = 2
+-- Seconds a takeover asked for is waited for before F asks again (estimate:
+-- Roblox loads a character in about a third of a second in Studio).
+local TAKE_WAIT = 3
 
 type View = { eye: Vector3, yaw: number, pitch: number }
 
 local me = Players.LocalPlayer
 local holdUntil = 0
 local held: View? = nil -- the last view drawn, held once nobody's left to watch
+-- The bot last asked to be taken over (its id in the rules), and when.
+local askedFor: number? = nil
+local askedAt = -math.huge
 
 -- Who you may watch now, in the order the arena's tiles have them: your
 -- side's living players, or anyone alive if you aren't on a side or have
@@ -109,6 +121,20 @@ local function viewOf(someone: Who.Someone): View?
 	return { eye = Units.toStuds(pose.position + vector.create(0, eye, 0)), yaw = pose.yaw, pitch = pose.pitch }
 end
 
+-- Whether you may take over who you're watching (system 62): a bot on your
+-- side, while what's played lets the dead (BotTakeover.open, from the
+-- arena's model), and you're down on a side, not waiting in line.
+local function takeable(target: Who.Someone?, arena: Instance?): boolean
+	local side = me:GetAttribute(ArenaConfig.SIDE)
+	return target ~= nil
+		and arena ~= nil
+		and target.player == nil
+		and typeof(side) == "number"
+		and target.holder:GetAttribute(ArenaConfig.SIDE) == side
+		and me:GetAttribute(ArenaConfig.LINE) == nil
+		and BotTakeover.open(arena:GetAttribute("Mode"), arena:GetAttribute("Format"), arena:GetAttribute("Phase"))
+end
+
 -- When you play next, as the line under the name says it. Gun game and both
 -- deathmatches have no rounds: the dead come back in a moment (systems 23,
 -- 26 and 27).
@@ -122,6 +148,21 @@ local function whenYouPlay(phase: any, mode: any): string
 		return "You come back in a moment"
 	end
 	return "You play from the next round"
+end
+
+-- Takes over the bot watched, as F does (system 62), once while it's asked
+-- for: whether it asked.
+function Spectate.takeControl(): boolean
+	local target = Spectate.watching
+	local now = os.clock()
+	if PlayerController.alive or not target or (askedFor == target.id and now - askedAt < TAKE_WAIT) then
+		return false
+	elseif not takeable(target, Workspace:FindFirstChild(ArenaConfig.MODEL)) then
+		return false
+	end
+	askedFor, askedAt = target.id, now
+	Remotes.get().TakeOver:FireServer(target.id)
+	return true
 end
 
 function Spectate.start()
@@ -190,6 +231,11 @@ function Spectate.start()
 		-- screen while it's open.
 		local over = phase == "matchOver" or phase == "vote" or PlayMenu.open
 		local text = whenYouPlay(phase, if arena then arena:GetAttribute("Mode") else nil)
+		if target and askedFor == target.id and now - askedAt < TAKE_WAIT then
+			text = "Taking control"
+		elseif takeable(target, arena) then
+			text = "F  take control"
+		end
 		if target and #list > 1 then
 			text ..= (if text ~= "" then "     " else "") .. "LEFT / RIGHT CLICK  switch"
 		end
@@ -206,6 +252,13 @@ function Spectate.start()
 	-- ends a death's moment early. Not while the mouse moves a cursor on the
 	-- big map, whose left click pings (system 52).
 	UserInputService.InputBegan:Connect(function(input, processed)
+		-- F takes over the bot watched (system 62).
+		if input.KeyCode == Enum.KeyCode.F then
+			if not processed and not CameraController.cursorFree and not CameraController.mapCursor then
+				Spectate.takeControl()
+			end
+			return
+		end
 		local step = if input.UserInputType == Enum.UserInputType.MouseButton1
 			then 1
 			elseif input.UserInputType == Enum.UserInputType.MouseButton2 then -1

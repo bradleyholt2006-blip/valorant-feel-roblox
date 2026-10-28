@@ -468,6 +468,13 @@ Built one system at a time:
     out of the blast when it's too late. Players come first: the bots leave a spike on the ground to
     a player on their side for 5 s, a player carrying it plants it where they choose, and a player
     defusing it is left to it - [research and design](docs/research/61-bots-and-the-spike.md)
+62. **Taking over a bot**: in Skirmish and the spike rounds, but not in Competitive, a player who's
+    died can play on as a bot of their side for the rest of the round, as Counter-Strike lets the
+    dead: watching it, F starts their new life in its body, where it stands and looking where it
+    looked, with its guns and their rounds, its health and shield, and the spike if it carries it.
+    The bot's out of the round with no death, and plays again from the next; what the player does in
+    its body counts for them, and they keep its guns if they live -
+    [research and design](docs/research/62-taking-over-bots.md)
 
 ## Running it
 
@@ -495,8 +502,9 @@ Controls: WASD, Shift walk, Ctrl crouch, Space jump, mouse 1 fire, mouse 2 zoom 
 R reload, 1/2/3 primary / secondary / knife (mouse 1 slashes and mouse 2 stabs), 4 the spike
 while you carry it (hold 4 to plant it in a site or to defuse it), G drops the gun or the spike
 in hand, F picks up the gun on the ground you're looking at (held, it takes an Ultimate Orb in
-the spike rounds, or defuses the spike), B buy menu (on the course at any time; in the arena
-during the buy phase and while waiting for an opponent; in deathmatch any time, guns alone; in
+the spike rounds, or defuses the spike; while you're down, it takes over the bot of your side you're
+watching), B buy menu (on the course at any time; in the arena during the buy phase and while
+waiting for an opponent; in deathmatch any time, guns alone; in
 Team Deathmatch B is the loadout menu, before the match or in your spawn room), Tab
 held the scoreboard (the arena and the spike rounds), mouse 1 and 2, while you're down in either,
 the next or the last teammate to watch,
@@ -756,8 +764,9 @@ its raised places and its window see, and how open its sites are) and bots (how 
 and which leave, what they buy, what they see and how fast, their turns by Fitts's law, duels by
 skill, checking corners, walking every map round its walls without getting stuck, and going round a
 map together) and bots playing for the spike (who goes for it, a bot's hands planting and defusing
-it, an attack on every map and a retake of every site, and getting out of the blast) are pure Luau
-and run outside Roblox:
+it, an attack on every map and a retake of every site, and getting out of the blast) and taking over
+a bot (who may and when, what it changes in the round and its callouts, and the body's kit from the
+server to the client) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

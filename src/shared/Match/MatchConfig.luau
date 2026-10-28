@@ -71,6 +71,11 @@ export type Format = {
 	overtime: Overtime,
 	overtimeSource: string,
 	economy: Economy,
+	-- Whether the dead may take over a bot on their side for the rest of a
+	-- round (system 62, BotTakeover), as Counter-Strike's casual modes let
+	-- them: not in Competitive, as Counter-Strike took bots out of its own
+	-- competitive mode (PC Gamer, 8 January 2021).
+	takeOver: boolean,
 }
 
 MatchConfig.Formats = {
@@ -85,6 +90,7 @@ MatchConfig.Formats = {
 		overtime = "suddenDeath",
 		overtimeSource = "Patch 1.03: 'Unrated will still use the original Sudden Death format'; the VALORANT Wiki: 'a final Endgame round played should the game reach a 12-12 scoreline' (community)",
 		economy = "standard",
+		takeOver = true,
 	},
 	competitive = {
 		name = "Competitive",
@@ -93,6 +99,7 @@ MatchConfig.Formats = {
 		overtime = "winByTwo",
 		overtimeSource = "Patch 1.03: 'teams will alternate playing rounds on attack and defense until a team claims victory by being up by 2 rounds'",
 		economy = "standard",
+		takeOver = false,
 	},
 	swiftplay = {
 		name = "Swiftplay",
@@ -105,6 +112,7 @@ MatchConfig.Formats = {
 		overtime = "suddenDeath",
 		overtimeSource = "ONE Esports: the mode has 'sudden death overtime' (community)",
 		economy = "swiftplay",
+		takeOver = true,
 	},
 } :: { [string]: Format }
 

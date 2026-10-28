@@ -522,6 +522,26 @@ function MatchRules.revived(s: State, id: number): boolean
 	return true
 end
 
+-- Whether `id` can take over the bot `bot` now (system 62): in a format
+-- that has it (MatchConfig's takeOver, not Competitive's), while the
+-- round's played, `id` down and `bot` alive, on one side. The rules know
+-- no bots: the server says which is one.
+function MatchRules.canTakeOver(s: State, id: number, bot: number): boolean
+	return s.format.takeOver and (s.phase == "live" or s.phase == "planted") and Roster.canTakeOver(s, id, bot)
+end
+
+-- `id` takes over `bot` (system 62): alive again in its place for the rest
+-- of the round, and it down, with no death in the record (Roster.takeOver),
+-- so each side has as many alive as before. Returns whether they did.
+function MatchRules.tookOver(s: State, id: number, bot: number): boolean
+	if not MatchRules.canTakeOver(s, id, bot) then
+		return false
+	end
+	Roster.takeOver(s, id, bot)
+	s.version += 1
+	return true
+end
+
 -- The spike has been planted, to go off at `detonateAt`: the round's clock
 -- gives way to the spike's, and every attacker is paid for it, alive or
 -- not. Too late once the round is over.

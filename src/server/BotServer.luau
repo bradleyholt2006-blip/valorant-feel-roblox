@@ -40,14 +40,15 @@
 -- Who plays where, and when, is the arena's (Arena): it asks for a bot
 -- (add) and lets one go (remove), puts it on a side (setSide), gives it its
 -- kit as it would a player (resetKit, give), asks for each life (spawn),
--- says where it starts (spawnPicker) and hears of each death
--- (deathListeners). Each bot has a stand-in in ReplicatedStorage's
--- BotConfig.FOLDER for clients: a Configuration named the bot's name, with
--- its entity id and its id in the rules, and whatever the arena keeps on a
--- player. They see and are seen as players are by the fog of war
--- (FogServer.bots) and the minimap (MinimapServer.bots). Workspace's
--- VFBotSkill attribute names the skill they play at (BotConfig.Skills),
--- from each one's next life.
+-- says where it starts (spawnPicker), hears of each death (deathListeners),
+-- and takes a bot out of play for a fallen player on its side who takes it
+-- over, its body theirs (takeOut, system 62). Each bot has a stand-in in
+-- ReplicatedStorage's BotConfig.FOLDER for clients: a Configuration named
+-- the bot's name, with its entity id and its id in the rules, and whatever
+-- the arena keeps on a player. They see and are seen as players are by the
+-- fog of war (FogServer.bots) and the minimap (MinimapServer.bots).
+-- Workspace's VFBotSkill attribute names the skill they play at
+-- (BotConfig.Skills), from each one's next life.
 --
 -- For checks in Studio, and only there, as it would tell an enemy's plan:
 -- each stand-in carries its bot's task in its side's plan
@@ -71,6 +72,7 @@ local BotMove = require(Shared.Bots.BotMove)
 local BotNav = require(Shared.Bots.BotNav)
 local BotSpike = require(Shared.Bots.BotSpike)
 local BotSpots = require(Shared.Bots.BotSpots)
+local BotTakeover = require(Shared.Bots.BotTakeover)
 local BotTeam = require(Shared.Bots.BotTeam)
 local FogOfWar = require(Shared.Combat.FogOfWar)
 local Health = require(Shared.Combat.Health)
@@ -1098,6 +1100,35 @@ function BotServer.fetching(id: number): boolean
 	local bot = botOf(id)
 	local job = if bot then bot.order else nil
 	return job ~= nil and job.task == "fetch"
+end
+
+-- A bot a fallen player takes over (system 62): out of play from now, with
+-- no death, its body the player's as it is (PlayerSimServer.Body): where it
+-- stands and looks, its kit, the spike's slot too, and its health and
+-- shield. Its guns go with it, and the arena says what its next life's on.
+-- Nil if it isn't alive and in play.
+function BotServer.takeOut(id: number): PlayerSimServer.Body?
+	local bot = botOf(id)
+	if not bot or not bot.alive or not bot.entity.health.alive then
+		return nil
+	end
+	local sim = bot.sim
+	local body: PlayerSimServer.Body = {
+		feet = sim.movement.position,
+		yaw = bot.yaw,
+		pitch = bot.pitch,
+		kit = BotTakeover.kitOf(sim.weapons),
+		health = table.clone(bot.entity.health),
+	}
+	bot.alive = false
+	bot.shown = nil
+	bot.order = nil
+	-- Nothing hurts, heals or counts it until its next life.
+	bot.entity.health.alive = false
+	for slot = 1, 2 do
+		WeaponSim.give(sim.weapons, slot, "")
+	end
+	return body
 end
 
 -- Reloads the gun in a living bot's hand at once, as

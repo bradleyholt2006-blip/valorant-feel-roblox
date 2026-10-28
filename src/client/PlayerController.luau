@@ -36,7 +36,9 @@
 -- between ticks, and the body stands facing the way it did as he sent it;
 -- as its flight's over, the view's back in the body, turned that way again,
 -- and so it is as the server ends it (an enemy's shots taking the last of
--- its health).
+-- its health). A life in a bot's body taken over (system 62) starts where the
+-- server says on the bot's kit as it was (CharacterRig.SPAWN_KIT), looking
+-- the way it did, so the first shots are the right gun's.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,6 +60,7 @@ local AbilitySim = require(Shared.Abilities.AbilitySim)
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local SlowSim = require(Shared.Abilities.SlowSim)
 local BarrierSim = require(Shared.Abilities.BarrierSim)
+local BotTakeover = require(Shared.Bots.BotTakeover)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
 local Remotes = require(Shared.Net.Remotes)
@@ -628,11 +631,16 @@ end
 -- Reading our own copy of the character instead gave a different spawn (76 mm
 -- out in the first Studio run), depending on when each side looked, and the
 -- first ack then counted that as a misprediction.
-local function spawnFeet(character: Model, r: BasePart): vector
+-- Nil for a character taken away again before its life started (a bot
+-- that was to be taken over fell first, system 62).
+local function spawnFeet(character: Model, r: BasePart): vector?
 	local value = character:GetAttribute(CharacterRig.SPAWN_FEET)
 	local deadline = os.clock() + 2
 	while typeof(value) ~= "Vector3" and os.clock() < deadline do
 		task.wait()
+		if character.Parent == nil then
+			return nil
+		end
 		value = character:GetAttribute(CharacterRig.SPAWN_FEET)
 	end
 	if typeof(value) == "Vector3" then
@@ -650,8 +658,8 @@ local function onCharacter(character: Model)
 	root = r
 	rootOffset = CharacterRig.rootOffset(character, r)
 	local feet = spawnFeet(character, r)
-	if localPlayer.Character ~= character then
-		return -- a newer character arrived while we waited
+	if not feet or localPlayer.Character ~= character then
+		return -- a newer character arrived while we waited, or none's left
 	end
 	-- This life's inputs start where the server says, past anything sent for
 	-- the last one, so acks from before it are old.
@@ -665,14 +673,24 @@ local function onCharacter(character: Model)
 		CameraController.yaw = yaw
 		CameraController.pitch = 0
 	end
+	-- A bot's body taken over (system 62) looks on as it did.
+	local pitch = character:GetAttribute(CharacterRig.SPAWN_PITCH)
+	if typeof(pitch) == "number" then
+		CameraController.pitch = pitch
+	end
 	-- The last life's weapons, as the server keeps them, but not the spike,
-	-- and its ability kit, with nothing under way.
+	-- and its ability kit, with nothing under way; in a bot's body, its kit
+	-- as it is, the spike too if it carries it.
 	local last = sim
-	local loadout = if last then table.clone(last.weapons.loadout) else nil
-	if loadout then
+	local kit = BotTakeover.readKit(character:GetAttribute(CharacterRig.SPAWN_KIT))
+	local loadout = if kit then table.clone(kit.loadout) elseif last then table.clone(last.weapons.loadout) else nil
+	if loadout and not kit then
 		loadout[Spike.SLOT] = ""
 	end
 	local fresh = PlayerSim.new(feet, loadout)
+	if kit then
+		BotTakeover.arm(fresh.weapons, kit)
+	end
 	if last then
 		fresh.abilities = AbilitySim.copy(last.abilities)
 		AbilitySim.settle(fresh.abilities)

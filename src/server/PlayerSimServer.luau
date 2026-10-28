@@ -45,7 +45,11 @@
 -- out. Sova's Owl Drone (system 47) flies in his simulation too: while it
 -- flies, his input is the drone's, so the snapshots show his body facing
 -- and looking as it did as he sent it, its gun away, and his view (view)
--- is the drone's. DroneServer shows the drone itself.
+-- is the drone's. DroneServer shows the drone itself. A fallen player who
+-- takes over a bot (system 62, BotTakeover) starts a new life in its body
+-- (takeOver): where it stands, on its kit, health and shield as they are,
+-- in play at once; and if the bot's gone by the time the new character's
+-- there, the character's taken away again and there's no life.
 --
 -- Each life numbers its inputs from InputQueue.LIFE_GAP past the last one the
 -- server ran, and tells the owner where (CharacterRig.FIRST_SEQ). So when a
@@ -79,6 +83,7 @@ local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local SlowSim = require(Shared.Abilities.SlowSim)
 local BarrierSim = require(Shared.Abilities.BarrierSim)
 local ReviveSim = require(Shared.Abilities.ReviveSim)
+local BotTakeover = require(Shared.Bots.BotTakeover)
 local Health = require(Shared.Combat.Health)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local InputQueue = require(Shared.Net.InputQueue)
@@ -122,6 +127,9 @@ type Record = {
 	-- the floor under the body, the way it faced, and when it was cast
 	-- (server time).
 	revive: { feet: vector, yaw: number, at: number }?,
+	-- A bot's body asked for (system 62), until the new life starts: what
+	-- hands it over then, or says it's gone.
+	takeover: (() -> Body?)?,
 }
 
 -- Called with the bullets of each round a player fires (several for a
@@ -130,6 +138,9 @@ export type ShotHandler = (shooter: Entities.Entity, shots: { WeaponSim.Shot }, 
 -- Called with each knife swing a player starts, and the input's viewTime.
 export type SwingHandler = (attacker: Entities.Entity, swing: WeaponSim.Swing, viewTime: number) -> ()
 export type SpawnPoint = { feet: vector, yaw: number }
+-- A bot's body taken over (system 62), as it is: its feet in metres, the
+-- way it looks, its kit (the spike's slot too) and its health and shield.
+export type Body = { feet: vector, yaw: number, pitch: number, kit: BotTakeover.Kit, health: Health.State }
 
 local PlayerSimServer = {}
 
@@ -202,6 +213,19 @@ local function newSim(r: Record): PlayerSim.State
 		loadout[Spike.SLOT] = ""
 	end
 	local sim = PlayerSim.new(r.spawnFeet, loadout, seeds:NextInteger(0, 2 ^ 31 - 1))
+	sim.abilities = AbilitySim.copy(r.sim.abilities)
+	AbilitySim.settle(sim.abilities)
+	return sim
+end
+
+-- A life in a bot's body (system 62): on its kit as it is, but for the
+-- spike, which SpikeServer hands over as the life starts; and, as any
+-- life, the player's own ability kit.
+local function takenSim(r: Record, kit: BotTakeover.Kit): PlayerSim.State
+	local loadout = table.clone(kit.loadout)
+	loadout[Spike.SLOT] = ""
+	local sim = PlayerSim.new(r.spawnFeet, loadout, seeds:NextInteger(0, 2 ^ 31 - 1))
+	BotTakeover.arm(sim.weapons, kit)
 	sim.abilities = AbilitySim.copy(r.sim.abilities)
 	AbilitySim.settle(sim.abilities)
 	return sim
@@ -281,10 +305,28 @@ local function onCharacter(r: Record, character: Model)
 	-- high as it's risen by now, facing the way it does.
 	local revive = r.revive
 	r.revive = nil
+	-- A bot's body taken over (system 62) starts where the bot is now, as
+	-- it is; with the bot gone meanwhile, there's no life, and the new
+	-- character's taken away again.
+	local take = if revive then nil else r.takeover
+	r.takeover = nil
+	local body = if take then take() else nil
+	if take and not body then
+		r.spawnAskedAt = nil
+		r.character, r.root = nil, nil
+		task.defer(function()
+			if r.player.Character == character then
+				r.player.Character = nil
+			end
+			character:Destroy()
+		end)
+		return
+	end
 	local now = Workspace:GetServerTimeNow()
 	local picker = PlayerSimServer.spawnPicker
 	local point: SpawnPoint? = if revive
 		then { feet = revive.feet + vector.create(0, ReviveSim.risen(revive.at, now), 0), yaw = revive.yaw }
+		elseif body then { feet = body.feet, yaw = body.yaw }
 		elseif picker then picker(r.player)
 		else nil
 	local feet = if point then point.feet else Units.toMetres(root.Position - Vector3.new(0, r.rootOffset, 0))
@@ -296,6 +338,11 @@ local function onCharacter(r: Record, character: Model)
 		r.yaw, r.pitch = point.yaw, 0
 		character:SetAttribute(CharacterRig.SPAWN_YAW, point.yaw)
 	end
+	if body then
+		r.pitch = body.pitch
+		character:SetAttribute(CharacterRig.SPAWN_PITCH, body.pitch)
+		character:SetAttribute(CharacterRig.SPAWN_KIT, BotTakeover.kitText(body.kit))
+	end
 	-- Held as it rises until it bursts out, and then for the fall, in the
 	-- life's own seconds.
 	local floatFor = if revive then math.max(ReviveSim.burstAt(revive.at) - now, 0) else nil
@@ -304,7 +351,7 @@ local function onCharacter(r: Record, character: Model)
 	end
 	character:SetAttribute(CharacterRig.SPAWN_FEET, Units.asVector3(r.spawnFeet))
 	r.spawnAskedAt = nil
-	r.sim = newSim(r)
+	r.sim = if body then takenSim(r, body.kit) else newSim(r)
 	if floatFor then
 		r.sim.abilities.floatUntil = floatFor
 		r.sim.abilities.heldUntil = floatFor + AbilityConfig.Resurrection.fall.value
@@ -316,18 +363,29 @@ local function onCharacter(r: Record, character: Model)
 	r.alive = true
 	restartPacing(r)
 	-- Brought back with full health 'excluding shields' (the VALORANT
-	-- Wiki): the shield worn, broken.
+	-- Wiki): the shield worn, broken. A bot's body taken over (system 62):
+	-- its health and shield as they are.
 	local kept = if revive
 		then ReviveSim.UNSHIELDED
+		elseif body then Health.keep(body.health)
 		elseif PlayerSimServer.keepShields and not r.freshKit then Health.keep(r.entity.health)
 		else nil
-	if r.freshKit then
+	if body then
+		-- The next life keeps this one's kit, as a survivor's does, unless
+		-- a death takes it back.
+		Health.setShield(r.entity.health, body.health.kind)
+		r.freshKit = false
+	elseif r.freshKit then
 		Health.setShield(r.entity.health, r.kitShield or WeaponConfig.DefaultShield)
 		r.freshKit = false
 	end
 	Health.reset(r.entity.health)
 	if kept then
 		Health.restore(r.entity.health, kept)
+	end
+	if body then
+		r.entity.health.health = body.health.health
+		r.entity.health.lastHit = body.health.lastHit
 	end
 	-- Out of play as the body rises, until it bursts out (ReviveServer).
 	if revive then
@@ -558,11 +616,13 @@ function PlayerSimServer.resetKit(player: Player, kit: { string }?, shield: stri
 end
 
 -- A new life has been asked for (the arena spawns everyone as a round
--- starts); it starts when Roblox has loaded the character.
+-- starts); it starts when Roblox has loaded the character, and a bot's
+-- body asked for before it (system 62) is forgotten.
 function PlayerSimServer.expectSpawn(player: Player)
 	local r = records[player]
 	if r then
 		r.spawnAskedAt = os.clock()
+		r.takeover = nil
 	end
 end
 
@@ -594,6 +654,25 @@ function PlayerSimServer.forgetRevive(player: Player)
 	if r then
 		r.revive = nil
 	end
+end
+
+-- A new life for a fallen player in a bot's body (system 62), asked for at
+-- once: as it starts, `take` hands the body over as it is then (Body) and
+-- the life starts in it, in play at once; or says it's gone, and there's
+-- no life. Any other life asked for before it starts (expectSpawn) is
+-- that life instead.
+function PlayerSimServer.takeOver(player: Player, take: () -> Body?)
+	local r = records[player]
+	if not r then
+		return
+	end
+	PlayerSimServer.expectSpawn(player)
+	r.takeover = take
+	task.defer(function()
+		if player.Parent and r.takeover == take then
+			player:LoadCharacterAsync()
+		end
+	end)
 end
 
 -- Whether a new life has been asked for and hasn't started yet.

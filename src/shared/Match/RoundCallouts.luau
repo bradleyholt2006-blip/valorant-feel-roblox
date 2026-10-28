@@ -146,6 +146,24 @@ function RoundCallouts.revived(r: Round, id: number)
 	end
 end
 
+-- Someone down takes over a bot on their side (system 62): alive again in
+-- its place, as if it were them who'd started the round in it, and it out
+-- of the round. Someone who joined the round under way is in it from now,
+-- on that side, their loadout worth what the bot's was.
+function RoundCallouts.tookOver(r: Round, id: number, bot: number)
+	local side = r.sides[bot]
+	if side == nil or not r.alive[bot] or r.alive[id] then
+		return
+	end
+	r.sides[bot], r.alive[bot] = nil, nil
+	r.sides[id], r.alive[id] = side, true
+	local worth = r.worth
+	if worth and worth[id] == nil then
+		worth[id] = worth[bot]
+	end
+	lastStand(r)
+end
+
 -- Someone's left the game: out of the round, though they didn't die in it.
 function RoundCallouts.left(r: Round, id: number)
 	if r.sides[id] ~= nil and r.alive[id] then

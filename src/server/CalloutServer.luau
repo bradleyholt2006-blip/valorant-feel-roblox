@@ -7,7 +7,8 @@
 -- callout decided as it ends, for the arena's model to carry to clients.
 -- Where loadouts are bought, each one's is worth its guns' and shield's
 -- prices as the round goes live. Bots (system 60) are in a round as players
--- are, and BotServer tells of their deaths.
+-- are, and BotServer tells of their deaths; the arena tells of a bot a
+-- fallen player takes over (system 62, tookOver).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -54,6 +55,15 @@ function CalloutServer.roundOver(winner: number): RoundCallouts.Callout?
 	local r = round
 	round = nil
 	return if r then RoundCallouts.decide(r, winner) else nil
+end
+
+-- A fallen player has taken over a bot on their side (system 62), by their
+-- ids in the rules: alive in its place, and it out of the round.
+function CalloutServer.tookOver(id: number, bot: number)
+	local r = round
+	if r then
+		RoundCallouts.tookOver(r, id, bot)
+	end
 end
 
 -- A buy phase starting, or a mode starting or stopping: no round under way.

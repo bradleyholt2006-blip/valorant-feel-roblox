@@ -44,8 +44,9 @@
 --   VFTestSlot     1 to 5: draws that slot as its number key does (3 is
 --                  the knife, 4 the spike while it's carried), or as X
 --                  does for 5, Blade Storm's knives; then clears itself
---   VFTestTake     true: takes the gun on the ground in view as F does
---                  (system 15), then clears itself
+--   VFTestTake     true: presses F, taking the gun on the ground in view
+--                  (system 15) or, watching a bot you may take over, the
+--                  bot (system 62); then clears itself
 --   VFTestBoard    true holds the scoreboard open as Tab does (system 16),
 --                  false lets it go; then clears itself
 --   VFTestSettingsMenu  true opens the settings menu, false closes it; then
@@ -117,6 +118,7 @@ local ShadowView = require(script.Parent.Parent.ShadowView)
 local PingView = require(script.Parent.Parent.PingView)
 local ReportView = require(script.Parent.Parent.ReportView)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
+local Spectate = require(script.Parent.Parent.Spectate)
 
 local TestAim = {}
 
@@ -216,7 +218,9 @@ function TestAim.start(controller: any)
 		end
 		if player:GetAttribute("VFTestTake") == true then
 			player:SetAttribute("VFTestTake", nil)
-			GroundGunsView.take()
+			if not Spectate.takeControl() then
+				GroundGunsView.take()
+			end
 		end
 		local board = player:GetAttribute("VFTestBoard")
 		if typeof(board) == "boolean" then

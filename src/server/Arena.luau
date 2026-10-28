@@ -152,6 +152,16 @@
 -- on a player for clients, it keeps on a bot's stand-in. Workspace's VFBots
 -- attribute, false, keeps them out.
 --
+-- A fallen player may take over a bot on their side for the rest of a round
+-- (system 62, BotTakeover): in Skirmish, and in the spike rounds but for
+-- Competitive's format, while a round's played, asked for with the TakeOver
+-- remote (F, watching it). Once their new character's there, if the bot
+-- still is, its body's theirs as it is (PlayerSimServer.takeOver,
+-- BotServer.takeOut): the rules have them alive in its place and it out of
+-- the round with no death (tookOver), and so do the callouts; the spike it
+-- carried is theirs (SpikeServer.botTaken), and its next life's on the
+-- starting kit.
+--
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
 -- off. So do Workspace's attributes, set from the server, which is how
@@ -296,6 +306,8 @@ local tdm: TeamDeathmatchRules.State? = nil
 local teams: { Team } = {}
 local published = -1
 local queued: { [Player]: boolean } = {} -- spawns asked for and not started yet
+-- The bot each player's new life is taking over (system 62), as it starts.
+local taking: { [Player]: number } = {}
 -- By id in the rules, a player's or a bot's: what MatchConfig.LOADOUT says
 -- of each one, and the match each last got the starting kit for.
 local loadouts: { [number]: string } = {}
@@ -1057,6 +1069,44 @@ local function fill()
 	end
 end
 
+-- Whether a fallen player, by their id in the rules, may take over a bot
+-- on their side now (system 62): where the rules let them, the bot alive.
+local function mayTakeOver(id: number, bot: number): boolean
+	local s, m = skirmish, match
+	if not BotServer.has(bot) or not BotServer.isAlive(bot) then
+		return false
+	end
+	return if s then ArenaRules.canTakeOver(s, id, bot) elseif m then MatchRules.canTakeOver(m, id, bot) else false
+end
+
+-- A fallen player asks to take over a bot on their side (system 62): a new
+-- life in its body, started once Roblox has their character ready, and only
+-- then, with the bot still there, handed over.
+local function takeOver(player: Player, bot: number)
+	local id = player.UserId
+	if not mayTakeOver(id, bot) or PlayerSimServer.isAlive(player) or PlayerSimServer.spawnPending(player) then
+		return
+	end
+	PlayerSimServer.takeOver(player, function(): PlayerSimServer.Body?
+		local body = if mayTakeOver(id, bot) then BotServer.takeOut(bot) else nil
+		if not body then
+			return nil
+		end
+		local s, m = skirmish, match
+		if s then
+			ArenaRules.tookOver(s, id, bot)
+		elseif m then
+			MatchRules.tookOver(m, id, bot)
+		end
+		CalloutServer.tookOver(id, bot)
+		-- Its guns went with its body.
+		startingKit(bot)
+		taking[player] = bot
+		publish()
+		return body
+	end)
+end
+
 -- What the spike rounds hear of the spike.
 local spikeEvents: SpikeServer.Events = {
 	planted = function(detonateAt: number)
@@ -1545,6 +1595,12 @@ function Arena.start()
 		end
 		publish()
 	end)
+	-- F watching a bot on their side, down: take it over (system 62).
+	Remotes.get().TakeOver.OnServerEvent:Connect(function(player, bot)
+		if typeof(bot) == "number" then
+			takeOver(player, bot)
+		end
+	end)
 	-- A vote for the next map, by its number in the list.
 	Remotes.get().Vote.OnServerEvent:Connect(function(player, option)
 		local s, m, g, d, t = skirmish, match, gun, dm, tdm
@@ -1889,6 +1945,12 @@ function Arena.start()
 	end
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
 		spawned(player.UserId)
+		-- A life in a bot's body (system 62): the spike it carried is theirs.
+		local bot = taking[player]
+		if bot then
+			taking[player] = nil
+			SpikeServer.botTaken(bot, player.UserId)
+		end
 	end)
 	local ATTACK = bit32.bor(PlayerSim.Buttons.Fire, PlayerSim.Buttons.AltFire)
 	table.insert(PlayerSimServer.tickListeners, function(player: Player, input: PlayerCodec.WireInput)
@@ -1945,6 +2007,7 @@ function Arena.start()
 	Players.PlayerRemoving:Connect(function(player)
 		local id = player.UserId
 		queued[player] = nil
+		taking[player] = nil
 		kitMatch[id] = nil
 		loadouts[id] = nil
 		killedWith[id] = nil

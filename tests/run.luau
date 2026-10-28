@@ -70,5 +70,6 @@ require("./mapkit")
 require("./heights")
 require("./bots")
 require("./botspike")
+require("./takeover")
 
 H.finish()

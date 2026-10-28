@@ -18,6 +18,12 @@ CharacterRig.SPAWN_YAW = "VFSpawnYaw"
 -- rises with the body and until when it's held, as seconds of that life's
 -- simulation (a Vector2: X and Y). Also set before SPAWN_FEET.
 CharacterRig.REVIVED = "VFRevived"
+-- And, for a life in a bot's body taken over (system 62), the way it
+-- looked up or down, in radians, and its kit as text (BotTakeover.kitText):
+-- the life starts on that kit, not the last one's. Also set before
+-- SPAWN_FEET.
+CharacterRig.SPAWN_PITCH = "VFSpawnPitch"
+CharacterRig.SPAWN_KIT = "VFSpawnKit"
 
 function CharacterRig.rootOffset(character: Model, root: BasePart): number
 	local humanoid = character:FindFirstChildOfClass("Humanoid")

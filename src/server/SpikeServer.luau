@@ -29,7 +29,8 @@
 -- does. Who carries it goes by their id in the rules, a player's UserId or
 -- a bot's. A bot picks it up only when it means to (its job is to fetch
 -- it, BotTeam), so it never takes it from under a player who's going for
--- it.
+-- it. A bot a fallen player takes over (system 62) hands them the spike it
+-- carries as their life in its body starts (botTaken).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -365,15 +366,20 @@ local function onAct(id: number, act: SpikeSim.Act)
 	end
 end
 
-local function onDeath(id: number)
-	local sim = simOf(id)
-	-- A defuse cut short by death keeps its half, as one let go of does.
+-- A defuse cut short keeps its half, as one let go of does: by a death, or
+-- by its bot's body taken over (system 62).
+local function keepHalf(sim: PlayerSim.State?)
 	if sim and state == "planted" and not halfSaved then
 		if SpikeSim.defuseProgress(sim.spike, sim.movement.tick * DT) >= P.defuseHalf.value - EPS then
 			halfSaved = true
 			publish()
 		end
 	end
+end
+
+local function onDeath(id: number)
+	local sim = simOf(id)
+	keepHalf(sim)
 	if carrier == id then
 		lay(if sim then sim.movement.position else carrierFeet or startAt)
 	end
@@ -579,6 +585,16 @@ end
 -- short is kept, and the spike it carried lies where it fell.
 function SpikeServer.botDied(id: number)
 	onDeath(id)
+end
+
+-- A bot a fallen player has taken over (system 62), as their life in its
+-- body starts: the half of a defuse it reached is kept, as at a death, and
+-- the spike it carried is theirs (`to`, their id in the rules).
+function SpikeServer.botTaken(id: number, to: number)
+	keepHalf(simOf(id))
+	if carrier == id then
+		hand(to)
+	end
 end
 
 -- The spike as the bots' plans know it, in the spike rounds; nil else.
