@@ -5302,8 +5302,8 @@ in Studio `VFBotTask`, its job in its side's plan (`gather`, `push`, `take`, `hu
 `VFBotSkill` (`easy`, `normal`, `hard` or `expert`) sets how well they play, from each one's next
 life. In Studio the Output says `[VF] BOT Ash stuck at (x, y, z), going another way` each time a
 bot's been stuck for 1.2 s, with where in metres in the map's own frame, and Workspace's `VFBotMs`
-has the milliseconds the bots take of each server frame. Bots don't carry, plant or defuse the spike
-yet, nor use abilities.
+has the milliseconds the bots take of each server frame. Bots don't use abilities; they play for the
+spike from system 61 (section 65).
 
 Start a Local Server with 1 player, as in section 9.
 
@@ -5440,15 +5440,18 @@ Start a Local Server with 1 player, as in section 9.
 
   The attacking side's bots read `gather`, then `push` together, then `take` once on the site (and
   `hunt` 20 s on with nobody seen). The defending side's read `hold`, and once attackers are seen at
-  a site all but one of those at the other read `rotate`. While it runs, hold Caps Lock for the big
-  map: your side's bots go together, attacking to the same site or defending to each way into the
-  sites, through doors and up stairs, never stopped against a wall or in a doorway, and spread out
-  rather than in a line or a heap. As they fight, the kill feed names them, and each one that dies
-  drops its gun where it falls, a part in Workspace's `VFGroundGuns`. The Output has no `stuck at`
-  line, or very few. Then for each of `quarry`, `foundry` and `wharf`, set `VFMatchMap` to it,
-  `VFArenaOn` to false and then true, and once round 1's buy phase starts run the script again.
-  **Send:** the Output's lines for each map, every `stuck at` line among them, and screenshots of
-  the big map as the attackers push and as the defenders hold.
+  a site all but one of those at the other read `rotate`. From system 61 they play for the spike too
+  (section 65): an attacker reads `fetch` and then `plant`, and once it's planted the attackers read
+  `guard` and the defenders `retake` and `defuse`, and either side `clear` as they get out of its
+  blast. While it runs, hold Caps Lock for the big map: your side's bots go together, attacking to
+  the same site or defending to each way into the sites, through doors and up stairs, never stopped
+  against a wall or in a doorway, and spread out rather than in a line or a heap. As they fight, the
+  kill feed names them, and each one that dies drops its gun where it falls, a part in Workspace's
+  `VFGroundGuns`. The Output has no `stuck at` line, or very few. Then for each of `quarry`,
+  `foundry` and `wharf`, set `VFMatchMap` to it, `VFArenaOn` to false and then true, and once round
+  1's buy phase starts run the script again. **Send:** the Output's lines for each map, every
+  `stuck at` line among them, and screenshots of the big map as the attackers push and as the
+  defenders hold.
 
 - **BT6 Following a player.** Set `VFArenaMode` to `teamdeathmatch`. Once its pre-game's over, run
   this in window 1's command bar, which every second for half a minute prints how far each of your
@@ -5491,6 +5494,102 @@ Start a Local Server with 1 player, as in section 9.
   false: as the round ends the bots leave and none join,
   `print(#game.ReplicatedStorage.VFBots:GetChildren())` prints `0`, and the match waits for players
   (`waiting`). Set it back to true: nine join, and the match goes on. **Send:** the numbers.
+
+## 65. Bots and the spike
+
+From [61-bots-and-the-spike.md](research/61-bots-and-the-spike.md). System 61 has bots play for the
+spike in the spike rounds. An attacking side's bots pick it up, carry it with their plan and plant
+it on the site they chose; once it's planted they guard it, each from a spot that sees it, and get
+out of the blast in time. Defending bots gather at the site's ways back in, push in together, and
+one defuses it while the rest stand round it, or they all get out of the blast when it's too late. A
+spike on the ground is left to a player on the side for 5 s of a live round first, a player carrying
+it plants it where they choose, and a player defusing it is left to it. In Studio a bot's
+`VFBotTask` has the new jobs: `fetch`, `plant`, `guard`, `retake`, `defuse` and `clear` (out of the
+blast). While a bot carries the spike, Workspace's `VFSpikeCarrier` is its id in the rules, below 0,
+and the debug HUD's `spike` line names it.
+
+Start a Local Server with 1 player, as in section 9, and set the spike rounds going on Outpost from
+the server's command bar, as in BT1: `VFMatchMap` `outpost`, `VFArenaMode` `spike`, then `VFArenaOn`
+true. You attack in the first half. Don't fight in these checks unless one says to: stay back and
+watch the bots.
+
+- **BS1 Left to you, then fetched.** As round 1's buy phase starts, stay in your spawn and leave the
+  spike where it lies. Run this in the server's command bar. It skips the buy phase, then every 2 s
+  for 2 minutes prints the phase, where the spike is and who has it, and the jobs of each side's
+  bots alive:
+
+  ```lua
+  local function nameOf(id)
+  	for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+  		if bot:GetAttribute("Id") == id then
+  			return bot.Name
+  		end
+  	end
+  	local player = game.Players:GetPlayerByUserId(id)
+  	return if player then player.Name else tostring(id)
+  end
+  workspace:SetAttribute("VFMatchSkip", true)
+  for k = 1, 60 do
+  	task.wait(2)
+  	local jobs = { {}, {} }
+  	for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+  		local side = bot:GetAttribute("VFArenaSide")
+  		if bot:GetAttribute("VFAlive") ~= false and jobs[side] then
+  			table.insert(jobs[side], tostring(bot:GetAttribute("VFBotTask")))
+  		end
+  	end
+  	local attackers = workspace.VFArena:GetAttribute("Attackers")
+  	local a, d = jobs[attackers], jobs[3 - attackers]
+  	table.sort(a)
+  	table.sort(d)
+  	local spike = workspace:GetAttribute("VFSpike")
+  	local carrier = workspace:GetAttribute("VFSpikeCarrier")
+  	if carrier ~= 0 then
+  		spike = spike .. " by " .. nameOf(carrier)
+  	elseif spike == "planted" then
+  		spike = spike .. " at " .. workspace:GetAttribute("VFSpikeSite")
+  	end
+  	local phase = workspace.VFArena:GetAttribute("Phase")
+  	print(k * 2, phase, spike, "attack: " .. table.concat(a, " "), "defend: " .. table.concat(d, " "))
+  end
+  ```
+
+  For the round's first few seconds the spike reads `dropped` and no attacker reads `fetch`; about
+  5 s in one does, and walks onto it: `carried by BOT ...`. The carrier goes with the others
+  (`gather`, `push`) and reads `plant` once through their way onto the site, and the spike reads
+  `planted at A` (or `B`), unless the defenders stop them. Once it's planted the attackers alive
+  read `guard`, the defenders `retake` and then one `defuse`. Either it's defused, or with about
+  10 s left the attackers alive read `clear` and leave the site, and none of them dies as it goes
+  off (`detonated`). Follow the carrier to watch where it plants and where the others stand.
+  **Send:** the Output's lines, and how the plant and the guarding looked.
+
+- **BS2 Your spike.** In round 2 (run BS1's script again as its buy phase starts), pick the spike
+  up, go with your side's bots to their site, and in its plant area press G to drop the spike. It
+  reads `dropped`, and about 5 s later a bot reads `fetch`, picks it up and plants it as the side
+  takes the site. In round 3 carry it and plant it yourself (hold 4 in the plant area): your side's
+  bots read `guard`, each where it sees the spike, and with about 10 s left `clear`, and leave;
+  leave too. **Send:** the Output's lines for both rounds.
+
+- **BS3 On screen.** While a bot of your side carries the spike, in BS1 or BS2, press F3: the debug
+  HUD's `spike` line reads `carried by BOT ...`, with that bot's name. Hold Caps Lock for the big
+  map: the carrier's mark is on that bot, as on a teammate carrying it. When it plants:
+  `SPIKE PLANTED` across the screen, the beeping, and the clock giving way to `SPIKE`, as for a
+  player's plant. **Send:** screenshots of the HUD's line and the big map with the mark.
+
+- **BS4 Defending with bots.** Set `VFArenaOn` false, `VFMatchFormat` `swiftplay` and `VFArenaOn`
+  true, and skip the first half's four rounds before anyone plants (`VFMatchSkip` twice a round, for
+  its buy phase and then the round), so you defend from round 5. Run BS1's script as round 5's buy
+  phase starts, and stay in your spawn. The attacking bots read `fetch` as the round starts, with no
+  player on their side to leave the spike to, and plant it. Your side's bots read `retake`: they
+  gather at the ways back into that site and go in together, one reads `defuse` and the others stand
+  round the spike, and the round's yours with `Spike defused`, unless the attackers stop them. If a
+  retake comes too late, they read `clear` and leave the site instead. In round 6, once it's
+  planted, go to it and hold 4 to defuse it yourself: while you're at it, no bot of yours reads
+  `defuse`. **Send:** the Output's lines for both rounds.
+
+- **BS5 What it costs.** Set `VFMatchMap` to `wharf`, `VFArenaOn` to false and then true. In a live
+  round, as a plant goes down and the retake starts, run `print(workspace:GetAttribute("VFBotMs"))`
+  in the server's command bar a few times: well under the frame's 16.7. **Send:** the numbers.
 
 ## Results
 
@@ -5925,6 +6024,11 @@ BT5 Outpost: ___; Quarry: ___; Foundry: ___; Wharf: ___; the stuck at lines: ___
 BT6 the distances: ___; anyone left behind or walking into a wall: ___
 BT7 rounds won / lost: Easy ___ / ___, Normal ___ / ___, Hard ___ / ___, Expert ___ / ___; too good, about right or too easy: ___; robotic: ___
 BT8 VFBotMs: ___; with VFBots false: ___; back on: ___
+BS1 the Output's lines: ___; the plant and the guarding: ___
+BS2 dropped for a bot: ___; planted yourself: ___
+BS3 the HUD's line: ___; the mark on the bot: yes / no; SPIKE PLANTED for a bot's plant: yes / no
+BS4 the bots' retake: ___; with you defusing: ___
+BS5 VFBotMs around a plant on Wharf: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6306,3 +6410,9 @@ Didn't look right (IDs and what you saw):
 | 60 | How they fight in the place's real geometry: noticing, stopping to shoot, bursts, and whether Normal is beatable | BT7 |
 | 60 | Going round the spike maps together and following a player, without walking into walls, on Roblox's own collisions | BT5, BT6 |
 | 60 | What nine bots cost the server | BT8 |
+| 61 | Bots picking the spike up, carrying it and planting it in the place's real geometry, on Roblox's own collisions, and the plant going down in the plant area | BS1, BS2 |
+| 61 | A bot's plant and defuse going through the round as a player's do: what's shown and heard, and the round won | BS3, BS4 |
+| 61 | Players first: a spike dropped by a player left to them for 5 s, and a player carrying it or defusing it | BS1, BS2, BS4 |
+| 61 | Attackers watching the spike and leaving the blast in time; defenders retaking together and defusing, or leaving the blast when it's too late | BS1, BS2, BS4 |
+| 61 | A bot carrying the spike on the minimap for its side, and named in the debug HUD | BS3 |
+| 61 | What the bots cost the server around a plant | BS5 |

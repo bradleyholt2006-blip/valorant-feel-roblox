@@ -99,7 +99,9 @@ Spike.BeepSource = "Mobalytics and TRN Checkpoint: 'The first 25 seconds = one b
 -- Workspace attributes the server keeps the spike's state in, for every
 -- client: what it's doing, where, and when.
 Spike.STATE = "VFSpike" -- "none", "carried", "dropped", "planted", "defused" or "detonated"
-Spike.CARRIER = "VFSpikeCarrier" -- the carrier's UserId while carried, else 0
+-- The carrier's id in the rules while carried (a player's UserId, or a
+-- bot's, system 61), else 0.
+Spike.CARRIER = "VFSpikeCarrier"
 -- Metres, as a Vector3, while dropped or planted (and after, where it was):
 -- metres so the client's copy of a planted spike is exactly the server's.
 Spike.POSITION = "VFSpikePosition"
