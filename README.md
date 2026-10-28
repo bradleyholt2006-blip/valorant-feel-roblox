@@ -424,6 +424,13 @@ Built one system at a time:
     sound, higher with each kill. In the arena and the spike rounds it counts the round's kills, and
     anywhere else a life's. Only the killer sees it, and an ability's kills have it too -
     [research and design](docs/research/55-kill-banner.md)
+56. **Round-end callouts**: a round of the arena or the spike rounds won in a way worth naming has
+    its name on the banner in place of ROUND WON: ACE when one of the winners killed every enemy,
+    TEAM ACE when each of them killed one, FLAWLESS when none of them died, which the losers see
+    too, CLUTCH when they were down to their last against two or more, and in the spike rounds
+    THRIFTY when their loadouts were worth 2500 credits less on average. A round gets the first that
+    holds, in that order; an ace needs two or more enemies, and a team ace or a flawless two or more
+    winners - [research and design](docs/research/56-round-callouts.md)
 
 ## Running it
 
@@ -614,7 +621,10 @@ hit's is (`LastHurt`), the yellow chevrons (`Danger`) and whether the red diamon
 and `VFCombatHud` whether the health and the magazine's count read low (`LowHealth` and `LowAmmo`).
 PlayerGui's `VFKillBanner` carries the latest banner's number (`Count`, 0 before one), the marks it
 lit (`Marks`), whether it was a headshot (`Headshot`), whose kill it was (`Victim`), its kill
-sound's playback speed (`Pitch`) and whether a banner's up (`Shown`).
+sound's playback speed (`Pitch`) and whether a banner's up (`Shown`). The arena's model,
+`Workspace.VFArena`, carries the callout of the round just played until the next buy phase
+(`Callout`: `ace`, `teamAce`, `flawless`, `clutch` or `thrifty`), and PlayerGui's `VFArenaBanner`
+the banner's words (`Title`).
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -686,10 +696,12 @@ bullets by part, hits in the reports they touch by weapon and by part, bursts an
 what nobody did and yourself, kills and deaths, the rows' order, whole points, a report's stretch,
 and the text checks read), the damage and danger indicators (a hit's way and where it shows on the
 ring, arcs renewed and giving way, their fade, arcs pointing as you move, the pulse, fires and walls
-near and reaching you, low health and low ammo, and the text checks read) and the kill banner (which
+near and reaching you, low health and low ammo, and the text checks read), the kill banner (which
 kills count, each killer's count by the life and by the round, the headshot mark, the marks and the
-top banner, how a banner comes up and fades, and the kill sound rising with the count) are pure Luau
-and run outside Roblox:
+top banner, how a banner comes up and fades, and the kill sound rising with the count) and the
+round-end callouts (what makes each, which one a round won with several gets, the sides too small
+for them, deaths that don't count, a life brought back and someone leaving, what each side's banner
+says, and a loadout's worth) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

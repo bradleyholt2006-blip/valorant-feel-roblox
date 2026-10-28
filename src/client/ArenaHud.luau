@@ -39,6 +39,12 @@
 -- ultimate's ready (AbilityConfig.ULT_ATTRIBUTE). The HUD's Yours and
 -- Theirs attributes list the tiles as Glance.describe has them, for
 -- scripted checks.
+--
+-- A round of Skirmish or the spike rounds won in a way worth naming has its
+-- callout in place of ROUND WON (system 56, RoundCallouts): ACE, TEAM ACE,
+-- FLAWLESS, CLUTCH or THRIFTY, as the arena's model's Callout names it. Its
+-- losers see ROUND LOST, or the winners' FLAWLESS. VFArenaBanner's Title
+-- attribute has the banner's words, for scripted checks.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -59,6 +65,7 @@ local AgentSelect = require(Shared.Abilities.AgentSelect)
 local Glance = require(Shared.Abilities.Glance)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local MatchRules = require(Shared.Match.MatchRules)
+local RoundCallouts = require(Shared.Match.RoundCallouts)
 local SpikeMaps = require(Shared.Match.SpikeMaps)
 local PlayerSim = require(Shared.PlayerSim)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
@@ -85,6 +92,12 @@ local REASONS: { [string]: { won: string, lost: string } } = {
 	defused = { won = "Spike defused", lost = "Spike defused" },
 	time = { won = "Time ran out before a plant", lost = "Time ran out before a plant" },
 }
+
+-- The callout of the round just played, if it has one (system 56).
+local function calloutOf(arena: Instance): string?
+	local callout = arena:GetAttribute("Callout")
+	return if typeof(callout) == "string" then callout else nil
+end
 
 local function color3(c: VisualConfig.Colour): Color3
 	return Color3.fromRGB(c.rgb[1], c.rgb[2], c.rgb[3])
@@ -376,6 +389,7 @@ function ArenaHud.start()
 			guns.Visible = false
 			banner.Visible = false
 			subtitle.Visible = false
+			centre:SetAttribute("Title", "")
 			seenLevel, seenPhase = nil, nil
 			hideTiles()
 			gui:SetAttribute("Yours", nil)
@@ -469,7 +483,7 @@ function ArenaHud.start()
 				sub = table.concat(stakes, "   ")
 			elseif phase == "roundOver" then
 				local won = arena:GetAttribute("RoundWinner") == side
-				title = if won then "ROUND WON" else "ROUND LOST"
+				title = RoundCallouts.title(calloutOf(arena), won)
 				colour = if won then ally else enemy
 				local reason = REASONS[arena:GetAttribute("Reason") or ""]
 				sub = if reason then (if won then reason.won else reason.lost) else ""
@@ -643,7 +657,7 @@ function ArenaHud.start()
 				sub = (if roundNumber == 1 and map then string.upper(map.name) .. "   " else "") .. "B buy menu"
 			elseif phase == "roundOver" then
 				local won = arena:GetAttribute("RoundWinner") == side
-				title = if won then "ROUND WON" else "ROUND LOST"
+				title = RoundCallouts.title(calloutOf(arena), won)
 				colour = if won then ally else enemy
 			end
 		end
@@ -654,6 +668,7 @@ function ArenaHud.start()
 		banner.Visible = title ~= ""
 		banner.Text = title
 		banner.TextColor3 = colour
+		centre:SetAttribute("Title", title)
 		subtitle.Visible = sub ~= ""
 		subtitle.Text = sub
 	end)
