@@ -431,6 +431,13 @@ Built one system at a time:
     THRIFTY when their loadouts were worth 2500 credits less on average. A round gets the first that
     holds, in that order; an ace needs two or more enemies, and a team ace or a flawless two or more
     winners - [research and design](docs/research/56-round-callouts.md)
+57. **Buying for teammates**: in the spike rounds, a right click on a gun you don't have in the buy
+    menu asks your team for it. A team panel left of the menu has a card for each of your side, with
+    their credits, gun and shield, their plan (saving, buying or extra credits, from the panel's
+    buttons) and the gun they're asking for, with BUY to buy it for them, and the ping's blip plays
+    for a request. The buyer pays, and the gun's the teammate's as if they'd bought it; selling it
+    back, or buying another gun over it, gives the buyer their credits back -
+    [research and design](docs/research/57-team-buying.md)
 
 ## Running it
 
@@ -624,7 +631,9 @@ lit (`Marks`), whether it was a headshot (`Headshot`), whose kill it was (`Victi
 sound's playback speed (`Pitch`) and whether a banner's up (`Shown`). The arena's model,
 `Workspace.VFArena`, carries the callout of the round just played until the next buy phase
 (`Callout`: `ace`, `teamAce`, `flawless`, `clutch` or `thrifty`), and PlayerGui's `VFArenaBanner`
-the banner's words (`Title`).
+the banner's words (`Title`). Each player carries the gun they're asking their team for
+(`VFRequest`), their plan (`VFPlan`: `save`, `buy` or `extra`) and who paid for each of `VFBought`'s
+(`VFBoughtBy`: a teammate's UserId, or "" for themselves).
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -698,10 +707,12 @@ and the text checks read), the damage and danger indicators (a hit's way and whe
 ring, arcs renewed and giving way, their fade, arcs pointing as you move, the pulse, fires and walls
 near and reaching you, low health and low ammo, and the text checks read), the kill banner (which
 kills count, each killer's count by the life and by the round, the headshot mark, the marks and the
-top banner, how a banner comes up and fades, and the kill sound rising with the count) and the
+top banner, how a banner comes up and fades, and the kill sound rising with the count), the
 round-end callouts (what makes each, which one a round won with several gets, the sides too small
 for them, deaths that don't count, a life brought back and someone leaving, what each side's banner
-says, and a loadout's worth) are pure Luau and run outside Roblox:
+says, and a loadout's worth) and buying for teammates (what can be asked for, asking and taking it
+back, plans, when a request can be bought and by whom, and whose credits go where as a gun bought
+for a teammate is sold back, replaced or dropped) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

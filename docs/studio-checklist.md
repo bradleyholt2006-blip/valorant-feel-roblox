@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-six
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-seven
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -35,7 +35,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
    three, section 55 three, section 56 one and then three, section 57 one and then two, section 58
-   one and then two, section 59 one and then two, and section 60 two and then three.
+   one and then two, section 59 one and then two, section 60 two and then three, and section 61
+   three.
 
 | Key | What it does |
 | --- | --- |
@@ -4808,6 +4809,157 @@ between them, and start the watch in all three windows.
   `title 'ROUND LOST', callout clutch`. Player 2 started the round one against two and won it, and
   didn't kill player 3, so it's no ace.
 
+## 61. Buying for teammates
+
+From [57-team-buying.md](research/57-team-buying.md). Three players in the spike rounds. Each player
+carries their credits as `VFCredits`, the gun they're asking their team for as `VFRequest`, their
+plan as `VFPlan`, what they've bought this buy phase as `VFBought`, who paid for each as
+`VFBoughtBy` (a teammate's id, or nothing for themselves) and their guns as `VFLoadout`. To see them
+change as they happen, run this watch in the server's command bar: for 120 s it prints all three
+players each time any of it changes, with the seconds since it started.
+
+```lua
+local start, last = os.clock(), nil
+task.spawn(function()
+	while os.clock() - start < 120 do
+		local lines = {}
+		for _, p in game.Players:GetPlayers() do
+			table.insert(lines, string.format(
+				"%s: %s credits, wants %s, plan %s, bought '%s' by '%s', guns '%s'",
+				p.Name,
+				tostring(p:GetAttribute("VFCredits")),
+				tostring(p:GetAttribute("VFRequest")),
+				tostring(p:GetAttribute("VFPlan")),
+				tostring(p:GetAttribute("VFBought")),
+				tostring(p:GetAttribute("VFBoughtBy")),
+				tostring(p:GetAttribute("VFLoadout"))
+			))
+		end
+		table.sort(lines)
+		local now = table.concat(lines, "\n")
+		if now ~= last then
+			print(string.format("%.1f s:\n%s", os.clock() - start, now))
+			last = now
+		end
+		task.wait(0.05)
+	end
+end)
+```
+
+Stop the game and start a Local Server with 3 players, as in section 9. Player 1's id is 4294967295,
+player 2's 4294967294 and player 3's 4294967293. Press P three times in window 1 (Skirmish, gun
+game, then the spike rounds), and LOCK IN in all three windows as round 1's buy phase starts.
+Players 1 and 3 attack and player 2 defends, as in section 25, each with the Classic and the knife,
+no shield and 800 credits. Without a mouse, `VFTestTeam` on a player right-clicks a gun in the buy
+menu (`ask sheriff`), presses BUY on a teammate's card (`buy 4294967293`) or presses a plan's button
+(`plan extra`); `VFTestBuy` and `VFTestMenu` are as before. The code blocks below set them from the
+server's command bar, each through `send`, which clears the attribute first so the same value can be
+sent twice, and print each step's ID as it starts, a few seconds apart, so the watch's lines fall
+under it. Run round 1's block as soon as the three have locked in: round 1's buy phase lasts 45 s.
+
+Start the watch, then run this, which opens the buy menu in all three windows and goes through TB1
+to TB6:
+
+```lua
+local p1, p2, p3 = game.Players.Player1, game.Players.Player2, game.Players.Player3
+local function send(p, key, value)
+	p:SetAttribute(key, nil)
+	task.wait(0.2)
+	p:SetAttribute(key, value)
+	task.wait(1)
+end
+send(p1, "VFTestMenu", true)
+send(p2, "VFTestMenu", true)
+send(p3, "VFTestMenu", true)
+print("TB1")
+task.wait(4)
+print("TB2")
+send(p3, "VFTestTeam", "ask sheriff")
+task.wait(4)
+print("TB3")
+send(p1, "VFTestTeam", "buy 4294967293")
+task.wait(3)
+print("TB4")
+send(p3, "VFTestBuy", "-sheriff")
+task.wait(2)
+print("TB5")
+send(p3, "VFTestTeam", "ask ghost")
+send(p2, "VFTestTeam", "buy 4294967293")
+task.wait(2)
+print("TB6")
+send(p3, "VFTestTeam", "ask ghost")
+send(p1, "VFTestTeam", "plan extra")
+task.wait(4)
+send(p1, "VFTestTeam", "plan extra")
+```
+
+- **TB1 The team panel.** Left of each buy menu is a panel headed `TEAM`, with `SAVING`, `BUYING`
+  and `EXTRA` buttons under `YOUR PLAN` and a card for each of the window's side under `YOUR SIDE`.
+  Window 1's has `Player1` first, in gold, then `Player3`, each with `800` in gold and `CLASSIC`
+  under the name; window 3's has `Player3` first, then `Player1`; window 2's has `Player2` alone.
+  Nobody's card is on the other side's panel. The help line at the bottom of each menu ends
+  `or to ask your team for a gun   B to close`. **Send:** a screenshot of window 1's menu.
+
+- **TB2 Asking.** Player 3 asks for a Sheriff. The watch prints
+  `Player3: 800 credits, wants sheriff`. Window 1 plays the ping's blip, and player 3's card there
+  reads `WANTS SHERIFF  800` in blue, with a gold `BUY`. In window 3 the Sheriff's tile is outlined
+  in blue and tagged `REQUESTED`, and player 3's own card reads `YOU WANT SHERIFF` with `CANCEL`.
+  Window 2 plays nothing, and its card doesn't change.
+
+- **TB3 Buying it for them.** Player 1 presses BUY on player 3's card. The watch prints
+  `Player1: 0 credits` and
+  `Player3: 800 credits, wants nil, plan nil, bought 'sheriff' by '4294967295', guns ',sheriff'`:
+  player 1 paid, player 3 didn't, and the Sheriff is player 3's, bought by player 1. Window 3 has
+  the Sheriff in hand, and its card no longer shows a request.
+
+- **TB4 Selling it back.** Player 3 sells the Sheriff back. The watch prints `Player1: 800 credits`
+  and `Player3: 800 credits, wants nil, plan nil, bought '' by '', guns ',classic'`: the refund went
+  to player 1, who bought it.
+
+- **TB5 Not the other side.** Player 3 asks for a Ghost, and player 2, on the other side, tries to
+  buy it for them. The watch prints `Player3: 800 credits, wants ghost`, and then nothing more:
+  player 2 keeps `800 credits`, and player 3 still wants the Ghost.
+
+- **TB6 Taking it back, and a plan.** Player 3 asks for the Ghost again, which takes the request
+  back, and player 1 picks EXTRA. The watch prints `Player3: 800 credits, wants nil` and then
+  `Player1: 800 credits, wants nil, plan extra`. For 4 s window 1's `EXTRA` button is gold and
+  player 1's card in window 3 reads `EXTRA CREDITS` under the gun. Then player 1 picks EXTRA again,
+  and the watch prints `plan nil` for them.
+
+Skip the rest of the round: `VFMatchSkip` twice in the server's command bar, a few seconds apart.
+Nobody plants, and the round goes to player 2's side on time. In round 2's buy phase (30 s),
+players 1 and 3 have 1800 credits each (800, and 1000 for a loss lived through without a plant, as
+in Q8) and player 2 3800. Start the watch again, then run this:
+
+```lua
+local p1, p2, p3 = game.Players.Player1, game.Players.Player2, game.Players.Player3
+local function send(p, key, value)
+	p:SetAttribute(key, nil)
+	task.wait(0.2)
+	p:SetAttribute(key, value)
+	task.wait(1)
+end
+send(p1, "VFTestMenu", true)
+send(p3, "VFTestMenu", true)
+send(p3, "VFTestTeam", "ask spectre")
+send(p1, "VFTestTeam", "buy 4294967293")
+task.wait(2)
+send(p3, "VFTestBuy", "stinger")
+task.wait(2)
+send(p3, "VFTestTeam", "ask operator")
+task.wait(4)
+send(p1, "VFTestTeam", "buy 4294967293")
+```
+
+- **TB7 Another gun over it, and too dear.** Player 1 buys player 3 a Spectre: the watch prints
+  `Player1: 200 credits`, and for player 3 `1800 credits, wants nil, plan nil` and
+  `bought 'spectre' by '4294967295', guns 'spectre,classic'`. Player 3 then buys a Stinger over it:
+  `Player1: 1800 credits`, the Spectre's 1600 back, and for player 3 `850 credits` and
+  `bought 'stinger' by '', guns 'stinger,classic'`, the Stinger's full 950 paid. Player 3 then asks
+  for an Operator: for 4 s player 3's card in window 1 reads `WANTS OPERATOR  4700` with a red
+  `SHORT`. Player 1's BUY then changes nothing: the watch prints nothing more, player 1 keeping
+  1800.
+
 ## Results
 
 ```
@@ -5216,6 +5368,13 @@ CO4 window 2's watch: ___; windows 1 and 3: ___
 CO5 windows 1 and 3: ___; window 2: ___; window 2's banner colour: ___
 CO6 windows 1 and 3: ___; window 2: ___
 CO7 window 2's watch: ___; window 1's watch: ___
+TB1 window 1's cards: ___; window 3's: ___; window 2's: ___; the help line's end: ___
+TB2 the watch: ___; window 1's blip: yes / no; player 3's card in window 1: ___; window 3's Sheriff tile: ___; window 2 played anything: yes / no
+TB3 the watch: ___; the Sheriff in player 3's hands: yes / no
+TB4 the watch: ___
+TB5 the watch: ___
+TB6 the watch: ___; window 1's EXTRA button: ___; player 1's card in window 3: ___
+TB7 the watch after the Spectre: ___; after the Stinger: ___; player 3's card in window 1: ___; after the last BUY: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -5571,3 +5730,10 @@ Didn't look right (IDs and what you saw):
 | 56 | One against two in Skirmish: the one killing both, ACE; the two winning with nobody dead, FLAWLESS on all three screens; one against one at the end, nothing | CO4, CO5, CO6 |
 | 56 | The one alone against two winning after one of them leaves: CLUTCH | CO7 |
 | 56 | The callout gone as the next buy phase starts | CO1 |
+| 57 | In the spike rounds, the team panel left of the buy menu: a card for each of your side, you first, with their credits and gun, and nobody from the other side | TB1 |
+| 57 | A teammate asking for a gun: the ping's blip, and their card showing the gun with BUY; their own tile for it reading REQUESTED | TB2 |
+| 57 | BUY: the buyer pays its price, and the gun's in the asker's hands, bought by the buyer | TB3 |
+| 57 | Selling it back: the buyer's credits back | TB4 |
+| 57 | The other side can't buy it | TB5 |
+| 57 | Asking again takes it back; a plan on the card, gone when picked again | TB6 |
+| 57 | Buying another gun over one bought for you: the buyer's credits back; a request for more than the buyer has: SHORT, and nothing bought | TB7 |
