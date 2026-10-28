@@ -39,9 +39,11 @@
 --
 -- Each damage event says whether the bullets went through a wall first, for
 -- the kill feed (system 16), and every hit that took something is told to
--- damageListeners, for the match's record. Every kill is told to
--- killListeners, for the ability kit's points (system 17), with what made it
--- (a single Blade Storm knife brings them all back, system 19).
+-- damageListeners, for the match's record and the combat report (system
+-- 53), with what made it and how many of its bullets or blades struck each
+-- part. Every kill is told to killListeners, for the ability kit's points
+-- (system 17), with what made it (a single Blade Storm knife brings them
+-- all back, system 19).
 --
 -- A hit that would kill someone can spare them instead (Phoenix's Run it
 -- Back, system 33, CombatServer.spares): they've taken it and are out of
@@ -93,12 +95,18 @@ local FogServer = require(script.Parent.FogServer)
 
 local DT = 1 / MovementConfig.TickRate.value
 
+-- What made a hit: a gun's, a knife's or an ability's id (WeaponConfig's),
+-- and for bullets and blades how many struck each part; a burst (a Shock
+-- Bolt's, a Hunter's Fury blast's) strikes no part, and a fire's burn and
+-- the spike's blast aren't strikes at all.
+export type Hit = { weapon: string, parts: Volley.Parts?, burst: boolean? }
+
 local CombatServer = {}
 
 -- Called with every hit that took health or shield: who did it (nil for the
--- spike's blast and a spawn room's burn), to whom, and how much, before a
--- kill's death listeners.
-CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, number) -> () }
+-- spike's blast and a spawn room's burn), to whom, how much, and what made
+-- it, before a kill's death listeners.
+CombatServer.damageListeners = {} :: { (Entities.Entity?, Entities.Entity, number, Hit) -> () }
 -- Called with every kill, players' and dummies' alike: who did it (nil for
 -- the spike's blast and a spawn room's burn), who died, the weapon and the
 -- mode it fired in (a WeaponSim.Shot's; nil for a swing, the blast or a
@@ -136,7 +144,7 @@ function CombatServer.record(time: number, poses: { PlayerCodec.Pose })
 end
 
 -- `attacker` is nil for damage nobody caused (the spike's blast, a spawn
--- room's burn);
+-- room's burn); `how`, what made it;
 -- `wallbang`, that the bullets went through a wall on the way; `mode`, the
 -- way the weapon fired, for a shot; `untagged`, that it doesn't slow (a
 -- fire's burn); `shade`, for a shot or a swing, whether the victim was a
@@ -146,12 +154,13 @@ local function damage(
 	victim: Entities.Entity,
 	amount: number,
 	region: string,
-	weapon: string,
+	how: Hit,
 	wallbang: boolean?,
 	mode: string?,
 	untagged: boolean?,
 	shade: boolean?
 ): Health.DamageResult
+	local weapon = how.weapon
 	local absorbs = CombatServer.absorbs
 	if absorbs and absorbs(victim, attacker, shade) then
 		return { damage = 0, shieldDamage = 0, healthDamage = 0, killed = false }
@@ -164,7 +173,7 @@ local function damage(
 	end
 	if result.damage > 0 then
 		for _, listener in CombatServer.damageListeners do
-			listener(attacker, victim, result.damage)
+			listener(attacker, victim, result.damage, how)
 		end
 	end
 	-- A hit from nobody (a spawn room's burn) doesn't slow, nor does fire,
@@ -202,7 +211,7 @@ local LETHAL = 1e4
 -- attacker.
 function CombatServer.kill(victim: Entities.Entity, weapon: string)
 	if victim.health.alive then
-		damage(nil, victim, LETHAL, "body", weapon)
+		damage(nil, victim, LETHAL, "body", { weapon = weapon })
 	end
 end
 
@@ -211,7 +220,7 @@ end
 -- hear of it as damage with no attacker, and a kill if it was the last.
 function CombatServer.hurt(victim: Entities.Entity, amount: number, weapon: string)
 	if victim.health.alive then
-		damage(nil, victim, amount, "body", weapon)
+		damage(nil, victim, amount, "body", { weapon = weapon })
 	end
 end
 
@@ -221,7 +230,7 @@ end
 -- bullets' ("Bullet tagging", Patch 3.0).
 function CombatServer.burn(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string)
 	if victim.health.alive then
-		damage(attacker, victim, amount, "body", weapon, nil, nil, true)
+		damage(attacker, victim, amount, "body", { weapon = weapon }, nil, nil, true)
 	end
 end
 
@@ -231,7 +240,7 @@ end
 -- kit's points. A burst doesn't slow, as fire doesn't.
 function CombatServer.blast(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string)
 	if victim.health.alive then
-		damage(attacker, victim, amount, "body", weapon, nil, nil, true)
+		damage(attacker, victim, amount, "body", { weapon = weapon, burst = true }, nil, nil, true)
 	end
 end
 
@@ -509,7 +518,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 				victim,
 				total.damage,
 				total.region,
-				first.weapon,
+				{ weapon = first.weapon, parts = total.parts },
 				throughWall[total.target],
 				first.mode,
 				nil,
@@ -595,8 +604,17 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 				shade = t.pose.shade == true
 			end
 		end
-		-- What the swing did, not the health it took, as for a bullet.
-		local outcome = damage(attacker, victim, result.damage, hit.region, swing.weapon, nil, nil, nil, shade)
+		-- What the swing did, not the health it took, as for a bullet; its
+		-- blade struck one part.
+		local parts: Volley.Parts = { head = 0, body = 0, legs = 0 }
+		if hit.region == "head" then
+			parts.head = 1
+		elseif hit.region == "legs" then
+			parts.legs = 1
+		else
+			parts.body = 1
+		end
+		local outcome = damage(attacker, victim, result.damage, hit.region, { weapon = swing.weapon, parts = parts }, nil, nil, nil, shade)
 		verdict.target = hit.targetId
 		verdict.region = hit.region
 		verdict.point = Units.asVector3(hit.point)

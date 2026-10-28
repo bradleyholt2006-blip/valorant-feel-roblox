@@ -403,6 +403,14 @@ Built one system at a time:
     after 4 s, and a mark on the minimap and the big map, with a beep, or a ding for the map's; four
     come in quick succession, then one more each 1.5 s -
     [research and design](docs/research/52-pings.md)
+53. **The combat report**: as you die, yours comes up on the right: who killed you and with what,
+    then a row for everyone you fought, whoever killed you first, with KILLED or KILLED YOU, the
+    damage you dealt them and took from them, and beside each a figure lit where the bullets and
+    blades struck, head, body and legs, with how many. N hides it and shows it again, and mouse 3
+    opens its details, each weapon's and ability's damage and hits. In the arena and the spike
+    rounds it covers the round, and shows again through the next buy phase; anywhere else it covers
+    a life, and goes as you come back. On the course N shows yours at any time. The enemy outline
+    colour moved from N to I - [research and design](docs/research/53-combat-report.md)
 
 ## Running it
 
@@ -440,6 +448,7 @@ M the Play menu (a click picks a mode's card, and PLAY plays it), Caps Lock held
 (mouse 1 pings the place under its cursor), Z a ping for your side on what your crosshair's on
 (held, the ping wheel: move the mouse towards a call and let go to ping it, or mouse 2 to put it
 away),
+N the combat report, shown or hidden (mouse 3 opens its details while it's up),
 T agent select (a click selects an agent's card, and LOCK IN locks it in),
 C Cloudburst (held, it curves the throw), Q Updraft, E Tailwind (E readies the gust,
 and E again within its window dashes) and X Blade Storm (mouse 1 throws a knife and mouse 2 all
@@ -461,7 +470,7 @@ crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own
 the minimap's: Rotate or Fixed, the same way round or by side, kept centred, its size and zoom,
 the vision cones, and when the big map names its places.
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
-own lighting; N cycles the enemy outline colour.
+own lighting; I cycles the enemy outline colour.
 Arena: P moves on through the arena, gun game, the spike rounds, Swiftplay and off (Studio or
 place owner only). In the arena and the spike rounds, the buy menu and the debug keys 5-9 (below)
 work for anyone during the buy phase, and while waiting for an opponent; the debug keys stay free
@@ -497,15 +506,17 @@ menu would, `VFTestMap` set to true or false opens or closes the big map as hold
 `VFTestMapPoint` set to a place, in metres, puts From the Shadows' cursor, or the big map's to ping
 with, on the map nearest it, `VFTestPing` set to `tap`, a call's id (`danger`, `watching`, `pushing`
 or `help`), `wheel`, `shut` or `map` pings as Z tapped, Z let go on that call, Z held, mouse 2 on
-the wheel or mouse 1 on the big map would, `VFTestTake` set to true presses F, `VFTestBoard` set to
-true or false holds the scoreboard open as Tab does or lets it go, `VFTestVote` set to 1, 2 or 3
-votes for that map card as a click would, `VFTestPlayMenu` set to true or false opens or closes the
-Play menu, `VFTestPlay` set to a mode's key (`skirmish`, `gungame`, `deathmatch`, `teamdeathmatch`,
-`standard`, `competitive` or `swiftplay`) presses PLAY for it, `VFTestLoadouts` set to true or false
-opens or closes Team Deathmatch's loadout menu, `VFTestPick` set to `2,3` picks the second stage's
-third loadout as a click would, `VFTestAgents` set to true or false opens or closes agent select as
-T does, and `VFTestAgent` set to an agent's id (`jett`) selects it as a click on its card would, or
-set to `lock` locks in. Each of the last seventeen clears itself.
+the wheel or mouse 1 on the big map would, `VFTestReport` set to `toggle` or `details` shows or
+hides the combat report as N would, or opens or shuts its details as mouse 3 would, `VFTestTake` set
+to true presses F, `VFTestBoard` set to true or false holds the scoreboard open as Tab does or lets
+it go, `VFTestVote` set to 1, 2 or 3 votes for that map card as a click would, `VFTestPlayMenu` set
+to true or false opens or closes the Play menu, `VFTestPlay` set to a mode's key (`skirmish`,
+`gungame`, `deathmatch`, `teamdeathmatch`, `standard`, `competitive` or `swiftplay`) presses PLAY
+for it, `VFTestLoadouts` set to true or false opens or closes Team Deathmatch's loadout menu,
+`VFTestPick` set to `2,3` picks the second stage's third loadout as a click would, `VFTestAgents`
+set to true or false opens or closes agent select as T does, and `VFTestAgent` set to an agent's id
+(`jett`) selects it as a click on its card would, or set to `lock` locks in. Each of the last
+nineteen clears itself.
 `VFTestMute` on the local player silences the game's sound while the sound lab's meters still read.
 From the server, Workspace's `VFArenaMode` (`skirmish`, `gungame`, `spike`, `deathmatch` or
 `teamdeathmatch`), `VFMatchFormat` (`standard`, `competitive` or `swiftplay`) and `VFArenaOn`
@@ -649,9 +660,12 @@ places, and halftime), the spike rounds' Ultimate Orbs (where they stand, which 
 reach one, the taking, a defuse first, and the wire), the ultimate's points across a match (each
 round's kind, a match's, a half's and an overtime round's start, and a death's point paid), each
 player's agent and ultimate at a glance (the ultimate as everyone reads it, a kit charging, each
-agent's letters, a health bar, and the top bar's tiles) and pings (what a ping along the crosshair
+agent's letters, a health bar, and the top bar's tiles), pings (what a ping along the crosshair
 marks: places, the sky and its reach, smokes, enemies in sight, guns and the spike; the wheel's
-calls and its pick, the look, the limit, and how a ping shows) are pure Luau and run outside Roblox:
+calls and its pick, the look, the limit, and how a ping shows) and the combat report (a volley's
+bullets by part, hits in the reports they touch by weapon and by part, bursts and burns, dummies,
+what nobody did and yourself, kills and deaths, the rows' order, whole points, a report's stretch,
+and the text checks read) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

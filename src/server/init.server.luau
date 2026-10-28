@@ -26,7 +26,8 @@
 -- after that, with what each side spots, and each player's snapshot goes
 -- by them. The arena's rounds move on last, so a round that ends in this
 -- frame's shots respawns its players after the frame's snapshot, and agent
--- select after them, as the rounds have it.
+-- select after them, as the rounds have it. The combat reports that changed
+-- in the frame go out at its end.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -68,6 +69,7 @@ local FogServer = require(script.FogServer)
 local PickupsServer = require(script.PickupsServer)
 local OrbServer = require(script.OrbServer)
 local PingServer = require(script.PingServer)
+local ReportServer = require(script.ReportServer)
 local ModeServers = require(script.ModeServers)
 
 TestRange.buildIfMissing()
@@ -101,6 +103,7 @@ GroundGunsServer.start()
 PickupsServer.start()
 OrbServer.start()
 PingServer.start()
+ReportServer.start()
 SettingsServer.start()
 Dummies.start()
 -- Before the arena starts, so whoever joins starts in the Play menu where
@@ -137,6 +140,7 @@ RunService.Heartbeat:Connect(function(dt)
 	Replication.step(now)
 	Arena.step(now)
 	AgentServer.step(now)
+	ReportServer.step(now)
 end)
 
 -- Checks wall penetration measures parts of known size (Output window).

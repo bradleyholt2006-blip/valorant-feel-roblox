@@ -48,6 +48,7 @@ local FuryView = require(script.FuryView)
 local DroneView = require(script.DroneView)
 local MinimapView = require(script.MinimapView)
 local PingView = require(script.PingView)
+local ReportView = require(script.ReportView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
@@ -154,6 +155,9 @@ MinimapView.start()
 -- and a click on the big map, for your side to see in the world and on the
 -- maps.
 PingView.start()
+-- The combat report (system 53): yours, on the right as you die, through
+-- the next buy phase in the rounds, and on N.
+ReportView.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)
