@@ -232,9 +232,9 @@ local function toSpikeMatchOver(s: MatchRules.State): number
 end
 
 do
-	-- Dice: Quarry for the first match, then all three for the vote.
+	-- Dice: Quarry for the first match, then the first three of the four for the vote.
 	local s = MatchRules.new("swiftplay", nil, dice(2, 1, 1, 1))
-	check("the spike rounds' first match is on one of their three maps, at random", s.map == "quarry" and same(s.maps, SpikeMaps.MAPS))
+	check("the spike rounds' first match is on one of their maps, at random", s.map == "quarry" and same(s.maps, SpikeMaps.MAPS))
 	for id = 1, 3 do
 		MatchRules.join(s, id, 0)
 	end

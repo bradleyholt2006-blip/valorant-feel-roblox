@@ -139,6 +139,11 @@ TeamDeathmatchConfig.Pickups = {
 		recovery = { at(-23, -12), at(17, -7) },
 		ultimate = { at(-43, 1), at(35, -3) },
 	},
+	wharf = {
+		spawners = { at(-32, -2), at(-10, 2), at(10, 2), at(35, 6) },
+		recovery = { at(-19, -7), at(0, 0) },
+		ultimate = { at(-30.5, 3), at(31, 10) },
+	},
 } :: { [string]: Pickups }
 TeamDeathmatchConfig.PickupsStatus = "estimate" :: Status
 TeamDeathmatchConfig.PickupsSource = "Ours, for our maps: "

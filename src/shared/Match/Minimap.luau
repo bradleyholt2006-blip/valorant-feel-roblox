@@ -255,7 +255,7 @@ local function spikePlan(key: string): Plan?
 			center = vector.create(c.x, 0, c.z) + origin,
 			size = vector.create(c.sx, 0, c.sz),
 			yaw = 0,
-			high = c.height == "high",
+			high = c.height ~= "low",
 		})
 	end
 	local x0, z0, x1, z1 = extent(floors)
