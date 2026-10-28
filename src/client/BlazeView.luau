@@ -507,6 +507,18 @@ function BlazeView.standing(): { { points: { vector }, entity: number } }
 	return out
 end
 
+-- The walls there are, for the danger marks (system 54, IndicatorView):
+-- each one, the time on its clock now, and its caster.
+function BlazeView.walls(): { { wall: BlazeSim.Wall, t: number, entity: number } }
+	local render = RemoteEntities.renderTime()
+	local clock = os.clock()
+	local out = {}
+	for _, s in walls do
+		table.insert(out, { wall = s.wall, t = if s.own then clock else render, entity = s.entity })
+	end
+	return out
+end
+
 function BlazeView.start()
 	-- From inside a wall, the screen is flame (under the HUD).
 	local gui = Ui.screen("VFBlaze", 1, Enum.ScreenInsets.None)

@@ -4,7 +4,10 @@
 -- numbers, the death notice and a scope overlay. The kill feed is KillFeed's.
 -- Blade Storm's knives (system 19) show how many are left, on their key.
 -- While the Owl Drone flies (system 47) the gun's away with no draw bar;
--- the drone's own bars are DroneView's.
+-- the drone's own bars are DroneView's. Low health reads red, and so does
+-- a gun's magazine running low (system 54, Indicators; Patch 0.49: 'New low
+-- health and low ammo visuals'); the gui's `LowHealth` and `LowAmmo`
+-- attributes say so, for scripted checks.
 --
 -- Hit markers and damage numbers only ever come from the server's verdict,
 -- never from the client's guess, so they show what actually counted.
@@ -17,6 +20,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local Indicators = require(Shared.Combat.Indicators)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local WeaponSim = require(Shared.Weapons.WeaponSim)
@@ -223,6 +227,9 @@ function CombatHud.start()
 		local hp = RemoteEntities.healthOf(PlayerController.entityId)
 		-- Whole points, rounded up: a player on 0.4 is still alive.
 		healthText.Text = tostring(RemoteEntities.points(hp.health))
+		local lowHealth = alive and Indicators.lowHealth(hp.health)
+		healthText.TextColor3 = if lowHealth then KILL_COLOR else Ui.TEXT
+		gui:SetAttribute("LowHealth", lowHealth)
 		shieldText.Text = if hp.shield > 0 then string.format("+%d", RemoteEntities.points(hp.shield)) else ""
 		-- The shield's name while it lasts, and the Regen Shield's while it can refill.
 		local kind = WeaponConfig.Shields[hp.armor]
@@ -235,6 +242,7 @@ function CombatHud.start()
 		dead.Text = if Workspace:GetAttribute(ArenaConfig.ON) == true then "ELIMINATED" else "ELIMINATED - respawning"
 
 		local zoom = 1
+		local lowAmmo = false
 		if sim then
 			local w = sim.weapons
 			local def = PlayerSim.def(sim)
@@ -247,6 +255,13 @@ function CombatHud.start()
 				then ""
 				elseif def.ultimate then tostring(w.ammo[slot])
 				else string.format("%d <font size=\"18\" color=\"#%s\">/ %d</font>", w.ammo[slot], Ui.hex(Ui.DIM), w.reserve[slot])
+			-- A gun's magazine count, not the reserve's (the font tag's).
+			lowAmmo = alive
+				and def.fireMode ~= "none"
+				and not ability
+				and not def.ultimate
+				and Indicators.lowAmmo(w.ammo[slot], def.magazine.value)
+			ammoText.TextColor3 = if lowAmmo then KILL_COLOR else Ui.TEXT
 			local key = if def.ultimate then "X" elseif ability then AbilityConfig.KEYS[ability.slot] else tostring(slot)
 			weaponText.Text = string.format("%s   [%s]", def.name, key)
 			if w.scoped > 0 and def.ads then
@@ -274,6 +289,8 @@ function CombatHud.start()
 				barLabel.Text = label
 			end
 		end
+
+		gui:SetAttribute("LowAmmo", lowAmmo)
 
 		-- Scope: square view in the middle of the screen.
 		local scoped = zoom >= 2 and alive

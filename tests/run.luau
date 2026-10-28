@@ -62,5 +62,6 @@ require("./ultpoints")
 require("./glance")
 require("./pings")
 require("./combatreport")
+require("./indicators")
 
 H.finish()

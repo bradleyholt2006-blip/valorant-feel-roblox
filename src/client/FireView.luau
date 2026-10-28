@@ -458,6 +458,21 @@ function FireView.burning(): { { centre: vector, radius: number, entity: number 
 	return out
 end
 
+-- The fires there are, for the danger marks (system 54, IndicatorView):
+-- each one's pool, the time on its clock now, and its thrower.
+function FireView.pools(): { { pool: FireSim.Pool, t: number, entity: number } }
+	local render = RemoteEntities.renderTime()
+	local clock = os.clock()
+	local out = {}
+	for _, s in shown do
+		local pool = s.pool
+		if pool then
+			table.insert(out, { pool = pool, t = if s.own then clock else render, entity = s.entity })
+		end
+	end
+	return out
+end
+
 function FireView.start()
 	-- The burning glow: a stroke round a frame set in from the screen's
 	-- edges, drawn out over them, as the dash's flash is (AbilityEffects).

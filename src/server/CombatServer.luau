@@ -45,6 +45,13 @@
 -- (system 17), with what made it (a single Blade Storm knife brings them
 -- all back, system 19).
 --
+-- A player who takes a hit and lives is told where it came from, alone,
+-- for the red arc on that side of their crosshair (the Hurt remote, system
+-- 54): a bullet's or a blade's from the one who fired or swung, a burst's
+-- from where it burst. Nobody else is, so it says nothing of where anyone
+-- is to those who can't see them (the fog of war). A fire's burn, a spawn
+-- room's and the spike's blast come from nowhere to point at.
+--
 -- A hit that would kill someone can spare them instead (Phoenix's Run it
 -- Back, system 33, CombatServer.spares): they've taken it and are out of
 -- play, with no health, but nobody's killed them. Out of play, nothing
@@ -98,8 +105,10 @@ local DT = 1 / MovementConfig.TickRate.value
 -- What made a hit: a gun's, a knife's or an ability's id (WeaponConfig's),
 -- and for bullets and blades how many struck each part; a burst (a Shock
 -- Bolt's, a Hunter's Fury blast's) strikes no part, and a fire's burn and
--- the spike's blast aren't strikes at all.
-export type Hit = { weapon: string, parts: Volley.Parts?, burst: boolean? }
+-- the spike's blast aren't strikes at all. And where it came from (metres):
+-- the eye that fired or swung, or where it burst; nil for a burn and the
+-- spike's blast.
+export type Hit = { weapon: string, parts: Volley.Parts?, burst: boolean?, from: vector? }
 
 local CombatServer = {}
 
@@ -194,6 +203,9 @@ local function damage(
 	event.killed = result.killed
 	event.wallbang = wallbang == true
 	Remotes.get().Combat:FireAllClients(event)
+	if result.damage > 0 and how.from and victim.player and victim.sim and not result.killed and not spared then
+		CombatServer.tellHurt(victim.player, how.from, PlayerSim.eye(victim.sim, Tuning.config()))
+	end
 	if result.killed then
 		for _, listener in CombatServer.killListeners do
 			listener(attacker, victim, weapon, mode)
@@ -201,6 +213,14 @@ local function damage(
 		victim.onKilled(attacker)
 	end
 	return result
+end
+
+-- Tells `player` alone of a hit they took that came from `from` and struck
+-- `at` (metres): their own body's, or the Owl Drone's they're flying
+-- (DroneServer, Patch 12.02's 'damage indicators that display for objects
+-- that take damage while controlled by a player').
+function CombatServer.tellHurt(player: Player, from: vector, at: vector)
+	Remotes.get().Hurt:FireClient(player, { from = Units.toStuds(from), at = Units.toStuds(at) })
 end
 
 -- More than anyone has: health and the heaviest shield together.
@@ -234,13 +254,13 @@ function CombatServer.burn(attacker: Entities.Entity?, victim: Entities.Entity, 
 	end
 end
 
--- Hurts an entity by `amount` in a burst, through its shield as any hit,
--- as `weapon` (Sova's Shock Bolt, system 45, and his Hunter's Fury's
--- blasts, system 46), credited to `attacker` for the kill feed and the
--- kit's points. A burst doesn't slow, as fire doesn't.
-function CombatServer.blast(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string)
+-- Hurts an entity by `amount` in a burst from `from` (metres), through its
+-- shield as any hit, as `weapon` (Sova's Shock Bolt, system 45, and his
+-- Hunter's Fury's blasts, system 46), credited to `attacker` for the kill
+-- feed and the kit's points. A burst doesn't slow, as fire doesn't.
+function CombatServer.blast(attacker: Entities.Entity?, victim: Entities.Entity, amount: number, weapon: string, from: vector?)
 	if victim.health.alive then
-		damage(attacker, victim, amount, "body", { weapon = weapon, burst = true }, nil, nil, true)
+		damage(attacker, victim, amount, "body", { weapon = weapon, burst = true, from = from }, nil, nil, true)
 	end
 end
 
@@ -518,7 +538,7 @@ function CombatServer.onVolley(shooter: Entities.Entity, shots: { WeaponSim.Shot
 				victim,
 				total.damage,
 				total.region,
-				{ weapon = first.weapon, parts = total.parts },
+				{ weapon = first.weapon, parts = total.parts, from = first.origin },
 				throughWall[total.target],
 				first.mode,
 				nil,
@@ -614,7 +634,17 @@ function CombatServer.onSwing(attacker: Entities.Entity, swing: WeaponSim.Swing,
 		else
 			parts.body = 1
 		end
-		local outcome = damage(attacker, victim, result.damage, hit.region, { weapon = swing.weapon, parts = parts }, nil, nil, nil, shade)
+		local outcome = damage(
+			attacker,
+			victim,
+			result.damage,
+			hit.region,
+			{ weapon = swing.weapon, parts = parts, from = swing.origin },
+			nil,
+			nil,
+			nil,
+			shade
+		)
 		verdict.target = hit.targetId
 		verdict.region = hit.region
 		verdict.point = Units.asVector3(hit.point)

@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-three
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-four
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -34,7 +34,8 @@ Fill in the results block at the end of this page and reply with it, plus:
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
-   three, section 55 three, section 56 one and then three, and section 57 one and then two.
+   three, section 55 three, section 56 one and then three, section 57 one and then two, and
+   section 58 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -4160,6 +4161,253 @@ between them.
   goes live, both go, `Shown` false and no `Rows`, and N shows nothing. **Send:** a screenshot of
   window 2's report in the buy phase.
 
+## 58. Damage and danger indicators
+
+From [54-damage-indicators.md](research/54-damage-indicators.md). One player on the course, then
+two. PlayerGui's `VFIndicators` carries what's round the crosshair: `Hurt`, the red arcs, each as
+where on the ring it is in whole degrees clockwise from the top (`0` ahead, `90` to the right, `-90`
+to the left and `180` behind), oldest first and joined by `, `, empty with none; `LastHurt`, where
+the latest hit's arc is, or would be once it's gone, empty before a hit in this life; `Danger`, the
+yellow chevrons, the same way; and `Critical`, whether the red diamond's up. `VFCombatHud`'s
+`LowHealth` and `LowAmmo` say whether the health and the magazine's count read red. `VFTestYaw`
+turns the view (positive yaw turns left) and `VFTestPitch` tilts it (negative looks down); a Vector3
+`VFTestAimPoint`, in metres, aims at that place and `VFTestAimEntity` at an entity, until they're
+cleared; and `VFTestButtons` holds buttons while it's set: 128 the left button, 512 reload, 4096 C
+and 8192 Q. Set them in the server's command bar, and clear `VFTestButtons` again each time. To see
+the indicators change as it happens, run this watch in a window's own command bar (in Play, with the
+command bar on the client): for 20 s it prints each change, with the seconds since it started.
+
+```lua
+local g = game.Players.LocalPlayer.PlayerGui
+local start, last = os.clock(), nil
+task.spawn(function()
+	while os.clock() - start < 20 do
+		local i = g.VFIndicators
+		local now = string.format(
+			"hurt '%s', last '%s', danger '%s', critical %s, low health %s",
+			tostring(i:GetAttribute("Hurt")),
+			tostring(i:GetAttribute("LastHurt")),
+			tostring(i:GetAttribute("Danger")),
+			tostring(i:GetAttribute("Critical")),
+			tostring(g.VFCombatHud:GetAttribute("LowHealth"))
+		)
+		if now ~= last then
+			print(string.format("%.1f s: %s", os.clock() - start, now))
+			last = now
+		end
+		task.wait(0.05)
+	end
+end)
+```
+
+Press Play (F5), with one player, and keep the HUD on (F3). Start at the spawn facing down the
+target lane (`VFTestYaw` 0), with the Vandal in hand, 100 health and 50 of Heavy Armor.
+
+- **DI1 Nothing yet.** `Hurt`, `LastHurt` and `Danger` are empty and `Critical` false, and nothing's
+  round the crosshair. The HUD's health reads `100` and the Vandal's magazine `25`, both white, and
+  `LowHealth` and `LowAmmo` are false.
+- **DI2 Low ammo.** Run this, which draws the Classic and fires eight shots into the sky:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestPitch", 60)
+  p:SetAttribute("VFTestGive", "classic")
+  task.wait(1.5)
+  for _ = 1, 8 do
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  	task.wait(0.3)
+  end
+  ```
+
+  The magazine's count reads `4`, still white, and `LowAmmo` is false. One more shot (128, then
+  clear it): `3`, in red, the reserve beside it still grey, and `LowAmmo` true. Reload (512, then
+  clear it): once it's done the count reads `12`, white again, and `LowAmmo` is false. Set
+  `VFTestPitch` back to 0 and draw the Vandal (1).
+
+- **DI3 Your own burst.** Play as Sova: in agent select (T), click SOVA's card, PICK SOVA, and close
+  it with T. Then run this, which looses a Shock Bolt at the floor 2 m to your left:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestAimPoint", Vector3.new(-2, 0.1, 0))
+  p:SetAttribute("VFTestButtons", 8192)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p:SetAttribute("VFTestButtons", 128)
+  task.wait(0.1)
+  p:SetAttribute("VFTestButtons", 0)
+  task.wait(0.5)
+  p:SetAttribute("VFTestAimPoint", nil)
+  ```
+
+  It bursts there at once (`VFLastShock` about `-2, 0.05, 0`), and your health and shield go down. A
+  red arc, thickest in its middle, shows on the left of a ring round the crosshair: `Hurt` and
+  `LastHurt` read `-90`. It's whole for a second and fades over the next, and then `Hurt` is empty,
+  but `LastHurt` still reads `-90`. **Send:** a screenshot as it shows.
+
+- **DI4 As you turn and move.** Set `VFTestYaw` to 90, facing where it burst: `LastHurt` reads `0`.
+  At -90, with it behind you: `180`. Back at 0: `-90`. Then walk 4 m down the lane (`pos` about
+  `0.00 0.00 -4.00`): `LastHurt` reads about `-153`, still pointing at where it burst, now behind
+  you on the left. Walk back to the spawn.
+
+Then two players: stop the game, start a Local Server with 2 players, as in section 9, and stay on
+the course, where everyone is everyone else's enemy. In a Local Server, player 1's id is 4294967295
+and player 2's 4294967294, and each window has its own command bar for the watch. Pick SOVA in
+window 1 and PHOENIX in window 2 (T). Both start with the Vandal in hand. Player 1 stands at the
+spawn facing down the target lane (`VFTestYaw` 0), and player 2 walks 5 m to the left of it (`pos`
+about `-5.00 0.00 0.00`), so the two see each other with nothing between. Start the watch in
+window 1 before each check.
+
+- **DI5 From the left.** Start the watch in window 2 as well, then run this in the server's command
+  bar, which has player 2 fire once at player 1's body:
+
+  ```lua
+  local p2 = game.Players.Player2
+  p2:SetAttribute("VFTestAimRegion", "body")
+  p2:SetAttribute("VFTestAimEntity", 4294967295)
+  task.wait(0.6)
+  p2:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  Window 1's HUD reads `87` and `+24`, and a red arc shows on the left of its ring: its watch prints
+  `hurt '-90'` and `last '-90'`, then `hurt ''` 2 s later, `last` still `'-90'`. Window 2's watch
+  prints nothing after its first line: the one who fired sees none. **Send:** a screenshot of
+  window 1 as the arc shows.
+
+- **DI6 Again, then low health.** Run this, which has player 2 fire twice more at player 1's body,
+  0.8 s apart:
+
+  ```lua
+  local p2 = game.Players.Player2
+  p2:SetAttribute("VFTestAimRegion", "body")
+  p2:SetAttribute("VFTestAimEntity", 4294967295)
+  for _ = 1, 2 do
+  	task.wait(0.6)
+  	p2:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p2:SetAttribute("VFTestButtons", 0)
+  end
+  task.wait(0.2)
+  p2:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  Window 1's watch prints `hurt '-90'` at the first and nothing new at the second, one arc renewed,
+  not two, then `hurt ''` 2 s after the second. At the first the HUD's health reads `70`, white; at
+  the second `30`, in red, and the watch prints `low health true`. Start the watch again and run
+  DI5's script with `"head"` in place of `"body"`: player 1 dies, both kill feeds reading
+  `Player2   Vandal   Player1`, and the watch prints `last ''` and `low health false` with no new
+  arc: a hit that kills shows none. Once player 1's back, `LastHurt` is empty and the health reads
+  `100`, white.
+
+- **DI7 The drone.** Run this, which has player 1 send the Owl Drone out and player 2 fire once at
+  its middle once it's stopped, 1.8 m in front of player 1:
+
+  ```lua
+  local p1, p2 = game.Players.Player1, game.Players.Player2
+  p1:SetAttribute("VFTestButtons", 4096)
+  task.wait(0.2)
+  p1:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p1:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p1:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p2:SetAttribute("VFTestAimPoint", Vector3.new(0, 1.62, -1.82))
+  task.wait(0.6)
+  p2:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestAimPoint", nil)
+  ```
+
+  Window 1's `VFDroneHealth` reads 60, player 1 is unhurt, and an arc shows on window 1's ring,
+  pointing from the drone at player 2, behind it on the left: the watch prints `hurt` and `last`
+  about `'-110'`. Press C in window 1 to end the flight (4096, then clear it): back at player 1's
+  eye, the watch prints `last '-90'`, the way to player 2 from there.
+
+- **DI8 Near a fire.** Run this, which has player 2 turn away and throw Hot Hands at their feet,
+  about 5.9 m from player 1, and player 1 turn towards it 1.5 s later and back:
+
+  ```lua
+  local p1, p2 = game.Players.Player1, game.Players.Player2
+  p2:SetAttribute("VFTestYaw", 90)
+  p2:SetAttribute("VFTestPitch", -60)
+  p2:SetAttribute("VFTestButtons", 8192)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p2:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(1.5)
+  p1:SetAttribute("VFTestYaw", 90)
+  task.wait(1)
+  p1:SetAttribute("VFTestYaw", 0)
+  ```
+
+  In window 1, as the fire spreads, a yellow chevron, pointing out, pulses past the ring on the
+  left: the watch prints `danger '-90'`, then `danger '0'` as player 1 turns towards it, `'-90'`
+  again as they turn back, and `danger ''` as it goes out, 4 s after it burst. `critical` stays
+  false, and player 1's HUD stays at `100` and `+50`. **Send:** a screenshot of window 1 with the
+  chevron showing.
+
+- **DI9 In a fire.** Once Q's lit again in window 2, run this, which has player 2 face player 1 and
+  throw at their feet, about 4.1 m from player 1:
+
+  ```lua
+  local p2 = game.Players.Player2
+  p2:SetAttribute("VFTestYaw", -90)
+  p2:SetAttribute("VFTestPitch", -60)
+  p2:SetAttribute("VFTestButtons", 8192)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p2:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(0.5)
+  p2:SetAttribute("VFTestYaw", nil)
+  p2:SetAttribute("VFTestPitch", nil)
+  ```
+
+  Window 1's watch prints `danger '-90'`, and about half a second after the burst, as the fire
+  reaches player 1, `critical true` with `danger ''`: a red diamond with a `!` pulses under the
+  crosshair, and the screen's edge glows orange. No arc shows, a burn having nowhere it came from to
+  point at: `hurt` stays `''`. Player 1's health and shield fall together, 60 a second; 2 s after
+  the fire reached them the health reads `30`, in red (`low health true`), and half a second later
+  player 1 dies, the kill feed reading `Player2   Hot Hands   Player1`, and it all goes
+  (`critical false`, `low health false`).
+
+- **DI10 A wall of fire.** Once player 1's back at the spawn facing down the lane, run this, which
+  has player 2 send Blaze along the floor from their feet towards a place 3 m in front of player 1,
+  passing about 2.6 m from them:
+
+  ```lua
+  local p2 = game.Players.Player2
+  p2:SetAttribute("VFTestAimPoint", Vector3.new(0, 0.1, -3))
+  p2:SetAttribute("VFTestButtons", 4096)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(1)
+  p2:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p2:SetAttribute("VFTestButtons", 0)
+  task.wait(0.5)
+  p2:SetAttribute("VFTestAimPoint", nil)
+  ```
+
+  In window 1, once the wall's risen, a yellow chevron pulses past the ring a little left of the
+  top: the watch prints `danger` about `'-31'`, the way to the place on the wall nearest player 1,
+  for the 8 s it stands, then `danger ''`. `critical` stays false, and player 1 doesn't burn.
+
 ## Results
 
 ```
@@ -4544,6 +4792,16 @@ CR7 the details' lines: ___; gone on coming back: yes / no; the new life's Rows:
 CR8 window 2's Rows: ___; Killer: ___
 CR9 window 1's Rows: ___; Round: ___; Final ___, then ___; window 2 showed one: yes / no
 CR10 in the buy phase, Final and Round: ___, ___; window 2's Rows: ___; N hid and showed it: yes / no; gone as the round went live: yes / no
+DI1 Hurt ___, LastHurt ___, Danger ___, Critical ___; the health and the magazine white: yes / no
+DI2 after eight: ___, white / red, LowAmmo ___; after nine: ___, white / red, LowAmmo ___; reloaded: ___, white / red
+DI3 VFLastShock: ___; an arc on the left: yes / no; Hurt ___, then ___; LastHurt ___
+DI4 LastHurt at yaw 90: ___; at -90: ___; at 0: ___; 4 m down the lane: ___
+DI5 window 1's watch: ___; window 2's watch printed more: yes / no
+DI6 the watch: ___; the health: ___, then ___, red: yes / no; as player 1 died: ___; LastHurt once back: ___
+DI7 VFDroneHealth: ___; the watch while flying: ___; after C: ___
+DI8 the watch: ___; player 1's health and shield: ___
+DI9 the watch: ___; an arc: yes / no; the diamond: yes / no; the kill feed: ___
+DI10 the watch: ___; player 1 burned: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4880,3 +5138,10 @@ Didn't look right (IDs and what you saw):
 | 53 | In Skirmish, the round's report back through the next buy phase, N still hiding and showing it, and gone as the round goes live | CR9, CR10 |
 | 53 | Each player's report holding only whom they fought | CR8, CR9 |
 | 53 | I for the enemy outline colour, and N no longer changing it | CR5 |
+| 54 | A hit from one side: a red arc on that side of the ring, whole for a second and fading over the next | DI3, DI5 |
+| 54 | The arc going on pointing at where the hit came from as you turn and move | DI4, DI7 |
+| 54 | Hits from much the same way renewing one arc; none for a hit that kills, and none left as you die | DI6 |
+| 54 | Only the one hit seeing it | DI5 |
+| 54 | A hit on the Owl Drone you fly: an arc on your ring, from the drone | DI7 |
+| 54 | A fire or a wall of fire near you: the yellow chevron on its side, pulsing; once it reaches you, the red diamond, and no arc for its burn | DI8, DI9, DI10 |
+| 54 | Low health and a low magazine reading red | DI2, DI6, DI9 |
