@@ -8,9 +8,10 @@
 --   * you, an arrow the way you look, with a thicker edge (Patch 0.50 gave
 --     your own icon colour and "a slightly thicker border"); while you
 --     spectate, whoever you look out of (Spectate)
---   * your side, arrows in the allies' colour, held on the minimap's edge
---     while off it (Patch 5.08), and a red X where one died until they're
---     back or the round's over (techweez; community)
+--   * your side, its bots too (system 60), arrows in the allies' colour,
+--     held on the minimap's edge while off it (Patch 5.08), and a red X
+--     where one died until they're back or the round's over (techweez;
+--     community)
 --   * the enemies your side sees, as the server says (MinimapServer, the
 --     Sight remote), and where one was last seen a faded mark for a while
 --     (Patch 5.08's "Recently Seen Enemy" icons, which stay where they were);
@@ -109,6 +110,7 @@ local StepView = require(script.Parent.StepView)
 local ShadowView = require(script.Parent.ShadowView)
 local FuryView = require(script.Parent.FuryView)
 local PingView = require(script.Parent.PingView)
+local Who = require(script.Parent.Who)
 
 local MinimapView = {}
 
@@ -593,23 +595,13 @@ local function posed(id: number, render: number): PlayerCodec.Pose?
 	return if pose and pose.alive then pose else nil
 end
 
-local function playerOf(id: number): Player?
-	for _, player in Players:GetPlayers() do
-		if PlayerCodec.entityIdForUser(player.UserId) == id then
-			return player
-		end
-	end
-	return nil
-end
-
 -- The colour a thing someone threw is edged in: yours and your side's in
 -- the allies' colour, the rest in the enemies'.
 local function ownerColour(entity: number, side: number): Color3
 	if entity == PlayerController.entityId then
 		return allyColour()
 	end
-	local owner = playerOf(entity)
-	return if owner and owner:GetAttribute(ArenaConfig.SIDE) == side then allyColour() else enemyColour()
+	return if Who.side(entity) == side then allyColour() else enemyColour()
 end
 
 -- Where your feet are as drawn, or nil before your first life.
@@ -654,7 +646,7 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 		you = { position = Units.toMetres(cf.Position), yaw = Minimap.yawOf(Units.asVector(cf.LookVector)) }
 	end
 	if you then
-		local user = if watching and viewing ~= nil then watching.UserId else me.UserId
+		local user = if watching and viewing ~= nil then watching.id else me.UserId
 		table.insert(icons, {
 			name = "Self",
 			kind = "self",
@@ -667,12 +659,12 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 		table.insert(cones, { name = "Self", colour = Color3.new(1, 1, 1), eye = you.position, yaw = you.yaw })
 	end
 
-	-- Your side.
-	for _, player in Players:GetPlayers() do
-		if player == me or player:GetAttribute(ArenaConfig.SIDE) ~= side then
+	-- Your side, its bots too (system 60).
+	for _, someone in Who.all() do
+		if someone.player == me or someone.holder:GetAttribute(ArenaConfig.SIDE) ~= side then
 			continue
 		end
-		local id = PlayerCodec.entityIdForUser(player.UserId)
+		local id = someone.entity
 		local pose = if id ~= viewing then posed(id, render) else nil
 		if pose then
 			local name = "Ally_" .. id
@@ -682,7 +674,7 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 				position = pose.position,
 				yaw = pose.yaw,
 				fade = 0,
-				carrier = carrierShown and spike.carrier == player.UserId,
+				carrier = carrierShown and spike.carrier == someone.id,
 				edge = true,
 			})
 			table.insert(cones, { name = name, colour = ally, eye = eyeOf(pose), yaw = pose.yaw })
@@ -716,9 +708,9 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	-- Deathmatch's pulse: everyone else, as they reach your snapshots in
 	-- the moment after you're back (the fog of war sends them for it).
 	if now < pulseUntil then
-		for _, player in Players:GetPlayers() do
-			local other = PlayerCodec.entityIdForUser(player.UserId)
-			local pose = if player ~= me and not pulsed[other] then posed(other, render) else nil
+		for _, someone in Who.all() do
+			local other = someone.entity
+			local pose = if someone.player ~= me and not pulsed[other] then posed(other, render) else nil
 			if pose then
 				pulses[other] = { position = pose.position, at = now }
 				pulsed[other] = true
@@ -1190,8 +1182,7 @@ local function onCombat(event: any)
 		if id == PlayerController.entityId then
 			at = myFeet()
 		else
-			local player = playerOf(id)
-			if player and typeof(side) == "number" and player:GetAttribute(ArenaConfig.SIDE) == side then
+			if typeof(side) == "number" and Who.side(id) == side then
 				local pose = RemoteEntities.sample(id, RemoteEntities.renderTime())
 				at = if pose then pose.position else nil
 			end

@@ -6,7 +6,8 @@
 -- Resurrection brings back, and Players of everyone who leaves; and its
 -- callout decided as it ends, for the arena's model to carry to clients.
 -- Where loadouts are bought, each one's is worth its guns' and shield's
--- prices as the round goes live.
+-- prices as the round goes live. Bots (system 60) are in a round as players
+-- are, and BotServer tells of their deaths.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +15,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RoundCallouts = require(Shared.Match.RoundCallouts)
 
+local BotServer = require(script.Parent.BotServer)
+local Entities = require(script.Parent.Entities)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local ReviveServer = require(script.Parent.ReviveServer)
 
@@ -21,11 +24,13 @@ local CalloutServer = {}
 
 local round: RoundCallouts.Round? = nil -- the round under way, from when it went live
 
--- What a player's loadout is worth now.
-local function worthOf(player: Player): number
-	local entity = PlayerSimServer.entityOf(player)
-	local primary = PlayerSimServer.holding(player, 1)
-	local sidearm = PlayerSimServer.holding(player, 2)
+-- What someone's loadout is worth now, a player's or a bot's, by their id in
+-- the rules.
+local function worthOf(id: number): number
+	local player = Players:GetPlayerByUserId(id)
+	local entity = if player then PlayerSimServer.entityOf(player) else BotServer.entityOf(id)
+	local primary = if player then PlayerSimServer.holding(player, 1) else BotServer.holding(id, 1)
+	local sidearm = if player then PlayerSimServer.holding(player, 2) else BotServer.holding(id, 2)
 	return RoundCallouts.worth({ primary or "", sidearm or "", if entity then entity.health.kind else "" })
 end
 
@@ -36,8 +41,7 @@ function CalloutServer.roundLive(sides: { [number]: number }, economy: boolean)
 	if economy then
 		local each: { [number]: number } = {}
 		for id in sides do
-			local player = Players:GetPlayerByUserId(id)
-			each[id] = if player then worthOf(player) else 0
+			each[id] = worthOf(id)
 		end
 		worth = each
 	end
@@ -58,10 +62,16 @@ function CalloutServer.reset()
 end
 
 function CalloutServer.start()
-	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
+	table.insert(PlayerSimServer.deathListeners, function(player: Player, _, by: Entities.Entity?)
 		local r = round
 		if r then
-			RoundCallouts.died(r, player.UserId, if killer then killer.UserId else nil)
+			RoundCallouts.died(r, player.UserId, if by then Entities.ruleId(by) else nil)
+		end
+	end)
+	table.insert(BotServer.deathListeners, function(id: number, by: Entities.Entity?)
+		local r = round
+		if r then
+			RoundCallouts.died(r, id, if by then Entities.ruleId(by) else nil)
 		end
 	end)
 	table.insert(ReviveServer.reviveListeners, function(owner)

@@ -26,6 +26,9 @@
 --
 -- Who each side spots goes to the fog of war too (FogServer, system 35),
 -- so their snapshots carry whoever their minimap shows.
+--
+-- Bots (system 60, BotServer) see and are seen as players are: an enemy a
+-- bot on your side has in view is on your minimap.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -50,6 +53,10 @@ local FogServer = require(script.Parent.FogServer)
 local ReconServer = require(script.Parent.ReconServer)
 
 local MinimapServer = {}
+
+-- The bots in play (system 60), when something has them (BotServer): each
+-- as someone looking, and as someone who can be seen.
+MinimapServer.bots = nil :: (() -> ({ Sight.Viewer }, { Sight.Target }))?
 
 -- How many barriers one line of sight goes through at the most.
 local PASSES = 4
@@ -128,6 +135,12 @@ local function look(now: number)
 		if eye and aim and not blinded(player, now) then
 			table.insert(viewers, { side = side, eye = eye, look = aim, range = ParanoiaSim.range(nearsightOf(player), now) })
 		end
+	end
+	local bots = MinimapServer.bots
+	if bots then
+		local looking, seen = bots()
+		table.move(looking, 1, #looking, #viewers + 1, viewers)
+		table.move(seen, 1, #seen, #targets + 1, targets)
 	end
 	local o: Sight.Occluders = {
 		clouds = CloudServer.standing(now),

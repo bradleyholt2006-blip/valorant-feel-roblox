@@ -1,6 +1,6 @@
 --!strict
--- Renders every other entity (players and practice dummies) by interpolating
--- server snapshots.
+-- Renders every other entity (players, practice dummies and bots) by
+-- interpolating server snapshots.
 --
 -- Entities are drawn at the render clock's time (InterpClock): a little
 -- behind the newest snapshot, measured from how snapshots actually arrive,
@@ -16,7 +16,9 @@
 -- Until there are agent models, other players are drawn the same way, in
 -- red, and their Roblox avatar is hidden on this client: it is shorter than
 -- the hitboxes (a default avatar stands 1.43 m against the boxes' 1.75 m),
--- so a shot at its head would hit the body.
+-- so a shot at its head would hit the body. Bots (system 60) have no
+-- avatar, and are drawn as players are; what's known of each is its
+-- stand-in's (Who).
 --
 -- Over each is a label, their name and health, which shows through walls
 -- but for an enemy's (another side's): through a wall it would say where an
@@ -65,6 +67,7 @@ local ShotResolver = require(Shared.Combat.ShotResolver)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 
 local NetSim = require(script.Parent.NetSim)
+local Who = require(script.Parent.Who)
 
 local RemoteEntities = {}
 
@@ -146,6 +149,9 @@ type Visual = {
 local visuals: { [number]: Visual } = {}
 local dummyFolder: Folder? = nil
 local playerFolder: Folder? = nil
+
+-- The attribute on each entity's model with its entity id.
+RemoteEntities.ENTITY = "Entity"
 
 -- The snapshot time remote entities are drawn at this frame (before the
 -- first snapshot, the server's time).
@@ -315,13 +321,18 @@ function RemoteEntities.ids(): { number }
 	return out
 end
 
--- What an entity is called: its dummy model's name or its player's.
+-- What an entity is called: its dummy model's name, its player's or its
+-- bot's.
 function RemoteEntities.nameOf(id: number): string
 	if isDummy(id) then
 		return string.format("Dummy_%d", id - PlayerCodec.DUMMY_BASE)
 	end
 	local player = playerFor(id)
-	return if player then player.Name else tostring(id)
+	if player then
+		return player.Name
+	end
+	local bot = Who.bot(id)
+	return if bot then bot.Name else tostring(id)
 end
 
 -- The model an entity's drawn as, while it's drawn (Sage's Healing Orb
@@ -347,6 +358,8 @@ local function makeVisual(id: number): Visual
 	local colors: { [string]: Color3 } = if isDummy(id) then DUMMY_COLORS else PLAYER_COLORS
 	local model = Instance.new("Model")
 	model.Name = RemoteEntities.nameOf(id)
+	-- Whose it is, for the look's outline (Visuals).
+	model:SetAttribute(RemoteEntities.ENTITY, id)
 	local parts: { [string]: BasePart } = {}
 	for region, color in colors do
 		local p = Instance.new("Part")
@@ -449,7 +462,9 @@ local function onRender()
 			MotionMeter.clear(meter)
 		end
 		local player = if isDummy(id) then nil else playerFor(id)
-		if not isDummy(id) and not player then
+		local bot = if isDummy(id) or player then nil else Who.bot(id)
+		local holder: Instance? = player or bot
+		if not isDummy(id) and not holder then
 			-- They left.
 			histories[id] = nil
 			meters[id] = nil
@@ -465,7 +480,7 @@ local function onRender()
 		visual.model.Parent = if pose and id ~= RemoteEntities.viewing then folderFor(id) else nil
 		if pose then
 			RemoteEntities.placeBoxes(visual.parts, pose)
-			local protected = player ~= nil and player:GetAttribute(GunGameConfig.PROTECTED) == true
+			local protected = holder ~= nil and holder:GetAttribute(GunGameConfig.PROTECTED) == true
 			local material = if protected then Enum.Material.ForceField else Enum.Material.SmoothPlastic
 			local shade = pose.shade == true
 			local clear = if shade then SHADE_CLEAR else 0
@@ -483,8 +498,9 @@ local function onRender()
 			end
 			local hp = RemoteEntities.healthOf(id)
 			local health = string.format("%d + %d", RemoteEntities.points(hp.health), RemoteEntities.points(hp.shield))
-			visual.label.Text = if player then player.DisplayName .. "  " .. health else health
-			local theirSide = if player then player:GetAttribute(ArenaConfig.SIDE) else nil
+			local name = if player then player.DisplayName elseif bot then bot.Name else nil
+			visual.label.Text = if name then name .. "  " .. health else health
+			local theirSide = if holder then holder:GetAttribute(ArenaConfig.SIDE) else nil
 			local enemy = typeof(mySide) == "number" and typeof(theirSide) == "number" and theirSide ~= mySide
 			if visual.billboard.AlwaysOnTop == enemy then
 				visual.billboard.AlwaysOnTop = not enemy

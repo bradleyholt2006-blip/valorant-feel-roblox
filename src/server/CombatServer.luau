@@ -145,6 +145,9 @@ CombatServer.levelAt = nil :: ((Penetration.Level, number) -> Penetration.Level)
 -- the damage it would have done there: a wall of Sage's takes it
 -- (BarrierServer); the level's own surfaces don't.
 CombatServer.struck = nil :: ((Entities.Entity, any, number) -> ())?
+-- The side an entity plays on, when something says (the arena, for the
+-- bots of system 60, which are on no Roblox team): nil for none.
+CombatServer.sideOf = nil :: ((Entities.Entity) -> number?)?
 
 local level = RobloxLevel.new()
 local history = LagCompensation.new()
@@ -372,12 +375,22 @@ end
 
 -- Players on the same team (the arena's sides) can't shoot each other: the
 -- reference has no friendly fire for guns, and here the bullet passes
--- through them. Fire burns them less (FireServer).
+-- through them. Fire burns them less (FireServer). A bot's on no Roblox
+-- team (system 60): one with a bot in it goes by the sides the arena says
+-- they're on (CombatServer.sideOf).
 local function allies(pa: Player?, pb: Player?): boolean
 	return pa ~= nil and pb ~= nil and not pa.Neutral and not pb.Neutral and (pa.Team :: Team?) ~= nil and pa.Team == pb.Team
 end
 local function teammates(a: Entities.Entity, b: Entities.Entity): boolean
-	return allies(a.player, b.player)
+	if a.player and b.player then
+		return allies(a.player, b.player)
+	end
+	local sideOf = CombatServer.sideOf
+	if not sideOf or (a.kind ~= "bot" and b.kind ~= "bot") then
+		return false
+	end
+	local side = sideOf(a)
+	return side ~= nil and side == sideOf(b)
 end
 CombatServer.teammates = teammates
 -- The same of two players (AbilityServer's points, system 50).

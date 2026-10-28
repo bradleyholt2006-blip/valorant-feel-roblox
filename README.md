@@ -451,6 +451,16 @@ Built one system at a time:
     door and a window to vault through. The offline tests walk it in three dimensions, timing each
     side's runs to each site and checking what its raised places see -
     [research and design](docs/research/59-wharf-heights.md)
+60. **Bots**: a match fills up with bots while anyone plays it, up to ten in the spike rounds and
+    Team Deathmatch, eight in gun game and deathmatch and four in Skirmish, and a player joining
+    takes a bot's place. They play as people do, inside people's limits: they see only what's in
+    front of them, notice an enemy after a person's reaction time, turn onto them as a hand does,
+    stop to shoot, tap, burst or spray by range, and miss as people do. They check corners, watch
+    where they lost sight of an enemy, go to a site together, hold every way in and come over when
+    attackers show at the other, and follow a player on their side, finding their way round walls
+    and up stairs and getting out of anywhere they stick. There are four skills; the default,
+    Normal, loses to a player who checks their corners -
+    [research and design](docs/research/60-bots.md)
 
 ## Running it
 
@@ -574,8 +584,14 @@ their `VFCredits` attribute, and each side's losses in a row `Streak1` and `Stre
 model. Every gun on the ground is a part in Workspace's `VFGroundGuns`, with its `Weapon`, `Ammo`
 and `Reserve` as attributes. Each player's record is in their attributes too: `VFKills`, `VFDeaths`,
 `VFAssists`, `VFScore`, `VFRounds`, `VFAlive` and `VFLoadout` in either, and `VFStartCredits` in the
-spike rounds. `VFInLine` is a player's place in line while both sides are full. Each player's
-ability kit is their `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the
+spike rounds. `VFInLine` is a player's place in line while both sides are full. Bots (system 60)
+fill what's played up to its number of players unless Workspace's `VFBots` is false, at the skill
+`VFBotSkill` names (`easy`, `normal`, `hard` or `expert`), each with a stand-in in
+ReplicatedStorage's `VFBots`: a Configuration named after it (`BOT Ash`), with its `Entity` and `Id`
+and the attributes the arena keeps on a player, and in Studio its job in its side's plan as
+`VFBotTask`. In Studio, Workspace's `VFBotMs` has the milliseconds the bots take of each server
+frame, and the Output has a line each time a bot's been stuck. Each player's ability kit is their
+`VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the
 ultimate's points), with what's under way after it (`storm` while Blade Storm lasts, `glide` while
 you glide, `equip` while Curveball's flare, Hot Hands' fireball, Blaze's flame, the Healing Orb or
 the Slow Orb is in hand, `bend` while a Blaze wall is bent, `back` while Run it Back runs, and
@@ -726,11 +742,13 @@ for them, deaths that don't count, a life brought back and someone leaving, what
 says, and a loadout's worth), buying for teammates (what can be asked for, asking and taking it
 back, plans, when a request can be bought and by whom, and whose credits go where as a gun bought
 for a teammate is sold back, replaced or dropped), the map kit (each piece's placeholder inside its
-box, the looks, Wharf's zones, and its dressing out of reach) and heights on the spike maps (raised
+box, the looks, Wharf's zones, and its dressing out of reach), heights on the spike maps (raised
 floors, decks, stairs, ramps, railings and windows as a map's plan builds them, and Wharf walked and
 looked across in three dimensions: every floor reached and left, each side's runs to each site, what
-its raised places and its window see, and how open its sites are) are pure Luau and run outside
-Roblox:
+its raised places and its window see, and how open its sites are) and bots (how many fill a match
+and which leave, what they buy, what they see and how fast, their turns by Fitts's law, duels by
+skill, checking corners, walking every map round its walls without getting stuck, and going round a
+map together) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
@@ -744,7 +762,8 @@ not; damage left through walls by class, material and thickness; the vignette ac
 and the outline's tint by distance; the arena's size and how much of it each spawn can see; the
 footstep curve, steps per second by weapon, and the filters for walls and distance; cm/360 at
 the default sensitivity, unzoomed and scoped; how long each side takes to reach each spike map's
-sites) and runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox
+sites; how fast each skill of bot notices, turns, fires and kills, and how long bots take to walk
+each map) and runs the test suites. CI also type-checks everything with `luau-lsp` and Roblox
 definitions.
 
 ## Rules for this project

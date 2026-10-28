@@ -59,7 +59,7 @@ local function holder(): Folder
 	return made
 end
 
-local function blindOf(player: Player): FlareSim.Blind?
+local function blindOf(player: Instance): FlareSim.Blind?
 	return FlareSim.decode(player:GetAttribute(FlareSim.BLIND_ATTRIBUTE))
 end
 
@@ -139,7 +139,7 @@ function BlindView.start()
 		-- Whose screen this is: yours, or the watched player's, as they're
 		-- drawn.
 		local watched = Spectate.watching
-		local b = blindOf(watched or me)
+		local b = blindOf(if watched then watched.holder else me)
 		local t = if watched then render else Workspace:GetServerTimeNow()
 		local white = if b then FlareSim.whiteAt(b, t) else 0
 		screen.Visible = b ~= nil and white > 0

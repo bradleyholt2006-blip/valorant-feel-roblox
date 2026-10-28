@@ -18,7 +18,6 @@
 -- Victim (whose kill it was), Pitch (its kill sound's playback speed) and
 -- Shown (whether a banner's up).
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -32,6 +31,7 @@ local NetSim = require(script.Parent.NetSim)
 local Visuals = require(script.Parent.Visuals)
 local GameSounds = require(script.Parent.Audio.GameSounds)
 local Ui = require(script.Parent.Debug.Ui)
+local Who = require(script.Parent.Who)
 
 local KillBannerView = {}
 
@@ -43,16 +43,12 @@ local MARK_W, MARK_GAP = 12, 4 -- pixels (ours)
 local SOLID = 0.75 -- how solid the diamond's fill is at its strongest
 local UNLIT = 0.3 -- how solid a mark not lit is at its strongest
 
+-- Whoever was killed: a dummy, a player or a bot (system 60).
 local function nameOf(id: number): string
 	if PlayerCodec.isDummy(id) then
 		return string.format("Dummy %d", id - PlayerCodec.DUMMY_BASE)
 	end
-	for _, player in Players:GetPlayers() do
-		if PlayerCodec.entityIdForUser(player.UserId) == id then
-			return player.DisplayName
-		end
-	end
-	return "?"
+	return Who.name(id) or "?"
 end
 
 local function enemyColour(): Color3

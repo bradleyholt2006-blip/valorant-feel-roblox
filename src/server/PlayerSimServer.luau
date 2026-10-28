@@ -139,8 +139,9 @@ PlayerSimServer.spawnPicker = nil :: ((Player) -> SpawnPoint?)?
 -- Whether a player may change weapons now, when something other than the
 -- debug rule (Studio or the place owner) decides (the arena).
 PlayerSimServer.loadoutRule = nil :: ((Player) -> boolean?)?
--- Called when a player dies, with the player who killed them, if one did.
-PlayerSimServer.deathListeners = {} :: { (Player, Player?) -> () }
+-- Called when a player dies, with the player who killed them, if one did,
+-- and whoever did, if anyone else did (a bot too, system 60).
+PlayerSimServer.deathListeners = {} :: { (Player, Player?, Entities.Entity?) -> () }
 -- Called when a player's new life starts.
 PlayerSimServer.spawnListeners = {} :: { (Player) -> () }
 -- What a player may do with the spike this tick, when there's one in play
@@ -376,9 +377,9 @@ local function onPlayerAdded(player: Player)
 			if humanoid then
 				humanoid.Health = 0
 			end
-			local killer = if attacker and attacker.player ~= player then attacker.player else nil
+			local by = if attacker and attacker.player ~= player then attacker else nil
 			for _, listener in PlayerSimServer.deathListeners do
-				listener(player, killer)
+				listener(player, if by then by.player else nil, by)
 			end
 		end,
 	}

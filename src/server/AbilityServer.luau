@@ -81,6 +81,7 @@ local Units = require(Shared.Units)
 
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
 local CombatServer = require(script.Parent.CombatServer)
+local Entities = require(script.Parent.Entities)
 local SpikeServer = require(script.Parent.SpikeServer)
 local FogServer = require(script.Parent.FogServer)
 
@@ -470,12 +471,14 @@ function AbilityServer.start()
 		end
 	end)
 	-- A death earns its point only at an enemy's hands (Patch 1.0: 'Dying to
-	-- a non-enemy player will no longer grant ultimate points'), and in the
-	-- spike rounds it waits for the next round (system 50).
-	table.insert(PlayerSimServer.deathListeners, function(player: Player, killer: Player?)
+	-- a non-enemy player will no longer grant ultimate points'), a bot's too
+	-- (system 60), and in the spike rounds it waits for the next round
+	-- (system 50).
+	table.insert(PlayerSimServer.deathListeners, function(player: Player, _, by: Entities.Entity?)
 		local rules = AbilityServer.rules
 		local later = AbilityServer.economy
-		local earned = killer ~= nil and not CombatServer.allies(player, killer)
+		local me = PlayerSimServer.entityOf(player)
+		local earned = by ~= nil and me ~= nil and not CombatServer.teammates(me, by)
 		if later and earned and not AbilityServer.off then
 			owed[player] = (owed[player] or 0) + AbilityConfig.Points.death.value
 		end

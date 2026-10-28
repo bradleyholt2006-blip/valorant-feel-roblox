@@ -1,8 +1,8 @@
 --!strict
 -- Server entry point. Order inside each Heartbeat matters: dummies advance,
--- then player inputs run (their shots and knife swings rewind targets through
--- the snapshots sent so far), then the frame's snapshot goes out and joins
--- that history.
+-- and bots play (system 60), then player inputs run (their shots and knife
+-- swings, and the bots', rewind targets through the snapshots sent so far),
+-- then the frame's snapshot goes out and joins that history.
 -- All three work to the same server time, the one the snapshot carries.
 -- The spike moves on after the moves that planted, defused or picked it up,
 -- so its blast is in the frame's snapshot; the guns on the ground after the
@@ -41,6 +41,7 @@ local Tuning = require(script.Tuning)
 local PlayerSimServer = require(script.PlayerSimServer)
 local CombatServer = require(script.CombatServer)
 local Dummies = require(script.Dummies)
+local BotServer = require(script.BotServer)
 local Replication = require(script.Replication)
 local ShopServer = require(script.ShopServer)
 local SettingsServer = require(script.SettingsServer)
@@ -112,6 +113,7 @@ BannerServer.start()
 CalloutServer.start()
 SettingsServer.start()
 Dummies.start()
+BotServer.start()
 -- Before the arena starts, so whoever joins starts in the Play menu where
 -- they should (system 24).
 ModeServers.start()
@@ -122,6 +124,7 @@ table.insert(Replication.listeners, CombatServer.record)
 RunService.Heartbeat:Connect(function(dt)
 	local now = Workspace:GetServerTimeNow()
 	Dummies.step(now)
+	BotServer.step(now)
 	PlayerSimServer.step(dt, now)
 	SpikeServer.step(now)
 	AbilityServer.step(now)

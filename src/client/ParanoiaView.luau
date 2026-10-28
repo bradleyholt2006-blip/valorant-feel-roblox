@@ -379,7 +379,7 @@ function ParanoiaView.start()
 		-- Whose screen this is: yours, or the watched player's, as they're
 		-- drawn.
 		local watched = Spectate.watching
-		local n = ParanoiaSim.decode((watched or me):GetAttribute(ParanoiaSim.ATTRIBUTE))
+		local n = ParanoiaSim.decode((if watched then watched.holder else me):GetAttribute(ParanoiaSim.ATTRIBUTE))
 		local t = if watched then render else Workspace:GetServerTimeNow()
 		local amount = if n then ParanoiaSim.darkAt(n, t) else 0
 		if n and not watched and amount > 0 and heard ~= n.from then

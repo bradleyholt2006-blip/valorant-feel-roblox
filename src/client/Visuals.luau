@@ -31,6 +31,8 @@ local VisualMath = require(Shared.Visuals.VisualMath)
 local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Debug.Ui)
+local RemoteEntities = require(script.Parent.RemoteEntities)
+local Who = require(script.Parent.Who)
 
 local Visuals = {}
 
@@ -129,15 +131,19 @@ local function outline(model: Model)
 	end)
 end
 
--- Another player on our team. Dummies, and everyone while there are no
--- teams, are enemies.
+-- Another player on our team, or a bot on our side (system 60), which is
+-- on no team. Dummies, and everyone while there are no teams, are enemies.
 local function isAlly(model: Model): boolean
 	if model.Parent ~= playerFolder then
 		return false
 	end
 	local me = Players.LocalPlayer
 	local other = Players:FindFirstChild(model.Name)
-	return other ~= nil and other:IsA("Player") and not other.Neutral and not me.Neutral and me.Team ~= nil and other.Team == me.Team
+	if other == nil or not other:IsA("Player") then
+		local id = model:GetAttribute(RemoteEntities.ENTITY)
+		return typeof(id) == "number" and Who.bot(id) ~= nil and Who.ally(id)
+	end
+	return not other.Neutral and not me.Neutral and me.Team ~= nil and other.Team == me.Team
 end
 
 -- Where a model is, for its distance: our blocks' body, or a model's
