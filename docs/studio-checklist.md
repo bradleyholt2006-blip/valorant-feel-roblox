@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-five
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-six
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -35,7 +35,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
    three, section 55 three, section 56 one and then three, section 57 one and then two, section 58
-   one and then two, and section 59 one and then two.
+   one and then two, section 59 one and then two, and section 60 two and then three.
 
 | Key | What it does |
 | --- | --- |
@@ -4610,6 +4610,204 @@ between them. Both have the Vandal in hand and 100 health with 50 of Heavy Armor
   window 2's watch prints `count 1` again, round 2's first kill and not a second, and window 1's
   nothing after its first line, `count 0`.
 
+## 60. Round-end callouts
+
+From [56-round-callouts.md](research/56-round-callouts.md). Two players in Skirmish and then in the
+spike rounds, and three in Skirmish. The arena's model, `Workspace.VFArena`, carries the callout of
+the round just played as `Callout`, from its end to the next buy phase: `ace`, `teamAce`,
+`flawless`, `clutch` or `thrifty`, and nil for none. PlayerGui's `VFArenaBanner` carries the
+banner's words as `Title`. To see both change as they happen, run this watch in a window's own
+command bar (in Play, with the command bar on the client): for 60 s it prints each change, with the
+seconds since it started.
+
+```lua
+local g = game.Players.LocalPlayer.PlayerGui
+local arena = workspace:WaitForChild("VFArena")
+local start, last = os.clock(), nil
+task.spawn(function()
+	while os.clock() - start < 60 do
+		local now = string.format(
+			"title '%s', callout %s",
+			tostring(g.VFArenaBanner:GetAttribute("Title")),
+			tostring(arena:GetAttribute("Callout"))
+		)
+		if now ~= last then
+			print(string.format("%.1f s: %s", os.clock() - start, now))
+			last = now
+		end
+		task.wait(0.05)
+	end
+end)
+```
+
+Stop the game and start a Local Server with 2 players, as in section 9. In a Local Server,
+player 1's id is 4294967295 and player 2's 4294967294, and each window has its own command bar for
+the watch. Press P once in window 1 for Skirmish. As round 1's buy phase starts, agent select comes
+up by itself: LOCK IN in both windows. Skip the buy phase (`VFMatchSkip`, in the server's command
+bar). Once round 1's live, bring the two players about 10 m apart in view of each other, with
+nothing between them. Both have the Vandal in hand and 100 health with 50 of Heavy Armor, so one
+shot to the head kills. `VFTestAimEntity`, `VFTestAimRegion` and `VFTestButtons` are as in
+section 59: each code block below defines `shoot`, which aims one player at another's head and fires
+once.
+
+- **CO1 One against one.** Start the watch in both windows, then run this, which has player 1 kill
+  player 2:
+
+  ```lua
+  local p1 = game.Players.Player1
+  local function shoot(p, id)
+  	p:SetAttribute("VFTestAimRegion", "head")
+  	p:SetAttribute("VFTestAimEntity", id)
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestAimEntity", nil)
+  end
+  shoot(p1, 4294967294)
+  ```
+
+  Window 1's banner reads `ROUND WON` in blue and window 2's `ROUND LOST` in red, as before:
+  window 1's watch prints `title 'ROUND WON', callout nil` and window 2's
+  `title 'ROUND LOST', callout nil`. With one a side, a round won by a kill has no callout. About
+  3 s later both print `title 'BUY PHASE  3', callout nil` as round 2's buy phase starts.
+
+Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and LOCK IN
+in both windows as round 1's buy phase starts. Player 1 attacks and player 2 defends, each with the
+Classic and the knife and no shield.
+
+- **CO2 Thrifty.** Start the watch in both windows. In round 1's buy phase, run this, which gives
+  player 1 a Vandal (the debug give, free, as the 5 key's), then skips the buy phase and, once the
+  round's live, the round:
+
+  ```lua
+  game.Players.Player1:SetAttribute("VFTestGive", "vandal")
+  task.wait(1)
+  workspace:SetAttribute("VFMatchSkip", true)
+  task.wait(2)
+  workspace:SetAttribute("VFMatchSkip", true)
+  ```
+
+  Nobody plants, and the round goes to player 2's side on time. Window 2's banner reads `THRIFTY` in
+  blue with `Time ran out before a plant` under it, and its watch prints
+  `title 'THRIFTY', callout thrifty`. Window 1's reads `ROUND LOST` in red with the same line under
+  it, and its watch prints `title 'ROUND LOST', callout thrifty`. Player 1's loadout was worth 2900
+  credits and player 2's nothing. **Send:** a screenshot of window 2's banner.
+
+- **CO3 Even loadouts.** Start both watches again. In round 2's buy phase, run this, which gives
+  player 2 a Vandal too (player 1 still has theirs) and skips as in CO2:
+
+  ```lua
+  game.Players.Player2:SetAttribute("VFTestGive", "vandal")
+  task.wait(1)
+  workspace:SetAttribute("VFMatchSkip", true)
+  task.wait(2)
+  workspace:SetAttribute("VFMatchSkip", true)
+  ```
+
+  The round goes to player 2's side on time again. Window 2's watch prints
+  `title 'ROUND WON', callout nil` and window 1's `title 'ROUND LOST', callout nil`: the two
+  loadouts were worth the same.
+
+Then three players: stop the game, start a Local Server with 3 players, and press P once in window 1
+for Skirmish. Players 1 and 3 are on one side and player 2 on the other, as in section 25, and
+player 3's id is 4294967293. LOCK IN in all three windows as round 1's buy phase starts, and skip
+it. Once each round's live, bring the three about 10 m apart in view of one another, with nothing
+between them, and start the watch in all three windows.
+
+- **CO4 An ace.** In round 1, run this, which has player 2 kill player 1 and then player 3:
+
+  ```lua
+  local p2 = game.Players.Player2
+  local function shoot(p, id)
+  	p:SetAttribute("VFTestAimRegion", "head")
+  	p:SetAttribute("VFTestAimEntity", id)
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestAimEntity", nil)
+  end
+  shoot(p2, 4294967295)
+  task.wait(1)
+  shoot(p2, 4294967293)
+  ```
+
+  Window 2's banner reads `ACE` in blue, and its watch prints `title 'ACE', callout ace`. Windows 1
+  and 3 read `ROUND LOST` in red, and their watches print `title 'ROUND LOST', callout ace`.
+  **Send:** a screenshot of window 2's banner.
+
+- **CO5 A flawless, on both sides.** In round 2, run this, which has player 1 kill player 2:
+
+  ```lua
+  local p1 = game.Players.Player1
+  local function shoot(p, id)
+  	p:SetAttribute("VFTestAimRegion", "head")
+  	p:SetAttribute("VFTestAimEntity", id)
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestAimEntity", nil)
+  end
+  shoot(p1, 4294967294)
+  ```
+
+  Windows 1 and 3 read `FLAWLESS` in blue, and window 2 `FLAWLESS` in red: all three watches print
+  `title 'FLAWLESS', callout flawless`. Nobody on the winning side died, and the losers see it too.
+
+- **CO6 Nothing from one against one.** In round 3, run this, which has player 2 kill player 1 and
+  then player 3 kill player 2:
+
+  ```lua
+  local p2, p3 = game.Players.Player2, game.Players.Player3
+  local function shoot(p, id)
+  	p:SetAttribute("VFTestAimRegion", "head")
+  	p:SetAttribute("VFTestAimEntity", id)
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestAimEntity", nil)
+  end
+  shoot(p2, 4294967295)
+  task.wait(1)
+  shoot(p3, 4294967294)
+  ```
+
+  Windows 1 and 3 read `ROUND WON` in blue, their watches printing `title 'ROUND WON', callout nil`,
+  and window 2 `ROUND LOST` in red, `title 'ROUND LOST', callout nil`. Player 3 won it from one
+  against one, player 1 died, and player 1 killed nobody: no clutch, flawless or team ace.
+
+- **CO7 A clutch.** In round 4, player 2 starts alone against two. Run this, which takes player 3
+  out of the game (a kick) and then has player 2 kill player 1:
+
+  ```lua
+  local p2 = game.Players.Player2
+  local function shoot(p, id)
+  	p:SetAttribute("VFTestAimRegion", "head")
+  	p:SetAttribute("VFTestAimEntity", id)
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestAimEntity", nil)
+  end
+  game.Players.Player3:Kick("CO7")
+  task.wait(1)
+  shoot(p2, 4294967295)
+  ```
+
+  Window 3 shows that it was kicked; close it. Window 2's banner reads `CLUTCH` in blue, and its
+  watch prints `title 'CLUTCH', callout clutch`. Window 1's reads `ROUND LOST` in red,
+  `title 'ROUND LOST', callout clutch`. Player 2 started the round one against two and won it, and
+  didn't kill player 3, so it's no ace.
+
 ## Results
 
 ```
@@ -5011,6 +5209,13 @@ KB4 the watch: ___; gold from the fifth: yes / no; the sixth's number and bars l
 KB5 the kill feed: ___; the watch: ___; anything else died: yes / no
 KB6 window 1's watch: ___; window 2's watch: ___
 KB7 window 2's watch in round 1: ___; in round 2: ___; window 1's watch printed more: yes / no
+CO1 window 1's watch: ___; window 2's watch: ___; then: ___
+CO2 window 2's watch: ___; window 1's watch: ___; window 2's banner and the line under it: ___
+CO3 window 2's watch: ___; window 1's watch: ___
+CO4 window 2's watch: ___; windows 1 and 3: ___
+CO5 windows 1 and 3: ___; window 2: ___; window 2's banner colour: ___
+CO6 windows 1 and 3: ___; window 2: ___
+CO7 window 2's watch: ___; window 1's watch: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -5361,3 +5566,8 @@ Didn't look right (IDs and what you saw):
 | 55 | An ability's kill: a banner and the kill sound, as a gun's | KB5 |
 | 55 | In Skirmish: the count over the round, and from 1 again in the next | KB7 |
 | 55 | Only the killer seeing it | KB6, KB7 |
+| 56 | One against one in Skirmish: ROUND WON and ROUND LOST, with no callout | CO1 |
+| 56 | In the spike rounds, a Vandal against the Classic, the Classic's side winning on time: THRIFTY for the winners and ROUND LOST for the losers; the same loadouts on each side: ROUND WON | CO2, CO3 |
+| 56 | One against two in Skirmish: the one killing both, ACE; the two winning with nobody dead, FLAWLESS on all three screens; one against one at the end, nothing | CO4, CO5, CO6 |
+| 56 | The one alone against two winning after one of them leaves: CLUTCH | CO7 |
+| 56 | The callout gone as the next buy phase starts | CO1 |

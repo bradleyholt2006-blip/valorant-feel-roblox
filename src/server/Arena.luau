@@ -135,6 +135,12 @@
 -- life. So does the kill banner's count of each player's kills (system 55,
 -- BannerServer).
 --
+-- The round-end callouts (system 56, CalloutServer) follow each round of
+-- Skirmish and the spike rounds from when it goes live, with whoever's
+-- alive in it on their side, to its end, when its callout, if it has one,
+-- goes to clients as the arena's model's Callout. The match's last round
+-- has its victory screen instead.
+--
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
 -- off. So do Workspace's attributes, set from the server, which is how
@@ -196,6 +202,7 @@ local PickupsServer = require(script.Parent.PickupsServer)
 local OrbServer = require(script.Parent.OrbServer)
 local ReportServer = require(script.Parent.ReportServer)
 local BannerServer = require(script.Parent.BannerServer)
+local CalloutServer = require(script.Parent.CalloutServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -287,9 +294,10 @@ local spotsOf: { [string]: { DeathmatchSpawns.Spot } } = {}
 local seeingOn: { [string]: DeathmatchSpawns.Sees } = {}
 local packModels: { [number]: Model } = {}
 -- The round the ground was last cleared for, and in the spike rounds the
--- spike and the kits were last set for; and the last that ended, whose
--- combat reports went out.
+-- spike and the kits were last set for; the last that went live, which the
+-- callouts follow; and the last that ended, whose combat reports went out.
 local seenMatch, seenRound = 0, 0
+local livedMatch, livedRound = 0, 0
 local endedMatch, endedRound = 0, 0
 
 local function now(): number
@@ -757,15 +765,25 @@ local function publish()
 	end
 end
 
+-- The callout of the round just played (system 56), for clients: nil while
+-- there's none to show.
+local function setCallout(callout: string?)
+	local root = model
+	if root then
+		root:SetAttribute("Callout", callout)
+	end
+end
+
 -- A round has started since this last looked: the ground cleared of guns,
 -- fire (systems 31 and 32), ice (system 37), walls of ice (system 38),
 -- recon bolts (system 44) and shock bolts in the air (system 45), every
 -- heal over (system 36), every Owl Drone's flight and its darts' pings
 -- (system 47), everyone's combat report (system 53) and count of kills
--- for the kill banner (system 55), and in the spike rounds a new spike in
--- front of the attackers, the map's Ultimate Orbs all up (system 49), each
--- kit's round (system 17) with its ultimate's points (system 50) and, at
--- the start of each half, everyone back on the starting kit.
+-- for the kill banner (system 55), the last round's callout (system 56),
+-- and in the spike rounds a new spike in front of the attackers, the map's
+-- Ultimate Orbs all up (system 49), each kit's round (system 17) with its
+-- ultimate's points (system 50) and, at the start of each half, everyone
+-- back on the starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -777,6 +795,8 @@ local function roundStarted()
 	seenMatch, seenRound = matchNumber, round
 	ReportServer.roundStarted(round)
 	BannerServer.roundStarted()
+	CalloutServer.reset()
+	setCallout(nil)
 	GroundGunsServer.clear()
 	FireServer.clear()
 	BlazeServer.clear()
@@ -809,9 +829,32 @@ local function roundStarted()
 	end
 end
 
+-- A round has gone live since this last looked, its buy phase over: the
+-- callouts follow it from here (system 56), with everyone alive in it on
+-- their side, and in the spike rounds what each one's loadout is worth.
+local function roundLive()
+	local s, m = skirmish, match
+	local phase = if s then s.phase elseif m then m.phase else nil
+	local matchNumber = if s then s.match elseif m then m.match else 0
+	local round = if s then s.round elseif m then m.round else 0
+	if (phase ~= "live" and phase ~= "planted") or (matchNumber == livedMatch and round == livedRound) then
+		return
+	end
+	livedMatch, livedRound = matchNumber, round
+	local members: { [number]: Roster.Member } = if s then s.members elseif m then m.members else {}
+	local sides: { [number]: number } = {}
+	for id, member in members do
+		if member.alive then
+			sides[id] = member.side
+		end
+	end
+	CalloutServer.roundLive(sides, m ~= nil)
+end
+
 -- A round has ended since this last looked, and with it not the match:
 -- everyone's combat report for it goes to them, for the next buy phase
--- (system 53). The match's last has its victory screen instead.
+-- (system 53), and its callout, if it has one, to everyone (system 56). The
+-- match's last has its victory screen instead.
 local function roundEnded()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -822,6 +865,8 @@ local function roundEnded()
 	end
 	endedMatch, endedRound = matchNumber, round
 	ReportServer.roundOver(round)
+	local winner = if s then s.roundWinner elseif m then m.roundWinner else nil
+	setCallout(if winner then CalloutServer.roundOver(winner) else nil)
 end
 
 -- Someone joins what's played, or leaves it: their team, and whoever spawns.
@@ -916,6 +961,8 @@ local function stop()
 	OrbServer.stop()
 	ReportServer.reset()
 	BannerServer.reset()
+	CalloutServer.reset()
+	setCallout(nil)
 	GroundGunsServer.dropOnDeath = false
 	GroundGunsServer.drops = true
 	GroundGunsServer.clear()
@@ -971,9 +1018,12 @@ local function begin(wanted: Mode, format: string)
 	end
 	table.clear(kitMatch)
 	seenMatch, seenRound = 0, 0
+	livedMatch, livedRound = 0, 0
 	endedMatch, endedRound = 0, 0
 	ReportServer.reset()
 	BannerServer.reset()
+	CalloutServer.reset()
+	setCallout(nil)
 	GroundGunsServer.clear()
 	FireServer.clear()
 	BlazeServer.clear()
@@ -1302,6 +1352,7 @@ function Arena.step(time: number)
 	end
 	publish()
 	roundStarted()
+	roundLive()
 	roundEnded()
 	spawn(ids)
 end
