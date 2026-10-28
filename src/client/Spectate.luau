@@ -191,13 +191,14 @@ function Spectate.start()
 	end)
 
 	-- Left click watches the next player, right click the one before; either
-	-- ends a death's moment early.
+	-- ends a death's moment early. Not while the mouse moves a cursor on the
+	-- big map, whose left click pings (system 52).
 	UserInputService.InputBegan:Connect(function(input, processed)
 		local step = if input.UserInputType == Enum.UserInputType.MouseButton1
 			then 1
 			elseif input.UserInputType == Enum.UserInputType.MouseButton2 then -1
 			else 0
-		if step == 0 or processed or CameraController.cursorFree or PlayerController.alive then
+		if step == 0 or processed or CameraController.cursorFree or CameraController.mapCursor or PlayerController.alive then
 			return
 		end
 		local current = Spectate.watching

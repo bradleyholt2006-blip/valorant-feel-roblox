@@ -40,6 +40,12 @@
 --     blast would go, a band as wide as it reaches, as far as its range
 --     ('a range indicator on your minimap to help you guide your aim',
 --     Mobalytics' Sova page)
+--   * your side's pings (system 52, PingView), each where it is in your
+--     colour, your side's, the enemies' for an enemy or the spike's for the
+--     spike, a diamond for one along the crosshair and a disc ringed in
+--     white for one on the map (ours: 'new ping visuals ... for pings made
+--     on the map', Patch 9.11), held on the minimap's edge while off it;
+--     and with the big map up, its cursor to ping with, a white ring
 --   * the sites' letters, and on the big map the places' names
 --   * a white circle round you as you make a sound, as far as it's heard
 --     (the minimap's sound circle: "Anyone outside of this white circle
@@ -55,11 +61,13 @@
 -- For scripted checks, the minimap's ScreenGui (VFMinimap) carries what it
 -- shows as attributes: Plan (the plan's key), Seen (the entity ids of the
 -- enemies shown, "3,7"), Spike (whether the spike is), Orbs (the Ultimate
--- Orbs', "1,2"), Turn (degrees the map's turned), Big (whether the big
--- map's open) and Dark (how covered it is, 0 to 1). Its icons are named
+-- Orbs', "1,2"), Pings (the pings on it, in the order they came, by their
+-- tags, "place,map"), Turn (degrees the map's turned), Big (whether the
+-- big map's open) and Dark (how covered it is, 0 to 1). Its icons are named
 -- Self, Ally_<id>, Enemy_<id>, Seen_<id>, Pulse_<id>, Dead_<id>, Spike,
 -- Orb_<n>, Step, Shadow (From the Shadows' cursor), Shade (where it's
--- taking you), Fury (where a blast would go) and Ring.
+-- taking you), Fury (where a blast would go), Ping_<id>, Cursor (the big
+-- map's cursor to ping with) and Ring.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -100,6 +108,7 @@ local ParanoiaView = require(script.Parent.ParanoiaView)
 local StepView = require(script.Parent.StepView)
 local ShadowView = require(script.Parent.ShadowView)
 local FuryView = require(script.Parent.FuryView)
+local PingView = require(script.Parent.PingView)
 
 local MinimapView = {}
 
@@ -155,13 +164,14 @@ type Layer = {
 
 type Icon = {
 	name: string,
-	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead", "spike", "orb", "step" or "cursor"
+	kind: string, -- "self", "ally", "enemy", "seen", "pulse", "dead", "spike", "orb", "step", "cursor", "ping" or "mapping"
 	position: vector,
 	yaw: number?,
 	fade: number, -- 0 solid, 1 gone
 	carrier: boolean,
 	edge: boolean, -- held on the minimap's edge while off it
 	refused: boolean?, -- From the Shadows' cursor: where fire wouldn't take you
+	colour: Color3?, -- a ping's, or the cursor's to ping with (system 52)
 }
 
 type Round = { centre: vector, radius: number, colour: Color3 }
@@ -384,6 +394,17 @@ local function newIcon(kind: string): GuiObject
 		dot.Size = UDim2.fromScale(0.22, 0.22)
 		dot.Parent = r
 		return r
+	elseif kind == "ping" then
+		-- One along the crosshair (system 52): a diamond.
+		local d = plainFrame(TEXT, 6)
+		d.Rotation = 45
+		stroke(d, DARK, 1.5)
+		return d
+	elseif kind == "mapping" then
+		-- One on the map: a disc ringed in white.
+		local d = disc(TEXT, 6)
+		stroke(d, Color3.new(1, 1, 1), 2)
+		return d
 	end
 	-- "ring": the sound circle round you.
 	local r = disc(Color3.new(1, 1, 1), 1)
@@ -745,6 +766,30 @@ local function sceneOf(plan: Minimap.Plan, mode: any, side: number, attackers: a
 	if going then
 		table.insert(icons, { name = "Shade", kind = "step", position = going, fade = 0, carrier = false, edge = false })
 	end
+	-- Your side's pings, and the big map's cursor to ping with (system 52).
+	for _, ping in PingView.shown() do
+		table.insert(icons, {
+			name = ping.name,
+			kind = if ping.map then "mapping" else "ping",
+			position = ping.position,
+			fade = ping.fade,
+			carrier = false,
+			edge = true,
+			colour = ping.colour,
+		})
+	end
+	local pointer = PingView.cursor()
+	if pointer then
+		table.insert(icons, {
+			name = "Cursor",
+			kind = "cursor",
+			position = pointer,
+			fade = 0,
+			carrier = false,
+			edge = false,
+			colour = Color3.new(1, 1, 1),
+		})
+	end
 
 	-- What's been thrown.
 	local clouds: { Round } = {}
@@ -917,6 +962,7 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 			elseif kind == "self" then size * 1.15
 			elseif kind == "cursor" then size * 1.8
 			elseif kind == "orb" then size * 0.75
+			elseif kind == "ping" then size * 0.85
 			else size
 		f.Size = UDim2.fromOffset(across, across)
 		if icon.yaw then
@@ -928,7 +974,7 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 				mark.Visible = icon.carrier
 			end
 		elseif kind == "cursor" then
-			local colour = if icon.refused then REFUSED else STEP
+			local colour = icon.colour or (if icon.refused then REFUSED else STEP)
 			local edge = f:FindFirstChildOfClass("UIStroke")
 			if edge then
 				edge.Color = colour
@@ -936,6 +982,13 @@ local function draw(layer: Layer, plan: Minimap.Plan, view: Minimap.View, scene:
 			local dot = f:FindFirstChild("Dot") :: GuiObject?
 			if dot then
 				dot.BackgroundColor3 = colour
+			end
+		elseif kind == "ping" or kind == "mapping" then
+			f.BackgroundColor3 = icon.colour or TEXT
+			f.BackgroundTransparency = icon.fade
+			local edge = f:FindFirstChildOfClass("UIStroke")
+			if edge then
+				edge.Transparency = icon.fade
 			end
 		elseif kind == "enemy" or kind == "seen" or kind == "pulse" then
 			f.BackgroundColor3 = enemy
@@ -1003,6 +1056,8 @@ local function step()
 		side = 0
 	end
 	ShadowView.view = nil
+	PingView.view = nil
+	PingView.plan = nil
 	if not plan then
 		hide()
 		mLayer.gui:SetAttribute("Plan", nil)
@@ -1048,6 +1103,9 @@ local function step()
 		draw(bLayer, plan, bigView, scene)
 		if shadows then
 			ShadowView.view = bigView
+		else
+			PingView.view = bigView
+			PingView.plan = plan
 		end
 	end
 	bLayer.gui.Enabled = big
@@ -1075,6 +1133,13 @@ local function step()
 	end
 	table.sort(orbs)
 	gui:SetAttribute("Orbs", table.concat(orbs, ","))
+	local pings = {}
+	for _, ping in PingView.shown() do
+		if mLayer.icons.items[ping.name] then
+			table.insert(pings, ping.tag)
+		end
+	end
+	gui:SetAttribute("Pings", table.concat(pings, ","))
 	gui:SetAttribute("Turn", math.floor(math.deg(turn) * 10 + 0.5) / 10)
 	gui:SetAttribute("Big", big)
 	gui:SetAttribute("Dark", math.floor(covered * 100 + 0.5) / 100)

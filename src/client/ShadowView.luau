@@ -306,7 +306,13 @@ function ShadowView.start()
 		elseif not up then
 			cursorAt = nil
 		end
-		CameraController.mapCursor = if up then moveCursor else nil
+		-- The mouse is its cursor's while it's up; once it's not, it's
+		-- nobody's, unless it's a ping's (PingView).
+		if up then
+			CameraController.mapCursor = moveCursor
+		elseif CameraController.mapCursor == moveCursor then
+			CameraController.mapCursor = nil
+		end
 		local at = cursorAt
 		if up and at then
 			judge(at)

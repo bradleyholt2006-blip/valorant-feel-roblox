@@ -698,6 +698,11 @@ function GameSounds.playNearsight()
 	ui(SoundConfig.Deafen.sound)
 end
 
+-- A ping for your side (system 52): its blip, or the map's own sound.
+function GameSounds.playPing(map: boolean)
+	ui(if map then SoundConfig.Pings.map else SoundConfig.Pings.ping)
+end
+
 -- Settings ------------------------------------------------------------------------
 
 -- This client's footstep radius: the footstep curve stretched to it.
@@ -763,6 +768,8 @@ function GameSounds.start()
 	SoundEngine.prepare(D.sound, "world", C.ability.points)
 	SoundEngine.prepare(D.sound, "self")
 	SoundEngine.prepare(SoundConfig.Deafen.sound, "ui")
+	SoundEngine.prepare(SoundConfig.Pings.ping, "ui")
+	SoundEngine.prepare(SoundConfig.Pings.map, "ui")
 
 	table.insert(PlayerController.tickListeners, onTick)
 	table.insert(PlayerController.spawnListeners, onSpawn)

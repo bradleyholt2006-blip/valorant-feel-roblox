@@ -71,7 +71,14 @@
 --                  (system 34), false closes it; then clears itself
 --   VFTestMapPoint Vector3 in metres: puts From the Shadows' cursor on its
 --                  map nearest that place (system 43), as the mouse could,
---                  once its map's up; then clears itself
+--                  once its map's up, or else the big map's cursor to ping
+--                  with (system 52) once it's up; then clears itself
+--   VFTestPing     "tap" pings as tapping Z does (system 52), an option's
+--                  id ("danger", "watching", "pushing" or "help") as letting
+--                  Z go with it picked on the wheel does, "wheel" opens the
+--                  wheel as holding Z does, "shut" puts it away as right
+--                  click does, and "map" pings as a left click on the big
+--                  map does, where its cursor is; then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -98,6 +105,7 @@ local AgentMenu = require(script.Parent.Parent.AgentMenu)
 local PlayMenu = require(script.Parent.Parent.PlayMenu)
 local MinimapView = require(script.Parent.Parent.MinimapView)
 local ShadowView = require(script.Parent.Parent.ShadowView)
+local PingView = require(script.Parent.Parent.PingView)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
 local TestAim = {}
@@ -240,8 +248,16 @@ function TestAim.start(controller: any)
 			MinimapView.setBig(map)
 		end
 		local mapPoint = player:GetAttribute("VFTestMapPoint")
-		if typeof(mapPoint) == "Vector3" and ShadowView.setCursor(Units.asVector(mapPoint)) then
+		if
+			typeof(mapPoint) == "Vector3"
+			and (ShadowView.setCursor(Units.asVector(mapPoint)) or PingView.setCursor(Units.asVector(mapPoint)))
+		then
 			player:SetAttribute("VFTestMapPoint", nil)
+		end
+		local ping = player:GetAttribute("VFTestPing")
+		if typeof(ping) == "string" and ping ~= "" then
+			player:SetAttribute("VFTestPing", nil)
+			PingView.test(ping)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then
