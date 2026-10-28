@@ -49,6 +49,7 @@ local DroneView = require(script.DroneView)
 local MinimapView = require(script.MinimapView)
 local PingView = require(script.PingView)
 local ReportView = require(script.ReportView)
+local IndicatorView = require(script.IndicatorView)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
@@ -158,6 +159,10 @@ PingView.start()
 -- The combat report (system 53): yours, on the right as you die, through
 -- the next buy phase in the rounds, and on N.
 ReportView.start()
+-- Damage and danger indicators (system 54): a red arc round the crosshair
+-- the way each hit came from, a yellow chevron the side a fire or a wall
+-- of fire is near you, and a red diamond once one reaches you.
+IndicatorView.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

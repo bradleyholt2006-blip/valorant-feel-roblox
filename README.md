@@ -411,6 +411,13 @@ Built one system at a time:
     rounds it covers the round, and shows again through the next buy phase; anywhere else it covers
     a life, and goes as you come back. On the course N shows yours at any time. The enemy outline
     colour moved from N to I - [research and design](docs/research/53-combat-report.md)
+54. **Damage and danger indicators**: a hit you take shows a red arc round the crosshair on the side
+    it came from, whole for a second and then fading, and it goes on pointing at that place as you
+    turn and move; a hit on the Owl Drone you fly shows the same way, and only the one hit sees it.
+    A fire or a wall of fire that isn't yours shows a pulsing yellow chevron on its side once it's
+    within 3 m of reaching you, and a red diamond under the crosshair once it does. The health reads
+    red at 30 or under, and a gun's magazine count at a quarter of its magazine or under -
+    [research and design](docs/research/54-damage-indicators.md)
 
 ## Running it
 
@@ -595,7 +602,10 @@ holds each orb and its mark. The minimap's ScreenGui, `VFMinimap`, carries what 
 drawn (`Plan`, as `spike:quarry`), the entity ids of the enemies on it (`Seen`), whether the spike
 is (`Spike`), the Ultimate Orbs on it (`Orbs`, as `1,2`), how far it's turned (`Turn`, degrees),
 whether the big map's open (`Big`) and how covered it is by a nearsight's dark (`Dark`, 0 to 1), or
-by an enemy's From the Shadows.
+by an enemy's From the Shadows. PlayerGui's `VFIndicators` carries the red arcs round the crosshair
+(`Hurt`, each as where on the ring it is, in whole degrees clockwise from the top), where the latest
+hit's is (`LastHurt`), the yellow chevrons (`Danger`) and whether the red diamond's up (`Critical`),
+and `VFCombatHud` whether the health and the magazine's count read low (`LowHealth` and `LowAmmo`).
 Workspace's `VFFogOff` set true turns the fog of war off, so everyone's snapshots carry everyone,
 and `VFFogLines` and `VFFogMs` are what its looks cost in the last second: the lines they cast and
 the milliseconds of server time they took. Workspace's
@@ -662,10 +672,13 @@ round's kind, a match's, a half's and an overtime round's start, and a death's p
 player's agent and ultimate at a glance (the ultimate as everyone reads it, a kit charging, each
 agent's letters, a health bar, and the top bar's tiles), pings (what a ping along the crosshair
 marks: places, the sky and its reach, smokes, enemies in sight, guns and the spike; the wheel's
-calls and its pick, the look, the limit, and how a ping shows) and the combat report (a volley's
+calls and its pick, the look, the limit, and how a ping shows), the combat report (a volley's
 bullets by part, hits in the reports they touch by weapon and by part, bursts and burns, dummies,
 what nobody did and yourself, kills and deaths, the rows' order, whole points, a report's stretch,
-and the text checks read) are pure Luau and run outside Roblox:
+and the text checks read) and the damage and danger indicators (a hit's way and where it shows on
+the ring, arcs renewed and giving way, their fade, arcs pointing as you move, the pulse, fires and
+walls near and reaching you, low health and low ammo, and the text checks read) are pure Luau and
+run outside Roblox:
 
 ```
 luau tests/run.luau

@@ -110,7 +110,7 @@ local function onCast(player: Player, cast: AbilitySim.Cast)
 		if not victim or (protected and protected(victim)) then
 			continue
 		end
-		CombatServer.blast(entity, victim, HF.damage.value, FurySim.WEAPON)
+		CombatServer.blast(entity, victim, HF.damage.value, FurySim.WEAPON, cast.origin)
 		table.insert(names, victim.name)
 		if not victim.health.alive then
 			continue

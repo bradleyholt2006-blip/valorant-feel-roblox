@@ -34,6 +34,7 @@ local definitions: { [string]: string } = {
 	Sight = "RemoteEvent", -- server -> each player, who their side sees, for the minimap (system 34)
 	Ping = "RemoteEvent", -- both ways: a ping asked for, and each for a side to see (system 52)
 	Report = "RemoteEvent", -- both ways: a combat report asked for, and each player's own (system 53)
+	Hurt = "RemoteEvent", -- server -> each player, where a hit they took came from (system 54)
 }
 
 export type Remotes = {
@@ -59,6 +60,7 @@ export type Remotes = {
 	Sight: RemoteEvent,
 	Ping: RemoteEvent,
 	Report: RemoteEvent,
+	Hurt: RemoteEvent,
 }
 
 local cached: Remotes? = nil

@@ -63,6 +63,7 @@ local CombatServer = require(script.Parent.CombatServer)
 local FogServer = require(script.Parent.FogServer)
 local ReconServer = require(script.Parent.ReconServer)
 local Replication = require(script.Parent.Replication)
+local Tuning = require(script.Parent.Tuning)
 
 local DroneServer = {}
 
@@ -317,7 +318,10 @@ end
 
 -- A bullet or a knife of `attacker`'s that struck a drone (`key`, its
 -- piece), for `amount`: the drone takes it, but from its owner's side, and
--- at nothing breaks where the attacker's screen showed it.
+-- at nothing breaks where the attacker's screen showed it. Until then he's
+-- told where it came from, as for a hit on him (system 54; Patch 12.02:
+-- 'new UI damage indicators that display for objects that take damage
+-- while controlled by a player').
 local function struck(attacker: Entities.Entity, key: any, amount: number)
 	local piece = DroneSim.piece(key)
 	local f = if piece then byId[piece.id] else nil
@@ -333,6 +337,9 @@ local function struck(attacker: Entities.Entity, key: any, amount: number)
 		f.player:SetAttribute(DroneSim.HEALTH_ATTRIBUTE, f.health)
 	end
 	if f.health > 0 then
+		if attacker.sim and f.player.Parent then
+			CombatServer.tellHurt(f.player, PlayerSim.eye(attacker.sim, Tuning.config()), piece.box.center)
+		end
 		return
 	end
 	local sim = PlayerSimServer.getSim(f.player)

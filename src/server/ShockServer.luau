@@ -156,7 +156,7 @@ local function burst(d: Due, now: number)
 		if amount <= 0 then
 			continue
 		end
-		CombatServer.blast(owner, victim, amount, ShockSim.WEAPON)
+		CombatServer.blast(owner, victim, amount, ShockSim.WEAPON, d.point)
 		table.insert(told, { name = victim.name, amount = amount })
 	end
 	if d.player.Parent then
