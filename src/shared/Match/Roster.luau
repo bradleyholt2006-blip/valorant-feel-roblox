@@ -182,6 +182,29 @@ function Roster.spotOf(s: Sides, id: number): number?
 	return n
 end
 
+-- Whether `id`, down, could take `other`'s place among the living (system
+-- 62, a bot taken over): both playing, on one side, `other` alive.
+function Roster.canTakeOver(s: Sides, id: number, other: number): boolean
+	local a, b = s.members[id], s.members[other]
+	return id ~= other and a ~= nil and b ~= nil and not a.alive and b.alive and a.side == b.side
+end
+
+-- `id`, down, takes `other`'s place among the living (system 62): alive in
+-- its stead, and it down with no death in the record. The hurts of its life
+-- under way carry on as theirs, for the assists if they fall, and they've
+-- played in the round now, for their average.
+function Roster.takeOver(s: Sides, id: number, other: number)
+	local a, b = s.members[id], s.members[other]
+	if not a or not b then
+		return
+	end
+	a.alive = true
+	a.played = true
+	b.alive = false
+	s.hurt[id] = s.hurt[other]
+	s.hurt[other] = nil
+end
+
 -- The record -------------------------------------------------------------------
 
 function Roster.clearRecord(m: Member)

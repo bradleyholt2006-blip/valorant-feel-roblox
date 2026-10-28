@@ -36,6 +36,7 @@ local definitions: { [string]: string } = {
 	Report = "RemoteEvent", -- both ways: a combat report asked for, and each player's own (system 53)
 	Hurt = "RemoteEvent", -- server -> each player, where a hit they took came from (system 54)
 	Banner = "RemoteEvent", -- server -> a killer, their kill's banner (system 55)
+	TakeOver = "RemoteEvent", -- client -> server, F watching a bot: take it over for the round (system 62)
 }
 
 export type Remotes = {
@@ -63,6 +64,7 @@ export type Remotes = {
 	Report: RemoteEvent,
 	Hurt: RemoteEvent,
 	Banner: RemoteEvent,
+	TakeOver: RemoteEvent,
 }
 
 local cached: Remotes? = nil
