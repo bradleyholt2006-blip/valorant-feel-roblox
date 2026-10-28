@@ -1,7 +1,7 @@
 # Studio test session
 
 The offline tests and the type checks cover the shared simulation; this session covers what only
-Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-two
+Studio can show. It goes through every "Known gaps to check in Studio" item in the fifty-three
 research docs, in an order where each step only relies on things earlier steps showed working.
 
 It takes about seven hours. Doing it in parts is fine; keep the order.
@@ -34,7 +34,7 @@ Fill in the results block at the end of this page and reply with it, plus:
    two, then three, section 39 two and then three, section 40 one, then two, then three, sections 41
    and 42 one, then two, then two in the spike rounds, section 43 one and then three,
    sections 44 to 51 one and then three, section 52 three, section 53 two, section 54 two and then
-   three, section 55 three, and section 56 one and then three.
+   three, section 55 three, section 56 one and then three, and section 57 one and then two.
 
 | Key | What it does |
 | --- | --- |
@@ -50,10 +50,12 @@ Fill in the results block at the end of this page and reply with it, plus:
 | H | The Sound Lab's rings on the floor on and off |
 | F10 | Hitbox and wall overlay |
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
-| N | The next enemy outline colour |
+| N | Shows or hides the combat report (section 57); on the course, yours so far at any time |
+| I | The next enemy outline colour (it was N before the combat report) |
 | P | The next of: the arena (Skirmish), gun game, the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
+| Mouse 3 | Opens or shuts the combat report's details, while it's up |
 | Click a map | During the vote for the next map, after a match in the arena or the spike rounds: votes for it, or moves your vote to it |
 | C / Q / E | Cloudburst (held, it curves the throw), Updraft, and Tailwind: E readies the gust and E again dashes. As Phoenix, E readies Curveball's flare: the left button throws it curving left, the right curving right, and E again puts it away; Q readies Hot Hands' fireball: the left button throws it, the right lobs it, and Q again puts it away; and C readies Blaze's flame: the left button sends its wall, held it bends the wall towards the crosshair, and C again puts it away |
 | X | Blade Storm, once its points are full: five knives, the left button throwing one and the right all that are left; with a gun drawn, X draws them again. As Phoenix, Run it Back: it marks where you stand, and dying, or its 10 s running out, brings you back there |
@@ -372,7 +374,7 @@ From [06-visuals.md](research/06-visuals.md). Keep the HUD on, and F10 off: its 
 through walls, the outlines don't. The HUD's `look` line says whether the look is on and which
 enemy colour it uses.
 
-- **V1 On and off.** The `look` line reads `look    on (V)   enemy Red (Default) (N)`. Press V: it
+- **V1 On and off.** The `look` line reads `look    on (V)   enemy Red (Default) (I)`. Press V: it
   reads `off`, the shade gets darker, bright parts glow more, the screen's edges are no longer
   darker and the dummies lose their outlines. In BRINK, the Explorer now shows Lighting back at
   the place's own values: Ambient and OutdoorAmbient 70, 70, 70, ShadowSoftness 0.2, the
@@ -387,7 +389,7 @@ enemy colour it uses.
   50 m is clearly redder than the one at 10 m. The dummy behind the low wall at 22 m is outlined
   only above the wall. From the red line in front of the wallbang walls, the dummies behind them
   show no outline through the walls. **Send:** a screenshot down the target lane.
-- **V4 Colours.** N turns the outlines purple, then a deep yellow, then a paler yellow, then red
+- **V4 Colours.** I turns the outlines purple, then a deep yellow, then a paler yellow, then red
   again, and the `look` line names each: `Purple (Tritanopia)`, `Yellow (Deuteranopia)`,
   `Yellow (Protanopia)`, `Red (Default)`.
 - **V5 No shadows.** Stand in the sun with it behind you, so your shadow would fall ahead of you,
@@ -3998,6 +4000,166 @@ Local Server, player 1's id is 4294967295, player 2's 4294967294 and player 3's 
   (or set `VFTestPing` to `map`): a ping on the maps in windows 1 and 3, as in PI10, and window 1
   still watches player 3; the click doesn't switch whom you watch.
 
+## 57. The combat report
+
+From [53-combat-report.md](research/53-combat-report.md). One player on the course, then two on the
+course and in Skirmish. PlayerGui's `VFCombatReport` carries what the report holds: `Shown` and
+`Details`, whether the report and its details are up; `Final`, whether it's a round's last, and
+`Round`, its round's number, in the rounds; `Killer`, who killed you and with what
+(`Player2, Vandal`), empty if nobody did; `Rows`, its rows in the order they show, each as
+`Dummy 1: dealt 40 (1 body), taken 0`, with `, killed` for one you killed and `, killed you` for
+whoever killed you, and `; ` between them; and `Totals` (`dealt 40, taken 0`). With no report to
+show, only `Shown` and `Details` are there, both false. Without N or mouse 3, a string attribute
+`VFTestReport` set to `toggle` shows or hides the report as N does, and to `details` opens or shuts
+its details as mouse 3 does. It clears itself; set from the server's command bar, clear it there too
+before setting it again. `VFTestAimEntity` aims at an entity and `VFTestAimRegion` at its `head`,
+`body` or `legs`, and `VFTestButtons` 128 holds the left button. The shots below are fired from the
+server's command bar 0.8 s apart, so each is a first shot. Damage reads in whole points: what each
+hit took of health and shield together.
+
+Press Play (F5), with one player, and keep the HUD on (F3). Start at the spawn facing down the
+target lane (`VFTestYaw` 0), with the Vandal in hand. Dummy 1, the static dummy on the 10 m stripe,
+is 4294901761; like you, it has 100 health and 50 of Heavy Armor.
+
+- **CR1 Nothing yet.** `VFCombatReport`'s `Shown` is false. Press N (or set `VFTestReport` to
+  `toggle`): on the right, under the kill feed, a dark panel headed `COMBAT REPORT`, reading
+  `NOTHING DEALT OR TAKEN`, and at its foot `DEALT 0   TAKEN 0`, with `N hide   M3 details` on the
+  right. `Shown` is true, `Final` false, `Killer` and `Rows` empty, there's no `Round`, and `Totals`
+  reads `dealt 0, taken 0`. Press N again: it's gone, and `Shown` is false.
+- **CR2 Three in the body.** Run this in the server's command bar, which fires three Vandal shots at
+  Dummy 1's body:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestAimRegion", "body")
+  p:SetAttribute("VFTestAimEntity", 4294901761)
+  for _ = 1, 3 do
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  end
+  ```
+
+  No report comes up: nobody's died. Press N: the report, with one row: a red `DU` badge, `Dummy 1`
+  in red, and under DEALT `120`, beside a little figure of a head, a body and legs, its body lit
+  white with `3` beside it and its head and legs dim with `0`; under TAKEN `0`, its figure all dim.
+  `Rows` reads `Dummy 1: dealt 120 (3 body), taken 0`, `Totals` `dealt 120, taken 0`, and the foot
+  `DEALT 120   TAKEN 0`. Press N to hide it.
+
+- **CR3 Then the head.** Run this, which fires one at Dummy 1's head:
+
+  ```lua
+  local p = game.Players:GetPlayers()[1]
+  p:SetAttribute("VFTestAimRegion", "head")
+  task.wait(0.6)
+  p:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 0)
+  task.wait(0.2)
+  p:SetAttribute("VFTestAimEntity", nil)
+  p:SetAttribute("VFTestAimRegion", nil)
+  ```
+
+  Dummy 1 dies, the kill feed reading `<your name>   Vandal   Dummy 1`. Press N: under `Dummy 1` its
+  row reads `KILLED` in gold, DEALT reads `150`, and the figure's head is lit with `1` and its body
+  with `3`. `Rows` reads `Dummy 1: dealt 150 (1 head, 3 body), taken 0, killed`, and `Totals`
+  `dealt 150, taken 0`: the head shot took the 30 that were left, not its 160.
+
+- **CR4 The details.** With the report up, press mouse 3 (or set `VFTestReport` to `details`): a
+  second panel to the report's left, `WEAPON / ABILITY`, `DAMAGE` and `HITS` along its top, then
+  `TO Dummy 1`, then `Vandal` with `150` and `4`. `Details` is true. Mouse 3 again: it shuts, and
+  `Details` is false. Press mouse 3 once more, then N: both go. **Send:** a screenshot of the report
+  and its details.
+- **CR5 The enemy outline colour.** Press I: the dummies' outlines turn purple, and the HUD's `look`
+  line reads `look    on (V)   enemy Purple (Tritanopia) (I)`. Press N: the report comes up, its
+  `DU` badge and `Dummy 1` purple too, and the outlines stay purple. Press N to hide it, and I three
+  times, back to red.
+
+Then two players on the course: stop the game, start a Local Server with 2 players, as in section 9,
+and stay on the course, where everyone is everyone else's enemy. In a Local Server, player 1's id is
+4294967295 and player 2's 4294967294. Both start with the Vandal in hand. In window 2, walk 5 m to
+the left of the spawn (A), so the two of you see each other with nothing between, and window 1 sees
+Dummy 1.
+
+- **CR6 Shot dead.** Run this in the server's command bar, which has player 1 fire once at Dummy 1's
+  body:
+
+  ```lua
+  local p = game.Players.Player1
+  p:SetAttribute("VFTestAimRegion", "body")
+  p:SetAttribute("VFTestAimEntity", 4294901761)
+  task.wait(0.6)
+  p:SetAttribute("VFTestButtons", 128)
+  task.wait(0.2)
+  p:SetAttribute("VFTestButtons", 0)
+  task.wait(0.2)
+  p:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  Then this, which has player 1 fire once at player 2's body, and then player 2 three times at
+  player 1's body and once at their head:
+
+  ```lua
+  local p1, p2 = game.Players.Player1, game.Players.Player2
+  local function shoot(p, id, region)
+  	p:SetAttribute("VFTestAimRegion", region)
+  	p:SetAttribute("VFTestAimEntity", id)
+  	task.wait(0.6)
+  	p:SetAttribute("VFTestButtons", 128)
+  	task.wait(0.2)
+  	p:SetAttribute("VFTestButtons", 0)
+  end
+  shoot(p1, 4294967294, "body")
+  p1:SetAttribute("VFTestAimEntity", nil)
+  for _ = 1, 3 do
+  	shoot(p2, 4294967295, "body")
+  end
+  shoot(p2, 4294967295, "head")
+  p2:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  Player 1 dies with the fourth of player 2's shots, both kill feeds reading
+  `Player2   Vandal   Player1`. At once, without N, window 1's report comes up on the right: under
+  its title, `KILLED BY`, a red `JE` badge (player 2's Jett) and `Player2   Vandal` in red. Then
+  player 2's row first, `KILLED YOU` in red under its name, DEALT `40` with the body lit `1`, and
+  TAKEN `150` with the head lit `1` and the body `3`; then Dummy 1's, DEALT `40` with the body lit
+  `1`, TAKEN `0`. The foot reads `DEALT 80   TAKEN 150`. `Killer` reads `Player2, Vandal`; `Rows`
+  `Player2: dealt 40 (1 body), taken 150 (1 head, 3 body), killed you` and
+  `Dummy 1: dealt 40 (1 body), taken 0`, `; ` between them, Dummy 1 second though it was hit first;
+  and `Totals` `dealt 80, taken 150`. Window 2 shows no report. **Send:** a screenshot of window 1's
+  report.
+
+- **CR7 While you're down.** In window 1, press mouse 3: the details read `TO Player2` with `Vandal`
+  `40` `1`, `FROM Player2` with `Vandal` `150` `4`, and `TO Dummy 1` with `Vandal` `40` `1`. Press
+  N: the report and its details go, and `Shown` is false; N again, and the report's back, without
+  its details. As player 1 comes back to life, it goes by itself: `Shown` false and no `Rows`. Press
+  N: a new life's report, `NOTHING DEALT OR TAKEN`, with `Killer` and `Rows` empty. Press N to hide
+  it.
+- **CR8 Only whom you fought.** In window 2, press N: player 2's report, with one row, `Player1`,
+  `KILLED` in gold under it, DEALT `150` (head `1`, body `3`) and TAKEN `40` (body `1`), and none
+  for Dummy 1, which player 2 never hit. `Rows` reads
+  `Player1: dealt 150 (1 head, 3 body), taken 40 (1 body), killed`, and `Killer` is empty. Press N
+  to hide it.
+
+Then Skirmish: press P once in window 1. As round 1's buy phase starts, agent select comes up by
+itself: LOCK IN in both windows. Skip the buy phase (`VFMatchSkip`, in the server's command bar).
+Once round 1's live, bring the two players about 10 m apart in view of each other, with nothing
+between them.
+
+- **CR9 A round's.** Run CR6's second script again. As player 1 dies, window 1's report comes up as
+  in CR6, but with no row for Dummy 1, and `ROUND 1` in grey at the right of its title: `Rows` reads
+  `Player2: dealt 40 (1 body), taken 150 (1 head, 3 body), killed you`, `Round` is 1 and `Final`
+  false. Window 2 shows none. The round goes to player 2's side, and as it ends, window 1's `Final`
+  turns true, the report still up; window 2's still shows none, its `Shown` false.
+- **CR10 Through the buy phase.** As round 2's buy phase starts, with both players back in their
+  rooms, the report shows in both windows by itself: window 1's as it was, and window 2's with
+  `Player1` and `KILLED` in gold, `Rows` reading
+  `Player1: dealt 150 (1 head, 3 body), taken 40 (1 body), killed`; both with `ROUND 1`, `Round` 1
+  and `Final` true. In either window N hides it and N shows it again. Skip the buy phase: as round 2
+  goes live, both go, `Shown` false and no `Rows`, and N shows nothing. **Send:** a screenshot of
+  window 2's report in the buy phase.
+
 ## Results
 
 ```
@@ -4372,6 +4534,16 @@ PI9 the wheel as the big map came up: gone / stayed; Cursor: ___, then ___, then
 PI10 windows that logged mapPing: ___; Pings in windows 1, 2 and 3: ___, ___, ___; in the world: shown / not
 PI11 window 1's Shown: ___; Pings in windows 1, 2 and 3: ___, ___, ___; window 2 heard it: yes / no
 PI12 Z while dead: nothing / pinged; the map ping in windows: ___; the click switched whom you watch: yes / no
+CR1 Shown before N: ___; after N: Shown ___, Rows ___, Totals ___; after N again: Shown ___
+CR2 Rows: ___; Totals: ___; the figure's body: lit / dim, ___
+CR3 Rows: ___; KILLED in gold: yes / no
+CR4 the details' lines: ___; Details: ___, then ___
+CR5 look line: ___; N changed the colour: yes / no; the row purple: yes / no
+CR6 up without N: yes / no; Killer: ___; Rows: ___; Totals: ___; window 2 showed one: yes / no
+CR7 the details' lines: ___; gone on coming back: yes / no; the new life's Rows: ___
+CR8 window 2's Rows: ___; Killer: ___
+CR9 window 1's Rows: ___; Round: ___; Final ___, then ___; window 2 showed one: yes / no
+CR10 in the buy phase, Final and Round: ___, ___; window 2's Rows: ___; N hid and showed it: yes / no; gone as the round went live: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -4402,7 +4574,7 @@ Didn't look right (IDs and what you saw):
 | 05 | Holes, dust and sparks on the right faces, other players' holes, white wall labels | P2, P4, T5 |
 | 06 | Lighting set from the client shows there, and V puts the place's values back exactly | V1 |
 | 06 | The vignette sits over the world and under the HUD, covers the screen and takes no clicks | V2 |
-| 06 | Outlines only on the visible part of a target, the tint grows with distance, N changes it | V3, V4, T7 |
+| 06 | Outlines only on the visible part of a target, the tint grows with distance, I changes it | V3, V4, T7 |
 | 06 | Hidden avatars cast no shadows | V5 |
 | 06 | The preset with LightingStyle on Soft and on Realistic | V6 |
 | 07 | The arena builds beside the course, with nothing in the place overlapping it, on every client | A1, A2 |
@@ -4702,3 +4874,9 @@ Didn't look right (IDs and what you saw):
 | 52 | Pings seen by the pinger's side alone, in the world and on both maps | PI8, PI10, PI11 |
 | 52 | The big map's cursor and a left click: a ping on the maps and not in the world, with its ding | PI9, PI10 |
 | 52 | While dead: map pings, and no Z | PI12 |
+| 53 | On the course, N with nothing done: an empty report; then Dummy 1's body shots and a head shot, with the figure lit and KILLED | CR1, CR2, CR3 |
+| 53 | Mouse 3: the details, the Vandal with 150 and 4 hits | CR4, CR7 |
+| 53 | Shot dead by another player: the report up at once, who killed you, their row first with KILLED YOU, and what each of you dealt; N hiding and showing it; gone as you come back | CR6, CR7 |
+| 53 | In Skirmish, the round's report back through the next buy phase, N still hiding and showing it, and gone as the round goes live | CR9, CR10 |
+| 53 | Each player's report holding only whom they fought | CR8, CR9 |
+| 53 | I for the enemy outline colour, and N no longer changing it | CR5 |

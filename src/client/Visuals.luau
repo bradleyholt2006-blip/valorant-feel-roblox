@@ -3,8 +3,8 @@
 -- own lighting, colour grading and bloom, a vignette, and the friend-or-foe
 -- outline on other players and dummies. It's on from the start. V turns it
 -- all off, putting the place's own values back exactly, and on again, to
--- compare. N cycles the enemy colour through the reference's accessibility
--- options.
+-- compare. I cycles the enemy colour through the reference's accessibility
+-- options (N did, before the combat report took it, system 53).
 --
 -- The reference's maps are lit offline (Unreal's Lightmass) and its
 -- characters have shaders of their own (VALORANT Shaders and Gameplay
@@ -255,7 +255,7 @@ function Visuals.start()
 		end
 		if input.KeyCode == Enum.KeyCode.V then
 			Visuals.setOn(not Visuals.on)
-		elseif input.KeyCode == Enum.KeyCode.N then
+		elseif input.KeyCode == Enum.KeyCode.I then
 			Visuals.enemyColour = Visuals.enemyColour % #VisualConfig.EnemyColours + 1
 		end
 	end)

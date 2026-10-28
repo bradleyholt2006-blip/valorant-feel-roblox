@@ -322,7 +322,7 @@ function DebugHud.start(controller: any)
 			string.format("rtt     %.0f ms   ping %.0f ms%s", net.rttSmooth * 1000, ping, simText),
 			string.format("pending %d   sent %d   ack %d", net.pending, net.sentInputs, net.lastAckSeq),
 			string.format("corrections %d   last %.1f mm   max %.1f mm", net.corrections, net.lastCorrectionError * 1000, net.maxCorrectionError * 1000),
-			string.format("look    %s (V)   enemy %s (N)", if Visuals.on then "on" else "off", Visuals.enemyColourName()),
+			string.format("look    %s (V)   enemy %s (I)", if Visuals.on then "on" else "off", Visuals.enemyColourName()),
 			string.format("spike   %s", spikeLine(controller.sim)),
 			string.format('<font color="#%s">F2 labs  F3 hud  G ghost  F4 lab  F6 record  F10 hitboxes  P arena  O settings</font>', Ui.hex(Ui.DIM)),
 		}, "\n")

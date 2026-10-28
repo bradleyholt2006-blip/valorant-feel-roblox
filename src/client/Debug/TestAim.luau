@@ -79,6 +79,9 @@
 --                  wheel as holding Z does, "shut" puts it away as right
 --                  click does, and "map" pings as a left click on the big
 --                  map does, where its cursor is; then clears itself
+--   VFTestReport   "toggle" shows or hides the combat report as N does
+--                  (system 53), and "details" opens or shuts its details
+--                  as mouse 3 does; then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -106,6 +109,7 @@ local PlayMenu = require(script.Parent.Parent.PlayMenu)
 local MinimapView = require(script.Parent.Parent.MinimapView)
 local ShadowView = require(script.Parent.Parent.ShadowView)
 local PingView = require(script.Parent.Parent.PingView)
+local ReportView = require(script.Parent.Parent.ReportView)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 
 local TestAim = {}
@@ -258,6 +262,11 @@ function TestAim.start(controller: any)
 		if typeof(ping) == "string" and ping ~= "" then
 			player:SetAttribute("VFTestPing", nil)
 			PingView.test(ping)
+		end
+		local report = player:GetAttribute("VFTestReport")
+		if typeof(report) == "string" and report ~= "" then
+			player:SetAttribute("VFTestReport", nil)
+			ReportView.test(report)
 		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then

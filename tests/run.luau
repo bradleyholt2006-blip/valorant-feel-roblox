@@ -61,5 +61,6 @@ require("./ultorbs")
 require("./ultpoints")
 require("./glance")
 require("./pings")
+require("./combatreport")
 
 H.finish()

@@ -128,6 +128,12 @@
 -- Team Deathmatch's pre-game and their own spawn room there, and wherever
 -- picking is free (AgentSelect).
 --
+-- The combat report (system 53, ReportServer) goes by the round in
+-- Skirmish and the spike rounds once one's under way (ReportServer.byRound):
+-- everyone's starts over as a round starts, and goes to them as it ends.
+-- Anywhere else, and while a match waits for an opponent, it goes by the
+-- life.
+--
 -- P (Studio or the place owner) moves on through the arena, gun game, the
 -- spike rounds in the standard format, the spike rounds in Swiftplay's, and
 -- off. So do Workspace's attributes, set from the server, which is how
@@ -187,6 +193,7 @@ local AbilityServer = require(script.Parent.AbilityServer)
 local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
 local OrbServer = require(script.Parent.OrbServer)
+local ReportServer = require(script.Parent.ReportServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -278,8 +285,10 @@ local spotsOf: { [string]: { DeathmatchSpawns.Spot } } = {}
 local seeingOn: { [string]: DeathmatchSpawns.Sees } = {}
 local packModels: { [number]: Model } = {}
 -- The round the ground was last cleared for, and in the spike rounds the
--- spike and the kits were last set for.
+-- spike and the kits were last set for; and the last that ended, whose
+-- combat reports went out.
 local seenMatch, seenRound = 0, 0
+local endedMatch, endedRound = 0, 0
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -750,10 +759,11 @@ end
 -- fire (systems 31 and 32), ice (system 37), walls of ice (system 38),
 -- recon bolts (system 44) and shock bolts in the air (system 45), every
 -- heal over (system 36), every Owl Drone's flight and its darts' pings
--- (system 47), and in the spike rounds a new spike in front of
--- the attackers, the map's Ultimate Orbs all up (system 49), each kit's
--- round (system 17) with its ultimate's points (system 50) and, at the
--- start of each half, everyone back on the starting kit.
+-- (system 47), everyone's combat report (system 53), and in the spike
+-- rounds a new spike in front of the attackers, the map's Ultimate Orbs
+-- all up (system 49), each kit's round (system 17) with its ultimate's
+-- points (system 50) and, at the start of each half, everyone back on the
+-- starting kit.
 local function roundStarted()
 	local s, m = skirmish, match
 	local phase = if s then s.phase elseif m then m.phase else nil
@@ -763,6 +773,7 @@ local function roundStarted()
 		return
 	end
 	seenMatch, seenRound = matchNumber, round
+	ReportServer.roundStarted(round)
 	GroundGunsServer.clear()
 	FireServer.clear()
 	BlazeServer.clear()
@@ -793,6 +804,21 @@ local function roundStarted()
 		end
 		AbilityServer.roundStarted(player, kind, swiftplay)
 	end
+end
+
+-- A round has ended since this last looked, and with it not the match:
+-- everyone's combat report for it goes to them, for the next buy phase
+-- (system 53). The match's last has its victory screen instead.
+local function roundEnded()
+	local s, m = skirmish, match
+	local phase = if s then s.phase elseif m then m.phase else nil
+	local matchNumber = if s then s.match elseif m then m.match else 0
+	local round = if s then s.round elseif m then m.round else 0
+	if phase ~= "roundOver" or (matchNumber == endedMatch and round == endedRound) then
+		return
+	end
+	endedMatch, endedRound = matchNumber, round
+	ReportServer.roundOver(round)
 end
 
 -- Someone joins what's played, or leaves it: their team, and whoever spawns.
@@ -885,6 +911,7 @@ local function stop()
 	PlayerSimServer.keepShields = false
 	PickupsServer.stop()
 	OrbServer.stop()
+	ReportServer.reset()
 	GroundGunsServer.dropOnDeath = false
 	GroundGunsServer.drops = true
 	GroundGunsServer.clear()
@@ -940,6 +967,8 @@ local function begin(wanted: Mode, format: string)
 	end
 	table.clear(kitMatch)
 	seenMatch, seenRound = 0, 0
+	endedMatch, endedRound = 0, 0
+	ReportServer.reset()
 	GroundGunsServer.clear()
 	FireServer.clear()
 	BlazeServer.clear()
@@ -1268,6 +1297,7 @@ function Arena.step(time: number)
 	end
 	publish()
 	roundStarted()
+	roundEnded()
 	spawn(ids)
 end
 
@@ -1501,6 +1531,13 @@ function Arena.start()
 			return MatchRules.canRevive(m, a.UserId, b.UserId)
 		end
 		return false
+	end
+	-- The combat report goes by the round in Skirmish and the spike rounds,
+	-- once one's under way (system 53).
+	ReportServer.byRound = function(): boolean
+		local s, m = skirmish, match
+		local phase: string? = if s then s.phase elseif m then m.phase else nil
+		return phase ~= nil and phase ~= "waiting"
 	end
 	table.insert(ReviveServer.reviveListeners, function(owner)
 		local player = owner.player
