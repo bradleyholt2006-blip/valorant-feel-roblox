@@ -92,6 +92,13 @@ the middle of its head at 1.633 m, 1.3 cm over the standing head box's middle. D
 head held in its box would bend the knees standing: with a rifle, they bend 24 degrees at 1.75 m, 38
 at 1.78 m, 45 at 1.80 m and 50 at 1.82 m (15 at rest).
 
+In the place, with the kit body in `VFBodies`, four bots of a side in the spike rounds' buy phase
+and then running off as the round started: every head joint was inside its head block, 0.05 m under
+the block's middle as the pose puts it; the ankles stood 0.13 m over the soles standing and came up
+to 0.36 m in the stride; and the bodies took 0.43 ms of a frame on average, 0.52 ms at most, and
+0.67 ms with five. The meshes kept the pose they were imported in until each copy's parts were
+jointed to its root part (section 5).
+
 ## 4. Confirmed vs estimated, as implemented
 
 | What | Value | Status | Source |
@@ -180,7 +187,9 @@ bones are posed by their `Transform`, which Roblox applies on top of where a bon
 turn from its parent's in the body's space, `q`, becomes `R^-1 * q * R`, where `R` is the bone's
 axes at rest, and the root bone's also carries the pose's move (`R^-1 * move * q * R`). A bone that
 has turned less than 0.004 radians since it was last written isn't written again, so curled fingers
-cost nothing. What's held is built from its look (`WeaponLooks`), an ability's item from its lit
+cost nothing. Each copy's parts are jointed to its root part, which the bones hang off: Roblox skins
+a mesh only by the bones in its own assembly, and the importer's joints don't join the root part to
+the meshes. What's held is built from its look (`WeaponLooks`), an ability's item from its lit
 pieces only, and placed at the right hand's grip; it's hidden while planting, defusing or taking an
 orb.
 

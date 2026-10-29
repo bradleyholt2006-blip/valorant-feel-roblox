@@ -204,6 +204,20 @@ function BodyView.new(source: Model): Body?
 			table.insert(plain, { colour = d.Color, material = d.Material, transparency = d.Transparency })
 		end
 	end
+	-- Roblox skins a mesh only by the bones in its own assembly, and the
+	-- bones hang off the root part, which the importer's joints (gone
+	-- above) don't join to the meshes: every part's jointed to it, where
+	-- it rests, or the meshes stay in the pose they were imported in.
+	for i, part in parts do
+		if part ~= root then
+			local joint = Instance.new("Motor6D")
+			joint.Name = "VFSkin"
+			joint.Part0 = root
+			joint.Part1 = part
+			joint.C0 = offsets[i]
+			joint.Parent = part
+		end
+	end
 	return {
 		model = model,
 		skeleton = skeleton,
