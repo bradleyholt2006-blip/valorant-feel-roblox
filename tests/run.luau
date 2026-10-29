@@ -71,5 +71,6 @@ require("./heights")
 require("./bots")
 require("./botspike")
 require("./takeover")
+require("./body")
 
 H.finish()

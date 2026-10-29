@@ -13,12 +13,14 @@
 --
 -- Dummies have no server-side parts: the client draws them straight from
 -- their analytic hitboxes, so what you see is exactly what can be hit.
--- Until there are agent models, other players are drawn the same way, in
--- red, and their Roblox avatar is hidden on this client: it is shorter than
--- the hitboxes (a default avatar stands 1.43 m against the boxes' 1.75 m),
--- so a shot at its head would hit the body. Bots (system 60) have no
--- avatar, and are drawn as players are; what's known of each is its
--- stand-in's (Who).
+-- Other players and bots (system 60, what's known of each is its
+-- stand-in's, Who) are drawn as an agent's body (BodyView, system 63) when
+-- there's one in ReplicatedStorage, posed from their snapshots with its
+-- head in the head box; their blocks stay on the hitboxes, unseen. Without
+-- a body they're drawn as the dummies are, in red. Their Roblox avatar is
+-- hidden on this client: it is shorter than the hitboxes (a default avatar
+-- stands 1.43 m against the boxes' 1.75 m), so a shot at its head would hit
+-- the body.
 --
 -- Over each is a label, their name and health, which shows through walls
 -- but for an enemy's (another side's): through a wall it would say where an
@@ -66,6 +68,7 @@ local Health = require(Shared.Combat.Health)
 local ShotResolver = require(Shared.Combat.ShotResolver)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
 
+local BodyView = require(script.Parent.BodyView)
 local NetSim = require(script.Parent.NetSim)
 local Who = require(script.Parent.Who)
 
@@ -145,9 +148,15 @@ type Visual = {
 	billboard: BillboardGui,
 	label: TextLabel,
 	flashUntil: { [string]: number },
+	body: BodyView.Body?,
 }
 local visuals: { [number]: Visual } = {}
 local dummyFolder: Folder? = nil
+-- In Studio, what the bodies cost: Workspace's BodyView.COST, on this
+-- client, has the milliseconds they take of each frame, on average over
+-- the last second.
+local STUDIO = RunService:IsStudio()
+local bodySpent, bodyFrames, bodySince = 0, 0, 0
 local playerFolder: Folder? = nil
 
 -- The attribute on each entity's model with its entity id.
@@ -390,7 +399,7 @@ local function makeVisual(id: number): Visual
 	label.Parent = billboard
 	billboard.Parent = model
 	model.Parent = folderFor(id)
-	return { model = model, parts = parts, colors = colors, billboard = billboard, label = label, flashUntil = {} }
+	return { model = model, parts = parts, colors = colors, billboard = billboard, label = label, flashUntil = {}, body = nil }
 end
 
 -- Hides another player's Roblox avatar on this client, with its shadow,
@@ -480,21 +489,37 @@ local function onRender()
 		visual.model.Parent = if pose and id ~= RemoteEntities.viewing then folderFor(id) else nil
 		if pose then
 			RemoteEntities.placeBoxes(visual.parts, pose)
+			-- A player's or a bot's body, once there's one to draw.
+			local body = visual.body
+			if not body and not isDummy(id) then
+				local template = BodyView.template()
+				body = if template then BodyView.new(template) else nil
+				if body then
+					body.model.Parent = visual.model
+					visual.body = body
+				end
+			end
 			local protected = holder ~= nil and holder:GetAttribute(GunGameConfig.PROTECTED) == true
 			local material = if protected then Enum.Material.ForceField else Enum.Material.SmoothPlastic
 			local shade = pose.shade == true
-			local clear = if shade then SHADE_CLEAR else 0
+			local clear = if body then 1 elseif shade then SHADE_CLEAR else 0
+			local flash = false
 			for region, part in visual.parts do
-				part.Color = if (visual.flashUntil[region] or 0) > now
-					then FLASH_COLOR
-					elseif shade then SHADE_COLOR
-					else visual.colors[region]
+				local lit = (visual.flashUntil[region] or 0) > now
+				flash = flash or lit
+				part.Color = if lit then FLASH_COLOR elseif shade then SHADE_COLOR else visual.colors[region]
 				if part.Material ~= material then
 					part.Material = material
 				end
 				if part.Transparency ~= clear then
 					part.Transparency = clear
 				end
+			end
+			if body then
+				local started = os.clock()
+				BodyView.update(body, pose, now)
+				BodyView.paint(body, flash, shade, protected)
+				bodySpent += os.clock() - started
 			end
 			local hp = RemoteEntities.healthOf(id)
 			local health = string.format("%d + %d", RemoteEntities.points(hp.health), RemoteEntities.points(hp.shield))
@@ -513,6 +538,13 @@ local function onRender()
 		if character and root and pose then
 			local offset = CharacterRig.rootOffset(character, root)
 			root.CFrame = CFrame.new(Units.toStuds(pose.position) + Vector3.new(0, offset, 0)) * CFrame.Angles(0, pose.yaw, 0)
+		end
+	end
+	if STUDIO then
+		bodyFrames += 1
+		if now - bodySince >= 1 then
+			Workspace:SetAttribute(BodyView.COST, math.floor(bodySpent / bodyFrames * 1e5 + 0.5) / 100)
+			bodySpent, bodyFrames, bodySince = 0, 0, now
 		end
 	end
 end

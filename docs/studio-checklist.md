@@ -416,14 +416,16 @@ clicked last.
   names them and reads `speed 5.40 m/s`, `last second 5.40-5.40` and a green `biggest jump` under
   0.5 m/s. Before the server paced players' moves, a steady run read anywhere from about 2.5 to
   7.6 m/s, with jumps of 1 to 2.5. Then swap windows and measure player 1 the same way.
-- **T2 Blocks.** Each window draws the other player like a dummy but in red: a yellow head on a
-  red body and dark red legs, with their name and health over the head. Their Roblox avatar
-  doesn't show at all, so there's no hair or hat poking out of the blocks and no Roblox name tag
-  inside them. Press F10: the green outlines sit exactly on the blocks.
+- **T2 Blocks.** Each window draws the other player like a dummy but in red: a yellow head on a red
+  body and dark red legs, with their name and health over the head. Their Roblox avatar doesn't show
+  at all, so there's no hair or hat poking out of the blocks and no Roblox name tag inside them.
+  Press F10: the green outlines sit exactly on the blocks. With a body in ReplicatedStorage's
+  `VFBodies` (section 67), the other player is drawn as it instead, the outlines round it.
 - **T3 Hitting a player.** Press F10 in window 1. Player 2 strafes left and right in the target
   lane, 10 to 20 m out, and player 1 shoots them. Shots register, with damage numbers and hit
-  confirms, the block that was hit flashes white, and the overlay's boxes turn white on them. No impact marks appear on their body, which
-  would mean characters block shots.
+  confirms, the block that was hit flashes white (with a body, the whole body), and the overlay's
+  boxes turn white on them. No impact marks appear on their body, which would mean characters block
+  shots.
 - **T4 Death and respawn.** Kill player 2 with one Vandal headshot or four body shots. Their screen
   shows `ELIMINATED - respawning` and the kill feed shows the kill. About 3 s later they're back at
   the spawn with full health and shields, and they can move and shoot.
@@ -5697,6 +5699,90 @@ print(me.Character and me.Character:GetAttribute("VFSpawnKit"))
   theirs stands anywhere, and their side has as many alive as before the takeover. **Send:** which
   of them got it, and what the other saw.
 
+## 67. Agent bodies
+
+From [63-agent-bodies.md](research/63-agent-bodies.md). System 63 draws other players and bots as an
+agent's body: a copy of the rigged model in ReplicatedStorage's `VFBodies` folder (the one named
+`Default`, or else the first), 1.75 m tall, its bones posed every frame from what the snapshots say
+each one is doing, its head kept in the head box, and what it holds in its right hand. Their blocks
+stay on the hitboxes, unseen; with no body in `VFBodies` they're drawn as blocks, as before.
+Practice dummies are always blocks. In Studio, Workspace's `VFBodyMs`, read in a player's command
+bar, is the milliseconds the bodies take of each of that player's frames, on average over the last
+second.
+
+Put the body in place first, with the game stopped: in the Explorer, insert a Folder into
+ReplicatedStorage, name it `VFBodies`, and move the imported rig, `Superhero_Male_A`, into it from
+Workspace. Then start a Local Server with 2 players, as in section 9. Player 2 plays on the course 5
+to 10 m in front of player 1, and window 1 watches.
+
+- **AB1 Standing.** In window 1, player 2 is the body, not blocks: about as tall as the blocks were,
+  with no red block showing, no Roblox avatar, and their name and health over the head. In window 2,
+  buy a Vandal (B) and stand still: it's at the shoulder in both hands, the left hand under the
+  barrel and the left foot ahead, the body breathing. Press F10 in window 1: the green outlines are
+  round the body, its head inside the head box. In window 2, look straight up and straight down,
+  then hold Ctrl and do it again: the body crouches, the gun and the head follow the aim, and the
+  head stays inside its box. Run `print(workspace:GetAttribute("VFBodyMs"))` in window 1's command
+  bar. **Send:** whether the head ever left its box, how the stance looked, and the number.
+
+- **AB2 Moving.** In window 2, run ahead, back, left, right and diagonally, then walk (Shift) and
+  crouch-walk the same ways, stopping in between, and turn on the spot with the mouse. In window 1:
+  the legs step with the speed, quicker running, and a foot that's down stays where it's put,
+  sliding a little only running sideways; the hips turn toward the way player 2 moves while the
+  chest and the gun keep facing the aim; the feet come to stand where they stop; and turning on the
+  spot shuffles the feet. In window 2, jump on the spot, then off the red 1.00 m jump box: the legs
+  tuck, the left higher, and after the drop the knees bend a moment as they land. Pick Jett (T) and
+  hold Space in the air: the legs hang together, the toes pointed. **Send:** anything that looked
+  wrong, and which way player 2 was moving.
+
+- **AB3 Holding.** In window 2, draw the Vandal (1), the Classic (2) and the knife (3) in turn,
+  waiting a moment after each, then fire a few rounds from each gun and reload it (R). In window 1:
+  the Classic is out in front in both hands; the knife is low in the right hand, the left up in
+  front of the chest; at each switch the hands go from the old hold to the new without a snap, and
+  the new weapon comes up from pointing down; reloading, the left hand goes down to the magazine,
+  out and back. Pick Sage (T) and press Q: player 2 holds the Slow Orb's glowing piece up in the
+  right hand. **Send:** anything that looked wrong.
+
+- **AB4 The spike.** In window 2, pick up the spike (it waits 4 m behind the spawn), draw it (4) and
+  hold 4 in a site's plant area until it's planted, standing; then hold F by it to defuse it,
+  crouched. In window 1: planting, both hands go down in front, to about the waist's height standing
+  (the head stays in the standing head box), and the spike in hand isn't drawn meanwhile; defusing
+  crouched, the hands go down to the spike, working a little. **Send:** anything that looked wrong.
+
+- **AB5 Hits, a Shade and a force field.** In window 1, shoot player 2 a few times: the whole body
+  flashes white with each hit. In window 2, pick Omen (T) and send him 25 m down the target lane
+  with From the Shadows, as in FS4: while he's a Shade there, window 1 sees the body dark and
+  see-through, then whole again as he forms. In window 1, press P twice, which starts gun game, and
+  kill player 2: as they come back, the body's drawn as a force field until their spawn protection
+  ends. **Send:** anything that looked wrong.
+
+- **AB6 Bots.** Stop the game and start a Local Server with 1 player. In the server's command bar,
+  set `VFMatchMap` to `outpost`, `VFArenaMode` to `spike` and `VFArenaOn` to true, as in section 65.
+  In the buy phase your side's four bots are bodies, standing with their Classics; once the round's
+  live they run off together, their legs keeping up. Run this in the player's command bar: it
+  prints, every second for 30 s, how many bodies are drawn and what they cost:
+
+  ```lua
+  for _ = 1, 30 do
+  	local bodies = 0
+  	for _, entity in workspace.VFPlayers:GetChildren() do
+  		if entity:FindFirstChildWhichIsA("Model") then
+  			bodies += 1
+  		end
+  	end
+  	print(bodies, workspace:GetAttribute("VFBodyMs"))
+  	task.wait(1)
+  end
+  ```
+
+  Then get killed and watch a bot of yours: the one you watch isn't drawn, and the others are.
+  **Send:** the highest pair of numbers, and the F3 panel's `fps` with the bodies in view and
+  looking away from them.
+
+- **AB7 Without a body (optional).** Stop the game, move `VFBodies` from ReplicatedStorage to
+  ServerStorage in the Explorer, start a Local Server with 2 players and check T2: each window draws
+  the other player as red blocks, as before. Move `VFBodies` back into ReplicatedStorage afterwards.
+  **Send:** whether the blocks were back.
+
 ## Results
 
 ```
@@ -6140,6 +6226,13 @@ BC2 the two numbers: ___ ___; the carrier's takeover, your plant, the takeover w
 BC3 kills: ___; your VFLoadout next round: ___; the bot's and its credits: ___; after dying in a body: ___
 BC4 Competitive: ___; Swiftplay: ___; once a round's decided: ___; Team Deathmatch: ___
 BC5 who got it: ___; what the other saw: ___
+AB1 the head in its box: ___; the stance: ___; VFBodyMs: ___
+AB2 what looked wrong, and moving which way: ___
+AB3 what looked wrong: ___
+AB4 the plant: ___; the defuse: ___
+AB5 the hits: ___; the Shade: ___; the force field: ___
+AB6 the most bodies and VFBodyMs: ___ ___; fps with them in view: ___, looking away: ___
+AB7 blocks without a body: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6533,3 +6626,10 @@ Didn't look right (IDs and what you saw):
 | 62 | The record afterwards: kills in the body the player's, the body's guns kept if they live, and the bot on the starting kit | BC3 |
 | 62 | Not in Competitive, nor once a round's decided, nor in the modes that respawn; in Swiftplay and Skirmish | BC1, BC4 |
 | 62 | A takeover asked for as the bot's gone: no life, and watching goes on | BC5 |
+| 63 | The `Transform` sums on the real rig: each bone where the pose puts it, the skinned mesh following, and the body scaled to 1.75 m | AB1, AB2 |
+| 63 | The head in the head box, standing, crouched, and aiming up and down | AB1 |
+| 63 | The steps, the stance, a jump, a landing and a glide, as they look | AB2 |
+| 63 | The holds, a switch, a reload, an ability's item, the plant and the defuse, as they look | AB3, AB4 |
+| 63 | A hit, a Shade and spawn protection on the body; the outline round it, not round the unseen blocks; the label over the head | AB1, AB5 |
+| 63 | Bots drawn as bodies, the one watched not drawn, and what nine bodies cost a client's frame | AB6 |
+| 63 | Blocks again without a body | AB7 |

@@ -2,10 +2,11 @@
 -- Hitbox overlay (toggle F10), drawn through walls.
 --
 --   * every other player's three hitboxes where this client draws them this
---     frame, outlined so they show through walls (players and practice
---     dummies are drawn as their hitboxes; dummies are left out here). On a
---     live server, not an enemy's: through a wall it would show where one
---     is that the fog of war has sent unseen (system 35)
+--     frame, outlined so they show through walls, round the agent's body
+--     drawn there (system 63; practice dummies are drawn as their hitboxes,
+--     and are left out here). On a live server, not an enemy's: through a
+--     wall it would show where one is that the fog of war has sent unseen
+--     (system 35)
 --   * for each of your shots, for two seconds: the ray, the client's end
 --     point (yellow) and the boxes of the targets near the ray exactly as the
 --     client tested them (yellow)

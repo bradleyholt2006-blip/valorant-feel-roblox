@@ -475,6 +475,14 @@ Built one system at a time:
     The bot's out of the round with no death, and plays again from the next; what the player does in
     its body counts for them, and they keep its guns if they live -
     [research and design](docs/research/62-taking-over-bots.md)
+63. **Agent bodies**: other players and bots are drawn as an agent's body, a rigged model in
+    ReplicatedStorage's `VFBodies` (for now the kit body Superhero_Male_A), 1.75 m tall and posed
+    every frame from their snapshots by procedural animation: its legs step with the speed and keep
+    a planted foot still, its hips turn toward the way it moves while its chest faces its aim, it
+    crouches, jumps, lands and glides, and it holds each kind of weapon as that kind is held,
+    reloads, switches, plants and defuses. What can be hit doesn't change: the body is posed round
+    the hitboxes, its head kept in the head box -
+    [research and design](docs/research/63-agent-bodies.md)
 
 ## Running it
 
@@ -495,7 +503,12 @@ Built one system at a time:
    Play menu, and only once you press PLAY are you in a match; in Studio M opens the menu, where
    PLAY for another mode switches the server to it, as P does. Both deathmatches are only on the
    menu. PLAY's teleports between servers only work once the place is published.
-5. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
+5. Other players and bots are drawn as an agent's body once ReplicatedStorage has a folder
+   `VFBodies` with a rigged model in it (the one named `Default`, or else the first), as Studio's 3D
+   importer brings in a rig with the kit's bone names: put the imported `Superhero_Male_A` there.
+   Without one they're drawn as red blocks the hitboxes' size. Exporting a rig from Blender, turn
+   Add Leaf Bones off, as Roblox asks.
+6. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
 Controls: WASD, Shift walk, Ctrl crouch, Space jump, mouse 1 fire, mouse 2 zoom / scope,
@@ -605,8 +618,10 @@ fill what's played up to its number of players unless Workspace's `VFBots` is fa
 ReplicatedStorage's `VFBots`: a Configuration named after it (`BOT Ash`), with its `Entity` and `Id`
 and the attributes the arena keeps on a player, and in Studio its job in its side's plan as
 `VFBotTask`. In Studio, Workspace's `VFBotMs` has the milliseconds the bots take of each server
-frame, and the Output has a line each time a bot's been stuck. Each player's ability kit is their
-`VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the
+frame, and the Output has a line each time a bot's been stuck. Other players and bots are drawn as
+the body in ReplicatedStorage's `VFBodies` (system 63), and in Studio a client's Workspace
+`VFBodyMs` has the milliseconds the bodies take of each of its frames. Each player's ability kit is
+their `VFKit` attribute, as `C0/2 Q1/1 E1/1 X0/8` (charges and most, then the
 ultimate's points), with what's under way after it (`storm` while Blade Storm lasts, `glide` while
 you glide, `equip` while Curveball's flare, Hot Hands' fireball, Blaze's flame, the Healing Orb or
 the Slow Orb is in hand, `bend` while a Blaze wall is bent, `back` while Run it Back runs, and
@@ -766,7 +781,9 @@ skill, checking corners, walking every map round its walls without getting stuck
 map together) and bots playing for the spike (who goes for it, a bot's hands planting and defusing
 it, an attack on every map and a retake of every site, and getting out of the blast) and taking over
 a bot (who may and when, what it changes in the round and its callouts, and the body's kit from the
-server to the client) are pure Luau and run outside Roblox:
+server to the client) and agents' bodies (the kit's skeleton, the head in the head box, planted
+feet, the hands on what they hold, a jump, a reload, a plant and a draw, and no pops) are pure Luau
+and run outside Roblox:
 
 ```
 luau tests/run.luau
