@@ -10,7 +10,10 @@
 -- PrimaryPart is the part its bones hang off, standing on that part's
 -- origin facing -Z (its left on -X), the bones named as the kit's
 -- (BodyRig). It's scaled to the agents' height. One missing a bone the pose
--- needs isn't used, and the blocks are drawn as before.
+-- needs isn't used, and the blocks are drawn as before; nor is one until
+-- its meshes have loaded on this client, or ever if one of them can't (a
+-- mesh Roblox's moderation has blocked doesn't load for other players, and
+-- a body without its mesh is all but unseen).
 --
 -- Each bone is turned by its Transform, which Roblox applies on top of
 -- where the bone rests (its CFrame): a bone's turn from rest in the body's
@@ -18,6 +21,7 @@
 -- as the pose moves it. Bones the pose doesn't turn keep their parent's
 -- turn, as at rest, and aren't written.
 
+local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -79,8 +83,46 @@ export type Body = {
 
 local template: Model? = nil
 local broken: { [Model]: boolean } = {}
+-- Each rig's meshes: on their way (false) or loaded (true) on this client.
+local fetched: { [Model]: boolean } = {}
 
--- The body to draw agents with, if there's one in ReplicatedStorage.
+-- Loads a rig's meshes, and marks it broken if any of them doesn't load:
+-- drawn without one, a body would be missing that part of it, or all of it.
+-- The Output says which didn't (F9 in a game).
+local function fetch(model: Model)
+	local names: { [string]: string } = {} -- each mesh's part, by the mesh's asset number
+	local parts: { MeshPart } = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("MeshPart") then
+			local id = string.match(d.MeshId, "%d+$")
+			if id then
+				names[id] = d.Name
+				table.insert(parts, d)
+			end
+		end
+	end
+	local failed: { string } = {}
+	local ok, problem = pcall(function()
+		ContentProvider:PreloadAsync(parts, function(content: string, status: Enum.AssetFetchStatus)
+			local id = string.match(content, "%d+$")
+			if id and names[id] and status ~= Enum.AssetFetchStatus.Success then
+				table.insert(failed, `{names[id]} ({content}, {status.Name})`)
+			end
+		end)
+	end)
+	if not ok then
+		table.insert(failed, tostring(problem))
+	end
+	if #failed > 0 then
+		broken[model] = true
+		warn(`[VF] Agents are drawn as blocks: the body {model.Name}'s meshes didn't all load, {table.concat(failed, "; ")}`)
+	else
+		fetched[model] = true
+	end
+end
+
+-- The body to draw agents with, if there's one in ReplicatedStorage and its
+-- meshes have loaded.
 function BodyView.template(): Model?
 	local found = template
 	if found and found.Parent and not broken[found] then
@@ -93,7 +135,14 @@ function BodyView.template(): Model?
 	end
 	local named = folder:FindFirstChild(BodyView.DEFAULT)
 	local model = if named and named:IsA("Model") then named else folder:FindFirstChildWhichIsA("Model")
-	if model and not broken[model] then
+	if not model or broken[model] then
+		return nil
+	end
+	if fetched[model] == nil then
+		fetched[model] = false
+		task.spawn(fetch, model)
+	end
+	if fetched[model] then
 		template = model
 		return model
 	end
