@@ -210,6 +210,8 @@ local function nextMode(): string
 	local mode = Workspace:GetAttribute(ArenaConfig.MODE)
 	if Workspace:GetAttribute(ArenaConfig.ON) ~= true then
 		return "skirmish"
+	elseif mode == "skirmish" then
+		return "duel"
 	elseif mode == "gungame" then
 		return MatchConfig.DEFAULT_FORMAT
 	elseif mode ~= "spike" then

@@ -69,6 +69,14 @@
 -- Each round starts with the map's Ultimate Orbs all up (system 49,
 -- OrbServer).
 --
+-- The 1v1 (system 64) is Skirmish's rounds with one a side (ArenaConfig.Duel),
+-- on a map built by hand in the place rather than here: Workspace's 1v1Map
+-- (DuelMap), its spawn rooms Spawn1 and Spawn2. It's made a model always on
+-- every client as it starts, and each room's door, found in its wall, gets
+-- a barrier of the side's colour, up for each buy phase. It's the only map,
+-- so there's no vote: the next match follows the victory screen. Without
+-- the map, Skirmish is played instead.
+--
 -- Gun game (system 23, GunGameRules) is played in the arena too, on the
 -- same maps and with the same vote between matches: each player's level
 -- picks the gun they carry, given them as each life starts and, as they
@@ -162,12 +170,13 @@
 -- carried is theirs (SpikeServer.botTaken), and its next life's on the
 -- starting kit.
 --
--- P (Studio or the place owner) moves on through the arena, gun game, the
--- spike rounds in the standard format, the spike rounds in Swiftplay's, and
--- off. So do Workspace's attributes, set from the server, which is how
--- scripted checks do it, and which tell clients what's on: VFArenaOn,
--- VFArenaMode ("skirmish", "gungame", "deathmatch", "teamdeathmatch" or
--- "spike") and VFMatchFormat (a key of MatchConfig.Formats); VFMatchMap
+-- P (Studio or the place owner) moves on through the arena, the 1v1, gun
+-- game, the spike rounds in the standard format, the spike rounds in
+-- Swiftplay's, and off. So do Workspace's attributes, set from the server,
+-- which is how scripted checks do it, and which tell clients what's on:
+-- VFArenaOn, VFArenaMode ("skirmish", "duel", "gungame", "deathmatch",
+-- "teamdeathmatch" or "spike") and VFMatchFormat (a key of
+-- MatchConfig.Formats); VFMatchMap
 -- has the spike rounds' first match on the map it names. The phase and
 -- the score go to clients as attributes on the arena's model, whichever is
 -- played.
@@ -184,6 +193,7 @@ local AgentSelect = require(Shared.Abilities.AgentSelect)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local ArenaRules = require(Shared.Arena.ArenaRules)
+local DuelMap = require(Shared.Arena.DuelMap)
 local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
 local DeathmatchRules = require(Shared.Arena.DeathmatchRules)
 local DeathmatchSpawns = require(Shared.Arena.DeathmatchSpawns)
@@ -240,7 +250,7 @@ local Arena = {}
 -- (system 24), rather than as they join the server. ModeServers sets it.
 Arena.menuFirst = false
 
-export type Mode = "skirmish" | "spike" | "gungame" | "deathmatch" | "teamdeathmatch"
+export type Mode = "skirmish" | "duel" | "spike" | "gungame" | "deathmatch" | "teamdeathmatch"
 
 -- Each side's team and colours: the arena room's floor, its barrier and the
 -- team. In the spike rounds the teams go by their colours, as their spawns
@@ -293,6 +303,7 @@ local PACKS = "VFHealthPacks"
 local model: Model? = nil -- the arena's, which carries the state of play
 local begun = 0 -- how many times a mode has started, so each match's key is its own (system 29)
 local barriers: { BasePart } = {} -- the arena's
+local duelBarriers: { BasePart } = {} -- the 1v1 map's (system 64), once it's been played
 local cover: { BasePart } = {} -- the arena's, for the map built (system 22)
 local builtMap: string? = nil
 local mapBarriers: { [string]: { BasePart } } = {} -- each spike map's, by its key
@@ -490,6 +501,54 @@ function Arena.buildIfMissing()
 		mapBarriers[key] = raised
 		raise(raised, false)
 	end
+end
+
+-- Readies the 1v1's map (system 64) the first time it's played: a model
+-- always on every client, if the place has it in a folder, and a barrier in
+-- each spawn room's door, in its side's colour. Returns whether there's a
+-- map to play.
+local duelReady = false
+local function prepareDuel(): boolean
+	if duelReady then
+		return DuelMap.read() ~= nil
+	end
+	local root = DuelMap.root()
+	if not root then
+		return false
+	end
+	if root:IsA("Model") then
+		root.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	elseif root:IsA("Folder") then
+		local made = newModel(DuelMap.ROOT)
+		for _, child in root:GetChildren() do
+			child.Parent = made
+		end
+		root:Destroy()
+		made.Parent = Workspace
+	end
+	-- Read once it's where it stays, before any barrier's in it.
+	local info = DuelMap.read()
+	if not info then
+		return false
+	end
+	for side, doors in info.doors do
+		for _, door in doors do
+			local p = Instance.new("Part")
+			p.Name = DuelMap.BARRIER
+			p.Anchored = true
+			p.CFrame = door.cframe
+			p.Size = door.size
+			p.Material = Enum.Material.ForceField
+			p.Color = SIDES[side].barrier
+			p.CastShadow = false
+			p.CanTouch = false
+			p.Parent = info.root
+			table.insert(duelBarriers, p)
+		end
+	end
+	raise(duelBarriers, false)
+	duelReady = true
+	return true
 end
 
 -- The player attributes what's played keeps up to date, cleared as it ends.
@@ -772,7 +831,7 @@ local function publish()
 			"WinScore",
 			if m
 				then m.format.winScore.value
-				elseif s then ArenaConfig.Rules.winScore.value
+				elseif s then s.winScore
 				elseif g then #g.ladder
 				elseif d then DeathmatchConfig.Rules.killTarget.value
 				elseif t then TeamDeathmatchConfig.Rules.killTarget.value
@@ -862,7 +921,8 @@ local function publish()
 		end
 	end
 	syncPacks()
-	raise(barriers, s ~= nil and ArenaRules.barriersUp(s))
+	raise(barriers, s ~= nil and mode ~= "duel" and ArenaRules.barriersUp(s))
+	raise(duelBarriers, s ~= nil and mode == "duel" and ArenaRules.barriersUp(s))
 	-- The spike maps' barriers: the spike rounds' buy phase, and Team
 	-- Deathmatch's pre-game.
 	for key, raised in mapBarriers do
@@ -1203,6 +1263,9 @@ local function begin(wanted: Mode, format: string)
 	begun += 1
 	if wanted == "skirmish" then
 		skirmish = ArenaRules.new()
+	elseif wanted == "duel" then
+		local D = ArenaConfig.Duel
+		skirmish = ArenaRules.new({ DuelMap.KEY }, nil, D.sideSize.value, D.winScore.value)
 	elseif wanted == "gungame" then
 		gun = GunGameRules.new()
 	elseif wanted == "deathmatch" then
@@ -1279,8 +1342,18 @@ local function apply()
 	local wanted: Mode? = nil
 	if Workspace:GetAttribute(ArenaConfig.ON) == true then
 		local named = Workspace:GetAttribute(ArenaConfig.MODE)
-		local known = named == "spike" or named == "gungame" or named == "deathmatch" or named == "teamdeathmatch"
+		local known = named == "spike" or named == "gungame" or named == "deathmatch" or named == "teamdeathmatch" or named == "duel"
 		wanted = if known then named else "skirmish"
+		if wanted == "duel" and not prepareDuel() then
+			warn(
+				string.format(
+					"[VF] No 1v1 map: Workspace has no %s with rooms %s, so Skirmish is played",
+					DuelMap.ROOT,
+					table.concat(DuelMap.ROOMS, " and ")
+				)
+			)
+			wanted = "skirmish"
+		end
 	end
 	local asked = Workspace:GetAttribute(MatchConfig.FORMAT)
 	local format = if typeof(asked) == "string" and MatchConfig.Formats[asked] then asked else MatchConfig.DEFAULT_FORMAT
@@ -1294,6 +1367,7 @@ local function apply()
 		local m2, s2, g2, d2, t2 = match, skirmish, gun, dm, tdm
 		local what = if m2
 			then string.format("the spike rounds, %s, on %s", m2.format.name, SpikeMaps.Maps[m2.map].NAME)
+			elseif s2 and mode == "duel" then string.format("%s, on Workspace's %s", DuelMap.NAME, DuelMap.ROOT)
 			elseif s2 then ArenaLayout.Maps[s2.map].name
 			elseif g2 then "gun game, " .. ArenaLayout.Maps[g2.map].name
 			elseif d2 then "deathmatch, on " .. SpikeMaps.Maps[d2.map].NAME
@@ -1633,8 +1707,8 @@ function Arena.start()
 			publish()
 		end
 	end)
-	-- P asks for the next of: "skirmish", "gungame", a format of the spike
-	-- rounds, or "off" (true and false are the arena on and off). It takes
+	-- P asks for the next of: "skirmish", "duel", "gungame", a format of the
+	-- spike rounds, or "off" (true and false are the arena on and off). It takes
 	-- "deathmatch" and "teamdeathmatch" too, which P never asks for: the Play
 	-- menu has them.
 	Remotes.get().Arena.OnServerEvent:Connect(function(player, asked)
@@ -1646,7 +1720,7 @@ function Arena.start()
 		elseif asked == true or asked == "skirmish" then
 			Workspace:SetAttribute(ArenaConfig.MODE, "skirmish")
 			Workspace:SetAttribute(ArenaConfig.ON, true)
-		elseif asked == "gungame" or asked == "deathmatch" or asked == "teamdeathmatch" then
+		elseif asked == "duel" or asked == "gungame" or asked == "deathmatch" or asked == "teamdeathmatch" then
 			Workspace:SetAttribute(ArenaConfig.MODE, asked)
 			Workspace:SetAttribute(ArenaConfig.ON, true)
 		elseif typeof(asked) == "string" and MatchConfig.Formats[asked] then
@@ -1659,12 +1733,20 @@ function Arena.start()
 	-- Where someone's next life starts, a player's or a bot's.
 	local function spawnPoint(id: number): PlayerSimServer.SpawnPoint?
 		local s, m, g, d, t = skirmish, match, gun, dm, tdm
-		-- The arena's rooms, in Skirmish and gun game.
+		-- The arena's rooms, in Skirmish and gun game, or the 1v1 map's.
 		local sides: Roster.Sides? = if s then s elseif g then g else nil
 		if sides then
 			local side, spot = Roster.sideOf(sides, id), Roster.spotOf(sides, id)
 			if not side or not spot then
 				return nil
+			end
+			if mode == "duel" then
+				local spots = DuelMap.spots(side)
+				if #spots == 0 then
+					return nil
+				end
+				-- In metres in the place: the map has no origin of its own.
+				return spots[(spot - 1) % #spots + 1]
 			end
 			local spots = ArenaLayout.spots(side)
 			local chosen = spots[(spot - 1) % #spots + 1]
@@ -1719,7 +1801,8 @@ function Arena.start()
 			out = { arenaMap = s.map, live = s.phase == "live", round = s.match * 1000 + s.round, roles = {}, spawns = {} }
 			for side = 1, Roster.SIDES do
 				local feet: { vector } = {}
-				for _, spot in ArenaLayout.spots(side) do
+				local spots: { ArenaLayout.Spot } = if mode == "duel" then DuelMap.spots(side) else ArenaLayout.spots(side)
+				for _, spot in spots do
 					table.insert(feet, spot.feet)
 				end
 				out.spawns[side] = feet

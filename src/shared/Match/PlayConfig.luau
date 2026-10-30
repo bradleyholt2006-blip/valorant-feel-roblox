@@ -55,6 +55,13 @@ PlayConfig.Modes = {
 		players = 2 * SKIRMISH,
 	},
 	{
+		key = "duel",
+		name = "Duel",
+		blurb = string.format("One on one, a life a round: first to %d wins", ArenaConfig.Duel.winScore.value),
+		arena = "duel",
+		players = 2 * ArenaConfig.Duel.sideSize.value,
+	},
+	{
 		key = "gungame",
 		name = "Gun Game",
 		blurb = string.format("A new gun with each kill, %d in all: a kill with the knife wins", #GunGameConfig.Tiers),
@@ -130,7 +137,7 @@ function PlayConfig.keyOf(on: any, arenaMode: any, format: any): string?
 		return nil
 	elseif arenaMode == "spike" then
 		return if typeof(format) == "string" and PlayConfig.ByKey[format] then format else MatchConfig.DEFAULT_FORMAT
-	elseif arenaMode == "gungame" or arenaMode == "deathmatch" or arenaMode == "teamdeathmatch" then
+	elseif arenaMode == "duel" or arenaMode == "gungame" or arenaMode == "deathmatch" or arenaMode == "teamdeathmatch" then
 		return arenaMode
 	end
 	return "skirmish"

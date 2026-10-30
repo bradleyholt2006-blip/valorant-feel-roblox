@@ -10,7 +10,8 @@
 --     after the victory screen, voteChoices of them, chosen at random, for
 --     voteTime
 -- With nobody on one of the sides it waits, and anyone who dies comes back
--- after respawnTime.
+-- after respawnTime. The 1v1 (system 64) plays the same rounds with its own
+-- side size and win score (ArenaConfig.Duel) on its one map.
 --
 -- Who plays on which side is Roster's (system 21), as in the spike rounds:
 -- two a side, as in the reference's 2v2 queue, joining in a buy phase or
@@ -55,6 +56,10 @@ export type State = {
 	-- By member: who on the other side has damaged their life under way,
 	-- for the assists when they die.
 	hurt: Roster.Hurt,
+	-- How many play a side, and the rounds that win a match: Skirmish's, or
+	-- the 1v1's (system 64).
+	sideSize: number,
+	winScore: number,
 	version: number, -- goes up on every change, so the server knows to tell clients
 }
 
@@ -64,7 +69,8 @@ ArenaRules.SIDES = 2
 
 -- On `maps`, all three if none are given, the first match on one of them at
 -- random; `roll` is the dice, math.random's unless a test has its own.
-function ArenaRules.new(maps: { string }?, roll: MapVote.Roll?): State
+-- `sideSize` and `winScore` are Skirmish's unless given (the 1v1's).
+function ArenaRules.new(maps: { string }?, roll: MapVote.Roll?, sideSize: number?, winScore: number?): State
 	local pool = maps or ArenaLayout.MAPS
 	local dice: MapVote.Roll = roll or math.random
 	return {
@@ -83,6 +89,8 @@ function ArenaRules.new(maps: { string }?, roll: MapVote.Roll?): State
 		vote = nil,
 		roll = dice,
 		hurt = {},
+		sideSize = sideSize or R.sideSize.value,
+		winScore = winScore or R.winScore.value,
 		version = 0,
 	}
 end
@@ -136,7 +144,7 @@ local function endRound(s: State, winner: number, now: number)
 	s.roundWinner = winner
 	s.score[winner] += 1
 	Roster.roundPlayed(s)
-	if s.score[winner] >= R.winScore.value then
+	if s.score[winner] >= s.winScore then
 		s.phase = "matchOver"
 		s.matchWinner = winner
 		s.phaseEndsAt = now + R.matchOverTime.value
@@ -186,7 +194,7 @@ end
 -- next round starts, and with both sides full they're in line.
 local function admit(s: State, id: number, now: number): { number }
 	local spawnsNow = s.phase == "waiting" or s.phase == "buy"
-	local m = Roster.add(s, id, R.sideSize.value, spawnsNow, 0)
+	local m = Roster.add(s, id, s.sideSize, spawnsNow, 0)
 	s.version += 1
 	if not m then
 		return {}
@@ -222,7 +230,7 @@ function ArenaRules.leave(s: State, id: number, now: number): { number }
 		return {}
 	end
 	local out: { number } = {}
-	local nextInLine = Roster.nextInLine(s, R.sideSize.value)
+	local nextInLine = Roster.nextInLine(s, s.sideSize)
 	if nextInLine then
 		out = admit(s, nextInLine, now)
 	end

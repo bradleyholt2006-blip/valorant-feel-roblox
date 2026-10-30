@@ -31,6 +31,7 @@ local Accuracy = require(Shared.Weapons.Accuracy)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local GroundGuns = require(Shared.Weapons.GroundGuns)
 local Minimap = require(Shared.Match.Minimap)
+local PartsPlan = require(Shared.Match.PartsPlan)
 local Pings = require(Shared.Match.Pings)
 local Remotes = require(Shared.Net.Remotes)
 local Sight = require(Shared.Combat.Sight)
@@ -83,7 +84,8 @@ local function planNow(): Minimap.Plan?
 	if not model or Workspace:GetAttribute(ArenaConfig.ON) ~= true then
 		return nil
 	end
-	return Minimap.planFor(Workspace:GetAttribute(ArenaConfig.MODE), model:GetAttribute("Map"))
+	-- The 1v1 map's (system 64) is drawn from its parts.
+	return PartsPlan.inPlay()
 end
 
 -- What's on the ground to ping: the spike, dropped or planted, and the guns.

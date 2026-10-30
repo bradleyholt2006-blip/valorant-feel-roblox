@@ -64,6 +64,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
+local DuelMap = require(Shared.Arena.DuelMap)
 local TeamDeathmatchRules = require(Shared.Arena.TeamDeathmatchRules)
 local StepTracker = require(Shared.Audio.StepTracker)
 local BotBrain = require(Shared.Bots.BotBrain)
@@ -421,6 +422,23 @@ local function build(key: string, spikeMap: string?, arenaMap: string?)
 				end
 			end
 			made = { nav = plan.nav, plan = plan, origin = map.origin, places = BotTeam.placesOf(plan.nav, points), glances = glances }
+		elseif arenaMap == DuelMap.KEY then
+			-- The 1v1's map (system 64), from the place's own parts, in metres in
+			-- the place: a grid of places over its widest floor.
+			local info = DuelMap.read()
+			local parts: { any } = if info then info.parts else {}
+			local b = if info then info.bounds else { x0 = 0, z0 = 0, x1 = 1, z1 = 1 }
+			local nav = BotNav.ofParts("arena" .. DuelMap.KEY, parts, b.x0 - 1, b.z0 - 1, b.x1 + 1, b.z1 + 1, pause)
+			local points: { vector } = {}
+			if info then
+				local h = info.hall
+				for _, fx in { 1 / 6, 1 / 2, 5 / 6 } do
+					for _, fz in { 1 / 6, 1 / 2, 5 / 6 } do
+						table.insert(points, vector.create(h.x0 + fx * (h.x1 - h.x0), info.ground, h.z0 + fz * (h.z1 - h.z0)))
+					end
+				end
+			end
+			made = { nav = nav, plan = nil, origin = vector.create(0, 0, 0), places = BotTeam.placesOf(nav, points), glances = {} }
 		else
 			local name = arenaMap :: string
 			local w, l, _, rd = ArenaLayout.size()

@@ -28,7 +28,7 @@ do
 		unique = unique and not keys[mode.key] and PlayConfig.ByKey[mode.key] == mode
 		keys[mode.key] = true
 	end
-	check("seven modes, each by a key of its own", #PlayConfig.Modes == 7 and unique)
+	check("eight modes, each by a key of its own", #PlayConfig.Modes == 8 and unique)
 
 	local arenas = true
 	for _, mode in PlayConfig.Modes do
@@ -36,7 +36,7 @@ do
 			arenas = arenas and mode.format ~= nil and MatchConfig.Formats[mode.format] ~= nil and mode.key == mode.format
 		else
 			local arena = mode.arena
-			local known = arena == "skirmish" or arena == "gungame" or arena == "deathmatch" or arena == "teamdeathmatch"
+			local known = arena == "skirmish" or arena == "duel" or arena == "gungame" or arena == "deathmatch" or arena == "teamdeathmatch"
 			arenas = arenas and known and mode.format == nil
 		end
 	end
@@ -50,12 +50,13 @@ do
 	check("every format of the spike rounds is on the menu", formats)
 
 	local sizes = PlayConfig.ByKey.skirmish.players == 2 * ArenaConfig.Rules.sideSize.value
+		and PlayConfig.ByKey.duel.players == 2 * ArenaConfig.Duel.sideSize.value
 		and PlayConfig.ByKey.gungame.players == 2 * GunGameConfig.Rules.sideSize.value
 		and PlayConfig.ByKey.teamdeathmatch.players == 2 * TeamDeathmatchConfig.Rules.sideSize.value
 		and PlayConfig.ByKey.standard.players == 2 * MatchConfig.Rules.sideSize.value
 		and PlayConfig.ByKey.competitive.players == 2 * MatchConfig.Rules.sideSize.value
 		and PlayConfig.ByKey.swiftplay.players == 2 * MatchConfig.Rules.sideSize.value
-	check("a match holds two sides of its mode's side size: 2v2, 4v4 and 5v5", sizes)
+	check("a match holds two sides of its mode's side size: 2v2, 1v1, 4v4 and 5v5", sizes)
 	local dm = PlayConfig.ByKey.deathmatch
 	local ffa = dm ~= nil and dm.players == DeathmatchConfig.Rules.players.value and dm.freeForAll == true
 	for _, mode in PlayConfig.Modes do
@@ -67,6 +68,7 @@ do
 	check("a public server plays Skirmish, as the arena has from system 21", default ~= nil and default.arena == "skirmish")
 
 	local blurbs = string.find(PlayConfig.ByKey.skirmish.blurb, tostring(ArenaConfig.Rules.winScore.value), 1, true) ~= nil
+		and string.find(PlayConfig.ByKey.duel.blurb, tostring(ArenaConfig.Duel.winScore.value), 1, true) ~= nil
 		and string.find(PlayConfig.ByKey.gungame.blurb, tostring(#GunGameConfig.Tiers), 1, true) ~= nil
 		and string.find(PlayConfig.ByKey.standard.blurb, tostring(MatchConfig.Formats.standard.winScore.value), 1, true) ~= nil
 		and string.find(PlayConfig.ByKey.swiftplay.blurb, tostring(MatchConfig.Formats.swiftplay.winScore.value), 1, true) ~= nil
@@ -80,8 +82,9 @@ do
 	local keyOf = PlayConfig.keyOf
 	check("the arena off is no mode, the course", keyOf(false, "skirmish", "standard") == nil and keyOf(nil, "gungame", nil) == nil)
 	check(
-		"Skirmish, gun game and both deathmatches by the arena's mode",
+		"Skirmish, the 1v1, gun game and both deathmatches by the arena's mode",
 		keyOf(true, "skirmish", "competitive") == "skirmish"
+			and keyOf(true, "duel", "standard") == "duel"
 			and keyOf(true, "gungame", nil) == "gungame"
 			and keyOf(true, "deathmatch", "standard") == "deathmatch"
 			and keyOf(true, "teamdeathmatch", nil) == "teamdeathmatch"
@@ -253,7 +256,7 @@ do
 	local text = ServerList.formatCounts(counts, order)
 	check(
 		"as Workspace has them, in the menu's order",
-		text == "skirmish=9,gungame=5,deathmatch=0,teamdeathmatch=0,standard=0,competitive=0,swiftplay=0",
+		text == "skirmish=9,duel=0,gungame=5,deathmatch=0,teamdeathmatch=0,standard=0,competitive=0,swiftplay=0",
 		text
 	)
 	local back = ServerList.parseCounts(text)

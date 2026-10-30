@@ -483,6 +483,11 @@ Built one system at a time:
     reloads, switches, plants and defuses. What can be hit doesn't change: the body is posed round
     the hitboxes, its head kept in the head box -
     [research and design](docs/research/63-agent-bodies.md)
+64. **The 1v1**: Duel on the Play menu, Skirmish's rounds one a side, first to 10, on a map built
+    by hand in the place, Workspace's `1v1Map` with spawn rooms `Spawn1` and `Spawn2`: the spawn
+    spots, each room's door and its barrier, the bots' way round and the minimap are all read from
+    its parts, so it can be rebuilt in Studio with no change in code. A bot plays whoever's alone,
+    and there's no map vote - [research and design](docs/research/64-duel.md)
 
 ## Running it
 

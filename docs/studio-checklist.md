@@ -5784,6 +5784,22 @@ to 10 m in front of player 1, and window 1 watches.
   the other player as red blocks, as before. Move `VFBodies` back into ReplicatedStorage afterwards.
   **Send:** whether the blocks were back.
 
+## 68. The 1v1
+
+From [64-duel.md](research/64-duel.md). System 64 plays Skirmish's rounds one a side, first to 10,
+on the map built in the place, Workspace's `1v1Map`, with its spawn rooms `Spawn1` and `Spawn2`.
+
+- **DU1 Alone, against a bot.** Start a solo Play. Press P twice (Skirmish, then the 1v1). The
+  output says `[VF] Arena on: 1v1, on Workspace's 1v1Map`. You're in `Spawn1`'s room facing its door,
+  which has an orange barrier for the 15 s buy phase; the top bar says ROUND 1, FIRST TO 10; the
+  minimap draws the map. As the round goes live the barrier goes, and a bot comes from the other room
+  through its door (teal barrier). Whoever dies loses the round; 3 s later both are back in their
+  rooms for a 3 s buy phase. **Send:** anything that looked wrong.
+
+- **DU2 Two players.** Start a Local Server with 2 players. In window 1 press P twice. There's no bot:
+  one of you is in each room. Win a round each. **Send:** the score after two rounds, and whether
+  either of you got through a barrier in a buy phase.
+
 ## Results
 
 ```
