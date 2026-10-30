@@ -458,6 +458,24 @@ do
 		end
 	end
 	check("from it, standing at the frame, mid's lane in sight", seen == total, string.format("%d of %d", seen, total))
+	-- The courtyard under it: its far half seen over the sill, and the strip
+	-- right under the window out of sight.
+	local far, near = 0, 0
+	for z = -5.5, 1.5, 2 do
+		if Levels.sees(sight, vector.create(0, eye, room.z1 - 0.5), vector.create(0.5, 1.6, z)) then
+			far += 1
+		end
+	end
+	for z = -11.5, -9.5, 2 do
+		if Levels.sees(sight, vector.create(0, eye, room.z1 - 0.5), vector.create(0.5, 1.6, z)) then
+			near += 1
+		end
+	end
+	check(
+		"...and the courtyard's far half, over the sill, but not right under the window",
+		far == 4 and near == 0,
+		string.format("%d of 4, %d of 2", far, near)
+	)
 
 	-- Hookah's window: a vault onto B, quicker than the way round.
 	local bw = wharf.Windows[2]
