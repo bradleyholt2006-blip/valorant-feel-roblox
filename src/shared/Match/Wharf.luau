@@ -59,8 +59,11 @@ local flights: { MapPlan.Flight } = {
 	{ name = "BElbowRamp", x0 = 40, z0 = -42, x1 = 46, z1 = -36, up = "+z", y0 = 0, y1 = PLATFORM },
 }
 
+-- Mid's window: its sill 1 m over the room's floor, too high to climb, and
+-- low enough that a defender standing at it sees down into the courtyard
+-- but for the strip right under it, as well as down the lane.
 local windows: { MapPlan.Window } = {
-	{ name = "MidWindowFrame", x0 = -2, z0 = -13, x1 = 2, z1 = -12, sill = WINDOW + 1.3, top = WINDOW + 2.6 },
+	{ name = "MidWindowFrame", x0 = -2, z0 = -13, x1 = 2, z1 = -12, sill = WINDOW + 1, top = WINDOW + 2.6 },
 	{ name = "BWindow", x0 = 27, z0 = -15, x1 = 28, z1 = -12, sill = 0.75, top = 2.7 },
 }
 

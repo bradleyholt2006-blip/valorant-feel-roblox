@@ -354,6 +354,14 @@ local function puff(point: vector, normal: vector, size: number)
 	fade(p, 0.3, 0.2)
 end
 
+-- Whether a mark can show on what a shot met: not on an unseen part, such
+-- as the box a kit piece's look stands in (MapKit), which is bigger than a
+-- round barrel or a crate stack's narrower top, so a mark on it would hang
+-- in the air.
+local function marked(key: any): boolean
+	return not (typeof(key) == "Instance" and key:IsA("BasePart") and key.Transparency >= 1)
+end
+
 -- Holes and sparks along a shot, for the walls it met up to `upTo` metres.
 -- Pieces that touch are one wall: one entry, and one exit if the bullet came
 -- out of the last of them.
@@ -380,13 +388,17 @@ local function drawWalls(origin: vector, dir: vector, walls: { Penetration.Wall 
 			spark(at + first.normal * 0.01, RICOCHET_COLOR, 0.025)
 			return
 		end
-		mark(at, first.normal)
+		if marked(first.key) then
+			mark(at, first.normal)
+		end
 		local exit, exitNormal = last.exit, last.exitNormal
 		if exit and exitNormal then
 			puff(at, first.normal, 0.06)
 			if exit <= upTo + 1e-3 then
 				local out = origin + dir * exit
-				mark(out, exitNormal)
+				if marked(last.key) then
+					mark(out, exitNormal)
+				end
 				puff(out, exitNormal, 0.04)
 			end
 		else

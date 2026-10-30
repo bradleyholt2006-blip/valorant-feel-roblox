@@ -5238,10 +5238,11 @@ Start a Local Server with 1 player, as in section 9.
   - Mid, from the end of the lane: the courtyard ahead, open down the middle, and over its far side
     the window room's frame, 4 m wide and 3 m up, with the room's roof over it; barrels on the left
     by the way to A, and the tree on the right.
-  - Mid, from the window: through the frame, the courtyard below and the lane running away from it
-    toward the attackers' side, a planter on its left and a crate stack on its right, nothing across
-    it; the tree off to the left, none of its leaves over the lane, and the warehouse over the wall
-    to the right.
+  - Mid, from the window: over the frame's sill, 1 m up, the far half of the courtyard below, the
+    strip right under the window out of sight, and the lane running away from it toward the
+    attackers' side, a planter on its left and a crate stack on its right, nothing across it; the
+    tree off to the left, none of its leaves over the lane, and the warehouse over the wall to the
+    right.
   - Hookah, from B's site: hookah's front, its window 3 m wide with its sill 0.75 m up and its top
     2.7 m, and to its right the door under its lintel, with barrels by it; a crate close on the
     left, and the crane's leg over hookah's roof.
