@@ -86,6 +86,43 @@ do
 	check("and counts as match 2, so everyone gets the starting kit again", s.match == 2)
 end
 
+-- The 1v1 (system 64): the same rounds one a side, to its own win score, on
+-- its one map, so with no vote between matches.
+do
+	local D = ArenaConfig.Duel
+	local s = ArenaRules.new({ "duel" }, nil, D.sideSize.value, D.winScore.value)
+	local t = 100
+	check("the 1v1 plays its one map, one a side", s.map == "duel" and s.sideSize == 1 and s.winScore == D.winScore.value)
+	ArenaRules.join(s, 11, t)
+	local spawned = ArenaRules.join(s, 22, t)
+	check(
+		"two players make a round, one a side",
+		same(spawned, { 11, 22 }) and ArenaRules.sideOf(s, 11) == 1 and ArenaRules.sideOf(s, 22) == 2 and s.phase == "buy"
+	)
+	check("a third waits in line", #ArenaRules.join(s, 33, t) == 0 and ArenaRules.sideOf(s, 33) == nil and #s.queue == 1)
+	for _ = 1, D.winScore.value do
+		t = s.phaseEndsAt
+		ArenaRules.step(s, t)
+		ArenaRules.died(s, 22, t + 5)
+		if s.phase == "matchOver" then
+			break
+		end
+		ArenaRules.step(s, s.phaseEndsAt)
+	end
+	check(
+		"the first to the 1v1's win score takes the match",
+		s.phase == "matchOver" and s.matchWinner == 1 and s.score[1] == D.winScore.value and s.score[2] == 0,
+		string.format("%s %d-%d", s.phase, s.score[1], s.score[2])
+	)
+	spawned = ArenaRules.step(s, s.phaseEndsAt)
+	check(
+		"with one map there's no vote: the next match starts after the victory screen",
+		same(spawned, { 11, 22 }) and s.phase == "buy" and s.vote == nil and s.match == 2 and s.round == 1 and s.score[1] == 0
+	)
+	spawned = ArenaRules.leave(s, 22, s.phaseEndsAt - 1)
+	check("whoever leaves gives their place to the first in line", same(spawned, { 33 }) and ArenaRules.sideOf(s, 33) == 2 and #s.queue == 0)
+end
+
 do
 	local s = ArenaRules.new()
 	local t = 0
@@ -560,6 +597,9 @@ do
 	end
 	for key, v in (ArenaConfig.Rules :: any) :: { [string]: any } do
 		param("Rules." .. key, v)
+	end
+	for key, v in (ArenaConfig.Duel :: any) :: { [string]: any } do
+		param("Duel." .. key, v)
 	end
 	for key, v in (ArenaLayout.Plan :: any) :: { [string]: any } do
 		param("Plan." .. key, v)

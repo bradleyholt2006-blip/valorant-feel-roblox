@@ -1041,7 +1041,8 @@ local function step()
 	local model = arena()
 	local mode = Workspace:GetAttribute(ArenaConfig.MODE)
 	local side = me:GetAttribute(ArenaConfig.SIDE)
-	local plan = if model and Workspace:GetAttribute(ArenaConfig.ON) == true then Minimap.planFor(mode, model:GetAttribute("Map")) else nil
+	-- The arena's maps' and the spike maps' plans, or the 1v1 map's (system 64).
+	local plan = if model and Workspace:GetAttribute(ArenaConfig.ON) == true then PartsPlan.inPlay() else nil
 	local played = model ~= nil and plan ~= nil and typeof(side) == "number"
 	-- Off the arena's maps there's no minimap, but From the Shadows' map
 	-- shows the course's (system 43), with nobody on your side.

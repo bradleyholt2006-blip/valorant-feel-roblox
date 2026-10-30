@@ -60,7 +60,7 @@
 --                  itself
 --   VFTestPlayMenu true opens the Play menu as M does (system 24), false
 --                  closes it if it may close; then clears itself
---   VFTestPlay     a mode's key ("skirmish", "gungame", "deathmatch",
+--   VFTestPlay     a mode's key ("skirmish", "duel", "gungame", "deathmatch",
 --                  "teamdeathmatch", "standard", "competitive" or
 --                  "swiftplay"): presses PLAY for it as the Play menu's
 --                  button does, then clears itself

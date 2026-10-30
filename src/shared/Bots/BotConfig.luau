@@ -209,6 +209,7 @@ BotConfig.Params = {
 -- bot costs the server a player's simulation.
 BotConfig.Quotas = {
 	skirmish = p(4, "estimate", "Skirmish's two a side (ArenaConfig.sideSize)"),
+	duel = p(2, "estimate", "The 1v1's one a side (ArenaConfig.Duel.sideSize): a bot to play whoever's alone"),
 	spike = p(10, "estimate", "The spike rounds' five a side (MatchConfig.sideSize)"),
 	gungame = p(8, "estimate", "Gun game's four a side (GunGameConfig.sideSize)"),
 	deathmatch = p(8, "estimate", "Fewer than deathmatch's 14 (DeathmatchConfig.players): ours, for the server's sake"),
