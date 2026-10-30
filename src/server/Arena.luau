@@ -1345,7 +1345,13 @@ local function apply()
 		local known = named == "spike" or named == "gungame" or named == "deathmatch" or named == "teamdeathmatch" or named == "duel"
 		wanted = if known then named else "skirmish"
 		if wanted == "duel" and not prepareDuel() then
-			warn(string.format("[VF] No 1v1 map: Workspace has no %s with rooms %s, so Skirmish is played", DuelMap.ROOT, table.concat(DuelMap.ROOMS, " and ")))
+			warn(
+				string.format(
+					"[VF] No 1v1 map: Workspace has no %s with rooms %s, so Skirmish is played",
+					DuelMap.ROOT,
+					table.concat(DuelMap.ROOMS, " and ")
+				)
+			)
 			wanted = "skirmish"
 		end
 	end
@@ -1795,7 +1801,8 @@ function Arena.start()
 			out = { arenaMap = s.map, live = s.phase == "live", round = s.match * 1000 + s.round, roles = {}, spawns = {} }
 			for side = 1, Roster.SIDES do
 				local feet: { vector } = {}
-				for _, spot in if mode == "duel" then DuelMap.spots(side) else ArenaLayout.spots(side) do
+				local spots: { ArenaLayout.Spot } = if mode == "duel" then DuelMap.spots(side) else ArenaLayout.spots(side)
+				for _, spot in spots do
 					table.insert(feet, spot.feet)
 				end
 				out.spawns[side] = feet

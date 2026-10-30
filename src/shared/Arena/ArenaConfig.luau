@@ -77,7 +77,11 @@ ArenaConfig.Rules = {
 -- in the place (DuelMap), so there's no vote between matches. Every other
 -- number is Skirmish's.
 ArenaConfig.Duel = {
-	sideSize = p(1, "estimate", "Ours, for the 1v1 map: one a side, as the reference's Skirmish layouts are played 1v1 as well as 2v2 (ArenaLayout)"),
+	sideSize = p(
+		1,
+		"estimate",
+		"Ours, for the 1v1 map: one a side, as the reference's Skirmish layouts are played 1v1 as well as 2v2 (ArenaLayout)"
+	),
 	winScore = p(10, "confirmed", "Skirmish's: 'First to 10 wins' (Patch 11.07b)"),
 }
 

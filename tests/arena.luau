@@ -120,7 +120,10 @@ do
 		same(spawned, { 11, 22 }) and s.phase == "buy" and s.vote == nil and s.match == 2 and s.round == 1 and s.score[1] == 0
 	)
 	spawned = ArenaRules.leave(s, 22, s.phaseEndsAt - 1)
-	check("whoever leaves gives their place to the first in line", same(spawned, { 33 }) and ArenaRules.sideOf(s, 33) == 2 and #s.queue == 0)
+	check(
+		"whoever leaves gives their place to the first in line",
+		same(spawned, { 33 }) and ArenaRules.sideOf(s, 33) == 2 and #s.queue == 0
+	)
 end
 
 do

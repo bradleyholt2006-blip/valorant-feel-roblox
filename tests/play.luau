@@ -256,7 +256,7 @@ do
 	local text = ServerList.formatCounts(counts, order)
 	check(
 		"as Workspace has them, in the menu's order",
-		text == "skirmish=9,gungame=5,deathmatch=0,teamdeathmatch=0,standard=0,competitive=0,swiftplay=0",
+		text == "skirmish=9,duel=0,gungame=5,deathmatch=0,teamdeathmatch=0,standard=0,competitive=0,swiftplay=0",
 		text
 	)
 	local back = ServerList.parseCounts(text)
