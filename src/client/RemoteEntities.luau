@@ -15,12 +15,12 @@
 -- their analytic hitboxes, so what you see is exactly what can be hit.
 -- Other players and bots (system 60, what's known of each is its
 -- stand-in's, Who) are drawn as an agent's body (BodyView, system 63) when
--- there's one in ReplicatedStorage, posed from their snapshots with its
--- head in the head box; their blocks stay on the hitboxes, unseen. Without
--- a body they're drawn as the dummies are, in red. Their Roblox avatar is
--- hidden on this client: it is shorter than the hitboxes (a default avatar
--- stands 1.43 m against the boxes' 1.75 m), so a shot at its head would hit
--- the body.
+-- there's one in ReplicatedStorage whose meshes have loaded here, posed
+-- from their snapshots with its head in the head box; their blocks stay on
+-- the hitboxes, unseen. Without one they're drawn as the dummies are, in
+-- red. Their Roblox avatar is hidden on this client: it is shorter than the
+-- hitboxes (a default avatar stands 1.43 m against the boxes' 1.75 m), so a
+-- shot at its head would hit the body.
 --
 -- Over each is a label, their name and health, which shows through walls
 -- but for an enemy's (another side's): through a wall it would say where an

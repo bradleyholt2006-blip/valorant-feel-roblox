@@ -511,8 +511,10 @@ Built one system at a time:
 5. Other players and bots are drawn as an agent's body once ReplicatedStorage has a folder
    `VFBodies` with a rigged model in it (the one named `Default`, or else the first), as Studio's 3D
    importer brings in a rig with the kit's bone names: put the imported `Superhero_Male_A` there.
-   Without one they're drawn as red blocks the hitboxes' size. Exporting a rig from Blender, turn
-   Add Leaf Bones off, as Roblox asks.
+   Without one they're drawn as red blocks the hitboxes' size, as they are on a client that can't
+   load all of the body's meshes: other players can't load a mesh Roblox's moderation has blocked,
+   and the Output (F9 in a game) names any that didn't load. Exporting a rig from Blender, turn Add
+   Leaf Bones off, as Roblox asks.
 6. For a first full check, follow the [Studio test session](docs/studio-checklist.md): every
    system's Studio checks in order, with what each lab should read.
 
