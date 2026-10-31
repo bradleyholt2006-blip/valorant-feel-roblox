@@ -48,7 +48,23 @@ suite's 3990 pass. In Studio (section 71 of the checklist) each player's attribu
 and totals, and in Studio alone the hidden MMR and a printed line for each result. `VFMatchDecide`
 ends the round under way for the side it names, so a whole match plays in seconds. Studio can only
 use the data store if the place lets it use API services (Game Settings, Security); otherwise the
-career lasts the session and `VFCareerStatus` says why.
+career lasts the session and `VFCareerStatus` says why. A Local Server's test players, whose UserIds
+are under 1, keep nothing either way.
+
+In Studio (section 71, 31 October), two players in a Local Server played Competitive on Outpost, and
+placements, what each match was worth, a promotion, a demotion, the Play menu's cards and a leave
+all went as the rules say (RK1 to RK5). Side 1's player placed in Gold 1 and side 2's in Silver 1,
+each with 50 RR; the 13-11 was worth 22 RR each way and the 13-0 26; a promotion to Gold 2
+carried 21 RR, and a demotion went to Bronze 3 with 76 RR, with no shield, Silver 1 having been
+entered by placement; and the leaver lost 22 RR at 3-0. Three things showed. At each match's end the
+victory screen's line ran through stale combinations for about half a second before it settled
+(`GOLD 1 50 RR (+0)` in white before `PLACED`): a result set the rank's attributes, then waited on
+the store's write before setting what the match did to it. Swiftplay's results came 15 s after its
+match ended, each waiting on the store's writes in the same way, and the arena's frame with them.
+And the place had Studio access to API services on, so the test players' careers were written under
+their UserIds, -1 and -2, and would have come back for the next test's placements. Now a result's
+write goes on its own, so its attributes go out together and at once, and a Local Server's test
+player keeps nothing.
 
 ## 4. Confirmed vs estimated, as implemented
 
@@ -148,14 +164,15 @@ ended by turning the arena off counts for nobody.
 ### Keeping it
 
 `CareerServer` keeps each player's career in the data store `VFCareer1`, a key each. A player's part
-in a match is added at once to the career their screen shows, and then to the store's with
-`UpdateAsync`, which adds it to whatever's there: written from two servers, as a player moves
+in a match is added at once to the career their screen shows, and then, on its own, to the store's
+with `UpdateAsync`, which adds it to whatever's there: written from two servers, as a player moves
 between modes' servers, nothing's lost. Each result has an id, and the store keeps the last 16, so a
 write retried after it went through counts once. Writes go at most every 6 s, the store's limit for
 a key; one that fails is tried twice more before the session's career stops being kept. A read that
 fails keeps the session's results out of the store, as what it holds is unknown. A player who leaves
 is kept 10 s more for the arena's word on a match they left, and until what's theirs is written, and
-the server closing writes everything still to write.
+the server closing writes everything still to write. A Local Server's test player in Studio, with a
+UserId under 1, keeps nothing, so the next test's starts from its placements.
 
 ### On screen
 
@@ -194,7 +211,8 @@ rank or the placements played.
 - Each player's `VFRankTier` (0 while placing, else the tier's number in `RankConfig.Tiers`),
   `VFRankRR`, `VFRankGames`, `VFRankShields`, `VFRankLast` (the RR the last match was worth, if it
   counted), `VFRankNote` (`placed`, `promoted`, `demoted` or `shielded`), `VFCareer` (the totals)
-  and `VFCareerStatus`; in Studio also `VFRankMmr`.
+  and `VFCareerStatus` (`loading`, `new`, `loaded`, `saving`, `saved`, or `off:` and why, as
+  `off: a test player`); in Studio also `VFRankMmr`.
 - In Studio each result prints a line: `[VF] career: <UserId> <mode> <result> <RR> <note>; <rank>,
   MMR <MMR>`.
 - `VFMatchDecide`, set from the server to 1 or 2 in the spike rounds: the round under way goes to
@@ -209,9 +227,9 @@ rank or the placements played.
 
 ## Known gaps to check in Studio
 
-- Placements, a ranked match's RR, a promotion and a demotion or a shield, on the victory screen.
-- Each mode's record and Competitive's rank on the Play menu.
-- Leaving Competitive under way counted as a loss.
-- The data store: a career kept from one session to the next, and written once.
+- The victory screen's line coming with the screen and not changing after, and Swiftplay's results
+  as its match ends, now that a result's write goes on its own (section 3).
+- The data store: a career kept from one session to the next, and written once; with your own
+  account, as a Local Server's test players keep nothing.
 
 Section 71 of the [Studio checklist](../studio-checklist.md) covers these.

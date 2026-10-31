@@ -218,11 +218,11 @@ BodyConfig.Hold = {
 	-- side).
 	press = at(0.09, 0.95, -0.3, "estimate", "Waist height, the head kept in the standing head box"),
 	pressCrouched = at(
-		0.09,
-		0.41,
+		0.05,
+		0.42,
 		-0.26,
 		"estimate",
-		"On the spike (its top about 0.4 m up, SpikeView; its casing's near edge about 0.23 m ahead of the feet), as far forward and down as the arms reach with the head in the crouched head box; at -0.22 the palms stopped 2 to 3 cm short of it (measured in Studio)"
+		"On the spike's raised cap (its top about 0.475 m up, radius 0.07 m, SpikeView; the casing's near edge about 0.23 m ahead of the feet), as far forward and down as the arms reach with the head in the crouched head box; at -0.22 the palms stopped 2 to 3 cm short of it, and at 0.09 either side and 0.41 up the knuckles were 0.11 to 0.13 m from the spike's middle, level with the cap's top but beside it (measured in Studio); 0.05 either side, and a centimetre up so the arms still reach, puts them on its rim"
 	),
 }
 

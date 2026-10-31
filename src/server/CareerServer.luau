@@ -22,7 +22,9 @@
 --
 -- A place that can't use data stores (Studio, unless the place's own game
 -- settings let it) still works: the career lasts the session, and the
--- status says why it isn't kept.
+-- status says why it isn't kept. So does a Local Server's test player in
+-- Studio (a UserId under 1), whose career would otherwise come back for
+-- the next test.
 
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
@@ -206,6 +208,14 @@ end
 
 local function load(r: Record)
 	setStatus(r, "loading")
+	if r.userId <= 0 then
+		-- A Local Server's test player in Studio: what's kept under its id
+		-- would come back for the next test's, so nothing is.
+		r.loaded = true
+		turnOff(r, "a test player")
+		publish(r)
+		return
+	end
 	local ds = getStore()
 	if not ds then
 		r.loaded = true
@@ -283,7 +293,10 @@ local function add(r: Record, result: CareerRules.Result): RankRules.Change?
 	local change = CareerRules.apply(r.career, result)
 	table.insert(r.pending, result)
 	publish(r)
-	write(r)
+	-- Written on its own, so what the result did to the rank goes out with
+	-- the rank, not after the store's answer (half a second and more), and
+	-- the next player's waits for nothing.
+	task.spawn(write, r)
 	if RunService:IsStudio() then
 		-- For checks: what each result did.
 		local rank = r.career.rank

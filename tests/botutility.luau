@@ -296,6 +296,28 @@ do
 		end
 	end
 	check("with the spike not planted, nobody guards it or retakes it", stale == 0, string.format("%d still at it", stale))
+	-- From the Studio checks: the carrier, come from the spawn with the
+	-- spike after its side's taken the site, had no place on its way to
+	-- plant, so a Sova carrying it never cast its Recon Bolt. Short of the
+	-- site it goes in through its way as the push did; on it, it plants.
+	attack.phase = "take"
+	attack.tookAt = 3
+	BotTeam.think(attack, 3.5, true, attackers, {}, carried)
+	local carrier = attackers[1]
+	local taken = BotSpots.site(plan, attack.site :: string) :: BotSpots.Site
+	local onWay = BotTeam.placeOf(attack, carrier.id, carrier.feet)
+	local onSite = BotTeam.placeOf(attack, carrier.id, BotNav.feet(g.nav, taken.plants[1]))
+	check(
+		"the spike's carrier on its way to plant, short of the site, goes in through its way as the push did",
+		attack.jobs[carrier.id].task == "plant"
+			and onWay ~= nil
+			and onWay.role == "entry"
+			and onWay.phase == "push"
+			and onWay.way ~= nil
+			and #onWay.threats > 0,
+		if onWay then onWay.role .. " " .. onWay.phase else attack.jobs[carrier.id].task
+	)
+	check("...and on the site, it plants, with no place to cast from", onSite == nil)
 	local moved = BotUtility.moved(
 		{ role = "hold", phase = "hold", there = true, way = vector.one, from = vector.zero, threats = { vector.one } },
 		vector.create(10, 0, 0)
@@ -851,12 +873,7 @@ do
 			push.there = false
 			local stage = BotNav.feet(g.nav, e.stage)
 			local way = push.way :: vector
-			local door = push.door :: vector
-			if
-				#push.threats == 0
-				or vector.magnitude(stage + EYE - way) < U.reconFar.value
-				or vector.magnitude(door + EYE - way) >= U.reconFar.value
-			then
+			if #push.threats == 0 or vector.magnitude(stage + EYE - way) < U.reconFar.value then
 				continue
 			end
 			tried += 1
@@ -867,7 +884,7 @@ do
 			gather.there = false
 			local before = BotUtility.choose(momentOf(sim, gather), sim.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
 			early = early and (before == nil or before.key ~= "gather:reconbolt")
-			local close = botAt(world, door, "sova", seed)
+			local close = botAt(world, way - EYE, "sova", seed)
 			local there = BotUtility.choose(momentOf(close, push), close.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
 			near = near and (there == nil or there.key ~= "gather:reconbolt")
 		end
@@ -875,10 +892,104 @@ do
 	check(
 		"the push gone before Sova got there, its Recon Bolt goes on the way, a way off the way in",
 		late,
-		string.format("%d ways in at least %.0f m off", tried, U.reconFar.value)
+		string.format("%d ways in at least %.1f m off", tried, U.reconFar.value)
 	)
-	check("...not once it's near the way in", near)
+	check("...not once it's at the way in", near)
 	check("...nor while its side gathers and it isn't there yet", early)
+
+	-- From the Studio checks: a Sova that fetched the spike, and so came
+	-- from the spawn after the push went, never cast it: on its way in, the
+	-- stretch with a throw can be a couple of metres. Walked in at a run
+	-- from the spawn on every map, thinking as the server has bots think,
+	-- it casts before it's at its way in wherever a think on the walk finds
+	-- a throw: on every way in it'd cast on from where its side gathers but
+	-- one, whose walk in never sees a spot for it.
+	local think = BotConfig.Params.think.value
+	local run = 5.4 -- m/s, with a rifle
+	local walks, found, cast, missed = 0, 0, 0, {}
+	for _, key in SpikeMaps.MAPS do
+		local ground = groundOf(key)
+		for _, site in ground.plan.sites do
+			for k, e in site.entrances do
+				local push = entryOf(ground, site, k, "push")
+				push.there = false
+				local way = push.way :: vector
+				if #push.threats == 0 then
+					continue
+				end
+				local gathered = botAt(ground.world, BotNav.feet(ground.nav, e.stage), "sova", seed)
+				local there = BotUtility.choose(
+					momentOf(gathered, entryOf(ground, site, k, "gather")),
+					gathered.abilities,
+					BotUtility.memo(),
+					EXPERT,
+					diceOf(seed),
+					ground.world
+				)
+				if there == nil or there.key ~= "gather:reconbolt" then
+					continue
+				end
+				-- Its way: down the attackers' field from the way in to the spawn,
+				-- walked the other way.
+				local path = { BotNav.feet(ground.nav, e.node) }
+				local at = e.node
+				for _ = 1, 400 do
+					local nextNode = BotSpots.down(ground.nav, ground.plan.attack, at, 0.5)
+					if nextNode == at or ground.plan.attack[nextNode] <= 0 then
+						break
+					end
+					at = nextNode
+					table.insert(path, 1, BotNav.feet(ground.nav, at))
+				end
+				local kit = AbilitySim.new("sova")
+				AbilitySim.fill(kit, true)
+				local memo = BotUtility.memo()
+				local i, feet, now = 1, path[1], 50
+				local done, any = false, false
+				while i < #path and not done do
+					local m = momentOf(botAt(ground.world, feet, "sova", seed), push)
+					m.now = now
+					if vector.magnitude(m.eye - way) < U.reconFar.value then
+						break
+					end
+					local c = BotUtility.choose(m, kit, memo, EXPERT, diceOf(seed), ground.world)
+					done = c ~= nil and c.key == "gather:reconbolt"
+					-- Whether a throw's found here, as a fresh choice.
+					local fresh = BotUtility.choose(m, kit, BotUtility.memo(), EXPERT, diceOf(seed), ground.world)
+					any = any or done or (fresh ~= nil and fresh.key == "gather:reconbolt")
+					-- On along its way, a think's walk.
+					local left = run * think
+					while left > 0 and i < #path do
+						local to = path[i + 1] - feet
+						local d = vector.magnitude(to)
+						if d <= left then
+							feet, i, left = path[i + 1], i + 1, left - d
+						else
+							feet, left = feet + to * (left / d), 0
+						end
+					end
+					now += think
+				end
+				walks += 1
+				found += if any then 1 else 0
+				cast += if done then 1 else 0
+				if not done then
+					table.insert(missed, string.format("%s %s %d", key, site.name, k))
+				end
+			end
+		end
+	end
+	check(
+		"...and walked in from the spawn after the push went, it casts on the way in before it's there",
+		walks > 0 and cast == found and found >= walks - 1,
+		string.format(
+			"%d of the %d ways in with a throw on the walk, of %d%s",
+			cast,
+			found,
+			walks,
+			if #missed > 0 then "; none on " .. table.concat(missed, ", ") else ""
+		)
+	)
 end
 
 return nil

@@ -5764,8 +5764,8 @@ to 10 m in front of player 1, and window 1 watches.
   hold 4 in a site's plant area until it's planted, standing; then hold F by it to defuse it,
   crouched. In window 1: planting, both hands go down in front, to about the waist's height standing
   (the head stays in the standing head box), and the spike in hand isn't drawn meanwhile; defusing
-  crouched, nothing's in the hands and they go down onto the spike, working a little, the head in
-  the crouched head box. **Send:** anything that looked wrong.
+  crouched, nothing's in the hands and they go down onto the spike's raised cap, at its near rim,
+  working a little, the head in the crouched head box. **Send:** anything that looked wrong.
 
 - **AB5 Hits, a Shade and a force field.** In window 1, shoot player 2 a few times, with Dummy 1 not
   between you (down the lane it takes the shots first): the whole body flashes white with each hit.
@@ -5932,18 +5932,18 @@ end)
   saving for a full buy has bought none. **Send:** the script's lines in each buy phase.
 
 - **BU2 The push.** Run the cast script as round 3's buy phase ends, and stay in your spawn while
-  the attacking bots go. A Sova among them prints `gather:reconbolt` as they gather short of the
-  site, or as the push goes if it wasn't there yet, and the rest print `push:` casts as they go in
-  (`push:darkcover:1`, `push:cloudburst`, `push:curveball`, `push:hothands` and so on); the
-  defenders print `hold:reconbolt` 8 to 30 s into the round. Then follow the attackers at a distance
-  as they go in: Dark Cover and a cloud land on the spots inside their way in, not in the open short
-  of it, and a Curveball pops round the corner, not in front of them. The bot that throws it stands
-  where it threw it until it's popped, and the bots with it turn their backs on it. Run section 69's
-  script straight after a flash: no attacker's `VFBlind` has anything more than a trace (white for
-  0.25 s at the most). Then set `VFArenaOn` to false and back to true, and run the cast
-  script as the new round 1 goes live: no defender prints a `push:` cast before the spike's planted,
-  and the attackers gather before they push, as at the first start. **Send:** the cast script's
-  lines, and what the smokes and flashes looked like.
+  the attacking bots go. A Sova among them, carrying the spike or not, prints `gather:reconbolt` as
+  they gather short of the site, or on its way in as the push goes if it wasn't there yet, and the
+  rest print `push:` casts as they go in (`push:darkcover:1`, `push:cloudburst`, `push:curveball`,
+  `push:hothands` and so on); the defenders print `hold:reconbolt` 8 to 30 s into the round. Then
+  follow the attackers at a distance as they go in: Dark Cover and a cloud land on the spots inside
+  their way in, not in the open short of it, and a Curveball pops round the corner, not in front of
+  them. The bot that throws it stands where it threw it until it's popped, and the bots with it turn
+  their backs on it. Run section 69's script straight after a flash: no attacker's `VFBlind` has
+  anything more than a trace (white for 0.25 s at the most). Then set `VFArenaOn` to false and back
+  to true, and run the cast script as the new round 1 goes live: no defender prints a `push:` cast
+  before the spike's planted, and the attackers gather before they push, as at the first start.
+  **Send:** the cast script's lines, and what the smokes and flashes looked like.
 
 - **BU3 A stall.** In a later round, go ahead of the attacking bots to a way into a site, step out
   where its defenders see you for a second, and step back out of sight. Within a few seconds a slow,
@@ -5979,7 +5979,9 @@ rank in a data store. Each player's `VFRankTier` (0 while placing; 9 is Silver 3
 `VFRankRR`, `VFRankGames`, `VFRankShields`, `VFRankLast` and `VFRankNote` say their rank and what
 the last match did to it, and in Studio `VFRankMmr` their MMR; each result prints a `[VF] career:`
 line in the server's Output. Studio can't use the data store unless the place lets it use API
-services, so the career lasts the session and `VFCareerStatus` says why; only RK6 needs the store.
+services, and a Local Server's test players never do, so in these checks a career lasts the session,
+each test starts from placements, and `VFCareerStatus` says why (`off: a test player`); only RK6
+needs the store.
 
 Start a Local Server with 2 players, as in section 9. In the server's command bar set Competitive
 going on Outpost: `VFMatchMap` `outpost`, `VFMatchFormat` `competitive`, `VFArenaMode` `spike`, then
@@ -6027,11 +6029,11 @@ end
 ```
 
 - **RK1 Placements.** Run `play(5)` and wait for the victory screen, five times. After each, the
-  Output has a `[VF] career:` line for each player, `competitive won` for side 1's and `competitive
-  lost` for side 2's, and each player's victory screen has `PLACEMENT 1 OF 5` under the time left,
-  then 2, and so on. After the fifth it reads `PLACED` with a tier and `50 RR`, in green, and
-  `VFRankTier` is from 1 to 21: side 1's player higher than side 2's. **Send:** the Output's lines,
-  and the tier each was placed in.
+  Output has a `[VF] career:` line for each player, `competitive won` for side 1's and
+  `competitive lost` for side 2's, and each player's victory screen has `PLACEMENT 1 OF 5` under the
+  time left, then 2, and so on, as the screen comes and without changing after. After the fifth it
+  reads `PLACED` with a tier and `50 RR`, in green, and `VFRankTier` is from 1 to 21: side 1's
+  player higher than side 2's. **Send:** the Output's lines, and the tier each was placed in.
 
 - **RK2 What a match is worth.** Run `play(11)`: side 1's player's victory screen has their tier,
   their RR and the RR it was worth, `(+10)` to `(+50)`, or reads `PROMOTED`, and side 2's a loss
@@ -6046,9 +6048,10 @@ end
 
 - **RK4 The Play menu.** Press M as each player: Competitive's card has their tier and RR in gold,
   and every other card's line is empty. Close it, and in the server's command bar set
-  `VFMatchFormat` to `swiftplay`, `VFArenaOn` to false and back to true, and run `play(2)`. Press M
-  again: Swiftplay's card reads `1W 0L` and a K/D for side 1's player, and `0W 1L` for side 2's;
-  Competitive's still has the rank. **Send:** what the cards say.
+  `VFMatchFormat` to `swiftplay`, `VFArenaOn` to false and back to true, and run `play(2)`: the
+  Output's `[VF] career:` lines, `swiftplay won` and `swiftplay lost`, come as the victory screen
+  does. Press M again: Swiftplay's card reads `1W 0L` and a K/D for side 1's player, and `0W 1L` for
+  side 2's; Competitive's still has the rank. **Send:** what the cards say.
 
 - **RK5 Leaving.** Set `VFMatchFormat` to `competitive`, `VFArenaOn` to false and back to true, and
   run `rounds(1, 3)`. Then close side 2's player's window: as they go, the Output has a `[VF]
@@ -6056,10 +6059,12 @@ end
   match's end is side 1's player's alone. **Send:** both lines.
 
 - **RK6 Kept (optional, with the place's data stores on).** This needs a live server, or the place's
-  Studio access to API services (Game Settings, Security), which is the place owner's call. Play a
-  Competitive match to its end with `play(5)`, wait for `VFCareerStatus` to read `saved`, stop, and
-  start again: `VFCareerStatus` reads `loaded`, and the rank, `VFRankGames` and the Play menu's
-  lines are as they were. **Send:** the attributes before and after.
+  Studio access to API services (Game Settings, Security), which is the place owner's call, and your
+  own account: press Play (F5), as a Local Server's test players keep nothing. With the Test tab's
+  Client and Server button on Server, set Competitive going as above, run the script and play a
+  match to its end with `play(5)`. Wait for `VFCareerStatus` to read `saved`, stop, and press Play
+  again: `VFCareerStatus` reads `loaded`, and the rank, `VFRankGames` and the Play menu's lines are
+  as they were. **Send:** the attributes before and after.
 
 ## 72. A controller
 
@@ -6679,15 +6684,15 @@ BK2 after round 1: ___; after round 2: ___
 BK3 shot while blinded: yes / no; VFBlind: ___; the nearsighted bots shot from about ___ m
 BK4 VFLastHeal: ___; VFLastRecon: ___; VFFuryHits: ___
 BU1 round 1's VFKit lines before the lock: ___; after it: ___; round 2's: ___
-BU2 the casts: ___; the smokes and flashes: ___; after starting over: ___
+BU2 the casts: ___; a Sova's recon, carrying the spike or late: ___; the smokes and flashes: ___; after starting over: ___
 BU3 what came, and how long after: ___
 BU4 the guards' casts: ___; the defuser: ___
 BU5 the heal's lines: ___
 BU6 VFBotMs on a push: ___; a throw on its own side: yes / no
-RK1 the lines after each match: ___; placed: side 1's player ___, side 2's ___
+RK1 the lines after each match: ___; the screen's line steady: yes / no; placed: side 1's player ___, side 2's ___
 RK2 the 13-11: ___ ___; the 13-0: ___ ___
 RK3 the promotion: ___; the demotion or shield: ___; matches it took: ___
-RK4 Competitive's card: ___; Swiftplay's: side 1's ___, side 2's ___
+RK4 Swiftplay's lines with its victory screen: yes / no; Competitive's card: ___; Swiftplay's: side 1's ___, side 2's ___
 RK5 the leaver's line: ___; the match's end: ___
 RK6 before: ___; after: ___
 PD1 the lines: ___; the warning: none / ___

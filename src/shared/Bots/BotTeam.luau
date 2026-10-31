@@ -1299,7 +1299,10 @@ end
 
 -- Where bot `id`, its feet at `at`, is in its side's plan (system 66), as
 -- Place has it: nil with no job in a spike round's plan, or one that has it
--- fetch, plant or defuse the spike, or get out of its blast.
+-- fetch or defuse the spike, plant it on the site, or get out of its blast.
+-- The carrier on its way to plant, short of the site still (it fetched the
+-- spike, say, and the side's push went without it), goes in through its
+-- way as the push did, casting as it goes in.
 function BotTeam.placeOf(team: Team, id: number, at: vector): Place?
 	local job = team.jobs[id]
 	local plan = team.plan
@@ -1307,7 +1310,11 @@ function BotTeam.placeOf(team: Team, id: number, at: vector): Place?
 		return nil
 	end
 	local task = job.task
-	if task == "fetch" or task == "plant" or task == "defuse" or task == "clear" then
+	if task == "fetch" or task == "defuse" or task == "clear" then
+		return nil
+	end
+	local planting = task == "plant"
+	if planting and (team.side ~= "attack" or team.plantedAt ~= nil) then
 		return nil
 	end
 	local nav = team.nav
@@ -1323,6 +1330,12 @@ function BotTeam.placeOf(team: Team, id: number, at: vector): Place?
 		if not site or not entrance then
 			return nil
 		end
+		if planting then
+			local n = nodeOf(team, at)
+			if n == nil or site.field[n] <= BotSpots.AREA then
+				return nil
+			end
+		end
 		for _, h in site.holds do
 			if h.entrance == job.way then
 				table.insert(threats, head(nav, h.node))
@@ -1330,7 +1343,7 @@ function BotTeam.placeOf(team: Team, id: number, at: vector): Place?
 		end
 		return {
 			role = "entry",
-			phase = team.phase :: string,
+			phase = if planting then "push" else team.phase :: string,
 			there = there,
 			way = entrance.aim,
 			heading = headingOf(nav, entrance),
