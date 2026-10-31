@@ -168,14 +168,18 @@ function SpikeHud.start()
 		-- What you could start here.
 		local ctx = ClientSpike.context()
 		local feet = s.movement.position
-		local pad = InputSampler.padActive
+		-- The buttons as the input in use has them: a touch screen's
+		-- (system 71), a gamepad's, or the keys.
+		local touch, pad = InputSampler.touchActive, InputSampler.padActive
+		local spikeKey = if touch then "SPIKE" elseif pad then "D-PAD DOWN" else "4"
+		local useKey = if touch then "USE" elseif pad then "RS" else "F"
 		local text, colour = "", CYAN
 		if SpikeSim.carrying(w) and ctx.canPlant and Spike.siteAt(ctx.zones, feet) then
-			text, colour = if pad then "HOLD D-PAD DOWN TO PLANT" else "HOLD 4 TO PLANT", RED
+			text, colour = string.format("HOLD %s TO PLANT", spikeKey), RED
 		elseif ctx.canDefuse and ctx.planted and not SpikeSim.inHand(w) and Spike.inDefuseRange(feet, ctx.planted) then
-			text = string.format("HOLD %s TO DEFUSE%s", if pad then "D-PAD DOWN" else "4", if ctx.halfSaved then "  (half saved)" else "")
+			text = string.format("HOLD %s TO DEFUSE%s", if touch then useKey else spikeKey, if ctx.halfSaved then "  (half saved)" else "")
 		elseif ctx.orbs and UltimateOrbs.inReach(ctx.orbs, feet) then
-			text, colour = string.format("HOLD %s FOR THE ULTIMATE ORB", if pad then "RS" else "F"), GOLD
+			text, colour = string.format("HOLD %s FOR THE ULTIMATE ORB", useKey), GOLD
 		end
 		prompt.Visible = text ~= ""
 		prompt.Text = text

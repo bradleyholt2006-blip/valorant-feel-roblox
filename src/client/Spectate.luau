@@ -258,11 +258,15 @@ function Spectate.start()
 		if target and askedFor == target.id and now - askedAt < TAKE_WAIT then
 			text = "Taking control"
 		elseif takeable(target, arena) then
-			text = if InputSampler.padActive then "RS  take control" else "F  take control"
+			text = if InputSampler.touchActive
+				then "USE  take control"
+				elseif InputSampler.padActive then "RS  take control"
+				else "F  take control"
 		end
 		if target and #list > 1 then
-			text ..= (if text ~= "" then "     " else "") .. (if InputSampler.padActive
-				then "RT / LT  switch"
+			text ..= (if text ~= "" then "     " else "") .. (if InputSampler.touchActive
+				then "FIRE / AIM  switch"
+				elseif InputSampler.padActive then "RT / LT  switch"
 				else "LEFT / RIGHT CLICK  switch")
 		end
 		title.Visible = target ~= nil and not over

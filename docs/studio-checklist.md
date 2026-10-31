@@ -6360,6 +6360,157 @@ end
 - **AF5 Off in Studio.** Run `workspace:SetAttribute("VFTestAfk", nil)` and leave window 1 alone
   through a whole round: no warning, and no `[VF] AFK:` line. **Send:** whether a warning came.
 
+## 75. Touch controls
+
+From [71-touch-controls.md](research/71-touch-controls.md). System 71 plays the game on a phone or a
+tablet: a thumb on the left of the screen moves, as a stick that starts where it lands, walking
+pushed only part of the way; a drag anywhere else turns the view, and so does FIRE's touch as it
+moves. Round the right thumb are FIRE, AIM (right click), JUMP, CROUCH (on and off), RELOAD, C, Q, E
+and X, USE (F), SPIKE (4, shown while the spike's carried), DROP (G), SWAP (tapped, the other gun;
+held, the knife) and PING (Z); a second FIRE sits for the left thumb, and down the left are BUY,
+MAP, SCORES, AGENTS, PLAY and SETTINGS. With a menu up only CLOSE shows. Dead, FIRE and AIM switch
+who's watched and USE takes over the bot watched.
+
+No touch screen is needed but for TC8: a string attribute `VFTestTouch` on the local player stands
+in for one, held as it says until it's changed or cleared: the stick's x and y (up is positive y),
+the look drag's speed right and up in screen heights a second, then the buttons held, by the names
+`fire`, `fire2`, `aim`, `jump`, `crouch`, `reload`, `c`, `q`, `e`, `x`, `use`, `spike`, `drop`,
+`swap`, `ping`, `buy`, `map`, `scores`, `agents`, `play`, `settings` and `close`, all apart by
+spaces. The local player's `VFTouch` says what the touch screen is doing each frame: `off` while it
+isn't in use, else its `flags` added up (as section 72's `VFPad`: 1 W, 2 S, 4 A, 8 D, 16 walking, 32
+crouching, 64 jump, 128 fire, 256 the right button, 512 reload, 1024 the spike's 4, 2048 G, 4096
+C, 8192 Q, 16384 E, 32768 X and 65536 F), the zoom the client predicts (`scoped`, 0 for none), the
+`turn` this frame in the mouse's counts (right and down positive), `crouch` and `menu` 1 while
+crouched and with a menu up, and the safe area's `size` in pixels.
+
+Press Play (F5), with one player, as Jett. Start at the spawn facing down the target lane with the
+Vandal in hand, and clear `VFTestYaw` and `VFTestPitch` if they're set. Set `VFTestMute` if the
+sound's not wanted. Run this once in the command bar with it on the client, then each check's lines
+on their own there: `touch(s, t)` holds the touch screen as `s` says for `t` seconds (0.3 if left
+out) and prints `s`, then `VFTouch` and `VFKit`, leaving it held; `lift()` lets everything go;
+`drag(s, t)` holds `s` for `t` seconds, lets go, and prints how far the view turned, in degrees to
+the right and up; `set(name, value)` sets one of the local player's attributes; `gui(name, key)`
+prints an attribute of one of PlayerGui's screens; and `buttons()` prints how many buttons show,
+then each one's name, middle and width in pixels. `touch(nil, 0.1)` clears `VFTestTouch` and gives
+the mouse and keys back.
+
+```lua
+me = game.Players.LocalPlayer
+local cam = workspace.CurrentCamera
+function touch(s, t)
+	me:SetAttribute("VFTestTouch", s)
+	task.wait(t or 0.3)
+	print(s, "->", me:GetAttribute("VFTouch"), me:GetAttribute("VFKit"))
+end
+function lift()
+	touch("0 0 0 0", 0.2)
+end
+local function heading()
+	local look = cam.CFrame.LookVector
+	return math.deg(math.atan2(look.X, -look.Z)), math.deg(math.asin(look.Y))
+end
+function drag(s, t)
+	me:SetAttribute("VFTestTouch", s)
+	local yaw, pitch = heading()
+	local right, up, start = 0, 0, os.clock()
+	while os.clock() - start < t do
+		task.wait()
+		local y, p = heading()
+		right += (y - yaw + 540) % 360 - 180
+		up += p - pitch
+		yaw, pitch = y, p
+	end
+	me:SetAttribute("VFTestTouch", "0 0 0 0")
+	print(string.format("%s: %.0f degrees right, %.0f up in %.1f s", s, right, up, t))
+end
+function set(name, value)
+	me:SetAttribute(name, value)
+end
+function gui(name, key)
+	print(name, key, me.PlayerGui[name]:GetAttribute(key))
+end
+function buttons()
+	local shown = {}
+	for _, f in me.PlayerGui.VFTouch.Safe:GetChildren() do
+		if f:IsA("Frame") and f.Visible and f.Name ~= "Stick" and f.Name ~= "Knob" then
+			local c = f.AbsolutePosition + f.AbsoluteSize / 2
+			table.insert(shown, string.format("%s %d,%d %d", f.Name, c.X, c.Y, f.AbsoluteSize.X))
+		end
+	end
+	table.sort(shown)
+	print(#shown, table.concat(shown, "; "))
+end
+```
+
+- **TC1 Shown while it's in use.** Before anything,
+  `print(me.PlayerGui.VFTouch.Enabled, me:GetAttribute("VFTouch"))`: `false off`.
+  `touch("0 0 0 0")`: the line reads `flags=0 scoped=0 turn=0.0,0.0 crouch=0 menu=0 size=...` with
+  the game window's size less Roblox's top bar, and the buttons show: `buttons()` prints 20, none of
+  them `spike` or `close`. Look at the game window: the round buttons in a cluster at the bottom
+  right, standing above the health, abilities and ammo along the bottom where they reach under them,
+  none overlapping another, the second FIRE right of the minimap, and the column down the left under
+  the minimap. `touch(nil, 0.1)`: `off`, the buttons gone, and the mouse and keys playing as before.
+  **Send:** the lines, `buttons()`'s, and anything overlapping or off the screen.
+
+- **TC2 Moving.** `touch("0 1 0 0", 1)`: you run ahead down the lane, the HUD's speed at 5.40,
+  `flags=1`. `lift()`: you stop, `flags=0`. `touch("0 0.45 0 0", 1)`: you walk, at 3.29, `flags=17`.
+  `touch("-0.7 -0.7 0 0", 1)`: back and to the left at once, `flags=6`. `lift()`. **Send:** the
+  lines and speeds.
+
+- **TC3 Looking.** `drag("0 0 0.5 0", 1)`: about 60 degrees right. `drag("0 0 0 0.25", 1)`: about 30
+  up. `drag("0 0 -0.5 -0.25", 1)`: back. `set("VFTestSetting", "touchLook=240")`, and
+  `drag("0 0 0.5 0", 1)`: about 120 right. `set("VFTestSetting", "touchLook=120")`.
+  `touch("0 0 0 0 aim", 0.1)` and `lift()`: the Vandal's sights, `scoped=1`; `drag("0 0 0.5 0", 1)`
+  turns about 48 right (60 over its 1.25 zoom); `touch("0 0 0 0 aim", 0.1)` and `lift()`:
+  `scoped=0`. Hold `touch("0 0 0.5 0 fire", 1)`, then `lift()`: it fires and turns at once.
+  **Send:** the turns.
+
+- **TC4 The buttons.** `touch("0 0 0 0 fire", 0.5)` and `lift()`: a few rounds fired.
+  `touch("0 0 0 0 reload", 0.1)` and `lift()`: a reload. `touch("0 0 0 0 jump", 0.1)` and `lift()`:
+  a jump. `touch("0 0 0 0 crouch", 0.1)` and `lift()`: you crouch, and the line stays
+  `flags=32 ... crouch=1` with nothing held, the button's ring gold; the same again stands you up.
+  `touch("0 0 0 0 swap", 0.1)` and `lift()`: the Classic; the same, the Vandal.
+  `touch("0 0 0 0 swap", 0.5)` and `lift()`: the knife; a tap, the Vandal back. `touch("0 0 0 0 q")`
+  and `lift()`: Updraft, `Q0/1`. `touch("0 0 0 0 e")` and `lift()`: Tailwind's gust readies, `E0/1`
+  with `windup`; once it reads `ready`, the same again dashes. `touch("0 0 0 0 c")` and `lift()`:
+  Cloudburst, `C1/2`. `set("VFTestGive", "ultimate")`, then `touch("0 0 0 0 x")` and `lift()`: Blade
+  Storm, `X0/8 storm`; `touch("0 0 0 0 fire", 0.1)` and `lift()` throws a knife.
+  `touch("0 0 0 0 drop", 0.1)` and `lift()` with a gun in hand: it drops ahead.
+  `set("VFTestPitch", -53)`: the prompt under the crosshair reads `USE  PICK UP ...`;
+  `touch("0 0 0 0 use", 0.1)` and `lift()` picks it up. `set("VFTestPitch", nil)`.
+  `set("VFTestGive", "spike")`: `buttons()` prints 21, with `spike`; `touch("0 0 0 0 spike", 0.5)`:
+  the spike in hand, `flags=1024`; `lift()`, then `touch("0 0 0 0 drop", 0.1)` and `lift()`:
+  dropped, and `spike` gone from `buttons()`. `set("VFTestPitch", -30)`,
+  `touch("0 0 0 0 ping", 0.1)` and `lift()`: a ping ahead, `gui("VFPings", "Shown")` printing
+  `HERE 3m`; `set("VFTestPitch", nil)`. **Send:** the lines, and anything that didn't happen.
+
+- **TC5 The column and menus.** `touch("0 0 0 0 settings", 0.1)` and `lift()`: the settings menu,
+  with `Touch look` 120 under CONTROLLER AND TOUCH, the line reading `menu=1`, and only CLOSE shown
+  (`buttons()` prints 1, `close`). `touch("0 0 0 0 close", 0.1)` and `lift()`: shut, and 20 again.
+  The same with `play`, then `agents`: each opens, and CLOSE shuts it. `touch("0 0 0 0 map", 0.1)`
+  and `lift()`: the big map, `gui("VFMinimap", "Big")` printing `true`, MAP's ring gold; again,
+  shut. `touch("0 0 0 0 scores", 0.1)` and `lift()`: the scoreboard stays up; again, gone. Then
+  `set("VFTestPlay", "skirmish")` and in a buy phase `touch("0 0 0 0 buy", 0.1)` and `lift()`: the
+  buy menu, `menu=1`; CLOSE shuts it. **Send:** the lines, and anything that didn't open or shut.
+
+- **TC6 Dead.** In the spike rounds (as BC1 in section 66, or Competitive as in section 71), walk
+  out at the other side and let them kill you. Watching your side's bot, the line under its name
+  reads `USE  take control` and `FIRE / AIM  switch`; `touch("0 0 0 0 fire", 0.1)` and `lift()`
+  watches the next, `aim` the last. Back on a bot you may take over, `touch("0 0 0 0 use", 0.1)` and
+  `lift()`: you're in its body, and the server's Output has the `[VF] takeover:` lines. **Send:**
+  the lines.
+
+- **TC7 Planting.** In the spike rounds, attacking with the spike, stand on a site: with
+  `VFTestTouch` set the prompt reads `HOLD SPIKE TO PLANT`, and `touch("0 0 0 0 spike", 4.5)` plants
+  it; `touch(nil, 0.1)` and the prompt reads `HOLD 4 TO PLANT` again. **Send:** the prompts and the
+  plant.
+
+- **TC8 A phone (Bradley).** Play on a phone or a tablet, or in Studio's device emulator (the Test
+  tab's Device). Roblox's own stick and jump button are gone; the stick moves where the thumb lands
+  and walks with a light push; drags turn the view and FIRE's touch aims as it fires; every button's
+  in reach and big enough; CLOSE shuts each menu; and the HUD's prompts name the buttons. **Send:**
+  what felt off, the sizes, and `Touch look` as you'd have it.
+
 ## Results
 
 ```
@@ -6846,6 +6997,14 @@ AF2 a move: ___; a look: ___; a buy: ___; the crouch held: ___
 AF3 as the round ended: ___; as it came back: ___
 AF4 taken out: ___; the menu and line: ___; the bot: ___; back: ___
 AF5 a warning: yes / no
+TC1 the lines: ___; buttons(): ___; anything overlapping or off the screen: ___
+TC2 the lines: ___; speeds: run ___, walk ___
+TC3 right ___, up ___, touchLook 240 ___, zoomed ___; firing and turning at once: yes / no
+TC4 the lines: ___; anything that didn't happen: ___
+TC5 the lines: ___; anything that didn't open or shut: ___
+TC6 the lines: ___; the takeover lines: ___
+TC7 the prompts: ___ / ___; planted: yes / no
+TC8 what felt off: ___; the sizes: ___; Touch look: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -7273,3 +7432,9 @@ Didn't look right (IDs and what you saw):
 | 70 | Dead, or between rounds: the time stopping and going on | AF3 |
 | 70 | Taken out: the Output's line, the place held and the bot on their side, the menu opening with RECONNECT and the line saying why, and back by RECONNECT | AF4 |
 | 70 | No warning with nobody else playing, without `VFTestAfk` | AF5 |
+| 71 | The buttons shown as a touch screen's in use, where the layout says, and none with the mouse | TC1 |
+| 71 | The stick moving and walking, the look drag turning, and FIRE's touch turning too | TC2, TC3 |
+| 71 | Each button doing what its key does, CROUCH on and off, SWAP tapped and held, and the column's menus | TC4, TC5, TC7 |
+| 71 | With a menu up, only CLOSE, which shuts it | TC5 |
+| 71 | Dead: FIRE and AIM switching, and USE taking over the bot watched | TC6 |
+| 71 | On a phone: the feel, the sizes, and Roblox's own touch controls gone | TC8 |

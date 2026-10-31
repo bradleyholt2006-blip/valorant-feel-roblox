@@ -530,6 +530,13 @@ Built one system at a time:
     out of the match, their place held as for anyone who leaves: a bot stands in, and the Play
     menu opens on RECONNECT saying why. Any key, look, weapon, buy or ping takes the warning back;
     dead or between rounds the time stops - [research and design](docs/research/70-afk.md)
+71. **Touch controls**: a phone or a tablet plays with its screen. A thumb on the left moves, as a
+    stick that starts where it lands and walks pushed only part of the way, and a drag anywhere else
+    turns the view, FIRE's touch too. FIRE, AIM, JUMP, CROUCH, RELOAD, the abilities, USE, SPIKE,
+    DROP, SWAP and PING sit round the right thumb, a second FIRE for the left, and BUY, MAP,
+    SCORES and the menus down the left; with a menu up, CLOSE shuts it. The buttons keep clear of
+    the HUD on phones and tablets alike, the prompts name them, and the settings menu sets how far
+    a drag turns - [research and design](docs/research/71-touch-controls.md)
 
 ## Running it
 
@@ -846,7 +853,9 @@ controller (the sticks as keys and turns, the bumpers' chord, taps and holds, LT
 it wants, and the presses and the zoom let go that bring a scope to it) and rejoining a match (the
 place held and paid, the player back on their side, the bot that gives way, what the career counts
 and the entry another server finds) and AFK (what counts as playing, when the time counts, the
-warning and being taken out) are pure Luau and run outside Roblox:
+warning and being taken out) and touch controls (the layout on phones' and tablets' screens, clear
+of the HUD, what a touch hits, the stick, the look drag and the buttons as keys) are pure Luau and
+run outside Roblox:
 
 ```
 luau tests/run.luau

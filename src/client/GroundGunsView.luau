@@ -204,7 +204,7 @@ function GroundGunsView.start()
 		local slot = if gun then GroundGuns.slotOf(gun.weapon) else nil
 		if gun and slot and sim then
 			local name = string.upper(WeaponConfig.get(gun.weapon).name)
-			local key = if InputSampler.padActive then "RS" else "F"
+			local key = if InputSampler.touchActive then "USE" elseif InputSampler.padActive then "RS" else "F"
 			prompt.Text = if sim.weapons.loadout[slot] == "" then key .. "  PICK UP " .. name else key .. "  SWAP FOR " .. name
 			prompt.Visible = true
 		else

@@ -239,7 +239,7 @@ do
 	local s = PlayerSettings.copy(PlayerSettings.DEFAULTS)
 	s.sensitivity, s.scoped, s.dpi, s.crosshair = 0.314, 0.85, 1600, "0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0"
 	local text = PlayerSettings.toText(s)
-	check("as text: key=value lines", text == "sensitivity=0.314\nscoped=0.85\ndpi=1600\ncrosshair=0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0\nmapRotate=1\nmapBySide=1\nmapCentred=0\nmapSize=1\nmapZoom=0.9\nmapCones=1\nmapNames=always\npadLook=220\npadFocus=0.5\npadInvert=0\npadWalk=0")
+	check("as text: key=value lines", text == "sensitivity=0.314\nscoped=0.85\ndpi=1600\ncrosshair=0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0\nmapRotate=1\nmapBySide=1\nmapCentred=0\nmapSize=1\nmapZoom=0.9\nmapCones=1\nmapNames=always\npadLook=220\npadFocus=0.5\npadInvert=0\npadWalk=0\ntouchLook=120")
 	check("and back", PlayerSettings.equal(PlayerSettings.fromText(text), s))
 
 	local wild = PlayerSettings.sanitize({ sensitivity = -1, scoped = 0 / 0, dpi = 1e9, crosshair = "garbage" })
@@ -258,6 +258,11 @@ do
 	check(
 		"and by default 220 degrees a second, half in Focus, not inverted",
 		plain.padLook == 220 and plain.padFocus == 0.5 and not plain.padInvert
+	)
+	local touch = PlayerSettings.fromText("touchLook=1000")
+	check(
+		"a touch screen's look (system 71): 120 degrees by default, held to its bounds",
+		plain.touchLook == 120 and touch.touchLook == 400
 	)
 end
 

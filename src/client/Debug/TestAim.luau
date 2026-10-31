@@ -97,6 +97,16 @@
 --                  y, lb, rb, lt, rt, l3, r3, up, down, left, right and
 --                  select; PadRules.parse). Clearing it gives the mouse
 --                  and keys back
+--   VFTestTouch    a touch screen held as given, while set (system 71):
+--                  the stick's x and y, the look drag's speed right and up
+--                  in screen heights a second, then the names of the
+--                  buttons held, all apart by spaces ("0 1 0.2 0 fire":
+--                  running ahead, turning right and firing; the names are
+--                  TouchRules.NAMES: fire, jump, crouch, reload, aim, c,
+--                  q, e, x, use, spike, drop, swap, ping, buy, map,
+--                  scores, agents, play, settings, fire2 and close;
+--                  TouchRules.parse). Clearing it gives the mouse and keys
+--                  back
 --
 -- Outside Studio this does nothing.
 
@@ -108,6 +118,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local Hitboxes = require(Shared.Combat.Hitboxes)
 local PadRules = require(Shared.Input.PadRules)
+local TouchRules = require(Shared.Input.TouchRules)
 local PlayerSim = require(Shared.PlayerSim)
 local Units = require(Shared.Units)
 local Remotes = require(Shared.Net.Remotes)
@@ -129,6 +140,7 @@ local ReportView = require(script.Parent.Parent.ReportView)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local Spectate = require(script.Parent.Parent.Spectate)
 local Gamepad = require(script.Parent.Parent.Gamepad)
+local TouchControls = require(script.Parent.Parent.TouchControls)
 
 local TestAim = {}
 
@@ -302,6 +314,7 @@ function TestAim.start(controller: any)
 			ReportView.test(report)
 		end
 		Gamepad.test = PadRules.parse(player:GetAttribute("VFTestPad"))
+		TouchControls.test = TouchRules.parse(player:GetAttribute("VFTestTouch"))
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then
 			return

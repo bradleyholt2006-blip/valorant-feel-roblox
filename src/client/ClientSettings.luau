@@ -56,8 +56,9 @@ end
 
 -- Changes one setting, as the menu's boxes and buttons and TestAim's
 -- VFTestSetting do: a number, a switch ("1" or "0", "on" or "off") or one
--- of Show Map Region Names' choices for the minimap's (system 34), and the
--- gamepad's (system 68). Returns false when the value isn't one.
+-- of Show Map Region Names' choices for the minimap's (system 34), the
+-- gamepad's (system 68) and the touch screen's (system 71). Returns false
+-- when the value isn't one.
 function ClientSettings.setOne(key: string, value: string): boolean
 	local s = PlayerSettings.copy(ClientSettings.current)
 	if key == "crosshair" then
@@ -74,6 +75,7 @@ function ClientSettings.setOne(key: string, value: string): boolean
 		or key == "mapZoom"
 		or key == "padLook"
 		or key == "padFocus"
+		or key == "touchLook"
 	then
 		local n = tonumber(value)
 		if n == nil or n ~= n then
