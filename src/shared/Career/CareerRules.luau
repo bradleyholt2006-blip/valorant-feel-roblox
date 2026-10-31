@@ -146,7 +146,8 @@ local function resultFor(match: Match, id: number, outcome: RankRules.Outcome, m
 		kills = p.kills,
 		deaths = p.deaths,
 		assists = p.assists,
-		score = p.score,
+		-- Damage scores fractions of a point; the career keeps whole ones.
+		score = math.round(p.score),
 		rounds = p.rounds,
 		ranked = ranked,
 	}
@@ -211,13 +212,13 @@ function CareerRules.apply(record: Record, result: Result): RankRules.Change?
 	return if ranked then RankRules.apply(record.rank, ranked) else nil
 end
 
--- A number from the store, if it's a whole one from `low` to `high`; else
--- `default`.
+-- A whole number from the store, from `low` to `high`; `default` for
+-- anything not a number.
 local function whole(value: any, low: number, high: number, default: number): number
-	if type(value) ~= "number" or value ~= value or value % 1 ~= 0 then
+	if type(value) ~= "number" or value ~= value then
 		return default
 	end
-	return math.clamp(value, low, high)
+	return math.clamp(math.floor(value), low, high)
 end
 
 -- A record from whatever the store holds: a new one for nothing, or for

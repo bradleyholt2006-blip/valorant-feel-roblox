@@ -372,6 +372,15 @@ check(
 	totals ~= nil and totals.matches == 1 and totals.wins == 1 and totals.kills == 20 and totals.score == 22 * 300 and totals.rounds == 22
 )
 check("and a Competitive one to the rank", moved ~= nil and record.rank.games == 1 and record.rank.mmr > before)
+local fraction = CareerRules.results({
+	mode = "skirmish",
+	winner = 1,
+	score = { 10, 4 },
+	rounds = 14,
+	winScore = 10,
+	players = { [1] = player(1, 14, false, 9, 2345.6) },
+}, mmrOf, newId)[1]
+check("damage's fractions of a point are rounded off the combat score kept", fraction ~= nil and fraction.score == 2346)
 local again = CareerRules.apply(record, one :: CareerRules.Result)
 check("the same result twice counts once", again == nil and totals.matches == 1 and record.rank.games == 1)
 for i = 1, 20 do
@@ -396,7 +405,7 @@ check("nothing kept is a new career", CareerRules.decode(nil).rank.tier == 0 and
 check("a record of another version is a new career", CareerRules.decode({ v = 2, rank = { tier = 5 } }).rank.tier == 0)
 local broken = CareerRules.decode({
 	v = 1,
-	rank = { mmr = 0 / 0, games = 1.5, tier = 99, rr = 4000, shields = 7 },
+	rank = { mmr = 0 / 0, games = "5", tier = 99, rr = 4000, shields = 7 },
 	modes = { skirmish = { matches = -3, wins = "x", kills = 4 }, nope = { matches = 9 } },
 	seen = { "a", 5, "b" },
 })

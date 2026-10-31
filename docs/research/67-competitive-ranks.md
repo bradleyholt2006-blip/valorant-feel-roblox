@@ -43,8 +43,8 @@ says 70, which is what's used. Overtime's vote to draw is Patch 1.03's (system 1
 
 ## 3. What can be measured, and how
 
-The rules are plain functions, checked offline: `tests/rank.luau` has 74 checks, and the
-suite's 3989 pass. In Studio (section 71 of the checklist) each player's attributes carry their rank
+The rules are plain functions, checked offline: `tests/rank.luau` has 75 checks, and the
+suite's 3990 pass. In Studio (section 71 of the checklist) each player's attributes carry their rank
 and totals, and in Studio alone the hidden MMR and a printed line for each result. `VFMatchDecide`
 ends the round under way for the side it names, so a whole match plays in seconds. Studio can only
 use the data store if the place lets it use API services (Game Settings, Security); otherwise the
@@ -186,7 +186,7 @@ rank or the placements played.
 | `src/shared/Match/MatchRules.luau`, `src/shared/Match/MatchConfig.luau` | `decide` and `VFMatchDecide`, for checks |
 | `src/client/Scoreboard.luau` | The rank on Competitive's victory screen |
 | `src/client/PlayMenu.luau` | Each card's record, and Competitive's rank |
-| `tests/rank.luau` | 74 checks |
+| `tests/rank.luau` | 75 checks |
 | `docs/studio-checklist.md` | Section 71 |
 
 ## 7. Debug tools
