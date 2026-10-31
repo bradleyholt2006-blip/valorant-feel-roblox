@@ -5920,12 +5920,14 @@ task.delay(240, function()
 end)
 ```
 
-- **BU1 Charges.** 5 s into round 1's buy phase, run section 69's script: each bot's `VFKit` has
-  charges past its free one where its agent has an ability it casts that it could pay for (Jett's
-  `C`, Phoenix's `Q` or a second `E`, Sage's `C` or `Q`, Omen's `Q` or a second `E`, Sova's `Q`).
-  Set `VFMatchSkip` to true, let round 1 play out, and run it again 5 s into round 2's buy phase: a
-  bot that bought a primary has spent what was left on charges, and one saving for a full buy has
-  bought none. **Send:** the script's lines in each buy phase.
+- **BU1 Charges.** 5 s into round 1's buy phase, while agent select is open, run section 69's
+  script: no bot has a charge past its free one yet, as its kit changes when its agent is locked
+  in. Run it again once agent select has closed (every bot's `VFAgentPick` reads `locked`): each
+  bot's `VFKit` has charges past its free one where its agent has an ability it casts that it could
+  pay for (Jett's `C`, Phoenix's `Q` or a second `E`, Sage's `C` or `Q`, Omen's `Q` or a second
+  `E`, Sova's `Q`). Set `VFMatchSkip` to true, let round 1 play out, and run it again 5 s into
+  round 2's buy phase: a bot that bought a primary has spent what was left on charges, and one
+  saving for a full buy has bought none. **Send:** the script's lines in each buy phase.
 
 - **BU2 The push.** Run the cast script as round 3's buy phase ends, and stay in your spawn while
   the attacking bots go. A Sova among them prints `gather:reconbolt` as they gather short of the
@@ -5934,8 +5936,10 @@ end)
   the round. Then follow the attackers at a distance as they go in: Dark Cover and a cloud land on
   the spots inside their way in, not in the open short of it, and a Curveball pops round the corner,
   not in front of them. Run section 69's script straight after a flash: no attacker's `VFBlind` has
-  anything more than a trace. **Send:** the cast script's lines, and what the smokes and flashes
-  looked like.
+  anything more than a trace. Then set `VFArenaOn` to false and back to true, and run the cast
+  script as the new round 1 goes live: no defender prints a `push:` cast before the spike's planted,
+  and the attackers gather before they push, as at the first start. **Send:** the cast script's
+  lines, and what the smokes and flashes looked like.
 
 - **BU3 A stall.** In a later round, go ahead of the attacking bots to a way into a site, step out
   where its defenders see you for a second, and step back out of sight. Within a few seconds a slow,
@@ -6416,8 +6420,8 @@ BK1 before the window closed: ___; after: ___; the scoreboard and the top bar: _
 BK2 after round 1: ___; after round 2: ___
 BK3 shot while blinded: yes / no; VFBlind: ___; the nearsighted bots shot from about ___ m
 BK4 VFLastHeal: ___; VFLastRecon: ___; VFFuryHits: ___
-BU1 round 1's VFKit lines: ___; round 2's: ___
-BU2 the casts: ___; the smokes and flashes: ___
+BU1 round 1's VFKit lines before the lock: ___; after it: ___; round 2's: ___
+BU2 the casts: ___; the smokes and flashes: ___; after starting over: ___
 BU3 what came, and how long after: ___
 BU4 the guards' casts: ___; the defuser: ___
 BU5 the heal's lines: ___
@@ -6827,8 +6831,8 @@ Didn't look right (IDs and what you saw):
 | 65 | A bot's kit: its signature's free charge, and points for kills and deaths | BK2 |
 | 65 | A flash blinding a bot and Paranoia nearsighting it in the place's real geometry, and what it sees meanwhile | BK3 |
 | 65 | A Healing Orb healing an allied bot; a Recon Bolt and Hunter's Fury leaving allied bots be | BK4 |
-| 66 | Bots buying their charges in a buy phase, after their guns, and saving for a full buy | BU1 |
-| 66 | Bots casting in a round: the moments, and how often | BU2, BU3, BU4 |
+| 66 | Bots buying their charges in a buy phase, after their guns and once their agents are locked in, and saving for a full buy | BU1 |
+| 66 | Bots casting in a round: the moments, and how often; nothing carried over when the spike rounds start over | BU2, BU3, BU4 |
 | 66 | Their throws in the place's real geometry, on Roblox's collisions: smokes on the spots, flashes round the corner, mollies, slows and walls on the way in, and none on their own side | BU2, BU3, BU6 |
 | 66 | A heal; Hunter's Fury, a molly or a Shock Bolt on a defuse | BU4, BU5 |
 | 66 | What the casts cost the server | BU6 |

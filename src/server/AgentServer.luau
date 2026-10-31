@@ -101,6 +101,14 @@ local function botSelect(id: number): string?
 	return if pick.status == "free" then AgentSelect.lock(state, id) else nil
 end
 
+-- Whether a player's or a bot's agent is locked in for the side of the
+-- match they're on (AgentSelect.settled): a bot's charges wait for it
+-- (Arena), so none are bought into a kit it's about to leave.
+function AgentServer.settled(holder: Instance, id: number): boolean
+	local momentOf = AgentServer.momentOf
+	return momentOf ~= nil and AgentSelect.settled(state, id, momentOf(holder, id))
+end
+
 -- Tells clients a player's pick, when it's changed.
 local function publish(player: Instance, id: number)
 	local pick = AgentSelect.pickOf(state, id)
