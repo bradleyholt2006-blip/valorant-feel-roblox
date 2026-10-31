@@ -468,7 +468,12 @@ end
 -- After ReconServer's start, whose shafts are in the level shots are
 -- traced through before the drones.
 function DroneServer.start()
-	table.insert(PlayerSimServer.tickListeners, onTick)
+	-- Bots don't play the Owl Drone yet (system 65).
+	table.insert(PlayerSimServer.tickListeners, function(actor: PlayerSimServer.Actor, input: any, casts: { AbilitySim.Cast }?)
+		if actor:IsA("Player") then
+			onTick(actor, input, casts)
+		end
+	end)
 	local levelBefore = CombatServer.levelAt
 	CombatServer.levelAt = function(base: Penetration.Level, viewTime: number): Penetration.Level
 		local level = if levelBefore then levelBefore(base, viewTime) else base

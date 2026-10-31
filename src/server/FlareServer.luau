@@ -18,7 +18,9 @@
 -- until it's gone, and goes with a death or a new life, as do a thrower's
 -- flares still in the air as they start a new life, and with that body
 -- (FlareServer.clear). The thrower's last pop is their `VFLastFlare`
--- attribute (metres), which scripted checks read.
+-- attribute (metres), which scripted checks read. Bots throw flares and
+-- are blinded by them as players are (system 65), each known by its
+-- stand-in (PlayerSimServer.Actor), which carries its `VFBlind`.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -42,14 +44,16 @@ FlareServer.LAST_FLARE_ATTRIBUTE = "VFLastFlare"
 local DT = 1 / MovementConfig.TickRate.value
 local world = RobloxWorld.new()
 
+type Actor = PlayerSimServer.Actor
+
 -- A flare in the air: whose, and when (server time) and where it pops.
-type Pending = { player: Player, at: number, position: vector }
+type Pending = { player: Actor, at: number, position: vector }
 
 local pending: { Pending } = {}
 -- Each player's blind, while any of it is left.
-local blinds: { [Player]: FlareSim.Blind } = {}
+local blinds: { [Actor]: FlareSim.Blind } = {}
 
-local function setBlind(player: Player, b: FlareSim.Blind?)
+local function setBlind(player: Actor, b: FlareSim.Blind?)
 	if b then
 		blinds[player] = b
 		player:SetAttribute(FlareSim.BLIND_ATTRIBUTE, FlareSim.encode(b))
@@ -59,7 +63,7 @@ local function setBlind(player: Player, b: FlareSim.Blind?)
 	end
 end
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: Actor, cast: AbilitySim.Cast)
 	if cast.kind ~= "flare" then
 		return
 	end
@@ -86,12 +90,13 @@ local function onCast(player: Player, cast: AbilitySim.Cast)
 	table.insert(pending, { player = player, at = now + FlareSim.popTime(DT), position = pop })
 end
 
--- A flare's pop: everyone alive and in play who can see it, blinded by it.
+-- A flare's pop: everyone alive and in play who can see it, blinded by it,
+-- bots too.
 local function popped(p: Pending)
 	if p.player.Parent then
 		p.player:SetAttribute(FlareServer.LAST_FLARE_ATTRIBUTE, Units.asVector3(p.position))
 	end
-	for _, player in Players:GetPlayers() do
+	for _, player in PlayerSimServer.actors() do
 		if not PlayerSimServer.inPlay(player) then
 			continue
 		end
@@ -113,7 +118,7 @@ end
 -- A player's blind gone, if they have one: with a death, a new life, and
 -- a Phoenix's body gone in Run it Back (system 33; Patch 12.01 fixed a
 -- debuff staying on him through it).
-local function clear(player: Player)
+local function clear(player: Actor)
 	if blinds[player] then
 		setBlind(player, nil)
 	end
@@ -143,14 +148,17 @@ end
 function FlareServer.start()
 	table.insert(PlayerSimServer.castListeners, onCast)
 	table.insert(PlayerSimServer.deathListeners, clear)
-	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
+	local function newLife(player: Actor)
 		clear(player)
 		for i = #pending, 1, -1 do
 			if pending[i].player == player then
 				table.remove(pending, i)
 			end
 		end
-	end)
+	end
+	table.insert(PlayerSimServer.spawnListeners, newLife)
+	table.insert(PlayerSimServer.botDeathListeners, clear)
+	table.insert(PlayerSimServer.botSpawnListeners, newLife)
 	Players.PlayerRemoving:Connect(function(player)
 		blinds[player] = nil
 	end)

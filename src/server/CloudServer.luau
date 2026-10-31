@@ -20,7 +20,9 @@
 -- it forms, and when), and it stands with the clouds, as nobody sees
 -- through it either. The thrower's last smoke is their `VFLastSmoke`
 -- attribute (metres). A new round clears every cloud and smoke (clear,
--- from the arena), as every client does on FireServer's "out".
+-- from the arena), as every client does on FireServer's "out". Bots throw
+-- clouds and send smokes as players do (system 65), each known by its
+-- stand-in (PlayerSimServer.Actor).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -47,14 +49,16 @@ CloudServer.LAST_SMOKE_ATTRIBUTE = "VFLastSmoke"
 local DT = 1 / MovementConfig.TickRate.value
 local world = RobloxWorld.new()
 
+type Actor = PlayerSimServer.Actor
+
 -- When a throw was thrown (server time) and how many ticks it has flown.
 type Info = { thrownAt: number, ticks: number }
 type Thrower = { list: { CloudSim.Projectile }, info: { [number]: Info } }
 
 -- Each player's throws in the air, flown on their ticks.
-local throwers: { [Player]: Thrower } = {}
+local throwers: { [Actor]: Thrower } = {}
 -- Throws whose thrower is dead or gone, flown on the server's clock.
-local loose: { { p: CloudSim.Projectile, info: Info, player: Player? } } = {}
+local loose: { { p: CloudSim.Projectile, info: Info, player: Actor? } } = {}
 local carry = 0 -- server seconds the loose throws haven't flown yet
 local lastNow: number? = nil
 -- The clouds burst and the smokes sent: where, when they formed (server
@@ -77,7 +81,7 @@ local function keyframe(p: CloudSim.Projectile, info: Info)
 	tell("flight", p.owner, p.id, info.thrownAt + p.age, p.position, vector.normalize(p.velocity))
 end
 
-local function burst(player: Player?, owner: number, id: number, position: vector, age: number, info: Info?)
+local function burst(player: Actor?, owner: number, id: number, position: vector, age: number, info: Info?)
 	local thrownAt = if info then info.thrownAt else Workspace:GetServerTimeNow() - age
 	tell("cloud", owner, id, thrownAt + age, position, vector.create(0, 1, 0))
 	table.insert(clouds, { centre = position, at = thrownAt + age, smoke = false })
@@ -99,7 +103,7 @@ end
 
 -- Dark Cover's orb sent by `player` (entity `owner`) from `eye` to a smoke
 -- at `centre`: it forms once it's flown there.
-local function sendSmoke(player: Player, owner: number, id: number, eye: vector, centre: vector)
+local function sendSmoke(player: Actor, owner: number, id: number, eye: vector, centre: vector)
 	local at = Workspace:GetServerTimeNow() + SmokeSim.flight(eye, centre)
 	table.insert(clouds, { centre = centre, at = at, smoke = true })
 	Remotes.get().Ability:FireAllClients({
@@ -116,7 +120,7 @@ end
 
 -- After each of a player's ticks: their throws fly on with its input, and
 -- its throws join them; the orbs it sent go to their smokes.
-local function onTick(player: Player, input: any, casts: { any }?)
+local function onTick(player: Actor, input: any, casts: { any }?)
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "smoke" and cast.smoke then
@@ -161,7 +165,7 @@ local function onTick(player: Player, input: any, casts: { any }?)
 end
 
 -- A thrower's throws go on by themselves (they died, or left).
-local function letGo(player: Player)
+local function letGo(player: Actor)
 	local t = throwers[player]
 	throwers[player] = nil
 	if not t then
@@ -235,6 +239,7 @@ end
 function CloudServer.start()
 	table.insert(PlayerSimServer.tickListeners, onTick)
 	table.insert(PlayerSimServer.deathListeners, letGo)
+	table.insert(PlayerSimServer.botDeathListeners, letGo)
 	Players.PlayerRemoving:Connect(letGo)
 end
 

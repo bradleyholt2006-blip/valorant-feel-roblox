@@ -200,6 +200,10 @@ BotConfig.Params = {
 	glanceEvery = p(0.25, "estimate", "Seconds"),
 	-- How often each side's plan is gone over (BotTeam.think).
 	think = p(0.5, "estimate", "Seconds"),
+	-- A flash's blind hides everything from a bot while a player's screen
+	-- would be at least this white with it (FlareSim.whiteAt): past the
+	-- white, a flashed player starts to see again as it fades (system 65).
+	blindFrom = p(0.5, "estimate", "White, 0 to 1"),
 }
 
 -- How many players each mode is filled to with bots, while anyone plays

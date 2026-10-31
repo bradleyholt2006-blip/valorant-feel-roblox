@@ -46,9 +46,9 @@ local world = RobloxWorld.new()
 -- sent out (server time), by its id.
 type Caster = { list: { BlazeSim.Run }, sentAt: { [number]: number } }
 
-local casters: { [Player]: Caster } = {}
+local casters: { [PlayerSimServer.Actor]: Caster } = {}
 -- Runs whose caster is dead, run on the server's clock.
-local loose: { { run: BlazeSim.Run, sentAt: number, player: Player } } = {}
+local loose: { { run: BlazeSim.Run, sentAt: number, player: PlayerSimServer.Actor } } = {}
 local carry = 0 -- server seconds the loose runs haven't run yet
 local lastNow: number? = nil
 -- The walls risen, until they fall.
@@ -67,7 +67,7 @@ end
 
 -- A run that's over: its wall rises where it ran, told to every client and
 -- lit, unless it ran nowhere.
-local function rise(player: Player, run: BlazeSim.Run, sentAt: number)
+local function rise(player: PlayerSimServer.Actor, run: BlazeSim.Run, sentAt: number)
 	local start = sentAt + run.age
 	local wall = BlazeSim.wall(run.owner, run.id, run.points, start)
 	if not wall then
@@ -122,7 +122,7 @@ end
 -- After each of a player's ticks: their runs go on with its input, bent
 -- while their wall's still being bent after it, and its walls sent out
 -- join them.
-local function onTick(player: Player, input: any, casts: { any }?)
+local function onTick(player: PlayerSimServer.Actor, input: any, casts: { any }?)
 	local had: Caster? = casters[player]
 	if not had and not sends(casts) then
 		return
@@ -155,7 +155,7 @@ local function onTick(player: Player, input: any, casts: { any }?)
 end
 
 -- A caster's runs go on by themselves (they died).
-local function letGo(player: Player)
+local function letGo(player: PlayerSimServer.Actor)
 	local c = casters[player]
 	casters[player] = nil
 	if not c then
@@ -222,6 +222,7 @@ end
 function BlazeServer.start()
 	table.insert(PlayerSimServer.tickListeners, onTick)
 	table.insert(PlayerSimServer.deathListeners, letGo)
+	table.insert(PlayerSimServer.botDeathListeners, letGo)
 	Players.PlayerRemoving:Connect(function(player)
 		casters[player] = nil
 		for i = #loose, 1, -1 do

@@ -5800,6 +5800,62 @@ on the map built in the place, Workspace's `1v1Map`, with its spawn rooms `Spawn
   one of you is in each room. Win a round each. **Send:** the score after two rounds, and whether
   either of you got through a barrier in a buy phase.
 
+## 69. Bots' agents
+
+From [65-bots-agents.md](research/65-bots-agents.md). System 65 has each bot play an agent: it picks
+one in the agent select window after every player, one nobody on its side has locked in or selected,
+and its kit is a player's, kept from one life to the next. Every ability treats a bot as a player: a
+flash blinds it and Paranoia nearsights it, and while it's blinded or nearsighted it doesn't see
+you; a Healing Orb heals an allied bot; a Recon Bolt and Hunter's Fury leave bots on the caster's
+side be. Bots don't cast yet (system 66).
+
+Start a Local Server with 1 player, as in section 9. This script, for the server's command bar,
+prints each bot: side, agent, what it's selected, where its pick stands, its kit, its ultimate, and
+a blind or a nearsight on it (nil for none):
+
+```lua
+for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+	local line = { bot.Name }
+	for _, key in { "VFArenaSide", "VFAgent", "VFAgentSelected", "VFAgentPick", "VFKit", "VFUlt", "VFBlind", "VFNearsight" } do
+		table.insert(line, tostring(bot:GetAttribute(key)))
+	end
+	print(table.concat(line, "  "))
+end
+```
+
+- **BK1 Picks.** In the server's command bar, set `VFMatchMap` to `outpost`, `VFArenaMode` to
+  `spike` and `VFArenaOn` to true, as in section 65. Within the first 10 s of round 1's buy phase,
+  run the script: every bot reads `open`, with an agent selected, and no two on a side have selected
+  the same. Note one your side's bots selected, open agent select (T) if it isn't up, and in the
+  player's command bar set `VFTestAgent` to that agent's id (`omen`), then to `lock`, and run the
+  script again: that bot has selected another. Once the window's closed, run it again: every bot
+  reads `locked`, its agent what it selected, and each side's agents are all different, yours among
+  them. Hold Tab: each bot's row has its agent's letters, and so do the top bar's tiles. **Send:**
+  the script's lines before and after the window closed, and what the scoreboard showed.
+
+- **BK2 The kit.** Go on with BK1's match. Every bot's `VFKit` starts `E1`, its signature's free
+  charge (the agent's), and its `X` points with the round's. Set `VFMatchSkip` to true to end the
+  buy phase and let the round play out, then run the script as the next buy phase starts, and again
+  after round 2: a bot that got a kill has more points than one that didn't, and `VFUlt` matches
+  `VFKit`'s `X`. **Send:** the script's lines after each round.
+
+- **BK3 Blinded and nearsighted.** Set `VFArenaOn` to false, `VFArenaMode` to `skirmish` and
+  `VFArenaOn` to true: you and a bot of yours against two bots. Pick Phoenix (T). Once the round's
+  live, wait behind cover for the other side's bots; as they come into sight, 10 m away or more,
+  throw the Curveball (E, then click) so it pops in front of them, and step out at once, standing
+  still in front of them: for about a second neither shoots. Run the script straight after: their
+  `VFBlind` isn't nil. In another round pick Omen, send Paranoia (Q, then click) through them as
+  they come, and walk at them: they don't shoot until you're close. **Send:** whether they shot
+  while blinded, the `VFBlind` lines, and about how close you were when the nearsighted bots shot.
+
+- **BK4 Allies.** Go on in Skirmish. Pick Sage, let your bot get hurt in a fight, then look at it
+  and press E and click: in the player's command bar,
+  `print(game.Players:GetPlayers()[1]:GetAttribute("VFLastHeal"))` prints its name, `BOT` and all.
+  Pick Sova, and loose a Recon Bolt (E, hold and let go of the left button) where your bot and the
+  other side's are both in its sight: `VFLastRecon` on you has only the other side's names. Once X's
+  full, cast Hunter's Fury (X, then click) through your bot at the other side's: `VFFuryHits` has
+  only theirs. **Send:** the three printed lines.
+
 ## Results
 
 ```
@@ -6250,6 +6306,10 @@ AB4 the plant: ___; the defuse: ___
 AB5 the hits: ___; the Shade: ___; the force field: ___
 AB6 the most bodies and VFBodyMs: ___ ___; fps with them in view: ___, looking away: ___
 AB7 blocks without a body: yes / no
+BK1 before the window closed: ___; after: ___; the scoreboard and the top bar: ___
+BK2 after round 1: ___; after round 2: ___
+BK3 shot while blinded: yes / no; VFBlind: ___; the nearsighted bots shot from about ___ m
+BK4 VFLastHeal: ___; VFLastRecon: ___; VFFuryHits: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6650,3 +6710,8 @@ Didn't look right (IDs and what you saw):
 | 63 | A hit, a Shade and spawn protection on the body; the outline round it, not round the unseen blocks; the label over the head | AB1, AB5 |
 | 63 | Bots drawn as bodies, the one watched not drawn, and what nine bodies cost a client's frame | AB6 |
 | 63 | Blocks again without a body | AB7 |
+| 65 | Bots picking in the agent select window, one of each agent on a side, never what a player selected | BK1 |
+| 65 | Bots' agents and ultimates on the top bar and the scoreboard | BK1, BK2 |
+| 65 | A bot's kit: its signature's free charge, and points for kills and deaths | BK2 |
+| 65 | A flash blinding a bot and Paranoia nearsighting it in the place's real geometry, and what it sees meanwhile | BK3 |
+| 65 | A Healing Orb healing an allied bot; a Recon Bolt and Hunter's Fury leaving allied bots be | BK4 |

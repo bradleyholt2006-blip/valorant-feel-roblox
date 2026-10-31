@@ -62,6 +62,13 @@
 -- fog of war keeps from those who can't see them (system 35). Every client
 -- draws everyone from the snapshots instead (RemoteEntities), and the
 -- owner moves its own.
+--
+-- Bots (system 60) cast abilities and are reached by them as players are
+-- (system 65): each is an actor here as a player is, known by its stand-in
+-- (BotServer.standIn), and BotServer answers for it (PlayerSimServer.bots)
+-- where a player's record would: its entity, simulation, view and life.
+-- Its casts and ticks go to castListeners and tickListeners as a player's
+-- do. Nothing goes to a bot's client, as there's none.
 
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
@@ -141,6 +148,18 @@ export type SpawnPoint = { feet: vector, yaw: number }
 -- A bot's body taken over (system 62), as it is: its feet in metres, the
 -- way it looks, its kit (the spike's slot too) and its health and shield.
 export type Body = { feet: vector, yaw: number, pitch: number, kit: BotTakeover.Kit, health: Health.State }
+-- A player, or a bot's stand-in (system 65).
+export type Actor = Instance
+-- What BotServer answers for each bot, by its stand-in.
+export type BotHooks = {
+	list: () -> { Instance }, -- every bot's stand-in
+	actorOf: (Entities.Entity) -> Instance?, -- a bot's entity's stand-in
+	entityOf: (Instance) -> Entities.Entity?,
+	getSim: (Instance) -> PlayerSim.State?,
+	view: (Instance) -> (vector?, vector?),
+	isAlive: (Instance) -> boolean,
+	moved: (Instance) -> (),
+}
 
 local PlayerSimServer = {}
 
@@ -164,16 +183,16 @@ PlayerSimServer.spikeListeners = {} :: { (Player, SpikeSim.Act) -> () }
 -- Called with the gun a player let go of with G (system 15), with their feet
 -- and the way they faced as they did.
 PlayerSimServer.dropListeners = {} :: { (Player, WeaponSim.Dropped, vector, number) -> () }
--- Called with each ability a player casts (system 17).
-PlayerSimServer.castListeners = {} :: { (Player, AbilitySim.Cast) -> () }
+-- Called with each ability a player or a bot casts (system 17).
+PlayerSimServer.castListeners = {} :: { (Actor, AbilitySim.Cast) -> () }
 -- The Slow Orbs' fields in play (system 37, SlowServer); none without.
 PlayerSimServer.fields = nil :: (() -> { SlowSim.Field })?
 -- The Barrier Orbs' walls in play, judged at a server time, and whether a
 -- wall can go up then (system 38, BarrierServer); none without.
 PlayerSimServer.barriers = nil :: ((number) -> BarrierSim.Walls)?
--- Called after each of a player's ticks, with its input and its casts, if
--- any (system 18 flies thrown clouds on them).
-PlayerSimServer.tickListeners = {} :: { (Player, PlayerCodec.WireInput, { AbilitySim.Cast }?) -> () }
+-- Called after each of a player's or a bot's ticks, with its input and its
+-- casts, if any (system 18 flies thrown clouds on them).
+PlayerSimServer.tickListeners = {} :: { (Actor, PlayerCodec.WireInput, { AbilitySim.Cast }?) -> () }
 -- The debug give of the spike: the one spike there is, handed over, not a
 -- new one (SpikeServer).
 PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
@@ -191,8 +210,15 @@ PlayerSimServer.SPAWN_WAIT = 5
 -- you survive, you may still have to repurchase armor if you took damage',
 -- Hotspawn's economy guide; community).
 PlayerSimServer.keepShields = false
+-- The bots, as BotServer answers for them (system 65); none without.
+PlayerSimServer.bots = nil :: BotHooks?
+-- Called when a bot dies, with its stand-in and whoever killed it, if
+-- anyone else did, and when its new life starts, with its stand-in (system
+-- 65): what the ability servers do as a player's does.
+PlayerSimServer.botDeathListeners = {} :: { (Actor, Entities.Entity?) -> () }
+PlayerSimServer.botSpawnListeners = {} :: { (Actor) -> () }
 
-local records: { [Player]: Record } = {}
+local records: { [Instance]: Record } = {}
 local world = RobloxWorld.new()
 local onShot: ShotHandler = function() end
 local onSwing: SwingHandler = function() end
@@ -553,9 +579,13 @@ end
 -- Where a player's eye is and the way it looks, as of their last move run
 -- (the server's check of what they say they're looking at). Flying the Owl
 -- Drone (system 47), the eye's the drone's middle.
-function PlayerSimServer.view(player: Player): (vector?, vector?)
+function PlayerSimServer.view(player: Actor): (vector?, vector?)
 	local r = records[player]
 	if not r then
+		local bots = PlayerSimServer.bots
+		if bots then
+			return bots.view(player)
+		end
 		return nil, nil
 	end
 	local kit = r.sim.abilities
@@ -683,22 +713,61 @@ function PlayerSimServer.spawnPending(player: Player): boolean
 end
 
 -- Whether a player is alive and playing.
-function PlayerSimServer.isAlive(player: Player): boolean
+function PlayerSimServer.isAlive(player: Actor): boolean
 	local r = records[player]
-	return r ~= nil and r.alive and r.root ~= nil
+	if not r then
+		local bots = PlayerSimServer.bots
+		return bots ~= nil and bots.isAlive(player)
+	end
+	return r.alive and r.root ~= nil
 end
 
 -- Whether a player is alive, playing and in play: not out of it, as a
 -- Phoenix whose body's gone in Run it Back is (system 33), still alive but
 -- nowhere, who sees nothing and picks nothing up.
-function PlayerSimServer.inPlay(player: Player): boolean
+function PlayerSimServer.inPlay(player: Actor): boolean
 	local r = records[player]
-	return r ~= nil and r.alive and r.root ~= nil and r.entity.health.alive
+	if not r then
+		local bots = PlayerSimServer.bots
+		local entity = if bots and bots.isAlive(player) then bots.entityOf(player) else nil
+		return entity ~= nil and entity.health.alive
+	end
+	return r.alive and r.root ~= nil and r.entity.health.alive
 end
 
-function PlayerSimServer.entityOf(player: Player): Entities.Entity?
+function PlayerSimServer.entityOf(player: Actor): Entities.Entity?
 	local r = records[player]
-	return if r then r.entity else nil
+	if not r then
+		local bots = PlayerSimServer.bots
+		return if bots then bots.entityOf(player) else nil
+	end
+	return r.entity
+end
+
+-- The actor an entity is: a player's, or a bot's stand-in (system 65); nil
+-- for a dummy.
+function PlayerSimServer.actorOf(entity: Entities.Entity): Actor?
+	local player = entity.player
+	if player then
+		return player
+	end
+	local bots = PlayerSimServer.bots
+	return if bots then bots.actorOf(entity) else nil
+end
+
+-- Every actor (system 65): each player, then each bot.
+function PlayerSimServer.actors(): { Actor }
+	local out: { Actor } = {}
+	for _, player in Players:GetPlayers() do
+		table.insert(out, player)
+	end
+	local bots = PlayerSimServer.bots
+	if bots then
+		for _, standIn in bots.list() do
+			table.insert(out, standIn)
+		end
+	end
+	return out
 end
 
 -- How many seconds a player's screen was behind the server when their last
@@ -824,7 +893,7 @@ end
 
 -- Marks a player's state as changed outside the input stream (damage slow,
 -- loadout), so the owner gets a fresh ack and reconciles.
-function PlayerSimServer.markDirty(player: Player)
+function PlayerSimServer.markDirty(player: Actor)
 	local r = records[player]
 	if r then
 		r.ackDirty = true
@@ -834,11 +903,16 @@ end
 -- A player put somewhere else between their ticks (an enemy's hit breaking
 -- Omen's Shade, system 43, sends him back): the snapshots start over from
 -- there, and the owner gets a fresh ack.
-function PlayerSimServer.moved(player: Player)
+function PlayerSimServer.moved(player: Actor)
 	local r = records[player]
 	if r then
 		restartPacing(r)
 		r.ackDirty = true
+		return
+	end
+	local bots = PlayerSimServer.bots
+	if bots then
+		bots.moved(player)
 	end
 end
 
@@ -865,21 +939,25 @@ end
 
 -- A player's ability kit, for AbilityServer to change between ticks
 -- (markDirty after).
-function PlayerSimServer.abilitiesOf(player: Player): AbilitySim.State?
-	local r = records[player]
-	return if r then r.sim.abilities else nil
+function PlayerSimServer.abilitiesOf(player: Actor): AbilitySim.State?
+	local sim = PlayerSimServer.getSim(player)
+	return if sim then sim.abilities else nil
 end
 
 -- The simulation time of a player's last move run.
-function PlayerSimServer.timeOf(player: Player): number?
-	local r = records[player]
-	return if r then r.sim.movement.tick * DT else nil
+function PlayerSimServer.timeOf(player: Actor): number?
+	local sim = PlayerSimServer.getSim(player)
+	return if sim then sim.movement.tick * DT else nil
 end
 
 -- Read access for other systems.
-function PlayerSimServer.getSim(player: Player): PlayerSim.State?
+function PlayerSimServer.getSim(player: Actor): PlayerSim.State?
 	local r = records[player]
-	return r and r.sim
+	if not r then
+		local bots = PlayerSimServer.bots
+		return if bots then bots.getSim(player) else nil
+	end
+	return r.sim
 end
 
 return PlayerSimServer

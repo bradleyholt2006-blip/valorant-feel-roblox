@@ -63,8 +63,8 @@ local keptOf: { [BarrierSim.Wall]: Kept } = {}
 -- The walls kept, for the simulation and the shots.
 local walls: { BarrierSim.Wall } = {}
 -- Each owner's last wall, and the attribute it was last shown as.
-local latest: { [Player]: Kept } = {}
-local shown: { [Player]: string } = {}
+local latest: { [PlayerSimServer.Actor]: Kept } = {}
+local shown: { [PlayerSimServer.Actor]: string } = {}
 
 -- Whether no wall goes up now: the arena's buy phase.
 local function closed(): boolean
@@ -126,7 +126,7 @@ local function show(now: number)
 	end
 end
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: PlayerSimServer.Actor, cast: AbilitySim.Cast)
 	local placed = cast.wall
 	if cast.kind ~= "barrier" or not placed then
 		return
