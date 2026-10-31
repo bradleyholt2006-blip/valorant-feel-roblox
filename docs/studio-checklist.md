@@ -5652,12 +5652,14 @@ print(me.Character and me.Character:GetAttribute("VFSpawnKit"))
   `You play from the next round`. Run the script: that bot reads `true`, and you `false`. Press F:
   the line reads `Taking control`, and in about a second you're playing again where the bot stood,
   the view going on from where it looked with no jump, its gun in your hand, and its health and
-  shield on the HUD. Run the script again: the bot reads `false` with its kills and deaths as they
-  were, you `true` with your own, and the last line is the body's kit, as
-  `vandal:18:50,classic:12:36,knife:0:0,;1`, where the gun in hand's rounds and reserve are those in
-  the ammo box. The kill feed has nothing for the bot, and on the top bar its tile is greyed and
-  yours lit. Play the round out: in round 2 the bot's back. **Send:** the script's lines before and
-  after, and how the view and the HUD went.
+  shield on the HUD, and the server's Output has `[VF] takeover: -1 for <the bot's id> asked`, then
+  `[VF] takeover: -1 into <the bot's id>'s body` (any other `[VF] takeover:` line says why not).
+  Run the script again: the bot reads `false` with its kills and deaths as they were, you `true`
+  with your own, and the last line is the body's kit, as `vandal:18:50,classic:12:36,knife:0:0,;1`,
+  where the gun in hand's rounds and reserve are those in the ammo box. The kill feed has nothing
+  for the bot, and on the top bar its tile is greyed and yours lit. Play the round out: in round 2
+  the bot's back. **Send:** the script's lines before and after, the `[VF] takeover:` lines, and how
+  the view and the HUD went.
 
 - **BC2 The spike.** In the server's command bar, set `VFArenaOn` to false, then `VFMatchMap` to
   `outpost`, `VFArenaMode` to `spike` and `VFArenaOn` to true, as in section 65: you attack first.
@@ -6167,10 +6169,12 @@ end
 
 - **PD4 A sniper's zooms.** `set("VFTestGive", "operator")`, and once the Operator's in hand:
   `pad("0 0 0 0 1 0", 0.5)`: the scope comes up, `zoom=1 scoped=1`. `pad("0 0 0 0 1 0 r3")` and
-  `pad("0 0 0 0 1 0")`: the second zoom, `zoom=2 scoped=2`. `let()`: the scope's down at once,
-  `zoom=0 scoped=0`. `pad("0 0 0 0 1 0", 0.5)` and `let()`: in to the first zoom and out, with the
-  second showing for a moment at most on the way out. `set("VFTestGive", "vandal")` puts the Vandal
-  back. **Send:** the lines, and whether the second zoom showed on the way out of the first.
+  `pad("0 0 0 0 1 0")`: the second zoom, `zoom=2 scoped=2`. The same again: back to the first,
+  `zoom=1 scoped=1`, with `scoped` never 0 on the way. `let()`: the scope's down at once,
+  `zoom=0 scoped=0`. `pad("0 0 0 0 1 0", 0.5)` and `let()`: in to the first zoom and straight out,
+  `scoped` going from 1 to 0 with no frame of 2 between, as LT let go lets the zoom go.
+  `set("VFTestGive", "vandal")` puts the Vandal back. **Send:** the lines, and the zoom frame by
+  frame on the way out of the first and back from the second.
 
 - **PD5 Jett's abilities.** Watch the bar at the bottom and `VFKit` at the end of each line.
   `pad("0 0 0 0 0 0 lb")` and `let()`: Updraft throws you up, a moment after LB goes down, `Q0/1`
@@ -6189,9 +6193,10 @@ end
   `flags=0`. `pad("0 0 0 0 0 0 a", 0.1)` and `let()`: a jump. `pad("0 0 0 0 0 1", 0.5)` and `let()`
   fires a few rounds, then `pad("0 0 0 0 0 0 x", 0.1)` and `let()` reloads them.
   `pad("0 0 0 0 0 0 left", 0.1)` and `let()`: the Vandal drops ahead and the Classic comes up.
-  `set("VFTestPitch", -35)`: looking down at the Vandal, the prompt under the crosshair reads
-  `RS  PICK UP VANDAL`, and after `pad(nil, 0.1)` `F  PICK UP VANDAL`. `pad("0 0 0 0 0 0 r3", 0.1)`
-  and `let()` picks it up, and the Vandal's drawn. `set("VFTestPitch", nil)`.
+  `set("VFTestPitch", -53)`: looking down at the Vandal, 1.2 m ahead, the prompt under the crosshair
+  reads `RS  PICK UP VANDAL`, and after `pad(nil, 0.1)` `F  PICK UP VANDAL`.
+  `pad("0 0 0 0 0 0 r3", 0.1)` and `let()` picks it up, and the Vandal's drawn.
+  `set("VFTestPitch", nil)`.
   `set("VFTestGive", "spike")`, then `pad("0 0 0 0 0 0 down", 0.5)`: the spike comes up in hand and
   the line reads `flags=1024`, with nothing started outside a site; `let()`.
   `pad("0 0 0 0 0 0 left", 0.1)` and `let()`: the spike drops, and
@@ -6200,7 +6205,8 @@ end
 - **PD7 Pings, menus and the big map.** `set("VFTestPitch", -30)`. `pad("0 0 0 0 0 0 up", 0.1)` and
   `let()`: a ping on the floor ahead, `gui("VFPings", "Shown")` printing `HERE 3m`.
   `pad("0 0 0 0 0 0 up", 0.5)`: the wheel's up, `gui("VFPings", "Wheel")` printing `open`;
-  `pad("0 0 0 1 0 0 up")`: `DANGER` lights, and `gui("VFPings", "Wheel")` prints `danger`; `let()`:
+  `pad("0 0 0 1 0 0 up")`: `DANGER` lights, and `gui("VFPings", "Wheel")` prints `danger` (the
+  line's `turn` is then the wheel's pick moving, not the view); `let()`:
   a `DANGER` marker on the floor ahead. `set("VFTestPitch", nil)`. `pad("0 0 0 0 0 0 right", 0.1)`
   and `let()`: the buy menu, and the line reads `flags=0` and `cursor=on`, with Roblox's gamepad
   cursor in the middle of the screen, or `cursor=pick` with a button picked, or `cursor=off`.
@@ -6218,8 +6224,9 @@ end
   in; `let()` and it goes, with no big map. Once round 1 is live, walk at the other side's bots
   (`pad("0 1 0 0 0 0", 3)`, and steer with the right stick) and let them kill you: watching your
   side's bot, the line under its name reads `RS  take control`, and `pad("0 0 0 0 0 0 r3", 0.1)` and
-  `let()` takes it over, as F does (BC1). **Send:** the lines, which `cursor` the buy menu had, and
-  anything that didn't open or shut.
+  `let()` takes it over, as F does (BC1): the server's Output has `[VF] takeover:` lines, `asked`
+  and then `into` the bot's body, or else why not. **Send:** the lines, the `[VF] takeover:` lines,
+  which `cursor` the buy menu had, and anything that didn't open or shut.
 
 - **PD8 A real controller (optional).** With a controller plugged in or paired, play on the course
   and in Skirmish. The view's turn and Focus as they feel, and `padLook` and `padFocus` as you'd
@@ -6736,7 +6743,7 @@ BS2 dropped for a bot: ___; planted yourself: ___
 BS3 the HUD's line: ___; the mark on the bot: yes / no; SPIKE PLANTED for a bot's plant: yes / no
 BS4 the bots' retake: ___; with you defusing: ___
 BS5 VFBotMs around a plant on Wharf: ___
-BC1 the script before: ___; after: ___; the view and the HUD: ___
+BC1 the script before: ___; after: ___; the view and the HUD: ___; the takeover lines: ___
 BC2 the two numbers: ___ ___; the carrier's takeover, your plant, the takeover with it planted: ___
 BC3 kills: ___; your VFLoadout next round: ___; the bot's and its credits: ___; after dying in a body: ___
 BC4 Competitive: ___; Swiftplay: ___; once a round's decided: ___; Team Deathmatch: ___
@@ -6767,10 +6774,11 @@ RK6 before: ___; after: ___
 PD1 the lines: ___; the warning: none / ___
 PD2 half 1 s: ___; full 0.2 s: ___; full 1 s: ___; up: ___; inverted: ___; padLook 110: ___
 PD3 Focus: ___, ___ degrees; the sights: ___, ___ degrees; let go: ___
-PD4 the lines: ___; the second zoom on the way out: yes / no
+PD4 the lines: ___; the second zoom on the way out: yes / no; back from the second: ___
 PD5 Updraft: ___; the gust and dash: ___; the tap: ___; Blade Storm: ___; Cloudburst: ___
 PD6 Y: ___; the knife: ___; crouching: ___; the prompts: ___ ___; the spike: ___
-PD7 pings: ___; the buy menu's cursor: on / pick / off; menus: ___; map, scores: ___; takeover: ___
+PD7 pings: ___; the buy menu's cursor: on / pick / off; menus: ___; map, scores: ___
+PD7 takeover: ___; the takeover lines: ___
 PD8 what felt off: ___; the cursor: ___
 RJ1 held: ___; the bot on their side: ___, its agent: ___
 RJ2 the button and line: ___; back: ___; credits before ___, after ___; the bot gone: yes / no

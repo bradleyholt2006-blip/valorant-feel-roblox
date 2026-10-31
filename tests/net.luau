@@ -25,9 +25,12 @@ do
 	local inputs: { PlayerCodec.WireInput } = {
 		{ seq = 1, buttons = B.Forward + B.Fire, slot = 1, yaw = 1.0, pitch = 0.2, viewTime = 1234.5678 },
 		{ seq = 2, buttons = B.AltFire + B.Reload + B.Crouch, slot = 3, yaw = -2.5, pitch = -1.4, viewTime = 1234.6 },
+		-- The seventeenth and eighteenth buttons, in the slot byte.
+		{ seq = 3, buttons = B.Interact + B.Unzoom + B.AltFire, slot = 5, yaw = 0.5, pitch = 0, viewTime = 1234.7 },
+		{ seq = 4, buttons = B.Unzoom, slot = 2, yaw = 0, pitch = 0, viewTime = 1234.8 },
 	}
-	local decoded = PlayerCodec.decodeInputs(PlayerCodec.encodeInputs(inputs, 1, 2))
-	local ok = decoded ~= nil and #decoded == 2
+	local decoded = PlayerCodec.decodeInputs(PlayerCodec.encodeInputs(inputs, 1, 4))
+	local ok = decoded ~= nil and #decoded == 4
 	if decoded then
 		for i, d in decoded do
 			local src = inputs[i]
@@ -40,7 +43,7 @@ do
 				and d.pitch == PlayerCodec.quantizePitch(src.pitch)
 		end
 	end
-	check("inputs round-trip (buttons, slot, quantised aim, viewTime)", ok)
+	check("inputs round-trip (buttons, the slot byte's two too, slot, quantised aim, viewTime)", ok)
 
 	local function bad(input: PlayerCodec.WireInput): boolean
 		return PlayerCodec.decodeInputs(PlayerCodec.encodeInputs({ input }, 1, 1)) == nil

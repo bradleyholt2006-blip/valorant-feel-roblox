@@ -168,6 +168,9 @@ same on the server and the client.
 - In Studio, a player's `VFTestTake` set to true presses F for them, as it does for a gun on the
   ground: set from the server's command bar for two players at once, it has them ask for the same
   bot together.
+- In Studio, the server prints a `[VF] takeover:` line for each takeover asked for: `asked`, then
+  `into` the bot's body as the new life starts; or why not: refused, with the rules' phase and who's
+  down, the bot gone first, or another life asked for before the character loaded.
 
 ## 8. Refinement loop
 
@@ -185,6 +188,9 @@ same on the server and the client.
 - The spike a bot carried, the player's, and planted by them.
 - Not in Competitive, nor in the modes that respawn; and in Skirmish.
 - A takeover asked for as the bot falls: no life, and watching goes on.
+- With a controller's RS in Skirmish (section 72's PD7), a takeover asked for twice never came in
+  one Studio run, the player's `VFAlive` reading true as they watched; the `[VF] takeover:` lines
+  are to say why, by RS and by F.
 - The record afterwards: kills in the body the player's, and the guns kept for the next round if
   they live.
 

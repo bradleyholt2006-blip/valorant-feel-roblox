@@ -1272,14 +1272,31 @@ local function fill()
 	end
 end
 
--- Whether a fallen player, by their id in the rules, may take over a bot
--- on their side now (system 62): where the rules let them, the bot alive.
-local function mayTakeOver(id: number, bot: number): boolean
+-- Why a fallen player, by their id in the rules, may not take over a bot
+-- on their side now (system 62), or nil where they may: the rules let them,
+-- the bot alive.
+local function noTakeOver(id: number, bot: number): string?
 	local s, m = skirmish, match
-	if not BotServer.has(bot) or not BotServer.isAlive(bot) then
-		return false
+	if not BotServer.has(bot) then
+		return "no such bot"
+	elseif not BotServer.isAlive(bot) then
+		return "the bot's down"
+	elseif if s then ArenaRules.canTakeOver(s, id, bot) elseif m then MatchRules.canTakeOver(m, id, bot) else false then
+		return nil
 	end
-	return if s then ArenaRules.canTakeOver(s, id, bot) elseif m then MatchRules.canTakeOver(m, id, bot) else false
+	local phase = if s then s.phase elseif m then m.phase else "no"
+	local members: { [number]: Roster.Member } = if s then s.members elseif m then m.members else {}
+	local function state(member: Roster.Member?): string
+		return if not member then "not playing" elseif member.alive then "alive" else "down"
+	end
+	return string.format("the rules: the %s phase, the player %s, the bot %s", phase, state(members[id]), state(members[bot]))
+end
+
+-- Prints how a takeover went, in Studio, where the checks look for it.
+local function tellTakeOver(text: string, ...: any)
+	if RunService:IsStudio() then
+		print("[VF] takeover: " .. string.format(text, ...))
+	end
 end
 
 -- A fallen player asks to take over a bot on their side (system 62): a new
@@ -1287,14 +1304,21 @@ end
 -- then, with the bot still there, handed over.
 local function takeOver(player: Player, bot: number)
 	local id = player.UserId
-	if not mayTakeOver(id, bot) or PlayerSimServer.isAlive(player) or PlayerSimServer.spawnPending(player) then
+	local refused = noTakeOver(id, bot)
+		or if PlayerSimServer.isAlive(player) then "alive" elseif PlayerSimServer.spawnPending(player) then "a life on its way" else nil
+	if refused then
+		tellTakeOver("%d for %d refused, %s", id, bot, refused)
 		return
 	end
+	tellTakeOver("%d for %d asked, the character loading", id, bot)
 	PlayerSimServer.takeOver(player, function(): PlayerSimServer.Body?
-		local body = if mayTakeOver(id, bot) then BotServer.takeOut(bot) else nil
+		local gone = noTakeOver(id, bot)
+		local body = if gone then nil else BotServer.takeOut(bot)
 		if not body then
+			tellTakeOver("%d for %d, gone first: %s", id, bot, gone or "its body")
 			return nil
 		end
+		tellTakeOver("%d into %d's body", id, bot)
 		local s, m = skirmish, match
 		if s then
 			ArenaRules.tookOver(s, id, bot)

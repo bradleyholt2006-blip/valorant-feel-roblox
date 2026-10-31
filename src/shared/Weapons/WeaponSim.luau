@@ -120,6 +120,7 @@ local Buttons = {
 	Fire = 128,
 	AltFire = 256,
 	Reload = 512,
+	Unzoom = 131072, -- the pad's LT let go (system 68, MovementSim)
 }
 
 local WeaponSim = {}
@@ -538,6 +539,7 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 	local fire = has(buttons, Buttons.Fire)
 	local alt = has(buttons, Buttons.AltFire)
 	local reload = has(buttons, Buttons.Reload)
+	local unzoom = has(buttons, Buttons.Unzoom)
 
 	-- 0. An ultimate's weapon with nothing left to throw is gone: from the
 	-- hand once its last throw's time is up (a single knife's 0.167 s, a
@@ -597,7 +599,11 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 	local equipping = t < s.equipEndTime - EPS
 
 	-- 3. Alt-fire cycles zoom levels (rifle ADS, Operator 2.5x -> 5x -> off).
-	-- A burst under way stops.
+	-- A burst under way stops. The pad's LT let go takes the zoom straight
+	-- off first (system 68), so an alt fire with it comes up from none.
+	if unzoom then
+		s.scoped = 0
+	end
 	if alt and not s.altHeld and def.ads and not equipping and s.reloadEndTime == 0 then
 		s.scoped = (s.scoped + 1) % (#def.ads.zoom + 1)
 		s.burstLeft = 0

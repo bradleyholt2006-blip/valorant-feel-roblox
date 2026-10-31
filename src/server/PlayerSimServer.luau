@@ -701,6 +701,8 @@ function PlayerSimServer.takeOver(player: Player, take: () -> Body?)
 	task.defer(function()
 		if player.Parent and r.takeover == take then
 			player:LoadCharacterAsync()
+		elseif RunService:IsStudio() then
+			print(string.format("[VF] takeover: %d's taken back, another life asked for first", player.UserId))
 		end
 	end)
 end
