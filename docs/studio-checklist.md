@@ -5766,8 +5766,9 @@ to 10 m in front of player 1, and window 1 watches.
   crouched, nothing's in the hands and they go down onto the spike, working a little, the head in
   the crouched head box. **Send:** anything that looked wrong.
 
-- **AB5 Hits, a Shade and a force field.** In window 1, shoot player 2 a few times: the whole body
-  flashes white with each hit. In window 2, pick Omen (T) and send him 25 m down the target lane
+- **AB5 Hits, a Shade and a force field.** In window 1, shoot player 2 a few times, with Dummy 1 not
+  between you (down the lane it takes the shots first): the whole body flashes white with each hit.
+  In window 2, pick Omen (T) and send him 25 m down the target lane
   with From the Shadows, as in FS4: while he's a Shade there, window 1 sees the body dark and
   see-through, then whole again as he forms. In window 1, press P three times (Skirmish, the 1v1,
   then gun game) and kill player 2: as they come back, the body's drawn as a force field until
@@ -5801,9 +5802,9 @@ to 10 m in front of player 1, and window 1 watches.
 - **AB7 Without a body (optional).** With AB6's game still running, run this in the server's
   command bar: `game.ReplicatedStorage.VFBodies.Parent = game.ServerStorage`. Within a second the
   bots are drawn as red blocks, as before. Then run
-  `game.ServerStorage.VFBodies.Parent = game.ReplicatedStorage`: they're bodies again. The place
-  isn't changed, as the game's copy of it goes when the game stops. **Send:** whether the blocks
-  came, and then the bodies again.
+  `game.ServerStorage.VFBodies.Parent = game.ReplicatedStorage`: within a couple of seconds they're
+  bodies again, and stay bodies. The place isn't changed, as the game's copy of it goes when the
+  game stops. **Send:** whether the blocks came, and then the bodies again.
 
 ## 68. The 1v1
 
@@ -5931,12 +5932,14 @@ end)
 
 - **BU2 The push.** Run the cast script as round 3's buy phase ends, and stay in your spawn while
   the attacking bots go. A Sova among them prints `gather:reconbolt` as they gather short of the
-  site, and the rest print `push:` casts as they go in (`push:darkcover:1`, `push:cloudburst`,
-  `push:curveball`, `push:hothands` and so on); the defenders print `hold:reconbolt` 8 to 30 s into
-  the round. Then follow the attackers at a distance as they go in: Dark Cover and a cloud land on
-  the spots inside their way in, not in the open short of it, and a Curveball pops round the corner,
-  not in front of them. Run section 69's script straight after a flash: no attacker's `VFBlind` has
-  anything more than a trace. Then set `VFArenaOn` to false and back to true, and run the cast
+  site, or as the push goes if it wasn't there yet, and the rest print `push:` casts as they go in
+  (`push:darkcover:1`, `push:cloudburst`, `push:curveball`, `push:hothands` and so on); the
+  defenders print `hold:reconbolt` 8 to 30 s into the round. Then follow the attackers at a distance
+  as they go in: Dark Cover and a cloud land on the spots inside their way in, not in the open short
+  of it, and a Curveball pops round the corner, not in front of them. The bot that throws it stands
+  where it threw it until it's popped, and the bots with it turn their backs on it. Run section 69's
+  script straight after a flash: no attacker's `VFBlind` has anything more than a trace (white for
+  0.25 s at the most). Then set `VFArenaOn` to false and back to true, and run the cast
   script as the new round 1 goes live: no defender prints a `push:` cast before the spike's planted,
   and the attackers gather before they push, as at the first start. **Send:** the cast script's
   lines, and what the smokes and flashes looked like.

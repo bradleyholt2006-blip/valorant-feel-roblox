@@ -82,7 +82,10 @@ furthest any lands from the spot it was meant for:
 | A Curveball round the corner, blinding those holding and no teammate | 4 | 0 m |
 
 A throw that isn't found from where a bot stands isn't thrown; it's tried again as the bot moves.
-The offline suite, 3915 checks, passes.
+The offline suite, 3915 checks, passes. With the fixes from the second Studio run below, a
+Curveball's thrower is checked to stand where it threw it, pressing nothing, until the pop, and an
+attacking Sova not where its side gathers as the push goes to cast its Recon Bolt on the way 5 m
+or more off the way in, and not nearer; 3994 checks pass.
 
 In Studio (section 70, 31 October), one player in a Local Server played six rounds on Outpost and
 six on Wharf with the cast script running. Agent select and the ultimates were right (sections 69
@@ -101,6 +104,25 @@ and its guard whenever the spike isn't planted. Casting was sparse, 31 casts in 
 bots, no guard cast on a defuse in six planted rounds, and the bots' cost read 309 ms in the frame a
 match stopped; these are known gaps below.
 
+A second run in Studio (31 October, the build with the fixes above) saw the charges bought once
+agents were locked in, every bot with its free charges before the lock and its bought ones half a
+second after it, and topped up from what was left in round 2 (BU1); no defender cast a push before
+the plant (BU2); 0.4 ms of a frame live, 0.5 ms in the buy phase, and no cost at all as the arena
+went off and on, so the 309 ms in the frame a match stopped is gone (BU6). Three faults showed.
+Flashes blinded their own side: a push Curveball whited out a teammate for 1.5 s, twice, and a
+retake one its own thrower. The throw was found popping out of the thrower's sight and every
+teammate's, but the thrower walked on as soon as it left its hand, and its teammates kept pushing,
+into sight of the pop, facing it. Now a bot that throws a Curveball stands where it threw it, its
+view where it threw it and its gun coming back, until it's popped, and every bot on its side out of
+a fight or a cast turns its back on the pop as fast as it turns while one it would see is in the
+air (`FlareServer.coming`), so it's left at most the trace a back to a flash gives (system 30's
+`away`, 0.15 of the longest). And an attacking Sova never cast its Recon Bolt gathered, in seven
+attacking rounds, though the defenders' came 8 s in as meant: the push went when most of its side
+had got to where they gather, before the Sova had, and the cast waited for it to be there. Now a
+bot not there as the push goes casts it on the way, while it's 5 m or more from the way in (about
+as far as its side gathers, 5 to 8 m on the maps), its bolt tried through the way in and its door
+as well as over the spots. A guard still cast nothing on two defuses; that stays a known gap.
+
 ## 4. Confirmed vs estimated, as implemented
 
 | What | Value | Status | Source |
@@ -112,9 +134,10 @@ match stopped; these are known gaps below.
 | The longest from the key to the throw | 3 s; Hunter's Fury 7 s | Estimate | Ours |
 | A heal | Itself at 60 health or less, or the most hurt teammate within 15 m at 50 or less, once no enemy has hurt it or been in its sight for 3 s | Estimate | Ours |
 | The Recon Bolt from a hold | 8 to 30 s into the round | Estimate | Ours: defenders look for the attackers early |
+| The Recon Bolt going in | Gathered short of the way in; or, not there as the push goes, on the way while 5 m or more from the way in | Estimate | Ours: about as far as a side gathers, 5 to 8 m on the maps |
 | A stall | Attackers seen within 14 m of its way in, in the last 2.5 s | Estimate | Ours, for "stalling on defense" (Mobalytics) |
 | Smokes on the push | On the two spots most likely to hold the way in, within 3 m | Estimate | Ours, for "smoking chokepoints during executes" (Mobalytics) |
-| A Curveball | Within 9 m of the way in; popping out of the thrower's sight, blinding those holding at least 0.6 of the longest blind between them, and no teammate more than 0.2 | Estimate | Ours: it pops about 6 m from where it's thrown (system 30) |
+| A Curveball | Within 9 m of the way in; popping out of the thrower's sight, blinding those holding at least 0.6 of the longest blind between them, and no teammate more than 0.2; the thrower stands where it threw it until the pop, and bots on its side turn their backs on it | Estimate | Ours: it pops about 6 m from where it's thrown (system 30); players turn from their side's flashes as they're called |
 | Paranoia | Within 20 m of the way in | Estimate | Ours: inside its 25 m travel (system 41) |
 | Blade Storm | On the push within 12 m of the way in, or in a stall; with no plan, an enemy seen within 12 m in the last 2.5 s | Estimate | Ours |
 | Hunter's Fury | At enemies its side saw in the last 2 s, or at the spike an enemy's defusing; up to three blasts, at least 4 m apart | Estimate | Ours, for "stop the defuse" (Dignitas) |
@@ -147,7 +170,7 @@ only while the spike is planted (`BotTeam.think`).
 ### The moments
 
 - **Gathered, before the push** (or a retake's): the Recon Bolt over its way in, at the spots that
-  hold it.
+  hold it; not there yet as the push goes, on the way, while it's 5 m or more from the way in.
 - **On the push**: Dark Cover on the two spots most likely to hold its way in; a cloud on the first,
   or on its sight of the way in; Paranoia through them from 20 m; a Curveball round the corner at
   them from 9 m; a Shock Bolt or Hot Hands on the first; and Blade Storm once it's within 12 m.
@@ -177,10 +200,13 @@ with, before it's thrown, and one that lands where it's meant to is kept:
   near enough, its radius and 1.5 m clear of teammates and itself.
 - **The Shock Bolt**: the low arc for each draw, three bars down to one, flown (`BoltSim`); shot
   if it lands by the spot, in sight of it, and clear of teammates and itself.
-- **The Recon Bolt**: aimed over the spots it's for and flown, and loosed on the flight that, from
-  where it sticks, sees the most of them within its radius.
+- **The Recon Bolt**: aimed over the spots it's for, and going in through the way in and its door,
+  and flown, and loosed on the flight that, from where it sticks, sees the most of them within its
+  radius.
 - **The Curveball**: tried round both ways over a spread of angles (`FlareSim`), and thrown on the
-  one that pops out of the thrower's sight, blinding those holding enough and no teammate much.
+  one that pops out of the thrower's sight, blinding those holding enough and no teammate much,
+  where each stands. The thrower stands where it threw it until the pop, so it can't walk into its
+  sight, and bots on its side turn their backs on it as it flies (below).
 - **The Barrier Orb**: placed across the way in within its 15 m, turned to stand most across the way
   attackers come (`BarrierSim.place`).
 - **Paranoia**: sent through the spots once they're within its travel.
@@ -201,7 +227,14 @@ its draw held to its bars, then let go; a smoke's mark is pushed or pulled out t
 with the key again; a wall's targeter is turned with the key; each blast of Hunter's Fury waits for
 the last one's windup, with the view turning as slowly as a player's does then (system 46).
 Cloudburst is aimed before its key, as its throw goes on the press. A fight starting or 3 s going by
-(7 s for Hunter's Fury) gives the cast up, and the ability's put away.
+(7 s for Hunter's Fury) gives the cast up, and the ability's put away. A Curveball thrown, the bot
+stands where it threw it, its view where it threw it and its gun coming back, until the flare's
+windup is over and it's popped.
+
+While a flare its side threw is in the air and would pop in its sight, a bot out of a fight and a
+cast turns its back on the pop, as fast as its view turns (360° a second), and walks on as it was
+(`BotServer`, from `FlareServer.coming`). Players do the same once a flash is called; a back to a
+flash leaves 0.15 of the longest blind (system 30).
 
 Every cast goes to the server as a player's would, through the bot's inputs, so the ability servers
 fly, burst and hurt it as they do a player's (system 65).
@@ -232,7 +265,8 @@ it's tried again.
 | `src/shared/Bots/BotTeam.luau` | `placeOf`: where each bot is in its side's plan, its way in and the spots that hold it; `think` drops a retake or a guard once the spike isn't planted |
 | `src/shared/Bots/BotConfig.luau` | `Utility`, each skill's `utility`, and `CAST` |
 | `src/shared/Bots/BotBuy.luau` | `toKeep`: what a bot keeps back from its charges |
-| `src/server/BotServer.luau` | Each bot's moment, its casts within the budget, and its hands in its inputs |
+| `src/server/BotServer.luau` | Each bot's moment, its casts within the budget, and its hands in its inputs; turning its back on its side's flares |
+| `src/server/FlareServer.luau` | `coming`: the flares in the air, whose and where and when each pops |
 | `src/shared/Abilities/AgentSelect.luau` | `settled`: an agent locked in for the side of the match someone's on |
 | `src/server/AgentServer.luau` | `settled`, for what a bot buys |
 | `src/server/Arena.luau` | Bots buying their charges in a buy phase, once settled; the round the bots plan by, counting the mode's starts |
@@ -257,12 +291,13 @@ it's tried again.
 
 ## Known gaps to check in Studio
 
-- Bots buying their charges once their agents are locked in, and casting them in a round: the
-  moments, and how often. Studio saw 31 casts in 12 rounds for 9 bots, and an attacking Sova on
-  Outpost never cast its Recon Bolt gathered in six rounds, though offline it's found from 15 of 16
-  places.
-- A guard's cast on a defuse: none came in six planted rounds.
-- A match stopping: the bots' cost (`VFBotMs`) read 309 ms in the frame it stopped.
+- Bots casting in a round: the moments, and how often. The first run saw 31 casts in 12 rounds for
+  9 bots; the second, with the charges bought, saw the push's casts come 7 to 9 s into each round.
+- An attacking Sova's Recon Bolt, now cast on the way if the push goes before it's gathered: none
+  came in thirteen attacking rounds over the two runs before.
+- A Curveball's own side: the thrower now waits for the pop and its side's bots turn away; in the
+  second run, before that, teammates and a thrower were whited out.
+- A guard's cast on a defuse: none came in six planted rounds, nor on two defuses in the second run.
 - Their throws in the place's real geometry, on Roblox's collisions: smokes on the spots, flashes
   round the corner, mollies, slows and walls on the way in, and none on their own side.
 - A heal, and Hunter's Fury, a molly or a Shock Bolt on a defuse.

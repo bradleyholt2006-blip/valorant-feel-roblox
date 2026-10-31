@@ -119,6 +119,20 @@ looking at the sky as at them. In extreme poses some joints were outside their o
 up, the left shin 0.14 m out of the legs' box; crouched looking down, the lower spine 0.15 m out of
 the body's and the right foot 0.12 m out of the legs'. Breathing moved the chest 3 mm.
 
+A second run of section 67 (31 October, with those changes) had the head in its box in all 23
+samples, a planted foot sliding 0.05 m or less (0.09 to 0.10 m running sideways), the feet stepping
+round on a quarter turn and standing square after it, the landings dipping 3 to 5 cm, the reload's
+largest step in a frame 0.022 m, a plant's hands at 1.01 m and a crouched defuse's half a metre up,
+and five bodies costing 0.85 ms (0.05 ms looking away) at 164 to 178 frames a second. Two things are
+changed here. A crouched defuse's palms stopped 2 to 3 cm short of the spike's casing, whose near
+edge is 0.23 m ahead of the feet: they now go to 0.26 m ahead, as far as the arms reach with the
+head in its box (0.28 m would stretch them past their length). And bodies taken out of
+ReplicatedStorage and put back never came back, the bots drawn as blocks for the rest of the game:
+the rig was tried as it arrived on the client, before its parts had, and a rig that couldn't be
+posed was given up on for good. Now a rig without its PrimaryPart or a mesh yet isn't tried, its
+meshes aren't counted loaded with none there, and one that can't be posed is tried again every
+second, given up on only after ten tries, with a warning in the Output.
+
 ## 4. Confirmed vs estimated, as implemented
 
 | What | Value | Status | Source |
@@ -142,7 +156,7 @@ the body's and the right foot 0.12 m out of the legs'. Breathing moved the chest
 | The hips standing | Half way from the aim toward the feet | Estimate | Ours |
 | A shot's kick | The muzzle 0.1 radians up and the gun 0.025 m back, settling to a third in 0.07 s | Estimate | Ours |
 | A landing | The head and hips down 0.06 m after 0.6 s in the air, less after a shorter fall, none under 0.15 s, back up over 0.3 s | Estimate | The head's middle stays in its box |
-| Planting or defusing | Both hands at 0.95 m standing, 0.41 m up and 0.22 m ahead crouched | Estimate | As far as the arms reach with the head in its box |
+| Planting or defusing | Both hands at 0.95 m standing, 0.41 m up and 0.26 m ahead crouched | Estimate | As far as the arms reach with the head in its box; at 0.22 m the palms stopped 2 to 3 cm short of the spike in Studio |
 | A body off the screen | Moved with its entity, not posed | Estimate | Ours: posing it is most of what a body costs |
 | A bone's `Transform` | Applied on top of its rest, not replicated | Confirmed | Roblox's `Bone` |
 | A rig's leaf bones | Off when exporting from Blender; the kit's FBX has them, and they're harmless | Confirmed (Roblox) | Roblox's export requirements |
@@ -158,8 +172,10 @@ knee, ankle, ball of the foot and toe tip, and the knee's axis at rest; each arm
 shoulder, elbow and wrist, the elbow's axis, which way the hand points and its palm faces, and its
 fingers; the spine from the pelvis to the neck; the head's joint and middle. It's scaled so the body
 stands 1.75 m from its soles to the top of its head. A rig missing a bone the pose needs isn't
-posed, and the agent's drawn as blocks, as before. The kit's own skeleton, 64 bones and the 15 leaf
-tips its FBX carries, is kept in `BodyRig` as imported, for the offline tests.
+posed, and the agent's drawn as blocks, as before. One still arriving on a client, without its
+PrimaryPart or a mesh yet, isn't tried until they're there, and one that can't be posed is tried
+again every second, ten times, before it's given up on. The kit's own skeleton, 64 bones and the 15
+leaf tips its FBX carries, is kept in `BodyRig` as imported, for the offline tests.
 
 ### What the body is doing
 
@@ -235,7 +251,7 @@ it's posed again. Each round another player or a bot fires that the server sends
 draw (`ShotFx`, with the shooter's entity) kicks its body's gun. A bot's snapshot carries its plant
 or defuse and puts its weapon away for a defuse, as a player's does, so it's drawn doing them. A
 body whose rig is taken out of ReplicatedStorage goes, and the agent's drawn as blocks until a rig's
-back.
+back and whole on the client.
 
 A hit lights the body white, a Shade (system 43) draws it dark and see-through, and spawn protection
 in gun game draws it as a force field. The agent's blocks stay on the hitboxes, unseen, for the
@@ -311,5 +327,7 @@ flick; and no joint jumping 15 cm in a frame whatever the body does next.
 - The turn on the spot, a shot's kick, a landing, a long gun's reload and a crouched defuse as they
   look now, a bot's plant and defuse, and the bodies' cost looking away from them.
 - Some joints outside their own boxes in extreme poses, by up to 0.15 m (section 3).
+- The bodies coming back once the rig's put back in ReplicatedStorage, and a crouched defuse's palms
+  on the spike.
 
 Section 67 of the [Studio checklist](../studio-checklist.md) covers these.

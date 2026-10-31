@@ -47,7 +47,7 @@ local world = RobloxWorld.new()
 type Actor = PlayerSimServer.Actor
 
 -- A flare in the air: whose, and when (server time) and where it pops.
-type Pending = { player: Actor, at: number, position: vector }
+export type Pending = { player: Actor, at: number, position: vector }
 
 local pending: { Pending } = {}
 -- Each player's blind, while any of it is left.
@@ -124,6 +124,12 @@ local function clear(player: Actor)
 	end
 end
 FlareServer.clear = clear
+
+-- The flares in the air, oldest first: bots look away from their own
+-- side's (system 66, BotServer). Not to be changed.
+function FlareServer.coming(): { Pending }
+	return pending
+end
 
 -- Once a server frame, at server time `now`: the flares due pop, and the
 -- blinds that are over go.
