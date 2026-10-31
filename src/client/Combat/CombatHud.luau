@@ -7,7 +7,8 @@
 -- the drone's own bars are DroneView's. Low health reads red, and so does
 -- a gun's magazine running low (system 54, Indicators; Patch 0.49: 'New low
 -- health and low ammo visuals'); the gui's `LowHealth` and `LowAmmo`
--- attributes say so, for scripted checks.
+-- attributes say so, for scripted checks, and its `Health` is the health
+-- shown, past 100 with Reyna's overheal (system 73).
 --
 -- Hit markers and damage numbers only ever come from the server's verdict,
 -- never from the client's guess, so they show what actually counted.
@@ -226,10 +227,12 @@ function CombatHud.start()
 
 		local hp = RemoteEntities.healthOf(PlayerController.entityId)
 		-- Whole points, rounded up: a player on 0.4 is still alive.
-		healthText.Text = tostring(RemoteEntities.points(hp.health))
+		local points = RemoteEntities.points(hp.health)
+		healthText.Text = tostring(points)
 		local lowHealth = alive and Indicators.lowHealth(hp.health)
 		healthText.TextColor3 = if lowHealth then KILL_COLOR else Ui.TEXT
 		gui:SetAttribute("LowHealth", lowHealth)
+		gui:SetAttribute("Health", points)
 		shieldText.Text = if hp.shield > 0 then string.format("+%d", RemoteEntities.points(hp.shield)) else ""
 		-- The shield's name while it lasts, and the Regen Shield's while it can refill.
 		local kind = WeaponConfig.Shields[hp.armor]

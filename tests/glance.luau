@@ -87,10 +87,10 @@ do
 		table.insert(badges, badge)
 	end
 	local shown = table.concat(badges, " ")
-	check("each agent's two letters, all different: JE PH SA OM SO", unique and shown == "JE PH SA OM SO", shown)
+	check("each agent's two letters, all different: JE PH SA OM SO RE", unique and shown == "JE PH SA OM SO RE", shown)
 	check("where nobody plays an agent (gun game), the name's: FE", Glance.badge(nil, "fearbrad") == "FE")
 	check("and the same for no agent's kit", Glance.badge(AbilityConfig.NO_AGENT, "Player2") == "PL")
-	check("and for an agent that isn't one of ours", Glance.badge("reyna", "Player2") == "PL")
+	check("and for an agent that isn't one of ours", Glance.badge("killjoy", "Player2") == "PL")
 	check("a name of one letter", Glance.badge(nil, "x") == "X")
 end
 

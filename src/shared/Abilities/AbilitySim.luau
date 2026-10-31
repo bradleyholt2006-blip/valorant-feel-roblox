@@ -120,6 +120,15 @@
 -- breaks it between ticks (PlayerSim.downed), and the gun's back in hand
 -- its unequip after.
 --
+-- Reyna's Devour (Q, system 73) and Dismiss (E) each take the Soul Orb in
+-- her reach (the step's `soul`, SoulSim.pick), with a charge: the charge
+-- goes and the orb with it (a "devour" or "dismiss" cast, with the orb's
+-- number), one orb a tick. Devour's heal is the server's (SoulServer).
+-- Dismiss starts at once, in place of an ability in hand: through its time
+-- she can't fire, cast, plant or defuse, and runs faster (PlayerSim), and
+-- as it ends ("solid") she keeps no more than the run speed, her gun
+-- drawn again.
+--
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
 -- for kills, deaths, plants and defuses, and a signature charge back for
@@ -241,6 +250,8 @@ export type State = {
 	dartAt: number,
 	bodyYaw: number,
 	bodyPitch: number,
+	-- Reyna's Dismiss (system 73): when it ends, 0 when it isn't under way.
+	dismissUntil: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -258,7 +269,8 @@ export type State = {
 -- (sent back), "bolt" (a bolt of Sova's loosed), "fury" (Hunter's Fury
 -- cast), "charge" (a blast's windup started), "blast" (a blast gone as
 -- its windup ends), "drone" (the Owl Drone sent out), "dart" (a dart shot
--- from it) or "land" (its flight over), where the player's feet and eye
+-- from it), "land" (its flight over), "devour" or "dismiss" (a Soul Orb
+-- taken by Reyna's Devour or Dismiss) or "solid" (Dismiss over), where the player's feet and eye
 -- were (for "home", where they are back, and for a dart and a landing,
 -- the drone's middle in place of the eye), and the way it goes (the
 -- dash's way, up for a lift, the way they faced for a readied gust, for
@@ -268,7 +280,7 @@ export type State = {
 -- it goes, a smoke's how far its mark was and where it goes, a step's, his
 -- going's, a teleport's and a Shade's, where it takes him (a "home", where
 -- the Shade was), and a bolt's the bars its draw filled and the bounces it
--- was given.
+-- was given, and a Soul Orb's taking which orb it took.
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -286,6 +298,7 @@ export type Cast = {
 	step: vector?, -- a step's, his going's, a teleport's and a Shade's: the floor it takes him to
 	bars: number?, -- a bolt's: the bars its draw filled, 0 to 3
 	bounces: number?, -- and the bounces it was given, 0 to 2
+	soul: number?, -- a Soul Orb's taking: the orb it took, by its number
 }
 
 local AbilitySim = {}
@@ -298,6 +311,7 @@ local FS = AbilityConfig.FromTheShadows
 local RC = AbilityConfig.ReconBolt
 local HF = AbilityConfig.HuntersFury
 local DR = AbilityConfig.OwlDrone
+local RY = AbilityConfig.Reyna
 local B = MovementSim.Buttons
 local EPS = 1e-9
 local UP = vector.create(0, 1, 0)
@@ -332,6 +346,8 @@ local PLAYABLE: { [string]: boolean } = {
 	shockbolt = true,
 	huntersfury = true,
 	owldrone = true,
+	devour = true,
+	dismiss = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -410,6 +426,7 @@ function AbilitySim.new(agent: string?): State
 		dartAt = 0,
 		bodyYaw = 0,
 		bodyPitch = 0,
+		dismissUntil = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -470,7 +487,7 @@ end
 -- Shadows, or Hunter's Fury and a blast's knockback), an ability in hand,
 -- a wall being bent, a return from the Resurrection, a step (Shrouded
 -- Step), a bolt drawn and its bounces (the Recon Bolt), the Owl Drone's
--- flight and what's left of it; and the Barrier
+-- flight and what's left of it, Reyna's Dismiss; and the Barrier
 -- Orb's targeter is across the view again
 -- (the VALORANT Wiki has it across the view when it's first equipped in a
 -- round). Nothing carries into a new life or a new round.
@@ -494,6 +511,7 @@ function AbilitySim.settle(s: State)
 	s.droneFrom, s.landAt, s.dartAt = 0, 0, 0
 	s.dronePos, s.droneVel = ZERO, ZERO
 	s.bodyYaw, s.bodyPitch = 0, 0
+	s.dismissUntil = 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -594,7 +612,7 @@ function AbilitySim.full(s: State, ultimate: boolean?): boolean
 end
 
 -- Whether anything's under way at `t`: a readied window, a lift, a dash, a
--- step, a teleport or a drone's flight.
+-- step, a teleport, a drone's flight or Reyna's Dismiss.
 function AbilitySim.busy(s: State, t: number): boolean
 	return t < s.readyUntil - EPS
 		or t < s.liftUntil - EPS
@@ -602,6 +620,7 @@ function AbilitySim.busy(s: State, t: number): boolean
 		or AbilitySim.stepping(s, t)
 		or AbilitySim.shadowing(s, t)
 		or AbilitySim.droning(s)
+		or AbilitySim.dismissing(s, t)
 end
 
 -- Ultimate points, up to what the ultimate needs.
@@ -707,8 +726,9 @@ end
 -- Sova's is drawn, the bars it's filled, and "bounce 1" with bounces added
 -- to it, "bend" while a wall is being bent (Blaze), "turn" while the
 -- Barrier Orb's targeter is turned from across the view, "revived" while a
--- life the Resurrection brought back is held, and "glide" while `gliding`
--- (the movement's, for Drift).
+-- life the Resurrection brought back is held, "dismiss 1.2" while Reyna's
+-- Dismiss runs, the seconds it has left, and "glide" while `gliding` (the
+-- movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
 	for slot = C, E do
@@ -773,6 +793,9 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	elseif AbilitySim.lifting(s, t) then
 		table.insert(parts, "lift")
 	end
+	if AbilitySim.dismissing(s, t) then
+		table.insert(parts, string.format("dismiss %.1f", math.max(s.dismissUntil - t, 0)))
+	end
 	if AbilitySim.ready(s, t) then
 		table.insert(parts, "ready")
 	elseif t < s.readyUntil - EPS then
@@ -790,6 +813,11 @@ end
 
 function AbilitySim.lifting(s: State, t: number): boolean
 	return t < s.liftUntil - EPS
+end
+
+-- Whether Reyna's Dismiss is under way at `t` (system 73).
+function AbilitySim.dismissing(s: State, t: number): boolean
+	return t < s.dismissUntil - EPS
 end
 
 -- Whether a readied window is open at `t`.
@@ -1435,7 +1463,8 @@ end
 -- One tick at time `t`, before movement: casts what's been pressed, from
 -- `feet` and `eye` where the last tick left them. `rooted` says a plant or
 -- a defuse holds the player, and nothing casts then; nor does anything
--- during a dash or Run it Back's activation. Returns what this tick does to
+-- during a dash, Run it Back's activation or Dismiss. `soul` is the Soul
+-- Orb in Reyna's reach, if any (system 73). Returns what this tick does to
 -- movement, and the casts that started, if any.
 function AbilitySim.step(
 	s: State,
@@ -1446,7 +1475,8 @@ function AbilitySim.step(
 	feet: vector,
 	eye: vector,
 	rooted: boolean,
-	cfg: any
+	cfg: any,
+	soul: number?
 ): (MovementSim.Motion, { Cast }?)
 	local buttons: number = input.buttons
 	local keys = bit32.band(buttons, ALL)
@@ -1474,6 +1504,22 @@ function AbilitySim.step(
 		table.insert(list, cast)
 		casts = list
 	end
+	-- Dismiss over (system 73): she keeps no more than the run speed, as from
+	-- a dash, and PlayerSim draws her gun again.
+	if s.dismissUntil > 0 and not AbilitySim.dismissing(s, t) then
+		s.dismissUntil = 0
+		motion.cap = cfg.baseRunSpeed
+		started({
+			slot = AbilitySim.slotOf(s, "dismiss") or E,
+			ability = "dismiss",
+			kind = "solid",
+			tick = tick,
+			time = t,
+			position = feet,
+			origin = eye,
+			direction = facing(input.yaw),
+		})
+	end
 	-- A blast of Hunter's Fury's whose windup is over goes (system 46), from
 	-- the eye along the crosshair, and its knockback starts; one that's run
 	-- its time is over.
@@ -1495,7 +1541,8 @@ function AbilitySim.step(
 			direction = Accuracy.aim(input.yaw, input.pitch),
 		})
 	end
-	if pressed ~= 0 and not rooted and not AbilitySim.dashing(s, t) and not AbilitySim.marking(s, t) then
+	local free = not rooted and not AbilitySim.dashing(s, t) and not AbilitySim.marking(s, t) and not AbilitySim.dismissing(s, t)
+	if pressed ~= 0 and free then
 		for slot = C, X do
 			if bit32.band(pressed, AbilitySim.BUTTONS[slot]) == 0 then
 				continue
@@ -1601,6 +1648,30 @@ function AbilitySim.step(
 					origin = eye,
 					direction = aim,
 				})
+			elseif (id == "devour" or id == "dismiss") and s.charges[slot] > 0 and soul ~= nil then
+				-- The Soul Orb in reach taken (system 73), one a tick, and its
+				-- charge spent; Dismiss's time starts, in place of an ability
+				-- in hand, and nothing else casts in it.
+				s.charges[slot] -= 1
+				local aim = Accuracy.aim(input.yaw, input.pitch)
+				started({
+					slot = slot,
+					ability = id,
+					kind = id,
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = aim,
+					soul = soul,
+				})
+				soul = nil
+				if id == "dismiss" then
+					s.dismissUntil = t + RY.dismissTime.value
+					s.holding = 0
+					s.steering, s.steerUntil = 0, 0
+					break
+				end
 			elseif held(def) and s.holding == slot and id == "barrierorb" then
 				-- The Barrier Orb's key again turns its targeter (BarrierSim's
 				-- quarter, or back across the view), and it stays in hand: a

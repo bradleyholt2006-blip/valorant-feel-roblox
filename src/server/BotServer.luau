@@ -956,6 +956,7 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	-- The spike in its hands (system 61): a plant or a defuse, as its job
 	-- says, once it's there.
 	local objective = SpikeServer.objectiveOf(bot.id)
+	local soulful = PlayerSimServer.withSoul(bot.standIn, sim, objective, cfg)
 	local hands = BotSpike.NONE
 	if job then
 		local there = true
@@ -1071,6 +1072,15 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	if act.crouch and not quiet then
 		buttons += B.Crouch
 	end
+	-- Reyna's Devour (system 73): hurt, with a Soul Orb in reach and a
+	-- charge, it takes the orb, a press as soon as it's there. It leaves
+	-- Dismiss alone, as a fight would want its gun.
+	local kit = sim.abilities
+	local devour = AbilitySim.slotOf(kit, "devour")
+	local h = bot.entity.health
+	if soulful and soulful.soul and devour and kit.charges[devour] > 0 and h.health < h.maxHealth and not hands.quiet then
+		buttons += AbilitySim.BUTTONS[devour]
+	end
 	if act.fire and not quiet then
 		buttons += B.Fire
 	end
@@ -1120,7 +1130,7 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 		cfg,
 		world,
 		DT,
-		objective,
+		soulful,
 		if fieldsOf then { fields = fieldsOf(), time = t } else nil,
 		if wallsAt then wallsAt(t) else nil
 	)

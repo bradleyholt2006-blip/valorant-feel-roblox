@@ -8,10 +8,11 @@
 -- ability cast, each kill, the spike planted, defused or gone off) and
 -- published on them as TrainingConfig's attributes for TrainingView. A
 -- step that gives a weapon puts it in its slot as it starts, and again in
--- each life during it.
+-- each life during it, and a gun that runs dry is given again full.
 --
 -- In Studio, the Training remote moves a player to a step by its key, for
--- checks (TestAim's VFTestTraining).
+-- checks (TestAim's VFTestTraining), and the Output has a line each time a
+-- player's step changes.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,6 +20,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MovementConfig = require(Shared.Movement.MovementConfig)
 local PlayerSim = require(Shared.PlayerSim)
@@ -51,6 +53,14 @@ local function publish(player: Player)
 	local note = if s then s.note or "" else nil
 	if player:GetAttribute(TrainingConfig.STEP) ~= step then
 		player:SetAttribute(TrainingConfig.STEP, step)
+		if step and RunService:IsStudio() then
+			-- For checks.
+			print(string.format("[VF] training: %d at %s", player.UserId, step))
+		end
+	end
+	local noted = if s then s.notes else nil
+	if player:GetAttribute(TrainingConfig.NOTED) ~= noted then
+		player:SetAttribute(TrainingConfig.NOTED, noted)
 	end
 	if player:GetAttribute(TrainingConfig.PROGRESS) ~= progress then
 		player:SetAttribute(TrainingConfig.PROGRESS, progress)
@@ -82,10 +92,6 @@ local function go(player: Player, index: number)
 	TrainingRules.go(s, index)
 	arm(player)
 	publish(player)
-	if RunService:IsStudio() then
-		-- For checks.
-		print(string.format("[VF] training: %d at %s", player.UserId, TrainingRules.current(s).key))
-	end
 end
 
 -- The step under way finished: onto the next.
@@ -164,6 +170,14 @@ local function onTick(actor: Instance, input: any)
 	end
 	local step = TrainingRules.current(s)
 	local m, w = sim.movement, sim.weapons
+	-- A gun run dry, magazine and all, is given again full, so nobody's
+	-- held up for rounds.
+	for slot = 1, 2 do
+		local id = w.loadout[slot]
+		if id ~= "" and w.ammo[slot] <= 0 and w.reserve[slot] <= 0 then
+			PlayerSimServer.give(player, slot, id)
+		end
+	end
 	local done = false
 	if step.goal == "reach" then
 		done = TrainingRules.reached(step, m.position, m.grounded, m.crouched)
@@ -178,6 +192,27 @@ local function onTick(actor: Instance, input: any)
 	elseif step.goal == "shield" then
 		local entity = PlayerSimServer.entityOf(player)
 		done = entity ~= nil and entity.health.kind ~= ""
+	elseif step.goal == "cast" then
+		-- A slot whose ability can't be played yet counts as used, and
+		-- Reyna's Devour and Dismiss, still to use, have the hint on Soul
+		-- Orbs (system 73).
+		local before = TrainingRules.progress(s)
+		local kit = sim.abilities
+		local hint: string? = nil
+		local slots: { number } = step.slots or {}
+		for _, slot in slots do
+			local def = AbilitySim.def(kit, slot)
+			if not def or not AbilitySim.playable(def.id) then
+				TrainingRules.skip(s, slot)
+			elseif (def.id == "devour" or def.id == "dismiss") and not s.cast[slot] then
+				hint = TrainingConfig.Notes.soul
+			end
+		end
+		s.hint = hint
+		done = TrainingRules.used(s)
+		if not done and TrainingRules.progress(s) ~= before then
+			publish(player)
+		end
 	end
 	if done then
 		finished(player)

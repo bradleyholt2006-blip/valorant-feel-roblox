@@ -96,7 +96,7 @@ In Studio, PLAY for it switches the server as for any other mode, and whatever P
 | STAND STILL | The crouching target downed by a shot fired standing still | (-2, -20) |
 | HEADSHOT | The target behind the cover downed by a headshot | (8, -22) |
 | RELOAD | The magazine of the gun in hand filling again | Anywhere |
-| AIM DOWN SIGHTS | A target 30 m away downed aimed down the Vandal's sights | (1.5, -30), 3 m either side |
+| AIM DOWN SIGHTS | A target 30 m away downed aimed down the Vandal's sights | (3, -30), within 3.5 m: both 30 m targets, the strafing one wherever it's got to (0.9 m to 2.9 m right of its spot in BRINK) |
 | BUY | A shield worn | Anywhere |
 | ABILITIES | C, Q and E used once each | Anywhere |
 | ULTIMATE | X used | Anywhere |
@@ -116,8 +116,12 @@ head and was aimed down sights; and the spike planted or defused by the player, 
 target downed by the step's spot but not as it asks leaves a note: moving as the shot went off, not
 the head, or not aimed down sights. The spike gone off while it's to be defused is back to planting,
 with a note. A step that gives a weapon (the Vandal) puts it in its slot as it starts and in each
-life during it. The step under way, how far through it the player is (the metres walked, the
-abilities used) and the note go on the player as attributes.
+life during it, if it isn't there already. A gun run dry, magazine and reserve, is given again full,
+so nobody's held up for rounds. An ability the kit can't play yet (Reyna's Leer and Empress,
+system 73) counts as used, and while her Devour or Dismiss is still to use, the step's progress ends
+with a hint that each takes a Soul Orb. The step under way, how far through it the player is (the
+metres walked, the abilities used, and that hint) and the note go on the player as attributes, with
+a count of the notes given, so the same note given again shows again.
 
 ### On the client
 
@@ -126,7 +130,8 @@ the step's number, its title, what it says with the buttons named for the input 
 (`TrainingRules.text`: the keys, a gamepad's or the touch screen's), and at the bottom how far
 through it they are, or for 5 s a note in red. It moves down under the spike's light while the
 spike's planted. A gold marker shows where: a column of light at a spot or the spike to fetch, a
-ring on the floor under a target. A gun the step hands over mid-life is drawn.
+ring on the floor under a target. The spike's column follows it wherever it's dropped, and goes
+while it's carried. A gun the step hands over mid-life is drawn.
 
 ### Not in yet
 
@@ -160,12 +165,12 @@ ring on the floor under a target. A gun the step hands over mid-life is drawn.
 - `VFTestTraining` on the player, in Studio: a step's key ("plant") moves the player to that step,
   then clears itself.
 - The player's `VFTrainingStep`, `VFTrainingProgress` and `VFTrainingNote`: the step's key, how far
-  through it they are ("2 / 3", "4 / 6 m"), and the note as a template with the buttons' names in
-  braces.
+  through it they are ("2 / 3", "4 / 6 m", and the Soul Orb hint after it for Reyna), and the note
+  as a template with the buttons' names in braces; `VFTrainingNoted` counts the notes given.
 - PlayerGui's `VFTraining` carries `Step`, `Text` (the panel's lines, apart by " | ") and `Note`
   (the note shown).
 - The server's Output: `[VF] Arena off: Basic Training` as it starts, and
-  `[VF] training: <UserId> at <step>` at each step.
+  `[VF] training: <UserId> at <step>` as each step starts.
 
 ## 8. Refinement loop
 

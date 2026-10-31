@@ -6546,9 +6546,10 @@ step moves on or `t` seconds pass (8 if left out), then lets go and prints `step
 `hold(buttons, t)` holds `buttons` for `t` seconds, then lets go and prints `step()`; `hop(run)`
 walks ahead for `run` seconds and jumps; and `shoot(x, z, region, moving, n)` aims at the `region`
 (`head` if left out) of the dummy nearest that spot and fires up to `n` times (8 if left out),
-holding `moving` too (nothing if left out), until the step moves on, then prints `step()`.
-`VFTestButtons`' flags are section 75's: 1 W, 4 A, 16 walking, 32 crouching, 64 jump, 128 fire, 256
-the right button, 512 reload, 1024 the spike's 4, 4096 C, 8192 Q, 16384 E and 32768 X.
+holding `moving` too (nothing if left out, and for 0.4 s first, so you're moving as the first shot
+goes off), until the step moves on, then prints `step()`. `VFTestButtons`' flags are section 75's: 1
+W, 4 A, 16 walking, 32 crouching, 64 jump, 128 fire, 256 the right button, 512 reload, 1024 the
+spike's 4, 4096 C, 8192 Q, 16384 E and 32768 X.
 
 ```lua
 me = game.Players.LocalPlayer
@@ -6617,6 +6618,10 @@ function shoot(x, z, region, moving, n)
 	local was = me:GetAttribute("VFTrainingStep")
 	me:SetAttribute("VFTestAimEntity", dummyAt(x, z))
 	me:SetAttribute("VFTestAimRegion", region or "head")
+	if moving then
+		me:SetAttribute("VFTestButtons", moving)
+		task.wait(0.4)
+	end
 	for _ = 1, n or 8 do
 		me:SetAttribute("VFTestButtons", (moving or 0) + 128)
 		task.wait(0.1)
@@ -6634,11 +6639,11 @@ end
 ```
 
 - **TR1 Starting.** `set("VFTestPlay", "training")`: the server's Output has
-  `[VF] Arena off: Basic Training` and `[VF] training: <your UserId> at move`, and you're back at
-  the spawn with the Classic in hand and no shield. The panel at the top reads
-  `BASIC TRAINING  1 / 14`, `MOVE` and `Move with W A S D to the marker at the end of the lane.`,
-  and a gold column of light stands at the sprint lane's 20 m post, ahead and to your right.
-  `step()` prints `move`, and
+  `[VF] Arena off: Basic Training` and `[VF] training: <your UserId> at move` (and a line like it as
+  each later step starts), and you're back at the spawn with the Classic in hand and no shield. The
+  panel at the top reads `BASIC TRAINING  1 / 14`, `MOVE` and
+  `Move with W A S D to the marker at the end of the lane.`, and a gold column of light stands at
+  the sprint lane's 20 m post, ahead and to your right. `step()` prints `move`, and
   `print(workspace:GetAttribute("VFTrainingOn"), workspace:GetAttribute("VFArenaOn"))` prints
   `true false`. `set("VFTestPlayMenu", true)`: the Play menu's first card is Basic Training, reading
   SOLO, and its line at the top reads `This server plays BASIC TRAINING.`;
@@ -6659,16 +6664,18 @@ end
 
 - **TR4 Shooting.** `walkTo(0, 0)` back to the spawn, then `shoot(0, -10, "body")`: the target
   falls, and `still`, the ring under the crouching target at 20 m. `shoot(-2, -20, "head", 4, 6)`
-  fires as you strafe left: once it falls, `step()` still prints `still`, with the note
-  `You were moving as that shot went off: stop, then fire.`, red on the panel's bottom line for 5 s
-  (if it doesn't fall, again). `walkTo(0, 0)`, then `shoot(-2, -20)`: `head`, and the ring under the
-  target behind the cover. `shoot(8, -22)`: `reload`. **Send:** the lines.
+  strafes left for 0.4 s and fires as you go on strafing: once it falls, `step()` still prints
+  `still`, with the note `You were moving as that shot went off: stop, then fire.`, red on the
+  panel's bottom line for 5 s (if it doesn't fall, again). `walkTo(0, 0)`, then `shoot(-2, -20)`:
+  `head`, and the ring under the target behind the cover. `shoot(8, -22)`: `reload`. **Send:** the
+  lines.
 
 - **TR5 Reloading and a rifle.** `hold(512, 0.1)` (with a full magazine, `hold(128, 0.1)` first to
   fire one), then two seconds later `step()`: `rifle`, the Vandal in your hand with `25` in its
-  magazine, and the ring between the two targets at 30 m. `shoot(1.5, -30, "head", 0, 3)` from the
-  hip: once one falls, `step()` still prints `rifle`, with the note `Aim down sights first ({aim}).`
-  and the panel's `Aim down sights first (RIGHT CLICK).` `hold(256, 0.1)` aims down the sights, and
+  magazine, and the ring round the two targets at 30 m, centred on the strafing one (in BRINK it
+  wandered 0.9 m to 2.9 m right of its spot). `shoot(1.5, -30, "head", 0, 3)` from the hip: once one
+  falls, `step()` still prints `rifle`, with the note `Aim down sights first ({aim}).` and the
+  panel's `Aim down sights first (RIGHT CLICK).` `hold(256, 0.1)` aims down the sights, and
   `shoot(1.5, -30)`: `shield`. **Send:** the lines.
 
 - **TR6 Buying and abilities.** `set("VFTestBuy", "light")`: a Light Shield on the health bar, and
@@ -6696,7 +6703,8 @@ end
   `Crouch (click L3) and get into the low tunnel by the marker.` `set("VFTestPad", nil)`,
   `set("VFTestTouch", "0 0 0 0")` and `panel()`: `Crouch (tap CROUCH) ...`.
   `set("VFTestTouch", nil)` and `panel()`: `Crouch (hold CTRL) ...`.
-  `set("VFTestTraining", "rifle")`: the Vandal again, in your hand. **Send:** the lines.
+  `set("VFTestTraining", "rifle")`: the step's back, the Vandal still in its slot from TR5 (a step
+  hands its gun, and draws it, only when it isn't there, as on a new life). **Send:** the lines.
 
 - **TR10 Leaving.** `set("VFTestPlay", "skirmish")`: the server's Output has `[VF] Arena on: ...`,
   the panel and the marker are gone, `step()` prints `nil nil nil`, and `VFTrainingOn` reads
@@ -6712,6 +6720,184 @@ end
 - **TR12 The feel (Bradley).** Play it through with the keys, a controller and a phone: where a
   step's text or marker leaves you unsure, and where a step is too easy or too hard. **Send:** what
   to change.
+
+## 77. Reyna's Devour and Dismiss
+
+From [73-reyna-soul-orbs.md](research/73-reyna-soul-orbs.md). System 73 adds Reyna, a Duelist and
+the sixth agent, with her Devour (Q) and Dismiss (E) to play; Leer (C) and Empress (X) are on her
+card, the bar and the buy menu, `NOT YET`. An enemy she kills, or who dies within 3 s of her last
+hurting them, whoever killed them, leaves her a Soul Orb where they fell, for 3 s: a purple ball 1 m
+up that only she sees. Dummies on the course leave them too. With one within 15 m of her eye and in
+sight, Q takes it and heals her 50 over 2 s, past 100 up to 150, and what's past 100 goes 10 s after
+the heal's last point. E takes it instead, and for 1.5 s nothing hurts her and she runs at up to 12
+m/s, but she can't fire, cast, plant or defuse, and her gun comes back as it ends. Your `VFSouls`
+attribute lists your orbs, each as its number, where it fell (metres) and when it goes, apart by
+`;`. PlayerGui's `VFSouls` carries `Orbs` (how many), `Reach` (the number of the one in reach, -1
+for none) and `Prompt` (the keys under the crosshair, empty for none); `VFCombatHud`'s `Health` is
+the health the HUD shows; and Workspace's `VFSouls` holds the balls (`VFSoulOrb`). In Studio the
+server's Output has a `[VF] soul:` line as each orb's earned (saying whether by her kill or her
+damage, and how long before), each is taken and each overheal goes.
+
+Press Play (F5), with one player, and pick Reyna: press T, click REYNA's card and PICK REYNA (or set
+`VFTestAgents` to true, `VFTestAgent` to `reyna`, then `VFTestAgent` to `lock`). Set `VFTestMute` if
+the sound's not wanted. Run this once in the command bar with it on the client, then each check's
+lines there: `souls()` prints your orbs, `Orbs`, `Reach` and `Prompt`, then `VFKit` and the health;
+`press(buttons)` holds `buttons` for 0.1 s (128 fire, 8192 Q, 16384 E); `down(id, n)` aims at that
+dummy's head and fires up to `n` times (8 if left out) until you've an orb more, then prints
+`souls()`; `speed()` prints how fast you're going across the ground; and `dismiss()` runs ahead
+for 0.5 s, presses E as you go on, fires 0.35 s later, and prints your speed before and in it and
+`VFKit` in it and 1.5 s after it. Dummy 1, 10 m down the target lane, is 4294901761, and Dummy 6, 50
+m down it, 4294901766. On the course a spent charge comes back 1.5 s after it's spent. Start each
+check at the spawn facing down the lane (`set("VFTestYaw", 0)`), with the Vandal in hand.
+
+```lua
+me = game.Players.LocalPlayer
+local S = require(game.ReplicatedStorage.Shared.Units).STUDS_PER_METRE
+function set(name, value)
+	me:SetAttribute(name, value)
+end
+function souls()
+	local g = me.PlayerGui.VFSouls
+	local reach = g:GetAttribute("Reach")
+	print(me:GetAttribute("VFSouls"), g:GetAttribute("Orbs"), reach, g:GetAttribute("Prompt"))
+	print(me:GetAttribute("VFKit"), me.PlayerGui.VFCombatHud:GetAttribute("Health"))
+end
+function press(buttons)
+	me:SetAttribute("VFTestButtons", buttons)
+	task.wait(0.1)
+	me:SetAttribute("VFTestButtons", nil)
+end
+function down(id, n)
+	local had = me:GetAttribute("VFSouls")
+	me:SetAttribute("VFTestAimEntity", id)
+	me:SetAttribute("VFTestAimRegion", "head")
+	for _ = 1, n or 8 do
+		task.wait(0.3)
+		press(128)
+		task.wait(0.2)
+		if me:GetAttribute("VFSouls") ~= had then
+			break
+		end
+	end
+	me:SetAttribute("VFTestAimEntity", nil)
+	souls()
+end
+function speed()
+	local root = me.Character.HumanoidRootPart
+	local a = root.Position
+	task.wait(0.25)
+	local b = root.Position
+	print(string.format("%.1f m/s", Vector2.new(b.X - a.X, b.Z - a.Z).Magnitude / S / 0.25))
+end
+function dismiss()
+	me:SetAttribute("VFTestButtons", 1)
+	task.wait(0.5)
+	speed()
+	me:SetAttribute("VFTestButtons", 16385)
+	task.wait(0.1)
+	me:SetAttribute("VFTestButtons", 1)
+	task.wait(0.35)
+	speed()
+	me:SetAttribute("VFTestButtons", 129)
+	task.wait(0.1)
+	me:SetAttribute("VFTestButtons", 1)
+	print(me:GetAttribute("VFKit"))
+	task.wait(0.8)
+	me:SetAttribute("VFTestButtons", nil)
+	task.wait(1.5)
+	print(me:GetAttribute("VFKit"))
+end
+```
+
+- **RY1 Her kit.** In agent select (T), the cards are JETT, PHOENIX, SAGE, OMEN, SOVA and REYNA, and
+  REYNA's reads DUELIST. Click it: her kit, headed `REYNA   DUELIST`, with Q DEVOUR lit,
+  `With a Soul Orb in reach, Q takes it and heals you 50 over 2 s, past full health up to 150 for 10 s.`,
+  and E DISMISS lit,
+  `With a Soul Orb in reach, E takes it: for 1.5 s nothing hurts you and you run faster, but you can't fire or cast.`;
+  C LEER and X EMPRESS read `NOT YET`. Click PICK REYNA: the button reads `PLAYING REYNA`, and
+  `VFAgent` reads `reyna`. Close it with T. `souls()` prints `nil 0 -1` and an empty prompt, then
+  `C2/2 Q2/2 E2/2 X7/7 100`. **Send:** the lines, and how her card looks.
+
+- **RY2 A Soul Orb.** `down(4294901761)`: Dummy 1 falls, the server's Output has
+  `[VF] soul: <your name> earns 1 at 0.00, 0.00, -10.00 (her kill)` (or near those numbers), and a
+  purple ball floats 1 m over where it fell, pulsing, a little bigger than one out of reach. Under
+  the crosshair, in purple, `Q DEVOUR    E DISMISS`. `souls()` prints `1,0.00,0.00,-10.00,` and a
+  time, `1`, `1` and `Q DEVOUR    E DISMISS`. The ball fades over its last half second and is gone 3
+  s after the dummy fell: `souls()` then prints `nil 0 -1` and an empty prompt, and Workspace's
+  `VFSouls` is empty. Dummy 1 is back 2 s after it fell. **Send:** the lines, and how the ball
+  looks.
+
+- **RY3 Out of reach.** `down(4294901766)`: Dummy 6 falls 50 m away, and its ball floats there,
+  smaller and dimmer, with no prompt: `souls()` prints `1` orb and `-1` for `Reach`. `press(8192)`,
+  then `press(16384)`: nothing, no `devour` or `dismiss` line in the Output, and `VFKit` still reads
+  `C2/2 Q2/2 E2/2 X7/7`. Once the ball's gone, the same with no orb at all. **Send:** the lines.
+
+- **RY4 Devour.** Open the Sound Lab (F2 four times). `down(4294901761)`, then at once
+  `press(8192)`: the Output has `[VF] soul: <your name> devour takes` the orb's number and
+  `(there)`; the ball and the prompt go, and a soft bell's logged as `healChime`, `yours`. The
+  Vandal stays in hand, and Q's pip goes dark and lights again 1.5 s later. Your health climbs 25 a
+  second: `for _ = 1, 3 do souls() task.wait(1) end` straight after prints about 100, 125 and 150 as
+  the health, and the HUD shows the same. `press(128)` fires the Vandal as ever. About 12 s after
+  the bell, the Output has `[VF] soul: <your name> overheal over` and the health's 100 again.
+  **Send:** the lines, and how long after the bell the overheal went.
+
+- **RY5 Dismiss.** `set("VFTestYaw", 10)`, turning you a little left so you run past Dummy 1's spot.
+  `down(4294901761)`, then `dismiss()`: the Output has `[VF] soul: <your name> dismiss takes` the
+  orb's number and `(there)`, a fizzle's logged as `fizzle`, `yours`, the Vandal goes, and the
+  screen darkens, purple round its edge, while E's square counts down. `dismiss()` prints about 5.4
+  m/s before it, about 12 m/s in it, and `VFKit` with `dismiss` and about `0.7` after it; the shot
+  it fires in it does nothing, with no shot heard or logged. 1.5 s after the press the darkening
+  goes and the Vandal comes back with its draw, and `dismiss()`'s last line reads
+  `C2/2 Q2/2 E2/2 X7/7`, E's charge back. **Send:** the lines, and how the screen looks in it.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+REYNA in window 1. Everyone on the course is everyone else's enemy. Player 2 stands about 5 m to one
+side of player 1, where each sees the other, and window 1 runs this section's script.
+
+- **RY6 Nothing hurts her.** In window 2, run this: it aims at player 1, waits for player 1's
+  Dismiss, and fires for a second.
+
+  ```lua
+  me = game.Players.LocalPlayer
+  local p1 = game.Players.Player1
+  me:SetAttribute("VFTestAimEntity", 4294967295)
+  me:SetAttribute("VFTestAimRegion", "body")
+  repeat task.wait() until string.find(p1:GetAttribute("VFKit") or "", "dismiss", 1, true)
+  me:SetAttribute("VFTestButtons", 128)
+  task.wait(1)
+  me:SetAttribute("VFTestButtons", nil)
+  me:SetAttribute("VFTestAimEntity", nil)
+  ```
+
+  In window 1, `down(4294901761)`, then `press(16384)`: window 2's Vandal fires about ten shots at
+  player 1, with no hit marker or damage number, and window 1's `souls()` afterwards still
+  reads 100. In window 2, player 1 turns dark and see-through as the fizzle's heard, for 1.5 s, then
+  looks as ever. Then run window 2's lines again without the `repeat` line: player 1 drops, so the
+  shots land outside a Dismiss. **Send:** window 1's health after the first burst, what window 2 saw
+  of player 1, and what the second burst did.
+
+- **RY7 Basic Training with her kit.** Stop the game, press Play (F5) with one player, pick Reyna,
+  and run section 76's script and this section's. `set("VFTestPlay", "training")`, then
+  `set("VFTestTraining", "abilities")`: `step()` prints `abilities` and
+  `1 / 3   {q} and {e} take a Soul Orb: down a target first.`, Leer counted as it can't be played
+  yet, and `panel()` has `1 / 3   Q and E take a Soul Orb: down a target first.` With the Classic,
+  `down(4294901761)` (two headshots) and `press(8192)`: `2 / 3`, the hint still there. Once
+  Dummy 1's back, `down(4294901761)` and `press(16384)`: `plant`, past `ultimate` at once, as
+  Empress can't be played yet either. **Send:** the lines.
+
+- **RY8 Bots playing her.** Stop the game and start a Local Server with 1 player. In the server's
+  command bar, set `VFMatchMap` to `outpost`, `VFArenaMode` to `teamdeathmatch` and `VFArenaOn` to
+  true. Once the pre-game's over, run section 69's script: the bots with `VFAgent` `reyna` play her.
+  Each side leaves one agent out, so there's usually one on each; if there's none, set `VFArenaOn`
+  to false and true again. Let it play for 3 minutes. The server's Output has `[VF] soul:` lines for
+  those bots: `earns` after their kills (`her kill`) and after enemies they'd hurt died to their
+  side (`hurt ... s before`, never more than 3 s), now and then `devour takes ... (there)`, and
+  never `dismiss` from a bot. **Send:** the soul lines, and those bots' kills (Tab).
+
+- **RY9 The feel (Bradley).** Play her on the course and against bots, with the keys and a
+  controller: whether the ball's easy to see and to take (its 15 m reach), whether Devour's heal and
+  Dismiss's speed feel right, and whether the screen's darkening in Dismiss is too much. **Send:**
+  what to change.
 
 ## Results
 
@@ -7219,6 +7405,15 @@ TR9 the lines: ___
 TR10 the lines: ___
 TR11 where each PLAY took you: ___
 TR12 what to change: ___
+RY1 the lines: ___; her card: ___
+RY2 the lines: ___; the ball: ___
+RY3 the lines: ___
+RY4 the lines: ___; the overheal went ___ s after the bell
+RY5 the lines: ___; the screen in it: ___
+RY6 window 1's health after the first burst: ___; what window 2 saw: ___; the second burst: ___
+RY7 the lines: ___
+RY8 the soul lines: ___; the Reyna bots' kills: ___
+RY9 what to change: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -7658,3 +7853,12 @@ Didn't look right (IDs and what you saw):
 | 72 | The buttons named for a gamepad and a touch screen | TR9 |
 | 72 | Leaving it for another mode, with nothing of it left | TR10 |
 | 72 | On a live server: a new server for each player who picks it | TR11 |
+| 72 | The rifle step's ring over both 30 m targets, wherever the strafing one has got to | TR5 |
+| 73 | Her card, the bar and the kit, Leer and Empress not yet | RY1 |
+| 73 | An orb for her kill where it fell, drawn only for her, brighter in reach, gone after 3 s | RY2, RY3 |
+| 73 | Devour taking the orb in reach, 50 over 2 s up to 150, and the overheal gone 10 s after | RY4 |
+| 73 | Dismiss taking it: 12 m/s, no firing, the screen darkened, the gun back as it ends | RY5 |
+| 73 | Nothing hurting her through it, and others seeing her dark and see-through | RY6 |
+| 73 | Basic Training with her kit: Leer and Empress counted, the hint on Soul Orbs | RY7 |
+| 73 | Bots playing her: orbs for their side's kills on enemies they hurt, Devour when hurt, no Dismiss | RY8 |
+| 73 | Her reach, the heal, the speed and the darkening, as they feel | RY9 |

@@ -147,6 +147,10 @@ PlayerController.castListeners = {} :: { (AbilitySim.Cast, PlayerCodec.WireInput
 -- What the local player may do with the spike now (ClientSpike); nothing
 -- without.
 PlayerController.objective = nil :: (() -> Spike.Context)?
+-- The Soul Orb of Reyna's in the local player's reach, by its number
+-- (system 73, SoulView), which her Devour and Dismiss would take; none
+-- without.
+PlayerController.soul = nil :: (() -> number?)?
 -- The Slow Orbs' fields in play (system 37, SlowView); none without.
 PlayerController.fields = nil :: (() -> { SlowSim.Field })?
 -- The Barrier Orbs' walls in play, judged at a server time, and whether a
@@ -200,7 +204,15 @@ end
 
 local function objective(): Spike.Context?
 	local hook = PlayerController.objective
-	return if hook then hook() else nil
+	local context = if hook then hook() else nil
+	local soulHook = PlayerController.soul
+	local soul = if soulHook then soulHook() else nil
+	if soul == nil then
+		return context
+	end
+	local with = table.clone(context or Spike.NONE)
+	with.soul = soul
+	return with
 end
 
 -- The Slow Orbs' fields, judged at the time `input`'s frame showed.

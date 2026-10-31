@@ -201,6 +201,9 @@ PlayerSimServer.spikeGive = nil :: ((Player) -> ())?
 -- they're playing, when something knows (ShadowServer): a move asking for
 -- one that isn't goes as if it asked for none. Without, any is.
 PlayerSimServer.pointCheck = nil :: ((Player, vector) -> boolean)?
+-- The Soul Orb of Reyna's in a player's or a bot's reach from its eye
+-- (system 73, SoulServer), by its number; none without.
+PlayerSimServer.soulOf = nil :: ((Actor, vector) -> number?)?
 -- How long a new life that's been asked for is waited for. Roblox loads a
 -- character in about a third of a second in Studio (measured); one that
 -- hasn't come by this is taken as not coming.
@@ -805,6 +808,20 @@ function PlayerSimServer.behind(player: Player): number?
 	return if r then r.behind else nil
 end
 
+-- `objective` with the Soul Orb in `actor`'s reach from where `sim` has its
+-- eye, if there's one (system 73): what a player's or a bot's tick is
+-- given.
+function PlayerSimServer.withSoul(actor: Actor, sim: PlayerSim.State, objective: Spike.Context?, cfg: MovementConfig.Values): Spike.Context?
+	local soulOf = PlayerSimServer.soulOf
+	local soul = if soulOf then soulOf(actor, PlayerSim.eye(sim, cfg)) else nil
+	if soul == nil then
+		return objective
+	end
+	local with = table.clone(objective or Spike.NONE)
+	with.soul = soul
+	return with
+end
+
 -- Runs the player's next queued input, if the budget allows one. Returns
 -- whether there may be more to run this frame.
 local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
@@ -823,6 +840,7 @@ local function stepOne(r: Record, cfg: MovementConfig.Values): boolean
 		r.pitch = math.clamp(input.pitch, -math.pi / 2, math.pi / 2)
 		local objectiveFor = PlayerSimServer.objectiveFor
 		local objective = if objectiveFor then objectiveFor(r.player) else nil
+		objective = PlayerSimServer.withSoul(r.player, r.sim, objective, cfg)
 		local judged = SlowSim.judged(input.viewTime, stepNow)
 		local fieldsOf = PlayerSimServer.fields
 		local slows = if fieldsOf then { fields = fieldsOf(), time = judged } else nil

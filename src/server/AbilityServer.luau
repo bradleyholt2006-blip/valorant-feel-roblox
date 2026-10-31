@@ -42,23 +42,23 @@
 --     the kit starting over as the mode starts one, or with their next life
 -- Each cast is told to clients (the Ability remote) for its sound and look,
 -- when the frame on their screen reaches it, but Blade Storm's knives drawn
--- again and an ability put in hand (Curveball's flare, system 30; Hot
--- Hands' fireball, system 31; Blaze's flame, system 32), which others see
--- in hand, the Healing Orb's tries (system 36), which HealServer judges and
--- tells of as one heals, the Barrier Orb's wall (system 38), which
--- BarrierServer tells of as it rises, Omen going in his Shrouded Step
--- (system 42), which StepServer tells of with where he's going, his Shade
--- and his being sent back in From the Shadows (system 43), which
--- ShadowServer tells of with the places each client would hear, and a blast
--- of Sova's Hunter's Fury (system 46), which FuryServer tells of with the
--- way it went and whom it revealed: Run it Back's mark and rising to every
--- client, as the mark's drawn for everyone, and From the Shadows fired,
--- heard across the map, Dark Cover's orb sent (system 40) to the caster's
--- side alone (Patch 11.00: 'Dark Cover no longer plays audio in third
--- person within 12.5 meters for opponents. This audio will still play for
--- Allies.'), and any other to those who'd hear it or have the caster in
--- their snapshots (the fog of war, system 35), Omen's arrival and his
--- forming from a Shade as far as their own curves go.
+-- again and an ability put in hand (Curveball's flare, system 30; Hot Hands'
+-- fireball, system 31; Blaze's flame, system 32), which others see in hand,
+-- the Healing Orb's tries (system 36), which HealServer judges and tells of as
+-- one heals, the Barrier Orb's wall (system 38), which BarrierServer tells of
+-- as it rises, Omen going in his Shrouded Step (system 42), which StepServer
+-- tells of with where he's going, his Shade and his being sent back in From
+-- the Shadows (system 43), which ShadowServer tells of with the places each
+-- client would hear, and a blast of Sova's Hunter's Fury (system 46), which
+-- FuryServer tells of with the way it went and whom it revealed, and Reyna's
+-- Dismiss over (system 73), whose time others know from its cast: Run it
+-- Back's mark and rising to every client, as the mark's drawn for everyone,
+-- and From the Shadows fired, heard across the map, Dark Cover's orb sent
+-- (system 40) to the caster's side alone (Patch 11.00: 'Dark Cover no longer
+-- plays audio in third person within 12.5 meters for opponents. This audio
+-- will still play for Allies.'), and any other to those who'd hear it or have
+-- the caster in their snapshots (the fog of war, system 35), Omen's arrival
+-- and his forming from a Shade as far as their own curves go.
 -- The caster's own client has predicted it already. Each kit
 -- is a player attribute (AbilityConfig.KIT_ATTRIBUTE, as AbilitySim.summary
 -- writes it), which scripted checks read, and so is each kit's ultimate
@@ -413,6 +413,7 @@ function AbilityServer.start()
 			or cast.kind == "blast"
 			or cast.kind == "dart"
 			or cast.kind == "land"
+			or cast.kind == "solid"
 		then
 			return
 		end

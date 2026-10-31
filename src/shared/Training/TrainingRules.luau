@@ -10,7 +10,8 @@
 --     another way leaves a note why it didn't count
 --   * reload: the gun in hand's magazine filling again
 --   * shield: a shield worn
---   * cast: each of its slots used once, readying one aside
+--   * cast: each of its slots used once, readying one aside; a slot whose
+--     ability can't be played yet counts as used (skip)
 --   * plant and defuse: the spike planted, and defused; gone off first,
 --     it's back to planting
 -- TrainingServer feeds it and publishes where each player is.
@@ -34,6 +35,10 @@ export type State = {
 	weapon: string?, -- the gun in hand last tick, and its magazine
 	ammo: number?,
 	note: string?, -- a template with {name}s
+	notes: number, -- how many notes have been given
+	-- A line under the step's progress while the step calls for one, as a
+	-- template with {name}s (Reyna's Soul Orbs, system 73).
+	hint: string?,
 }
 
 -- How a downed target was downed: by a shot fired standing still, to the
@@ -44,7 +49,7 @@ export type Kill = { still: boolean, head: boolean, scoped: boolean }
 export type Input = "keys" | "pad" | "touch"
 
 function TrainingRules.new(): State
-	return { index = 1, walked = 0, from = nil, cast = {}, weapon = nil, ammo = nil, note = nil }
+	return { index = 1, walked = 0, from = nil, cast = {}, weapon = nil, ammo = nil, note = nil, notes = 0, hint = nil }
 end
 
 function TrainingRules.current(s: State): TrainingConfig.Step
@@ -68,7 +73,7 @@ function TrainingRules.go(s: State, index: number)
 	s.from = nil
 	table.clear(s.cast)
 	s.weapon, s.ammo = nil, nil
-	s.note = nil
+	s.note, s.hint = nil, nil
 end
 
 -- Onto the next step; false at the last, which never ends.
@@ -132,6 +137,7 @@ function TrainingRules.kill(s: State, at: vector, how: Kill): boolean
 	else
 		return true
 	end
+	s.notes += 1
 	return false
 end
 
@@ -142,6 +148,21 @@ function TrainingRules.reload(s: State, weapon: string, ammo: number): boolean
 	local was, before = s.weapon, s.ammo
 	s.weapon, s.ammo = weapon, ammo
 	return weapon ~= "" and was == weapon and before ~= nil and ammo > before
+end
+
+-- Whether every slot the step under way asks for has been used.
+function TrainingRules.used(s: State): boolean
+	local step = TrainingRules.current(s)
+	local slots = step.slots
+	if step.goal ~= "cast" or not slots then
+		return false
+	end
+	for _, wanted in slots do
+		if not s.cast[wanted] then
+			return false
+		end
+	end
+	return true
 end
 
 -- An ability in the kit's `slot` cast, as `kind`: whether every slot the
@@ -155,12 +176,16 @@ function TrainingRules.cast(s: State, slot: number, kind: string): boolean
 	if table.find(slots, slot) then
 		s.cast[slot] = true
 	end
-	for _, wanted in slots do
-		if not s.cast[wanted] then
-			return false
-		end
+	return TrainingRules.used(s)
+end
+
+-- A slot the step asks for whose ability can't be played yet (Reyna's Leer
+-- and Empress, system 73): counted as used, so it doesn't hold the step up.
+function TrainingRules.skip(s: State, slot: number)
+	local step = TrainingRules.current(s)
+	if step.goal == "cast" and step.slots and table.find(step.slots, slot) then
+		s.cast[slot] = true
 	end
-	return true
 end
 
 -- The spike planted or defused by the player, or gone off: whether that
@@ -173,6 +198,7 @@ function TrainingRules.spike(s: State, event: "planted" | "defused" | "detonated
 			local plant = TrainingRules.indexOf("plant") :: number
 			TrainingRules.go(s, plant)
 			s.note = TrainingConfig.Notes.wentOff
+			s.notes += 1
 		end
 		return false
 	end
@@ -180,12 +206,14 @@ function TrainingRules.spike(s: State, event: "planted" | "defused" | "detonated
 end
 
 -- How far through the step under way: the metres walked, or the slots
--- used, as the HUD shows it; "" for nothing to count.
+-- used, as the HUD shows it, and after it the step's hint, if there is one;
+-- "" for none of them.
 function TrainingRules.progress(s: State): string
 	local step = TrainingRules.current(s)
+	local count = ""
 	if step.goal == "walk" then
 		local metres = step.metres or 0
-		return string.format("%d / %d m", math.min(math.floor(s.walked), metres), metres)
+		count = string.format("%d / %d m", math.min(math.floor(s.walked), metres), metres)
 	elseif step.goal == "cast" and step.slots and #step.slots > 1 then
 		local used = 0
 		for _, slot in step.slots do
@@ -193,9 +221,13 @@ function TrainingRules.progress(s: State): string
 				used += 1
 			end
 		end
-		return string.format("%d / %d", used, #step.slots)
+		count = string.format("%d / %d", used, #step.slots)
 	end
-	return ""
+	local hint = s.hint
+	if hint and hint ~= "" then
+		return if count == "" then hint else count .. "   " .. hint
+	end
+	return count
 end
 
 -- `template` with each {name} the button it names, as the input in use

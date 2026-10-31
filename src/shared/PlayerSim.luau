@@ -18,7 +18,9 @@
 -- through its windup and his time as a Shade, which it puts where the map
 -- marked (system 43), and the Owl Drone puts its own in hand (system 47),
 -- whose fire sends the drone out, holding him where he is while the input
--- flies it. A Slow Orb's field slows whoever starts a tick in it
+-- flies it, and Reyna's Dismiss puts the gun away and has her run faster
+-- through its time, firing nothing (system 73). A Slow Orb's field slows
+-- whoever starts a tick in it
 -- (SlowSim), from the fields each step's given, and a Barrier Orb's wall
 -- stands in the world everything in the tick goes through
 -- (BarrierSim.world), from the walls it's given.
@@ -101,6 +103,10 @@ function PlayerSim.isTagged(s: State): boolean
 end
 
 function PlayerSim.maxSpeed(s: State, cfg: any): number
+	-- Reyna's Dismiss sets her top speed, whatever's in hand (system 73).
+	if s.abilities.dismissUntil > 0 then
+		return AbilityConfig.Reyna.dismissSpeed.value
+	end
 	local def = PlayerSim.def(s)
 	local speed = PlayerSim.weaponSpeed(s, cfg)
 	if s.weapons.scoped > 0 and def.ads then
@@ -164,7 +170,7 @@ function PlayerSim.rooted(s: State): boolean
 end
 
 -- Buttons that start a plant, a defuse or an orb's taking (system 49),
--- which a dash doesn't.
+-- which a dash and Reyna's Dismiss (system 73) don't.
 local SPIKE_KEYS = bit32.bor(PlayerSim.Buttons.Use, PlayerSim.Buttons.Fire, PlayerSim.Buttons.Interact)
 
 -- What movement sees of the buttons while a blast of Hunter's Fury's
@@ -404,7 +410,7 @@ function PlayerSim.step(
 	end
 	local dropPressed = MovementSim.has(input.buttons, PlayerSim.Buttons.Drop) and not s.spike.dropHeld
 	local spikeInput = input
-	if AbilitySim.dashing(s.abilities, t) then
+	if AbilitySim.dashing(s.abilities, t) or AbilitySim.dismissing(s.abilities, t) then
 		spikeInput = table.clone(input)
 		spikeInput.buttons = bit32.band(input.buttons, bit32.bnot(SPIKE_KEYS))
 	end
@@ -424,7 +430,8 @@ function PlayerSim.step(
 	end
 	local feet, eye = s.movement.position, PlayerSim.eye(s, cfg)
 	local grounded, crouched = s.movement.grounded, s.movement.crouched
-	local motion, casts = AbilitySim.step(kit, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg)
+	local soul = if objective then objective.soul else nil
+	local motion, casts = AbilitySim.step(kit, input, t, dt, s.movement.tick + 1, feet, eye, PlayerSim.rooted(s), cfg, soul)
 	-- He's there (Shrouded Step), there for good (From the Shadows), or back
 	-- from the Owl Drone: never two, as none starts while another's under
 	-- way.
@@ -470,7 +477,9 @@ function PlayerSim.step(
 	-- it Back's cast puts away what's in the fifth slot, and the gun through
 	-- its activation, and its mark keeps how he stood (system 33). Hunter's
 	-- Fury's puts its bow in hand, drawn over its equip (system 46).
-	-- The Owl Drone's goes as it's sent out (system 47, below).
+	-- The Owl Drone's goes as it's sent out (system 47, below). Reyna's
+	-- Dismiss puts away what's in the fifth slot, and the gun through its
+	-- time, and the gun's drawn again as it's over (system 73).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -502,6 +511,13 @@ function PlayerSim.step(
 					WeaponSim.putAway(s.weapons, t)
 				end
 				WeaponSim.stow(s.weapons, t, AbilityConfig.RunItBack.activation.value)
+			elseif cast.kind == "dismiss" then
+				if s.weapons.loadout[WeaponSim.ULT] ~= "" then
+					WeaponSim.putAway(s.weapons, t)
+				end
+				WeaponSim.stow(s.weapons, t, AbilityConfig.Reyna.dismissTime.value)
+			elseif cast.kind == "solid" then
+				WeaponSim.redraw(s.weapons, t)
 			end
 		end
 	end
@@ -539,9 +555,9 @@ function PlayerSim.step(
 		return nil, nil, act, nil, casts
 	end
 	-- Nothing fires in a dash, which takes the zoom off and stops a burst
-	-- (ours); a blast's knockback, which moves him as one does, stops
-	-- nothing (system 46).
-	if AbilitySim.dashing(kit, t) then
+	-- (ours), nor in Reyna's Dismiss (system 73); a blast's knockback, which
+	-- moves him as one does, stops nothing (system 46).
+	if AbilitySim.dashing(kit, t) or AbilitySim.dismissing(kit, t) then
 		s.weapons.scoped = 0
 		s.weapons.burstLeft = 0
 		return nil, nil, act, nil, casts

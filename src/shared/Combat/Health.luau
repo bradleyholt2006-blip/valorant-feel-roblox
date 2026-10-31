@@ -7,7 +7,10 @@
 -- shots it takes to kill are the ones their sum gives: only what the HUD
 -- shows depends on the split. A Regen Shield also refills itself from a pool
 -- of its own once it hasn't been hit for a while
--- (docs/research/09-arsenal.md).
+-- (docs/research/09-arsenal.md). Health can go past its most only by an
+-- overheal (Reyna's Devour, system 73), up to the most that gives, and
+-- stays there until it's hit off or its time's up (Health.trim): nothing
+-- else that heals takes it away.
 
 local WeaponConfig = require("../Weapons/WeaponConfig")
 
@@ -134,28 +137,52 @@ function Health.reset(s: State)
 end
 
 -- A life under way made whole (deathmatch's health packs, system 26): full
--- health and a fresh shield of the kind worn. Nothing for the dead.
+-- health, an overheal kept, and a fresh shield of the kind worn. Nothing
+-- for the dead.
 function Health.heal(s: State)
 	if not s.alive then
 		return
 	end
-	s.health = s.maxHealth
+	s.health = math.max(s.health, s.maxHealth)
 	Health.setShield(s, s.kind)
 end
 
 -- Some health and some shield back for a living one (Team Deathmatch's
--- Recovery Orbs, system 28), each up to its most: the shield of the kind
--- worn, and a Regen Shield's pool left as it is. Returns whether either
--- changed.
+-- Recovery Orbs, system 28), each up to its most, an overheal kept: the
+-- shield of the kind worn, and a Regen Shield's pool left as it is.
+-- Returns whether either changed.
 function Health.mend(s: State, health: number, shield: number): boolean
 	if not s.alive then
 		return false
 	end
-	local h = math.min(s.health + math.max(health, 0), s.maxHealth)
+	local h = math.max(math.min(s.health + math.max(health, 0), s.maxHealth), s.health)
 	local sh = math.min(s.shield + math.max(shield, 0), s.maxShield)
 	local changed = h ~= s.health or sh ~= s.shield
 	s.health, s.shield = h, sh
 	return changed
+end
+
+-- Some health back for a living one past its most, up to `most` (Reyna's
+-- Devour, system 73): health already past that is kept. Returns whether it
+-- changed.
+function Health.overheal(s: State, health: number, most: number): boolean
+	if not s.alive then
+		return false
+	end
+	local h = math.max(math.min(s.health + math.max(health, 0), most), s.health)
+	local changed = h ~= s.health
+	s.health = h
+	return changed
+end
+
+-- Health past its most back down to it (an overheal's time up). Returns
+-- whether it changed.
+function Health.trim(s: State): boolean
+	if s.health <= s.maxHealth then
+		return false
+	end
+	s.health = s.maxHealth
+	return true
 end
 
 -- Whole points for display: a split hit leaves fractions, and anything left
