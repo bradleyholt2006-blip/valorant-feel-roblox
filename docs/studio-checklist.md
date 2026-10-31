@@ -55,7 +55,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | V | The look (lighting, vignette, outlines) off and on again, to compare with the place's own |
 | N | Shows or hides the combat report (section 57); on the course, yours so far at any time |
 | I | The next enemy outline colour (it was N before the combat report) |
-| P | The next of: the arena (Skirmish), gun game, the spike rounds, the spike rounds in Swiftplay's format, and off |
+| P | The next of: the arena (Skirmish), the 1v1 (section 68), gun game, the spike rounds, the spike rounds in Swiftplay's format, and off |
 | Tab | Held: the scoreboard, in the arena and the spike rounds (at a match's end it shows by itself as the victory screen) |
 | Left / right click | While you're down in the arena or the spike rounds: watch the next or the last of your living teammates |
 | Mouse 3 | Opens or shuts the combat report's details, while it's up |
@@ -456,15 +456,16 @@ see it once you're in it. Keep the HUD on.
   room's opening, and whether the hall feels too big, about right or too small for a 1v1.
 - **A3 Waiting.** While you're alone there's no barrier: you can walk out of your room straight
   away, B opens the buy menu, and 5 to 9 give you any weapon.
-- **A4 Off and on.** Press P four times, through gun game and the spike rounds (sections 27 and
-  17): the Output window shows `[VF] Arena on: gun game, Skirmish A` (or `B` or `C`), then `[VF]
-  Arena on: the spike rounds, Standard, on Outpost` (or `Quarry` or `Foundry`), then the same with
-  `Swiftplay`, then `[VF] Arena off`, and you're back at the course's spawn, the score bar and
-  banner are gone, and the dummies still have red outlines. Press P again and you're back in the
-  NORTH room, facing the hall. Then hold W and press P four times more, so each new life starts
-  while you're running. Each time you start at a spawn and run on from there with no snap back,
-  and the HUD's `max` correction stays at `0.0 mm`. The `corrections` count can go up by one at
-  each spawn, as at any spawn.
+- **A4 Off and on.** Press P five times, through the 1v1, gun game and the spike rounds
+  (sections 68, 27 and 17): the Output window shows `[VF] Arena on: 1v1, on Workspace's 1v1Map` (a
+  warning instead in a place without one), then `[VF] Arena on: gun game, Skirmish A` (or `B` or
+  `C`), then `[VF] Arena on: the spike rounds, Standard, on Outpost` (or `Quarry` or `Foundry`),
+  then the same with `Swiftplay`, then `[VF] Arena off`, and you're back at the course's spawn, the
+  score bar and banner are gone, and the dummies still have red outlines. Press P again and you're
+  back in the NORTH room, facing the hall. Then hold W and press P five times more, so each new life
+  starts while you're running. Each time you start at a spawn and run on from there with no snap
+  back, and the HUD's `max` correction stays at `0.0 mm`. The `corrections` count can go up by one
+  at each spawn, as at any spawn.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9.
 
@@ -490,7 +491,7 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   before.
 - **A10 Leaving.** Close player 2's window. Player 1's banner goes back to
   `WAITING FOR AN OPPONENT`, the barrier goes if it was up, and the score stays.
-- **A11 Off again.** Press P four times in window 1, through gun game and the spike rounds.
+- **A11 Off again.** Press P five times in window 1, through the 1v1, gun game and the spike rounds.
   Player 1 is back on the course, on no team, and Teams is empty.
 - **A12 Teammates (optional).** Stop the game, start a Local Server with 3 players and press P in
   window 1. Players 1 and 3 share the NORTH room, each on their own spot, and player 2 has SOUTH to
@@ -513,9 +514,9 @@ it wasn't.
   Crouching is silent too, and so is standing still.
 - **N3 Jumps and landings.** Jump on the spot: a soft rustle as you leave the ground and a thud as
   you land. Jump up onto the 0.50 m red jump box: that landing is the softer one, which nobody else
-  hears. Step off it onto the floor: the heard thud again. Spawning is silent: press P five times
-  (the arena, gun game, the spike rounds twice, then off) and you appear each time without a sound.
-  Nothing else plays with any of these: Roblox's own character sounds are off.
+  hears. Step off it onto the floor: the heard thud again. Spawning is silent: press P six times
+  (the arena, the 1v1, gun game, the spike rounds twice, then off) and you appear each time without
+  a sound. Nothing else plays with any of these: Roblox's own character sounds are off.
 - **N4 Shots.** Fire each weapon (5 to 9 give the Vandal, Phantom, Operator, Sheriff and Classic).
   Each has its own sound. The Phantom's is the quietest and dullest, and the Operator's the
   biggest. Hold fire with the Vandal: each shot is distinct and none is cut into a click. With the
@@ -787,8 +788,8 @@ it and `VFTestButtons` holds 4 (1024), G (2048) or crouch (32).
 - **D1 Waiting.** On Play, the spike lies on its tile 4 m behind the spawn: a dark squat case with
   a dim blue band, with `SPIKE` in red over it, seen through walls. The HUD reads `spike   on the
   ground at 0.0 4.0 m`, and `VFSpike` is `dropped`, `VFSpikeLayout` `course`, `VFSpikePosition`
-  (0, 0, 4) and `VFSpikeCarrier` 0. With the arena on (P) it reads `none here`. Press P four more
-  times, through gun game and the spike rounds to off, and the spike is back on its tile.
+  (0, 0, 4) and `VFSpikeCarrier` 0. With the arena on (P) it reads `none here`. Press P five more
+  times, through the 1v1, gun game and the spike rounds to off, and the spike is back on its tile.
 - **D2 Picking it up.** Walk back over the tile: a metal latch as you reach it, the spike leaves
   the floor, `SPIKE  [4]` shows in red at the bottom right and the HUD reads `spike   carried by
   you`. `VFSpike` is `carried`, `VFSpikeCarrier` your UserId and `VFSpikePosition` gone. Press 4:
@@ -867,15 +868,15 @@ server ends the phase being played and clears itself: a buy phase, a round (as i
 out, so the defenders win it) or the wait for the next round, but never a planted spike's countdown.
 Skip whatever a check doesn't need to wait out.
 
-- **E1 On.** Press P three times. The Output window shows `[VF] Arena on: Skirmish A` (or `B` or
-  `C`), then gun game's line, then `[VF] Arena on: the spike rounds, Standard, on Outpost` (or
-  `Quarry` or `Foundry`). You respawn in a room with a red floor marked ATTACKERS, facing its door
-  into mid, with the spike on the floor about 4 m in front of you: `VFSpikeLayout` is the map's key
-  (`outpost`, `quarry` or `foundry`) and `VFSpikePosition` (-150, 0, 29), (-300, 0, 30) or (-450, 0,
-  34). The top bar shows `0` and `0` with `SPIKE ROUNDS` and `STANDARD` between them, and the banner
-  reads `WAITING FOR AN OPPONENT`, with `Standard, first to 13. Anyone who joins plays for the other
-  side   B buy menu` under it. Teams holds Orange and Teal, and you're on Orange. You have the
-  Classic (2) and the knife (3), and no shield.
+- **E1 On.** Press P four times. The Output window shows `[VF] Arena on: Skirmish A` (or `B` or
+  `C`), then the 1v1's line, then gun game's, then `[VF] Arena on: the spike rounds, Standard, on
+  Outpost` (or `Quarry` or `Foundry`). You respawn in a room with a red floor marked ATTACKERS,
+  facing its door into mid, with the spike on the floor about 4 m in front of you: `VFSpikeLayout`
+  is the map's key (`outpost`, `quarry` or `foundry`) and `VFSpikePosition` (-150, 0, 29),
+  (-300, 0, 30) or (-450, 0, 34). The top bar shows `0` and `0` with `SPIKE ROUNDS` and `STANDARD`
+  between them, and the banner reads `WAITING FOR AN OPPONENT`, with `Standard, first to 13. Anyone
+  who joins plays for the other side   B buy menu` under it. Teams holds Orange and Teal, and you're
+  on Orange. You have the Classic (2) and the knife (3), and no shield.
 - **E2 The map.** Walk round it. On each of the three, the spawn's door on the left leads to site
   A, the one ahead into mid, and the one on the right to site B. Each site has an amber plant area
   marked A or B with crates round it, the dark ones low enough to shoot over standing and the light
@@ -894,7 +895,7 @@ Skip whatever a check doesn't need to wait out.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9.
 
-- **E4 Round 1.** Press P three times in window 1. Player 1 spawns in ATTACKERS and player 2 in
+- **E4 Round 1.** Press P four times in window 1. Player 1 spawns in ATTACKERS and player 2 in
   DEFENDERS, facing their door to mid. Both screens show the round's clock counting down from
   `0:45`, `ROUND 1   ATTACK` under it for player 1 and `ROUND 1   DEFEND` for player 2, and a banner
   counting down from `BUY PHASE 45`. Its line reads the map's name, your credits, and then `Attack:
@@ -951,7 +952,7 @@ losses in a row are `Streak1` and `Streak2` on Workspace's `VFArena`. The expect
 buy only what a check says. `VFMatchSkip` (section 17) ends a buy phase or a round, as there.
 
 - **Q1 The pistol round's credits.** One player, on the course: B reads `THE COURSE: EVERYTHING'S
-  FREE`. Press P three times for the spike rounds. B now reads `800 CREDITS`. Every gun and shield
+  FREE`. Press P four times for the spike rounds. B now reads `800 CREDITS`. Every gun and shield
   that costs more than 800 is dimmed with its price in red: everything from the Bucky (850) up, and
   Heavy Armor (1000). The sidearms, Light Armor (400) and the Regen Shield (650) aren't.
 - **Q2 Buying and refunds.** Buy Light Armor: `400 CREDITS`. Now the Regen Shield isn't dimmed,
@@ -963,7 +964,7 @@ buy only what a check says. `VFMatchSkip` (section 17) ends a buy phase or a rou
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9.
 
-- **Q3 Round 1.** Press P three times in window 1. Both players' buy phase line starts with the
+- **Q3 Round 1.** Press P four times in window 1. Both players' buy phase line starts with the
   map's name and then `800 CREDITS` in gold, and both have `VFCredits` 800. Player 1's menu reads
   `800 CREDITS     WIN +3000   LOSE +1900`.
 - **Q4 A kill pays at once.** Skip the buy phase. Player 1 kills player 2 with the Classic: player
@@ -1050,7 +1051,7 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **L10 The other player sees it.** On the course, player 1 drops the Vandal with G. In window 2
   it lands where player 1 threw it. Player 2 walks up to it, looks at it and presses F: window 1
   sees it go, and player 2's Vandal lands in its place.
-- **L11 The dead drop theirs.** Press P three times in window 1 for the spike rounds. In round 1's
+- **L11 The dead drop theirs.** Press P four times in window 1 for the spike rounds. In round 1's
   buy phase, player 1 presses 5 for a Vandal. Skip the buy phase. Player 2 kills player 1 with the
   Classic. A Vandal lies where player 1 fell, with `Ammo` 25, and no Classic beside it.
 - **L12 Kept into the next round.** Before round 2 starts (the round's end lasts a few seconds),
@@ -1092,11 +1093,11 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **J5 Skirmish.** Press P once in window 1. Beside the top bar, window 1 shows a tile with the
   first two letters of player 1's name on its left, in blue, and one for player 2 on its right, in
   red; window 2 the other way round. Tab opens Roblox's own player list, not ours.
-- **J6 The tiles in the spike rounds.** Press P twice more, through gun game to the spike rounds:
-  the tiles stay. Skip round 1's buy phase (`VFMatchSkip`). Player 1 kills player 2 with the
-  Classic, and player 2 doesn't shoot back. Player 2's tile dims on both screens. Both kill feeds
-  read `Player1   Classic   Player2`, outlined in gold on both, as both are in it: in window 1
-  player 1's name is blue, and in window 2 it's red.
+- **J6 The tiles in the spike rounds.** Press P three times more, through the 1v1 and gun game to
+  the spike rounds: the tiles stay. Skip round 1's buy phase (`VFMatchSkip`). Player 1 kills
+  player 2 with the Classic, and player 2 doesn't shoot back. Player 2's tile dims on both screens.
+  Both kill feeds read `Player1   Classic   Player2`, outlined in gold on both, as both are in it:
+  in window 1 player 1's name is blue, and in window 2 it's red.
 - **J7 The scoreboard.** In window 1, hold Tab. Roblox's player list doesn't open. Ours has `1`
   and `0` either side of `STANDARD   ROUND 1` across its top, then player 1's row, their name in
   gold on a gold-tinted row: `1 0 0`, ACS `170` (100 damage and 70 for the kill, over one round),
@@ -1114,7 +1115,7 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **J10 Off.** Press P in window 1 until `[VF] Arena off`. The tiles go, Tab opens Roblox's player
   list again, and neither player has `VFKills` or the other record attributes any more.
 
-With three players (optional): start a Local Server with 3 players, and press P three times in
+With three players (optional): start a Local Server with 3 players, and press P four times in
 window 1 (the spike rounds). Two of them share a side (Teams shows who).
 
 - **J11 Assists.** Skip the buy phase. One of the pair shoots the player on their own once, then
@@ -1186,14 +1187,15 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
   from player 2 at about how far away they were. Window 2 sees the edges of its screen flash in
   the dash, and no streak. In Skirmish a spent charge doesn't come back until the next round:
   player 2's Q pip stays dark.
-- **U12 The spike rounds' kit.** Press P twice more in window 1 (gun game, then the spike rounds).
-  In round 1's buy phase both `VFKit`s read `C0/2 Q0/1 E1/1 X0/8`: Cloudburst and Updraft have to be
-  bought, and Tailwind's charge is free. In window 1, B opens the menu: under the shields, an
-  `Abilities` group has Cloudburst (`C`, 200) and Updraft (`Q`, 150). Pointing at Updraft shows
-  `Ability, on Q` and rows for `Charges` (`up to 1`), `A charge` (`150 credits`) and `Lift` (`4 m,
-  in 0.6 s`). Click it: the credits go from 800 to 650, its pip lights and it shows `FULL`, the
-  bar's Q pip lights, and `VFKit` reads `Q1/1`. Right-click it: back to 800 and `Q0/1`. Click it
-  again to keep it. (Y12 buys Cloudburst.) **Send:** a screenshot of the menu with Updraft bought.
+- **U12 The spike rounds' kit.** Press P three times more in window 1 (the 1v1, gun game, then the
+  spike rounds). In round 1's buy phase both `VFKit`s read `C0/2 Q0/1 E1/1 X0/8`: Cloudburst and
+  Updraft have to be bought, and Tailwind's charge is free. In window 1, B opens the menu: under the
+  shields, an `Abilities` group has Cloudburst (`C`, 200) and Updraft (`Q`, 150). Pointing at
+  Updraft shows `Ability, on Q` and rows for `Charges` (`up to 1`), `A charge` (`150 credits`) and
+  `Lift` (`4 m, in 0.6 s`). Click it: the credits go from 800 to 650, its pip lights and it shows
+  `FULL`, the bar's Q pip lights, and `VFKit` reads `Q1/1`. Right-click it: back to 800 and `Q0/1`.
+  Click it again to keep it. (Y12 buys Cloudburst.) **Send:** a screenshot of the menu with Updraft
+  bought.
 - **U13 Kept through a death.** Skip the buy phase. Player 2 kills player 1, who hasn't used
   Updraft. Player 2's `VFKit` reads `X1/8`, for the kill, and player 1's `X1/8` too, for the death.
   In round 2's buy phase, player 1's still reads `Q1/1`, and their bar shows the pip lit.
@@ -1269,11 +1271,12 @@ Then two players: stop the game and start a Local Server with 2 players, as in s
 - **Y11 After the thrower dies.** In window 2, look up (`VFTestPitch` 30) and throw, and in
   window 1 kill player 2 at once, within the 2 s it flies. The ball flies on, straight, and
   bursts in mid-air 2 s after the throw, 60 m along its way, in both windows.
-- **Y12 The spike rounds.** Press P twice more in window 1 (gun game, then the spike rounds). In
-  round 1's buy phase B opens the menu. Pointing at Cloudburst shows `Ability, on C` and rows for
-  `Charges` (`up to 2`), `A charge` (`200 credits`), `Cloud` (`6.7 m across, for 2.5 s`) and
-  `Flight` (`30 m/s, at most 2 s`). Click it twice: the credits go from 800 to 600 to 400, both its
-  pips light and it shows `FULL`, and `VFKit` reads `C2/2`. Right-click it once: 600, and `C1/2`.
+- **Y12 The spike rounds.** Press P three times more in window 1 (the 1v1, gun game, then the spike
+  rounds). In round 1's buy phase B opens the menu. Pointing at Cloudburst shows `Ability, on C` and
+  rows for `Charges` (`up to 2`), `A charge` (`200 credits`), `Cloud` (`6.7 m across, for 2.5 s`)
+  and `Flight` (`30 m/s, at most 2 s`). Click it twice: the credits go from 800 to 600 to 400, both
+  its pips light and it shows `FULL`, and `VFKit` reads `C2/2`. Right-click it once: 600, and
+  `C1/2`.
 
 ## 23. Blade Storm
 
@@ -1469,8 +1472,8 @@ From [23-gun-game.md](research/23-gun-game.md). A quick play of what changed, wi
 `workspace:SetAttribute("VFMatchSkip", true)` in the server's command bar ends a gun game match as
 if its time were up, so whoever's furthest up wins.
 
-Start a Local Server with 2 players, as in section 9, and press P twice in window 1 (Skirmish,
-then gun game).
+Start a Local Server with 2 players, as in section 9, and press P three times in window 1 (Skirmish,
+the 1v1, then gun game).
 
 - **GG1 The start.** The Output says `[VF] Arena on: gun game, Skirmish A`, `B` or `C`, and both
   players spawn in their rooms with no barriers up. The top bar has `10:00` counting down between
@@ -1541,8 +1544,8 @@ From [25-spike-maps.md](research/25-spike-maps.md). A quick play of what changed
 `workspace:SetAttribute("VFMatchSkip", true)` in the server's command bar ends the phase under way,
 and a skipped round goes to the defenders, as its clock running out.
 
-Start a Local Server with 2 players, as in section 9, and press P four times in window 1 (Skirmish,
-gun game, the spike rounds, then the spike rounds in Swiftplay's format).
+Start a Local Server with 2 players, as in section 9, and press P five times in window 1 (Skirmish,
+the 1v1, gun game, the spike rounds, then the spike rounds in Swiftplay's format).
 
 - **SM1 The first map.** The Output's last line says `[VF] Arena on: the spike rounds, Swiftplay,
   on Outpost`, `Quarry` or `Foundry`, and round 1's buy phase names that map first on its line, as
@@ -1796,8 +1799,8 @@ Press Play (F5), with one player.
   selection moved off Jett (section 52); 10 s after the buy phase started it reads `PHOENIX` and
   `LOCKED IN` in gold, their `VFAgentPick` reads `locked`, and PHOENIX's card reads `TAKEN`.
   **Send:** a screenshot of window 1's screen.
-- **AS5 Nobody picks in gun game.** Press P in window 1 (gun game). T does nothing, and
-  `VFAgentPick` is unset. Space held in the air still glides, as Jett's Drift does. Run
+- **AS5 Nobody picks in gun game.** Press P twice in window 1 (the 1v1, then gun game). T does
+  nothing, and `VFAgentPick` is unset. Space held in the air still glides, as Jett's Drift does. Run
   `VFMatchSkip` once: on the victory screen and in the vote after it, T does nothing either.
 - **AS6 The spike rounds.** Press P in window 1 again (the spike rounds). As round 1's buy phase
   starts, the screen comes up by itself in window 2: `LOCK IN WITHIN 10` again, a new window for
@@ -1881,12 +1884,12 @@ window 1.
   of white. A second after the throw, turn back: a pale orange glow is in front of player 2's
   face while their screen is white, moves behind their head about 1.5 s after the pop, and fades
   out a second later. **Send:** a screenshot of the glow in front of player 2's face.
-- **CB12 The spike rounds.** Press P twice more in window 1 (gun game, then the spike rounds), and
-  as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: under the shields, Blaze
-  (`C`, 150) and Hot Hands (`Q`, 200), lit (sections 36 and 35 have more of them), and Curveball
-  (`E`, 250) with one of its two pips lit, the round's free charge, and every tile inside the menu.
-  Pointing at Curveball shows `Ability, on E`, its line, and rows for `Charges` (`up to 2`),
-  `A charge` (`250 credits`), `Pop` (`0.6 s after the throw`), `Blind`
+- **CB12 The spike rounds.** Press P three times more in window 1 (the 1v1, gun game, then the spike
+  rounds), and as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: under the
+  shields, Blaze (`C`, 150) and Hot Hands (`Q`, 200), lit (sections 36 and 35 have more of them),
+  and Curveball (`E`, 250) with one of its two pips lit, the round's free charge, and every tile
+  inside the menu. Pointing at Curveball shows `Ability, on E`, its line, and rows for `Charges`
+  (`up to 2`), `A charge` (`250 credits`), `Pop` (`0.6 s after the throw`), `Blind`
   (`up to 1.5 s, then 1 s clearing`) and `A charge back` (`every 2 kills`). Click it: the credits go
   from 800 to 550, both its pips light and it shows `FULL`, and `VFKit` reads `E2/2`; right-click
   it: back to 800. **Send:** a screenshot of the menu.
@@ -1975,16 +1978,16 @@ PHOENIX in window 1 (T). Everyone on the course is everyone else's enemy.
   at your feet again, and step out of the fire a second after the burst: the heal goes on to 90 all
   the same. Once more (50 health), staying in the fire: the heal stops at 100, and the shield stays
   empty. Set `VFTestPitch` back to 0.
-- **HH12 The spike rounds.** Press P three times in window 1 (Skirmish, gun game, then the spike
-  rounds), and as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: between Blaze
-  (`C`, 150) and Curveball, Hot Hands (`Q`, 200) is lit, with its one pip dark, as no charge of it
-  comes free. Pointing at it shows `Ability, on Q`, its line, and rows for `Charges` (`up to 1`),
-  `A charge` (`200 credits`), `Fire` (`9 m across, for 4 s`), `Burn` (`60 a second`) and `Heals you`
-  (`50 over 4 s, Inner Fire`). Click it: the credits go from 800 to 600, its pip lights and it shows
-  `FULL`, and `VFKit` reads `Q1/1`; right-click it: back to 800 and `Q0/1`. **Send:** a screenshot
-  of the menu.
+- **HH12 The spike rounds.** Press P four times in window 1 (Skirmish, the 1v1, gun game, then the
+  spike rounds), and as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: between
+  Blaze (`C`, 150) and Curveball, Hot Hands (`Q`, 200) is lit, with its one pip dark, as no charge
+  of it comes free. Pointing at it shows `Ability, on Q`, its line, and rows for `Charges` (`up
+  to 1`), `A charge` (`200 credits`), `Fire` (`9 m across, for 4 s`), `Burn` (`60 a second`) and
+  `Heals you` (`50 over 4 s, Inner Fire`). Click it: the credits go from 800 to 600, its pip lights
+  and it shows `FULL`, and `VFKit` reads `Q1/1`; right-click it: back to 800 and `Q0/1`. **Send:** a
+  screenshot of the menu.
 - **HH13 Allies.** This one needs three players, and can be skipped. Stop the game, start a Local
-  Server with 3 players, and press P three times in window 1 for the spike rounds. In round 1's buy
+  Server with 3 players, and press P four times in window 1 for the spike rounds. In round 1's buy
   phase, pick PHOENIX and LOCK IN in window 1, and buy Hot Hands. Tab shows who's on player 1's
   side. After the buy phase, that teammate stands about 6 m in front of player 1, and player 1 lobs
   at their feet as in HH10: their health falls about 20 a second, a third as fast as player 2's did
@@ -2094,15 +2097,15 @@ PHOENIX in window 1 (T). Everyone on the course is everyone else's enemy.
   in it as it rises: your health climbs about 6 a second, from 30 to 80 over the 8 s it stands, and
   stops there, 50 in all. Player 2 shoots once more (40 health); send another, and step out of it a
   second after it rises: the heal goes on to 90 all the same.
-- **BZ12 The spike rounds.** Press P three times in window 1 (Skirmish, gun game, then the spike
-  rounds), and as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: Blaze (`C`,
-  150) is lit, with its one pip dark, as no charge of it comes free. Pointing at it shows
+- **BZ12 The spike rounds.** Press P four times in window 1 (Skirmish, the 1v1, gun game, then the
+  spike rounds), and as round 1's buy phase starts, pick PHOENIX and LOCK IN in window 1. B: Blaze
+  (`C`, 150) is lit, with its one pip dark, as no charge of it comes free. Pointing at it shows
   `Ability, on C`, its line, and rows for `Charges` (`up to 1`), `A charge` (`150 credits`), `Wall`
   (`up to 21 m, for 8 s`), `Burn` (`30 a second`) and `Heals you` (`50 over 8 s, Inner Fire`). Click
   it: the credits go from 800 to 650, its pip lights and it shows `FULL`, and `VFKit` reads `C1/1`;
   right-click it: back to 800 and `C0/1`. **Send:** a screenshot of the menu.
 - **BZ13 Allies.** This one needs three players, and can be skipped. Stop the game, start a Local
-  Server with 3 players, and press P three times in window 1 for the spike rounds. In round 1's buy
+  Server with 3 players, and press P four times in window 1 for the spike rounds. In round 1's buy
   phase, pick PHOENIX and LOCK IN in window 1, and buy Blaze. Tab shows who's on player 1's side.
   After the buy phase, that teammate stands about 10 m in front of player 1, and player 1 sends it
   at them as in BZ9: their health falls about 10 a second, a third as fast as player 2's did in BZ9,
@@ -2262,17 +2265,17 @@ Then three players: stop the game, start a Local Server with 3 players and press
   player 1: a red X where player 1 fell, on window 1's minimap and window 3's (`Dead_4294967295`),
   there until the next round; and as window 1 watches player 3 (as in F2), its minimap is
   player 3's, their arrow and cone as `Self`.
-- **MP13 The spike.** Press P twice in window 1 (gun game, then the spike rounds). In window 1,
-  attacking, the map's drawn with its two sites lettered A and B in their amber plant areas, and the
-  spike's orange diamond in front of you (`Spike` true); as you turn, the letters stay upright.
-  Window 2, defending, has no diamond (`Spike` false). Player 1 picks up the spike: in windows 1 and
-  3 a small orange mark sits on player 1's arrow, and the diamond's gone; window 2 shows nothing of
-  it. Player 1 drops it (G) where player 2 can't see it: window 2's `Spike` stays false. Player 2
-  looks at it: the diamond shows in window 2 (`Spike` true), and goes as they look away. Player 1
-  plants it at A: everyone's minimap has the diamond on A. Hold Caps Lock in window 2: the big map,
-  the defenders' spawn at the bottom, with the places' names on it, as `A Lobby`. Set Region names
-  to IN BUY PHASE: the names show on the big map only through the next buy phase; NEVER: none;
-  ALWAYS again.
+- **MP13 The spike.** Press P three times in window 1 (the 1v1, gun game, then the spike rounds). In
+  window 1, attacking, the map's drawn with its two sites lettered A and B in their amber plant
+  areas, and the spike's orange diamond in front of you (`Spike` true); as you turn, the letters
+  stay upright. Window 2, defending, has no diamond (`Spike` false). Player 1 picks up the spike: in
+  windows 1 and 3 a small orange mark sits on player 1's arrow, and the diamond's gone; window 2
+  shows nothing of it. Player 1 drops it (G) where player 2 can't see it: window 2's `Spike` stays
+  false. Player 2 looks at it: the diamond shows in window 2 (`Spike` true), and goes as they look
+  away. Player 1 plants it at A: everyone's minimap has the diamond on A. Hold Caps Lock in
+  window 2: the big map, the defenders' spawn at the bottom, with the places' names on it, as `A
+  Lobby`. Set Region names to IN BUY PHASE: the names show on the big map only through the next buy
+  phase; NEVER: none; ALWAYS again.
 - **MP14 Deathmatch's pulse.** Press M in window 1, click the DEATHMATCH card and PLAY DEATHMATCH.
   Everyone's on a side of their own: no blue arrows on anyone's minimap, and neither spawn floor
   tinted. Player 2 kills player 1: as player 1 comes back 1.5 s later, players 2 and 3 show on
@@ -2340,10 +2343,10 @@ Then three players: stop the game, start a Local Server with 3 players and press
 - **FW10 Down.** Player 2 kills player 1, and window 1 watches player 3 (as in F2): window 1's
   `VFPlayers` has `Player2` while player 3 sees, hears or spots them, as window 3's does, and not
   while player 3 doesn't.
-- **FW11 Out of earshot.** Press P twice in window 1 (gun game, then the spike rounds). Once round 1
-  starts, player 2 runs about in their spawn, and player 1 stays in theirs: no `Player2` in
-  window 1's `VFPlayers`, and no steps heard. Player 2 fires a few rounds into the floor: window 1
-  hears them, and `Player2` stays out.
+- **FW11 Out of earshot.** Press P three times in window 1 (the 1v1, gun game, then the spike
+  rounds). Once round 1 starts, player 2 runs about in their spawn, and player 1 stays in theirs: no
+  `Player2` in window 1's `VFPlayers`, and no steps heard. Player 2 fires a few rounds into the
+  floor: window 1 hears them, and `Player2` stays out.
 - **FW12 Deathmatch's pulse.** Press M in window 1, click the DEATHMATCH card and PLAY DEATHMATCH.
   Player 2 kills player 1: as player 1 comes back, players 2 and 3 pulse on window 1's minimap where
   they are (`Pulse_4294967294` and `Pulse_4294967293`), behind walls or not; `Player2` and `Player3`
@@ -2428,10 +2431,10 @@ comes up by itself: pick SAGE and LOCK IN in window 1, and LOCK IN in windows 2 
   window 1 player 3's blocks glow green, pulsing, for those 5 s. `VFLastHeal` reads `Player3`. Under
   E on window 1's bar, `45` counts down, and while the round's on, E's pip lights again as it
   reaches 0. **Send:** window 3's health a second after the bell.
-- **HO12 The spike rounds.** Press P twice in window 1 (gun game, then the spike rounds), and as
-  round 1's buy phase starts, pick SAGE and LOCK IN in window 1. E's pip is lit, its charge free,
-  and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. B: under the shields, Barrier Orb (`C`, 300) and Slow Orb
-  (`Q`, 200) are both for sale (sections 42 and 41).
+- **HO12 The spike rounds.** Press P three times in window 1 (the 1v1, gun game, then the spike
+  rounds), and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1. E's pip is lit, its
+  charge free, and `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`. B: under the shields, Barrier Orb (`C`, 300)
+  and Slow Orb (`Q`, 200) are both for sale (sections 42 and 41).
 - **HO13 Team Deathmatch.** Press M in window 1, click the TEAM DEATHMATCH card and PLAY TEAM
   DEATHMATCH. As the match starts, agent select comes up by itself: pick SAGE and LOCK IN in
   window 1. Run `VFMatchSkip` once to end the pre-game. Someone on the other side (Tab) shoots
@@ -2531,8 +2534,9 @@ SAGE in window 1 (T). Player 2 stays Jett. Everyone on the course is everyone el
   stops at the ice's edge with no snap back, and `max` doesn't grow. Press `[` ten times to take the
   latency off.
 
-Then the spike rounds: press P three times in window 1 (Skirmish, gun game, then the spike rounds),
-and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK IN in window 2.
+Then the spike rounds: press P four times in window 1 (Skirmish, the 1v1, gun game, then the spike
+rounds), and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK IN in
+window 2.
 
 - **SO15 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`, both of Q's pips dark. B: under the shields
   Slow Orb (`Q`, 200) is lit, and Barrier Orb (`C`, 300) beside it (section 42). Click Slow Orb
@@ -2644,8 +2648,9 @@ SAGE in window 1 (T). Player 2 stays Jett. Everyone on the course is everyone el
   correction. Do BO15 again; then player 2 walks off the wall, into its face and along it, and jumps
   at it: no snap back, and `max` doesn't grow. Press `[` ten times to take the latency off.
 
-Then the spike rounds: press P three times in window 1 (Skirmish, gun game, then the spike rounds),
-and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK IN in window 2.
+Then the spike rounds: press P four times in window 1 (Skirmish, the 1v1, gun game, then the spike
+rounds), and as round 1's buy phase starts, pick SAGE and LOCK IN in window 1, and LOCK IN in
+window 2.
 
 - **BO17 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/7`, C's pip dark. B: under the shields Barrier
   Orb (`C`, 300) is lit, beside the Slow Orb. Click it: 300 credits go, C's pip lights, and `VFKit`
@@ -2802,8 +2807,9 @@ Sound Lab in windows 1, 2 and 3.
   they're back on the minimap. As the next round starts, any smoke standing is gone from all three
   windows.
 
-Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
-round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+Then the spike rounds: press P three times more in window 1 (the 1v1, gun game, then the spike
+rounds), and as round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in
+windows 2 and 3.
 
 - **DC11 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, one of E's pips lit. B: under the shields
   Dark Cover (`E`, 150), Paranoia (`Q`, 250) and Shrouded Step (`C`, 100) are all lit. Click Dark
@@ -2886,8 +2892,9 @@ LOCK IN in window 2. Open the Sound Lab in window 2. In Skirmish each life start
   dark has gone, player 3 readies and throws the second flare the same way: now window 2 goes white,
   and its `VFBlind` is set.
 
-Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
-round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+Then the spike rounds: press P three times more in window 1 (the 1v1, gun game, then the spike
+rounds), and as round 1's buy phase starts, pick OMEN and LOCK IN in window 1, and LOCK IN in
+windows 2 and 3.
 
 - **PA8 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, Q's pip dark. B: under the shields Paranoia
   (`Q`, 250), Dark Cover (`E`, 150) and Shrouded Step (`C`, 100) are all lit. Click Paranoia: 250
@@ -2978,7 +2985,7 @@ window 1 play as Omen, as before, and open the Sound Lab in windows 2 and 3.
   second: nothing hits player 1 before they're there, and the health over their head doesn't change.
   Once they're there, player 2's shots hit them again.
 
-Then the spike rounds: press P three times in window 1, and as round 1's buy phase starts, pick OMEN
+Then the spike rounds: press P four times in window 1, and as round 1's buy phase starts, pick OMEN
 and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
 
 - **SS10 Bought.** `VFKit` reads `C0/2 Q0/1 E1/2 X0/7`, C's pips dark. B: under the shields Shrouded
@@ -3334,8 +3341,9 @@ and 3.
   window 1's `VFKit` then reads `Q1/2`, and the spent pip stays dark for the rest of the round.
   Clear `VFTestAimPoint`.
 
-Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
-round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+Then the spike rounds: press P three times more in window 1 (the 1v1, gun game, then the spike
+rounds), and as round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in
+windows 2 and 3.
 
 - **SB11 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`, both of Q's pips dark. B: under the shields
   Shock Bolt (`Q`, 150) is lit, its pips dark. Click it: 150 credits go, one of Q's pips lights, and
@@ -3622,8 +3630,9 @@ and 3.
   then 0, and the drone bursts in all three windows, logged as `droneBreak`. Clear `VFTestAimPoint`
   in both.
 
-Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and as
-round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in windows 2 and 3.
+Then the spike rounds: press P three times more in window 1 (the 1v1, gun game, then the spike
+rounds), and as round 1's buy phase starts, pick SOVA and LOCK IN in window 1, and LOCK IN in
+windows 2 and 3.
 
 - **OD16 Bought.** `VFKit` reads `C0/1 Q0/2 E1/1 X0/8`, C's pip dark. B: under the shields Owl Drone
   (`C`, 400) is lit, its pip dark. Click it: 400 credits go, C's pip lights, `VFKit` reads `C1/1`,
@@ -3660,7 +3669,8 @@ Start a Local Server with 3 players, as in section 9, and press P once in window
   goes by itself, and player 3's `VFAgent` reads `jett` and `VFAgentPick` `locked`. T in window 1
   shows `PLAYER3` with `JETT` and `LOCKED IN`, and JETT's card reads `TAKEN`.
 
-Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds).
+Then the spike rounds: press P three times more in window 1 (the 1v1, gun game, then the spike
+rounds).
 
 - **OE5 At once.** As round 1's buy phase starts, agent select comes up by itself in all three
   windows: window 1's on SOVA, window 3's on JETT, and no card reads `TAKEN`. Click OMEN in
@@ -3681,7 +3691,7 @@ Foundry's at (-493, 0, 1) and (-415, 0, -3): orb 1 on the A side and orb 2 on th
 `VFTestButtons` 65536 holds F (add 1 for W, 64 for Space and 128 for the left button), and
 `VFMatchSkip` skips a buy phase or what's left of a round (section 17).
 
-Start a Local Server with 2 players, as in section 9, and press P three times in window 1 (the spike
+Start a Local Server with 2 players, as in section 9, and press P four times in window 1 (the spike
 rounds). As round 1's buy phase starts, agent select comes up by itself: let its 10 s run out in
 both windows, so both play Jett. Each round's checks fit in its 100 s; if one runs out first, do
 that round's checks again in the next.
@@ -3743,9 +3753,9 @@ presses Q and 128 the left button, `VFTestPitch` -90 looks at your feet, and a V
 `VFTestAimPoint`, in metres, aims at that place until it's cleared. `VFTestBuy` set to `shockbolt`
 buys a charge of it, as a click in the buy menu would.
 
-Start a Local Server with 2 players, as in section 9, and press P four times in window 1 (Skirmish,
-gun game, the spike rounds, then the spike rounds in Swiftplay's format). Player 1 attacks the first
-half, with the spike in front of them, and player 2 defends.
+Start a Local Server with 2 players, as in section 9, and press P five times in window 1 (Skirmish,
+the 1v1, gun game, the spike rounds, then the spike rounds in Swiftplay's format). Player 1 attacks
+the first half, with the spike in front of them, and player 2 defends.
 
 - **UP1 Swiftplay's two.** As round 1's buy phase starts, agent select comes up by itself in both
   windows. Click SOVA and LOCK IN in window 1, and SAGE and LOCK IN in window 2 (or set
@@ -3776,8 +3786,8 @@ half, with the spike in front of them, and player 2 defends.
   shoot back: player 2's `VFKit` ends `X3/7`, and it's 4-4. Round 9's buy phase line adds
   `SUDDEN DEATH`, and player 1's `VFKit` ends `X5/8`, three short of full and down from 8, and
   player 2's `X4/7`, up from 3.
-- **UP7 The standard format.** Press P in window 1 for off, then three more times (Skirmish, gun
-  game, the spike rounds), and let round 1's agent select run out in both windows: player 1's
+- **UP7 The standard format.** Press P in window 1 for off, then four more times (Skirmish, the 1v1,
+  gun game, the spike rounds), and let round 1's agent select run out in both windows: player 1's
   `VFKit` ends `X0/8`. Set `VFTestGive` to `ultimate` in window 1 (`X8/8`), then in the server's
   command bar run this, which skips to round 13's buy phase, the defenders winning every round.
   There player 1's `VFKit` ends `X0/8`.
@@ -3794,7 +3804,7 @@ half, with the spike in front of them, and player 2 defends.
   adds `SUDDEN DEATH`, and player 1's `VFKit` ends `X5/8`.
 
 Then three players: stop the game and start a Local Server with 3 players, as in section 9, and
-press P three times in window 1 (the spike rounds). Players 1 and 3 share a side, as in section 52,
+press P four times in window 1 (the spike rounds). Players 1 and 3 share a side, as in section 52,
 and attack first. As round 1's buy phase starts, agent select comes up by itself: click SOVA and
 LOCK IN in window 1, and let the other windows' 10 s run out.
 
@@ -3821,11 +3831,11 @@ Tab does, and false lets it go. `VFTestGive` set to `ultimate` fills the points,
 set to an agent's id selects it, or set to `lock` locks in (section 52). `VFMatchSkip` set true on
 Workspace skips a buy phase, or what's left of a round, which the defenders win (section 17).
 
-Start a Local Server with 3 players, as in section 9, and press P three times in window 1 (Skirmish,
-gun game, then the spike rounds). Players 1 and 3 share a side, as in section 52, and attack first,
-and player 2 defends. As round 1's buy phase starts, agent select comes up by itself: click SOVA and
-LOCK IN in window 1, and SAGE and LOCK IN in window 2 (or set `VFTestAgent` to the agent's id and
-then to `lock`), and let window 3's 10 s run out, on Jett.
+Start a Local Server with 3 players, as in section 9, and press P four times in window 1 (Skirmish,
+the 1v1, gun game, then the spike rounds). Players 1 and 3 share a side, as in section 52, and
+attack first, and player 2 defends. As round 1's buy phase starts, agent select comes up by itself:
+click SOVA and LOCK IN in window 1, and SAGE and LOCK IN in window 2 (or set `VFTestAgent` to the
+agent's id and then to `lock`), and let window 3's 10 s run out, on Jett.
 
 - **GA1 The top bar.** Once agent select has gone in every window, window 1's top bar has `SO` and
   `JE` left of the score, in your side's colour, each with a full white bar under it, and `SA` right
@@ -3862,11 +3872,11 @@ then to `lock`), and let window 3's 10 s run out, on Jett.
   end
   ```
 
-- **GA6 Gun game.** Press P four times in window 1 (the spike rounds in Swiftplay's format, off,
-  Skirmish, then gun game). Every tile beside the score reads `PL`, the first two letters of the
-  players' names, and none has a diamond, though your side's still have their health bars: `Yours`
-  lists a `PL 100` for each player on your side, and `Theirs` a `PL` for each on the other. Set
-  `VFTestBoard` to true: no row has a box before its name, there's no `ULT` column, and
+- **GA6 Gun game.** Press P five times in window 1 (the spike rounds in Swiftplay's format, off,
+  Skirmish, the 1v1, then gun game). Every tile beside the score reads `PL`, the first two letters
+  of the players' names, and none has a diamond, though your side's still have their health bars:
+  `Yours` lists a `PL 100` for each player on your side, and `Theirs` a `PL` for each on the other.
+  Set `VFTestBoard` to true: no row has a box before its name, there's no `ULT` column, and
   `VFScoreboard` has no `Ult`. Set `VFTestBoard` to false.
 
 ## 56. Pings
@@ -4677,9 +4687,9 @@ once.
   `title 'ROUND LOST', callout nil`. With one a side, a round won by a kill has no callout. About
   3 s later both print `title 'BUY PHASE  3', callout nil` as round 2's buy phase starts.
 
-Then the spike rounds: press P twice more in window 1 (gun game, then the spike rounds), and LOCK IN
-in both windows as round 1's buy phase starts. Player 1 attacks and player 2 defends, each with the
-Classic and the knife and no shield.
+Then the spike rounds: press P three times more in window 1 (the 1v1, gun game, then the spike
+rounds), and LOCK IN in both windows as round 1's buy phase starts. Player 1 attacks and player 2
+defends, each with the Classic and the knife and no shield.
 
 - **CO2 Thrifty.** Start the watch in both windows. In round 1's buy phase, run this, which gives
   player 1 a Vandal (the debug give, free, as the 5 key's), then skips the buy phase and, once the
@@ -4850,8 +4860,8 @@ end)
 ```
 
 Stop the game and start a Local Server with 3 players, as in section 9. Player 1's id is 4294967295,
-player 2's 4294967294 and player 3's 4294967293. Press P three times in window 1 (Skirmish, gun
-game, then the spike rounds), and LOCK IN in all three windows as round 1's buy phase starts.
+player 2's 4294967294 and player 3's 4294967293. Press P four times in window 1 (Skirmish, the 1v1,
+gun game, then the spike rounds), and LOCK IN in all three windows as round 1's buy phase starts.
 Players 1 and 3 attack and player 2 defends, as in section 25, each with the Classic and the knife,
 no shield and 800 credits. Without a mouse, `VFTestTeam` on a player right-clicks a gun in the buy
 menu (`ask sheriff`), presses BUY on a teammate's card (`buy 4294967293`) or presses a plan's button
@@ -6556,7 +6566,7 @@ Didn't look right (IDs and what you saw):
 | 22 | Each map's cover builds where it should, with nothing left over from the last | O1, O5 |
 | 22 | The vote shows by itself after the victory screen: three cards, a click votes and outlines the card, and the counts and the time change for everyone | O2, O3, O4 |
 | 22 | The next match starts on the winner, with the map's name in the buy phase | O1, O5 |
-| 23 | P reaches gun game after Skirmish, and everyone spawns on level 1's gun with the knife: the top bar shows the levels and the clock, and under it the gun and the next | GG1 |
+| 23 | P reaches gun game after Skirmish and the 1v1, and everyone spawns on level 1's gun with the knife: the top bar shows the levels and the clock, and under it the gun and the next | GG1 |
 | 23 | A kill puts the next gun in the killer's hands at once, with `LEVEL 2` and its name in the middle | GG2 |
 | 23 | A knife kill knocks the one killed down a level, with `KNIFED` on their screen | GG4 |
 | 23 | A respawn is a force field to others and can't be hurt, until it fires | GG3 |
