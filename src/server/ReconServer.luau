@@ -324,6 +324,20 @@ function ReconServer.revealed(now: number): { [number]: { [number]: boolean } }
 	return out
 end
 
+-- Each bolt standing at `now`, for the bots that shoot an enemy's (system
+-- 76): what names it, whose it is (an entity id) and their side (nil on
+-- the course), and where its shaft's middle is.
+function ReconServer.standing(now: number): { { key: any, owner: number, side: number?, at: vector, velocity: vector } }
+	local out = {}
+	for _, k in kept do
+		local s = k.stuck
+		if BoltSim.standing(s, now) then
+			table.insert(out, { key = s, owner = s.owner, side = k.side, at = BoltSim.box(s).center, velocity = vector.zero })
+		end
+	end
+	return out
+end
+
 -- Every bolt gone (a new round), and every reveal. FireServer.clear tells
 -- every client.
 function ReconServer.clear()

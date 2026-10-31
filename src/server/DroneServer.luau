@@ -451,6 +451,22 @@ function DroneServer.step(now: number)
 	end
 end
 
+-- Each drone flying, for the bots that shoot an enemy's (system 76): what
+-- names it, whose it is (an entity id) and their side (nil on the course),
+-- and where this frame's snapshot shows its middle and how fast it flies.
+function DroneServer.flying(): { { key: any, owner: number, side: number?, at: vector, velocity: vector } }
+	local out = {}
+	for player, f in flights do
+		local shown = f.shown
+		if shown then
+			local sim = PlayerSimServer.getSim(player)
+			local velocity = if sim then sim.abilities.droneVel else vector.zero
+			table.insert(out, { key = f, owner = f.owner, side = f.side, at = shown.position, velocity = velocity })
+		end
+	end
+	return out
+end
+
 -- Every flight over (a new round), as if broken, and every dart's pings.
 function DroneServer.clear()
 	for player, f in flights do

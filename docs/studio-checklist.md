@@ -7212,9 +7212,10 @@ me:SetAttribute("VFTestButtons", nil)
 me:SetAttribute("VFTestAimEntity", nil)
 ```
 
-Player 1 drops, the glow gone: window 1's `kit()` reads `X0/7` with no `frenzy`, and `nil`, and
-window 2's `VFEmpress` for player 1 is `nil`. Once player 1's back on the course, 1.5 s later
-window 1's `kit()` reads `X7/7` again. **Send:** the lines.
+Player 1 drops, the glow gone: window 1's `kit()` reads `X2/7` with no `frenzy`, and `nil` (EM7's
+kill and the death each give a point), and window 2's `VFEmpress` for player 1 is `nil`. As soon as
+player 1's back on the course, window 1's `kit()` reads `X7/7` again: the points were spent long
+before, and they're held back only while the frenzy's on. **Send:** the lines.
 
 Then three players: stop the game, start a Local Server with 3 players and press P in window 1
 (Skirmish). Players 1 and 3 share a side, as in F1, and a bot plays on player 2's. As round 1's buy
@@ -7244,6 +7245,121 @@ section 69's script and section 70's there.
 - **EM11 The feel (Bradley).** Play her with Empress on the course and against bots: whether the
   activation's too long, whether the faster gun shows in a fight, whether the glow and the edges are
   too much or too little, and whether an unseen Dismiss is too strong. **Send:** what to change.
+
+## 80. Bots shoot enemy utility
+
+From [76-bots-shoot-utility.md](research/76-bots-shoot-utility.md). System 76 has bots shoot an
+enemy's utility they see: a Recon Bolt once it's stuck, an Owl Drone in flight, and Leer's eye from
+its cast. A bot notices each one as it would an enemy in the same place, after its reaction, then
+turns onto it and fires until it breaks; but only while it has noticed no enemy, nor lost sight of
+one in the last 0.7 s, and as soon as it notices an enemy it turns to them. It leaves its own side's
+utility be, and sees none with a knife in hand or while it plants or defuses. Leer's eye now shows
+through the nearsight it gives, on a player's screen and to bots: an eye past the dark round your
+screen is drawn just inside it, about 7.1 m off, where it looks to be and as big as it would look,
+unless the level or a smoke hides it. Your `VFBoltHealth`, `VFDroneHealth` and `VFLeerHealth` are
+the health your last bolt, your drone and your last eye have left, and Workspace's `VFLeer` holds
+each eye drawn, an `Eye` ball.
+
+Start a solo Play and, in the server's command bar, set Workspace's `VFBotSkill` to `hard`, so the
+bot's quick enough to judge (section 64). Press P twice (the 1v1, section 68), and as round 1's buy
+phase starts, pick SOVA in agent select and LOCK IN. Set `VFTestMute` if the sound's not wanted. Run
+this once in the command bar with it on the client, then each check's lines there: `press(buttons)`
+holds `buttons` for 0.1 s (128 fire, 4096 C, 16384 E), and `watch(t)` prints, for `t` seconds, the
+health your bolt, your drone and your eye have left each time any of it changes, with the seconds
+since it started. `VFTestAimPoint`, in metres, aims at a place until it's cleared, and the F3
+panel's `pos` line is where you stand. In each check, let the round go live with you out of the
+bot's sight, and keep out of it unless the check says otherwise.
+
+```lua
+me = game.Players.LocalPlayer
+function set(name, value)
+	me:SetAttribute(name, value)
+end
+function press(buttons)
+	set("VFTestButtons", buttons)
+	task.wait(0.1)
+	set("VFTestButtons", nil)
+end
+function watch(t)
+	local t0, last = os.clock(), nil
+	while os.clock() - t0 < t do
+		local bolt, drone, eye = me:GetAttribute("VFBoltHealth"), me:GetAttribute("VFDroneHealth"), me:GetAttribute("VFLeerHealth")
+		local now = string.format("bolt %s drone %s eye %s", tostring(bolt), tostring(drone), tostring(eye))
+		if now ~= last then
+			print(string.format("%5.2f", os.clock() - t0), now)
+			last = now
+		end
+		task.wait()
+	end
+end
+```
+
+- **SU1 A bolt.** As the round goes live, `press(16384)` and then `press(128)` with the aim on a
+  wall across the bot's way out of its room, where it'll see the bolt as it comes but not you: the
+  bolt sticks there, and `VFBoltHealth` reads `20`. Run `watch(10)` at once, and keep out of the
+  bot's sight. As it comes into view of the bolt, the bot stops, turns onto it and fires, and the
+  bolt bursts: `watch` prints `bolt 0` within about 1 s of the bot coming into view of it. **Send:**
+  `watch`'s lines, and how long the bot had the bolt in view before it fired.
+- **SU2 You first.** Next round, stick a bolt where the bot will see it, as in SU1, but this time
+  stand beside it, where the bot sees you too, and run `watch(10)`. The bot fights you, not the
+  bolt: you're hit, and `bolt` stays at `20` while it's fighting you. Step out of its sight:
+  about 0.7 s on it turns to the bolt and breaks it. **Send:** `watch`'s lines, and what the bot
+  did.
+- **SU3 A drone.** In the next buy phase, `set("VFTestBuy", "owldrone")`. As the round goes live,
+  `press(4096)`, then `press(128)` to send the drone out, and fly it into the bot's sight, hovering
+  about 10 m in front of it; `VFDroneHealth` starts at `100`. Run `watch(10)`. The bot stops and
+  shoots the drone: `drone` falls with each hit and the drone goes down, its flight over, within
+  about 2 s of the bot seeing it. **Send:** `watch`'s lines.
+
+Then Reyna: stop the game, start a solo Play again, set `VFBotSkill` to `hard` as before, press P
+twice, and pick REYNA in agent select. Run this section's script again.
+
+- **SU4 An eye.** In the buy phase, `set("VFTestBuy", "leer")`. As the round goes live, from out of
+  the bot's sight, `press(4096)`, wait 0.8 s, and `press(128)` with the aim where the eye, 10 m
+  along it, will hang in the bot's way; `VFLeerHealth` reads `100` as it opens. Run `watch(4)` at
+  once. The bot, looking at it, is nearsighted (its `VFNearsight` in `ReplicatedStorage.VFBots` is
+  set), yet it shoots the eye: `eye` falls with each hit and reaches 0, the eye bursting, before
+  its 2 s are up. **Send:** `watch`'s lines, and whether the eye burst or ran out.
+
+Then two players on the course: stop the game and start a Local Server with 2 players, as in
+section 9, and pick REYNA in window 1, as in section 77. Everyone on the course is everyone else's
+enemy. Player 1 stands at the spawn facing down the lane, and player 2 30 m down it, facing
+player 1.
+
+- **SU5 The eye through its nearsight.** In window 1, run section 78's script and `leer()`: the eye
+  hangs 10 m down the lane, 20 m from player 2. In window 2, at once, run this: every 0.25 s for 2 s
+  it prints how far the `Eye` ball is from the camera and how big it is across, both in metres, and
+  `VFNearsight`; then it aims at where the eye came to rest and fires three single shots.
+
+```lua
+local S = require(game.ReplicatedStorage.Shared.Units).STUDS_PER_METRE
+local me = game.Players.LocalPlayer
+for _ = 1, 8 do
+	local eye = workspace.VFLeer:FindFirstChild("Eye")
+	if eye then
+		local away = (eye.Position - workspace.CurrentCamera.CFrame.Position).Magnitude / S
+		print(string.format("%.2f m off, %.2f m across", away, eye.Size.X / S), me:GetAttribute("VFNearsight"))
+	end
+	task.wait(0.25)
+end
+me:SetAttribute("VFTestAimPoint", game.Players.Player1:GetAttribute("VFLastLeer"))
+for _ = 1, 3 do
+	task.wait(0.4)
+	me:SetAttribute("VFTestButtons", 128)
+	task.wait(0.1)
+	me:SetAttribute("VFTestButtons", nil)
+end
+me:SetAttribute("VFTestAimPoint", nil)
+```
+
+While window 2's nearsighted, the eye's drawn about `7.12 m off` and about `0.18 m across` (0.5 m 20
+m off, brought in to 7.1 m), on screen where the eye is, its dark pupil turned to the camera and the
+dark all round it. The shots break it: window 1's `print(me:GetAttribute("VFLeerHealth"))` prints
+`0`, and both windows see it burst. **Send:** the lines, and a screenshot of window 2's screen as
+the eye nearsights it.
+- **SU6 The feel (Bradley).** Play against bots with Sova and Reyna: whether bots shoot your utility
+  as a player would, too quickly or too slowly, and whether an eye nearsighting you looks right
+  through the dark. **Send:** what to change.
 
 ## Results
 
@@ -7781,6 +7897,12 @@ EM8 the lines: ___
 EM9 the lines: ___; what window 2 saw of the Dismiss: ___; window 3: ___
 EM10 the empress lines: ___; the soul lines: ___
 EM11 what to change: ___
+SU1 watch's lines: ___; how long the bot had the bolt in view first: ___
+SU2 watch's lines: ___; what the bot did: ___
+SU3 watch's lines: ___
+SU4 watch's lines: ___; the eye burst or ran out: ___
+SU5 the lines: ___; a screenshot of window 2: ___
+SU6 what to change: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -8247,3 +8369,9 @@ Didn't look right (IDs and what you saw):
 | 75 | Bots casting it | EM10 |
 | 75 | The fixes: the eye in hand's pupil, and the bars keeping up with the quicker hands | EM3, EM4 |
 | 75 | The activation, the glow and an unseen Dismiss, as they feel | EM11 |
+| 76 | Bots shooting a bolt stuck on a wall and a drone in flight, the drone judged where the snapshots had it | SU1, SU3 |
+| 76 | An enemy fought first, their last place watched before a piece of utility | SU2 |
+| 76 | A bot nearsighted by an eye still breaking it | SU4 |
+| 76 | The eye drawn through its nearsight where it looks to be, its pupil to the camera, and shot there | SU5 |
+| 76 | The fixes: EM8's text | EM8 |
+| 76 | How quick bots are at it, and how the eye looks through the dark | SU6 |

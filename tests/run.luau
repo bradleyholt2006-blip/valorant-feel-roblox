@@ -82,5 +82,6 @@ require("./training")
 require("./soulharvest")
 require("./leer")
 require("./empress")
+require("./botthings")
 
 H.finish()

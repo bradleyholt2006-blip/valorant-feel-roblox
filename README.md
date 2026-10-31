@@ -565,6 +565,12 @@ Built one system at a time:
     her cast it going in, holding a way in and with an enemy near. Leer's eye in hand now shows its
     pupil, and the reload and draw bars keep up with quicker hands -
     [research and design](docs/research/75-empress.md)
+76. **Bots shoot enemy utility**: a bot that sees an enemy's Recon Bolt, Owl Drone or Leer eye
+    shoots it, noticing it and aiming at it as it would an enemy, until it breaks; but an enemy
+    always comes first, and it turns from the utility to one as soon as it notices them. Hard and
+    Expert bots break an open Leer eye 12 m off inside its 2 seconds every time, and Easy bots
+    seldom do. Leer's eye now shows through the nearsight it gives, so a player it's nearsighting
+    can still shoot it - [research and design](docs/research/76-bots-shoot-utility.md)
 
 ## Running it
 

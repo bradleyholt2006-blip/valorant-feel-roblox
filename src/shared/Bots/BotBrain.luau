@@ -29,6 +29,11 @@
 --     bursts, close up a spray, each followed by the gun's recovery. Hard
 --     and Expert step aside between bursts, and stop again to fire
 --
+-- An enemy's utility it sees (system 76), a Recon Bolt, an Owl Drone or
+-- Leer's eye, it shoots as players are told to: noticed and aimed at as an
+-- enemy is, its size the turn's and the trigger's target. It does only
+-- while it's noticed no enemy, and gives it up for one as soon as it has.
+--
 -- Plain state and maths: the server tells it what it sees (BotServer),
 -- and turns what it wants into the buttons and angles of its simulation's
 -- input (PlayerSim).
@@ -52,13 +57,16 @@ local TRAIL = 0.5
 
 -- An enemy as the server shows the bot this look: where their head and
 -- chest are and how fast they move (metres, the snapshots' pose), and
--- whether a line from the bot's eye reaches either.
+-- whether a line from the bot's eye reaches either. An enemy's utility
+-- (system 76) has its size across (metres), its middle as its head and
+-- chest; a person has none.
 export type Target = {
 	id: number,
 	head: vector,
 	chest: vector,
 	velocity: vector,
 	visible: boolean,
+	size: number?,
 }
 
 -- An enemy as one look saw them: when, where their chest and head were,
@@ -76,6 +84,7 @@ export type Known = {
 	moving: vector,
 	head: vector,
 	trail: { Glimpse }, -- the looks since they came into view, the last TRAIL seconds', oldest first
+	size: number?, -- an enemy's utility's size across (metres); nil for a person
 }
 
 export type Brain = {
@@ -268,6 +277,7 @@ function BotBrain.look(b: Brain, now: number, eye: vector, targets: { Target })
 				moving = t.velocity,
 				head = t.head,
 				trail = {},
+				size = t.size,
 			}
 			b.known[t.id] = k
 		end
@@ -305,23 +315,37 @@ function BotBrain.hurt(b: Brain, now: number, from: vector)
 end
 
 -- Whom to fight: the one it's fighting while they're in view and noticed,
--- else the nearest noticed.
+-- else the nearest noticed. An enemy's utility only while no enemy is
+-- noticed, nor one it's lost sight of a moment ago, whose last place it
+-- keeps its aim on: the piece it's shooting, else the nearest.
 local function choose(b: Brain, eye: vector): Known?
 	local current = if b.target then b.known[b.target] else nil
-	if current and current.noticed then
+	if current and current.noticed and current.size == nil then
 		return current
 	end
 	local best: Known? = nil
 	local bestDistance = math.huge
+	local thing: Known? = nil
+	local thingDistance = math.huge
 	for _, k in b.known do
 		if k.noticed then
 			local d = vector.magnitude(k.at - eye)
-			if d < bestDistance then
-				best, bestDistance = k, d
+			if k.size == nil then
+				if d < bestDistance then
+					best, bestDistance = k, d
+				end
+			elseif d < thingDistance then
+				thing, thingDistance = k, d
 			end
 		end
 	end
-	return best
+	if best or (current and current.size == nil) then
+		return best
+	end
+	if current and current.noticed then
+		return current
+	end
+	return thing
 end
 
 -- Minimum jerk: how far along a movement of a person's is, a share of its
@@ -348,17 +372,23 @@ local function ease(from: number, to: number, dt: number, tau: number, speed: nu
 	return from + math.clamp(step, -most, most)
 end
 
+-- How wide what it aims at on `k` is, metres: the head or the chest, or a
+-- piece of utility's size.
+local function widthOf(b: Brain, k: Known): number
+	return k.size or (if b.head then HEAD_WIDTH else CHEST_WIDTH)
+end
+
 -- Starts a fight with `k`: its point, its turn, its first wander.
 local function engage(b: Brain, now: number, eye: vector, k: Known)
 	local s = b.skill
 	b.target = k.id
 	b.since = now
-	b.head = b.dice() < s.head.value
+	b.head = k.size == nil and b.dice() < s.head.value
 	local point = if b.head then k.head else k.at
 	local distance = math.max(vector.magnitude(point - eye), 1)
 	local yaw, pitch = BotBrain.anglesTo(eye, point)
 	local d = math.sqrt(wrap(yaw - b.yaw) ^ 2 + (pitch - b.pitch) ^ 2)
-	local w = (if b.head then HEAD_WIDTH else CHEST_WIDTH) / distance
+	local w = widthOf(b, k) / distance
 	b.turnFrom = { yaw = b.yaw, pitch = b.pitch }
 	b.turnAt = now
 	b.turnFor = BotBrain.turnTime(b, d, w)
@@ -497,7 +527,7 @@ function BotBrain.tick(b: Brain, body: Body, dt: number, look: vector?, glances:
 		-- Fire: the target in sight and noticed, the delay gone by, still,
 		-- and the aim where it means it.
 		local inSight = target.noticed and now - target.seen <= 0.1
-		local width = (if b.head then HEAD_WIDTH else CHEST_WIDTH) / math.max(distance, 1)
+		local width = widthOf(b, target) / math.max(distance, 1)
 		local off = math.sqrt(wrap(b.yaw - meanYaw) ^ 2 + (b.pitch - meanPitch) ^ 2)
 		local onTarget = off <= width / 2 * P.tolerance.value
 		-- A spray close up, crouched now and then.
@@ -594,18 +624,20 @@ function BotBrain.tick(b: Brain, body: Body, dt: number, look: vector?, glances:
 	return act
 end
 
--- Whether the bot is fighting someone it can see, or saw a moment ago.
+-- Whether the bot is fighting someone it can see, or saw a moment ago, or
+-- shooting an enemy's utility.
 function BotBrain.fighting(b: Brain): boolean
 	return b.target ~= nil
 end
 
 -- Where it last saw an enemy it's not fighting now, the latest within
--- `within` seconds (its memory, if not given): a place to look into.
+-- `within` seconds (its memory, if not given): a place to look into. An
+-- enemy's utility isn't one.
 function BotBrain.lastSeen(b: Brain, now: number, within: number?): vector?
 	local best: vector? = nil
 	local bestAt = -math.huge
 	for _, k in b.known do
-		if not k.noticed and k.seen > bestAt and now - k.seen <= (within or P.memory.value) then
+		if k.size == nil and not k.noticed and k.seen > bestAt and now - k.seen <= (within or P.memory.value) then
 			best, bestAt = k.at, k.seen
 		end
 	end

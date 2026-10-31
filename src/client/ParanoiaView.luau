@@ -67,6 +67,10 @@ ParanoiaView.dark = 0
 -- further (Omen's Shade, system 43, ShadowView): the dark's whole past it.
 -- Nil without.
 ParanoiaView.cap = nil :: number?
+-- How far you see now, metres, while the dark's drawn round your screen
+-- from there out, a nearsight's or a Shade's; math.huge while it isn't.
+-- Leer's eye shows through it (LeerView, system 76).
+ParanoiaView.reach = math.huge
 
 local PA = AbilityConfig.Paranoia
 local SHADOW = Color3.fromRGB(46, 26, 72)
@@ -208,9 +212,12 @@ local function placeDark(at: Vector3?, amount: number, cap: number?)
 		end
 	end
 	if not at or clear >= 1 then
+		ParanoiaView.reach = math.huge
 		return
 	end
-	local radius = (if cap and capped then cap else out) * Units.STUDS_PER_METRE
+	local reach = if cap and capped then cap else out
+	ParanoiaView.reach = reach
+	local radius = reach * Units.STUDS_PER_METRE
 	if radius ~= darkRadius then
 		darkRadius = radius
 		local side = 2 * radius * math.tan(SLAB_REACH)
