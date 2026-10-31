@@ -6,7 +6,10 @@
 -- arrow next to Crosshair Profile). The DPI is only for the cm/360 shown.
 -- And the minimap's (system 34), the reference's Map settings: Rotate or
 -- Fixed, a fixed map's orientation, Keep Player Centered, Minimap Size and
--- Zoom, Vision Cones, and Show Map Region Names for the big map.
+-- Zoom, Vision Cones, and Show Map Region Names for the big map. And a
+-- gamepad's (system 68): how fast the right stick turns the view, Focus's
+-- share of that, inverting it and walking in Focus, with the buttons
+-- listed.
 --
 -- Each change applies at once and is kept for next time (ClientSettings,
 -- SettingsServer). The code box always holds the crosshair in use, so it can
@@ -41,7 +44,7 @@ SettingsMenu.setOpen = function(_open: boolean) end
 -- says what happened. For TestAim's VFTestSetting.
 SettingsMenu.enter = function(_key: string, _text: string) end
 
-local WIDTH, HEIGHT = 640, 724
+local WIDTH, HEIGHT = 640, 880
 local MARGIN = 20
 local LABEL_W = 170
 local BOX_W = 110
@@ -184,12 +187,12 @@ function SettingsMenu.start()
 		Size = UDim2.fromOffset(240, 32),
 	})
 	Ui.label(root, {
-		Text = "O to close",
+		Text = "O to close, B on a controller",
 		TextSize = 13,
 		TextColor3 = Ui.DIM,
 		TextXAlignment = Enum.TextXAlignment.Right,
-		Position = UDim2.fromOffset(WIDTH - MARGIN - 200, 24),
-		Size = UDim2.fromOffset(200, 16),
+		Position = UDim2.fromOffset(WIDTH - MARGIN - 260, 24),
+		Size = UDim2.fromOffset(260, 16),
 	})
 
 	-- Mouse ----------------------------------------------------------------------
@@ -316,27 +319,30 @@ function SettingsMenu.start()
 	choice("mapBySide", "Fixed orientation", right, 542, 76, { { "0", "SAME WAY" }, { "1", "BY SIDE" } })
 	choice("mapCentred", "Keep me centred", left, 578, 76, { { "1", "ON" }, { "0", "OFF" } })
 	choice("mapCones", "Vision cones", right, 578, 76, { { "1", "ON" }, { "0", "OFF" } })
-	local sizes = {
+	-- Two numbers' boxes on a line, each with its bounds beside it.
+	local function numbers(y: number, pair: { { key: string, name: string, hint: string } })
+		for i, field in pair do
+			local x = if i == 1 then left else right
+			mapLabel(field.name, x, y)
+			boxes[field.key] = textBox(root, {
+				Name = field.key,
+				Position = UDim2.fromOffset(x + MAP_LABEL_W, y),
+				Size = UDim2.fromOffset(76, ROW_H),
+			})
+			Ui.label(root, {
+				Text = field.hint,
+				TextSize = 12,
+				TextColor3 = Ui.DIM,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				Position = UDim2.fromOffset(x + MAP_LABEL_W + 84, y),
+				Size = UDim2.fromOffset(MAP_COLUMN - MAP_LABEL_W - 84, ROW_H),
+			})
+		end
+	end
+	numbers(614, {
 		{ key = "mapSize", name = "Minimap size", hint = "0.8 to 1.2" },
 		{ key = "mapZoom", name = "Minimap zoom", hint = "0.6 to 1.4" },
-	}
-	for i, field in sizes do
-		local x = if i == 1 then left else right
-		mapLabel(field.name, x, 614)
-		boxes[field.key] = textBox(root, {
-			Name = field.key,
-			Position = UDim2.fromOffset(x + MAP_LABEL_W, 614),
-			Size = UDim2.fromOffset(76, ROW_H),
-		})
-		Ui.label(root, {
-			Text = field.hint,
-			TextSize = 12,
-			TextColor3 = Ui.DIM,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			Position = UDim2.fromOffset(x + MAP_LABEL_W + 84, 614),
-			Size = UDim2.fromOffset(MAP_COLUMN - MAP_LABEL_W - 84, ROW_H),
-		})
-	end
+	})
 	choice("mapNames", "Region names", left, 650, 88, { { "always", "ALWAYS" }, { "buy", "IN BUY PHASE" }, { "never", "NEVER" } })
 	Ui.label(root, {
 		Text = "on the big map (hold Caps Lock)",
@@ -345,6 +351,29 @@ function SettingsMenu.start()
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Position = UDim2.fromOffset(left + MAP_LABEL_W + 3 * 92 + 4, 650),
 		Size = UDim2.fromOffset(WIDTH - 2 * MARGIN - MAP_LABEL_W - 3 * 92 - 4, ROW_H),
+	})
+
+	-- Controller -------------------------------------------------------------------
+	header(root, "CONTROLLER", 692)
+	numbers(714, {
+		{ key = "padLook", name = "Look speed", hint = "degrees a second" },
+		{ key = "padFocus", name = "Focus speed", hint = "of that in Focus" },
+	})
+	choice("padInvert", "Invert look", left, 750, 76, { { "1", "ON" }, { "0", "OFF" } })
+	choice("padWalk", "Walk in Focus", right, 750, 76, { { "1", "ON" }, { "0", "OFF" } })
+	Ui.label(root, {
+		Name = "PadHelp",
+		Text = table.concat({
+			"RT fire   LT Focus, or a sniper's scope   LT and RS aim down sights   RS use   A jump   L3 crouch   X reload",
+			"LB, RB and B abilities   LB and RB together the ultimate   Y swap, held the knife",
+			"D-pad: Up ping, Left drop, Down spike, Right buy   Select: the map, held the scores, with Up, Left, Right or Down the Play menu, agents, settings or report",
+		}, "\n"),
+		TextSize = 12,
+		TextColor3 = Ui.DIM,
+		TextWrapped = true,
+		LineHeight = 1.15,
+		Position = UDim2.fromOffset(MARGIN, 788),
+		Size = UDim2.fromOffset(WIDTH - 2 * MARGIN, 58),
 	})
 	local status = Ui.label(root, {
 		Name = "Status",

@@ -72,6 +72,7 @@ Fill in the results block at the end of this page and reply with it, plus:
 | T | Agent select: a card for each agent, its kit, your side's picks and LOCK IN (on the course and while waiting any time, and in a match, where it counts down your window; not in gun game, either deathmatch or between matches) |
 | 5 to 9 | Give yourself a Vandal, Phantom, Operator, Sheriff or Classic (in the arena: anyone, during the buy phase or while waiting; never in gun game or Team Deathmatch; in deathmatch any time) |
 | U | Network Buffering, in the Hit Reg Lab (it was B before the buy menu) |
+| A controller | The console version's layout (section 72): the left stick moves, walking tilted a little, and the right looks; RT fires; LT held is Focus or a sniper's scope, and LT with RS aims down sights; A jumps, X reloads, L3 crouches until it's pressed again, and RS is F; LB, RB and B are Q, E and C, and both bumpers X; Y swaps guns, and held draws the knife; D-pad Up is Z, Left G, Down 4 and Right B; Select tapped is the big map, held the scoreboard, and with D-pad Up, Left, Right or Down M, T, O or N; in a menu, Roblox's gamepad cursor, and B shuts it; while you're down, RT and LT switch whom you watch, and RS takes over |
 
 Every gun is in the buy menu. A gun can also come from an attribute, which is how scripted checks
 do it: with the game running, select your player under Players in the Explorer, add a string
@@ -6060,6 +6061,169 @@ end
   start again: `VFCareerStatus` reads `loaded`, and the rank, `VFRankGames` and the Play menu's
   lines are as they were. **Send:** the attributes before and after.
 
+## 72. A controller
+
+From [68-controller.md](research/68-controller.md). System 68 plays the game with a gamepad, on the
+console version's layout: the left stick moves, walking when it's tilted only a little, and the
+right turns the view; RT fires; LT held is Focus, the view turning slower, or a sniper's scope, and
+LT with RS aims down sights; A jumps, X reloads, L3 crouches until it's pressed again, and RS is F;
+LB, RB and B cast Q, E and C, and LB and RB together the ultimate; Y swaps guns, and held draws the
+knife. D-pad Up pings (held, the wheel), Left drops, Down is 4 and Right is B. Select tapped opens
+or shuts the big map, held shows the scoreboard, and with D-pad Up, Left, Right or Down opens or
+shuts the Play menu, agent select, the settings or the combat report. In a menu the pad drives
+Roblox's gamepad cursor, and B shuts the menu.
+
+No controller is needed but for PD8: a string attribute `VFTestPad` on the local player stands in
+for one, held as it says until it's changed or cleared: the left stick's x and y (up is positive y),
+the right's, LT and RT from 0 to 1, then the buttons held, by the names `a`, `b`, `x`, `y`, `lb`,
+`rb`, `l3`, `r3`, `up`, `down`, `left`, `right` and `select`, all apart by spaces. The local
+player's `VFPad` says what the pad is doing each frame, as the client sees it: `off` while it isn't
+in use, else its `flags` added up (1 W, 2 S, 4 A, 8 D, 16 walking, 32 crouching, 64 jump, 128
+fire, 256 the right button, 512 reload, 1024 the spike's 4, 2048 G, 4096 C, 8192 Q, 16384 E, 32768 X
+and 65536 F), the `zoom` LT wants (`-` where it leaves the zoom be), the zoom the client predicts
+(`scoped`, 0 for none), `focus` 1 in Focus, the `turn` this frame in the mouse's counts (right and
+down positive), and `cursor`: `on` while Roblox's gamepad cursor is up, `pick` with a menu's button
+picked for the D-pad, else `off`.
+
+Press Play (F5), with one player, as Jett (her card in agent select, T, if you've picked another).
+Start at the spawn facing down the target lane with the Vandal in hand, and clear `VFTestYaw` and
+`VFTestPitch` if they're set. Set `VFTestMute` on the local player if the sound's not wanted. Run
+this once in the command bar with it on the client, then each check's lines on their own there:
+`pad(s, t)` holds the pad as `s` says for `t` seconds (0.3 if left out) and prints `s`, then `VFPad`
+and `VFKit`, leaving the pad held; `let()` lets everything go; `turn(s, t)` holds `s` for `t`
+seconds, lets go, and prints how far the view turned, in degrees to the right and up;
+`set(name, value)` sets one of the local player's attributes; and `gui(name, key)` prints an
+attribute of one of PlayerGui's screens. `pad(nil, 0.1)` clears `VFTestPad` and gives the mouse and
+keys back.
+
+```lua
+local me = game.Players.LocalPlayer
+local cam = workspace.CurrentCamera
+function pad(s, t)
+	me:SetAttribute("VFTestPad", s)
+	task.wait(t or 0.3)
+	print(s, "->", me:GetAttribute("VFPad"), me:GetAttribute("VFKit"))
+end
+function let()
+	pad("0 0 0 0 0 0", 0.2)
+end
+local function heading()
+	local look = cam.CFrame.LookVector
+	return math.deg(math.atan2(look.X, -look.Z)), math.deg(math.asin(look.Y))
+end
+function turn(s, t)
+	me:SetAttribute("VFTestPad", s)
+	local yaw, pitch = heading()
+	local right, up, start = 0, 0, os.clock()
+	while os.clock() - start < t do
+		task.wait()
+		local y, p = heading()
+		right += (y - yaw + 540) % 360 - 180
+		up += p - pitch
+		yaw, pitch = y, p
+	end
+	me:SetAttribute("VFTestPad", "0 0 0 0 0 0")
+	print(string.format("%s: %.0f degrees right, %.0f up in %.1f s", s, right, up, t))
+end
+function set(name, value)
+	me:SetAttribute(name, value)
+end
+function gui(name, key)
+	print(name, key, me.PlayerGui[name]:GetAttribute(key))
+end
+```
+
+- **PD1 Moving.** `pad("0 1 0 0 0 0", 1)`: you run ahead down the lane, the HUD's speed at 5.40, and
+  the line reads `flags=1 zoom=0 scoped=0 focus=0 turn=0.0,0.0 cursor=off`. `let()`: you stop,
+  `flags=0`. `pad("0 0.45 0 0 0 0", 1)`: you walk ahead, at 3.29, `flags=17`.
+  `pad("-0.7 -0.7 0 0 0 0", 1)`: back and to the left at once, `flags=6`. `let()`, then
+  `pad(nil, 0.1)`: the line reads `off`, and the mouse and keys move you again. The Output has no
+  `[VF] Roblox's default controls are still on` line since Play. **Send:** the lines.
+
+- **PD2 Looking.** Run `set("VFTestPitch", 0)` and then, on its own, `set("VFTestPitch", nil)`, so
+  the view's level. `turn("0 0 0.5 0 0 0", 1)`: about 40 degrees right and 0 up.
+  `turn("0 0 1 0 0 0", 0.2)`: about 40 too, in a fifth of the time, as the stick's curve has full
+  tilt turning five times as fast as half. `turn("0 0 1 0 0 0", 1)`: about 330, as held all the way
+  over for 0.2 s the turn speeds up to 1.8 times as fast over the next 0.25 s.
+  `turn("0 0 0 1 0 0", 0.2)`: about 40 up, 0 right. `set("VFTestSetting", "padInvert=1")` and the
+  same again: about 40 down (`-40 up`); then `set("VFTestSetting", "padInvert=0")`.
+  `set("VFTestSetting", "padLook=110")`: `turn("0 0 0.5 0 0 0", 1)` reads about 20; then
+  `set("VFTestSetting", "padLook=220")`, and level the view again as at the start. **Send:** the six
+  lines.
+
+- **PD3 Focus and the sights.** With the Vandal in hand, `pad("0 0 0 0 0 1")`: the Vandal fires, the
+  line reading `flags=128`; `let()`. `pad("0 0 0 0 1 0")`: no zoom, and the line reads
+  `zoom=0 scoped=0 focus=1`. Holding LT, `turn("0 0 0.5 0 1 0", 1)`: about 20 degrees, half
+  PD2's 40. `pad("0 0 0 0 1 0 r3")` and `pad("0 0 0 0 1 0")`: the sights come up, the view zooming
+  in a little, and the line reads `zoom=1 scoped=1 focus=0`. The same two again: the sights go,
+  `zoom=0 scoped=0 focus=1`. The two once more, then `turn("0 0 0.5 0 1 0", 1)`: about 32
+  degrees, 0.8 of the 40, as the mouse turns 0.8 as far in the Vandal's sights. LT's let go as it
+  ends: `let()` prints `zoom=0 scoped=0 focus=0`, the sights down. **Send:** the lines.
+
+- **PD4 A sniper's zooms.** `set("VFTestGive", "operator")`, and once the Operator's in hand:
+  `pad("0 0 0 0 1 0", 0.5)`: the scope comes up, `zoom=1 scoped=1`. `pad("0 0 0 0 1 0 r3")` and
+  `pad("0 0 0 0 1 0")`: the second zoom, `zoom=2 scoped=2`. `let()`: the scope's down at once,
+  `zoom=0 scoped=0`. `pad("0 0 0 0 1 0", 0.5)` and `let()`: in to the first zoom and out, with the
+  second showing for a moment at most on the way out. `set("VFTestGive", "vandal")` puts the Vandal
+  back. **Send:** the lines, and whether the second zoom showed on the way out of the first.
+
+- **PD5 Jett's abilities.** Watch the bar at the bottom and `VFKit` at the end of each line.
+  `pad("0 0 0 0 0 0 lb")` and `let()`: Updraft throws you up, a moment after LB goes down, `Q0/1`
+  (U2). `pad("0 0 0 0 0 0 rb")` and `let()`: Tailwind's gust readies, `E0/1` with `windup`; once it
+  reads `ready`, the same again dashes (U4, U5). Once `Q1/1`'s back, `pad("0 0 0 0 0 0 lb", 0.03)`
+  and `let()`: a tap shorter than the bumpers' wait for each other casts Updraft as it's let go.
+  `pad("0 0 0 0 0 0 lb rb")` and `let()`: Blade Storm, the knives drawn and `X0/8 storm`, with
+  neither Updraft nor a gust. After a second, `pad("0 0 0 0 0 1", 0.1)` and `let()` throws one
+  knife, and `pad("0 0 0 0 1 0", 0.1)` and `let()` the rest. `pad("0 0 0 0 0 0 b")` and `let()`:
+  Cloudburst thrown ahead, curving a little as B's held, `C1/2`. **Send:** the lines.
+
+- **PD6 Guns and the spike.** `pad("0 0 0 0 0 0 y", 0.1)` and `let()`: the Classic comes up; the
+  same again, the Vandal. `pad("0 0 0 0 0 0 y", 0.5)` and `let()`: the knife, a quarter of a second
+  after Y goes down; a tap of Y brings the Vandal back. `pad("0 0 0 0 0 0 l3", 0.1)` and `let()`:
+  you crouch, and the line stays `flags=32` with nothing held; the same again stands you up,
+  `flags=0`. `pad("0 0 0 0 0 0 a", 0.1)` and `let()`: a jump. `pad("0 0 0 0 0 1", 0.5)` and `let()`
+  fires a few rounds, then `pad("0 0 0 0 0 0 x", 0.1)` and `let()` reloads them.
+  `pad("0 0 0 0 0 0 left", 0.1)` and `let()`: the Vandal drops ahead and the Classic comes up.
+  `set("VFTestPitch", -35)`: looking down at the Vandal, the prompt under the crosshair reads
+  `RS  PICK UP VANDAL`, and after `pad(nil, 0.1)` `F  PICK UP VANDAL`. `pad("0 0 0 0 0 0 r3", 0.1)`
+  and `let()` picks it up, and the Vandal's drawn. `set("VFTestPitch", nil)`.
+  `set("VFTestGive", "spike")`, then `pad("0 0 0 0 0 0 down", 0.5)`: the spike comes up in hand and
+  the line reads `flags=1024`, with nothing started outside a site; `let()`.
+  `pad("0 0 0 0 0 0 left", 0.1)` and `let()`: the spike drops, and
+  `print(workspace:GetAttribute("VFSpike"))` reads `dropped`. **Send:** the lines.
+
+- **PD7 Pings, menus and the big map.** `set("VFTestPitch", -30)`. `pad("0 0 0 0 0 0 up", 0.1)` and
+  `let()`: a ping on the floor ahead, `gui("VFPings", "Shown")` printing `HERE 3m`.
+  `pad("0 0 0 0 0 0 up", 0.5)`: the wheel's up, `gui("VFPings", "Wheel")` printing `open`;
+  `pad("0 0 0 1 0 0 up")`: `DANGER` lights, and `gui("VFPings", "Wheel")` prints `danger`; `let()`:
+  a `DANGER` marker on the floor ahead. `set("VFTestPitch", nil)`. `pad("0 0 0 0 0 0 right", 0.1)`
+  and `let()`: the buy menu, and the line reads `flags=0` and `cursor=on`, with Roblox's gamepad
+  cursor in the middle of the screen, or `cursor=pick` with a button picked, or `cursor=off`.
+  `pad("0 0 0 0 0 0 b", 0.1)` and `let()`: the menu's shut, and no Cloudburst thrown (`VFKit`'s C as
+  it was). `pad("0 0 0 0 0 0 select right", 0.1)` and `let()`: the settings menu, with the
+  CONTROLLER section at the bottom: `Look speed` 220, `Focus speed` 0.5, `Invert look` and
+  `Walk in Focus` OFF, and the layout under them; B shuts it, and the big map and the scoreboard
+  haven't come up. The same with `select up` in place of `select right`: the Play menu, and B shuts
+  it; with `select left`, agent select, and B shuts it; and with `select down`, the combat report,
+  which `select down` again hides. Then `set("VFTestPlay", "skirmish")`: you're in Skirmish, a bot
+  with you and two against you. `pad("0 0 0 0 0 0 select", 0.1)` and `let()`: the big map,
+  `gui("VFMinimap", "Big")` printing `true`; `pad("0 0 0 0 0 1", 0.1)` and `let()`: a ping on the
+  map where its cursor is, `gui("VFMinimap", "Pings")` having `map`, and no shot fired; Select
+  tapped again shuts it. `pad("0 0 0 0 0 0 select", 1)`: the scoreboard, from a quarter of a second
+  in; `let()` and it goes, with no big map. Once round 1 is live, walk at the other side's bots
+  (`pad("0 1 0 0 0 0", 3)`, and steer with the right stick) and let them kill you: watching your
+  side's bot, the line under its name reads `RS  take control`, and `pad("0 0 0 0 0 0 r3", 0.1)` and
+  `let()` takes it over, as F does (BC1). **Send:** the lines, which `cursor` the buy menu had, and
+  anything that didn't open or shut.
+
+- **PD8 A real controller (optional).** With a controller plugged in or paired, play on the course
+  and in Skirmish. The view's turn and Focus as they feel, and `padLook` and `padFocus` as you'd
+  have them; whether the prompts read `RS` and `HOLD D-PAD DOWN` while you use the pad and `F` and 4
+  while you use the mouse and keys; whether Roblox's cursor comes up in the buy menu, moves with the
+  left stick, buys with A and doesn't jump as the menu shuts, and B shuts it; and nothing from
+  Roblox's own controls, nor its camera, nor its button picking on Select. **Send:** what felt off,
+  and the cursor.
+
 ## Results
 
 ```
@@ -6526,6 +6690,14 @@ RK3 the promotion: ___; the demotion or shield: ___; matches it took: ___
 RK4 Competitive's card: ___; Swiftplay's: side 1's ___, side 2's ___
 RK5 the leaver's line: ___; the match's end: ___
 RK6 before: ___; after: ___
+PD1 the lines: ___; the warning: none / ___
+PD2 half 1 s: ___; full 0.2 s: ___; full 1 s: ___; up: ___; inverted: ___; padLook 110: ___
+PD3 Focus: ___, ___ degrees; the sights: ___, ___ degrees; let go: ___
+PD4 the lines: ___; the second zoom on the way out: yes / no
+PD5 Updraft: ___; the gust and dash: ___; the tap: ___; Blade Storm: ___; Cloudburst: ___
+PD6 Y: ___; the knife: ___; crouching: ___; the prompts: ___ ___; the spike: ___
+PD7 pings: ___; the buy menu's cursor: on / pick / off; menus: ___; map, scores: ___; takeover: ___
+PD8 what felt off: ___; the cursor: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6940,3 +7112,8 @@ Didn't look right (IDs and what you saw):
 | 67 | Each mode's record and Competitive's rank on the Play menu | RK4 |
 | 67 | Leaving Competitive under way counted as a loss | RK5 |
 | 67 | The data store: a career kept from one session to the next | RK6 |
+| 68 | Moving, walking, looking, the ramp and inverting | PD1, PD2 |
+| 68 | Focus, a rifle's sights and a sniper's two zooms held as LT is | PD3, PD4 |
+| 68 | The abilities, the ultimate's chord, Y's swap and the knife, crouching, reloading, a gun picked up and the spike | PD5, PD6 |
+| 68 | Pings, the buy menu and B shutting it, Select's big map, scores and menus, and taking over a bot | PD7 |
+| 68 | Roblox's gamepad cursor, the prompts and the feel with a real controller; no warning about Roblox's default controls | PD1, PD7, PD8 |

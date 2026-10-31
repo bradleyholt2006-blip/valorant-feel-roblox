@@ -74,5 +74,6 @@ require("./botutility")
 require("./takeover")
 require("./body")
 require("./rank")
+require("./pad")
 
 H.finish()

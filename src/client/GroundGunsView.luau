@@ -6,7 +6,8 @@
 -- or "F  SWAP FOR VANDAL" for the gun in its slot. F asks the server for it
 -- (the GroundGun remote), and it's drawn once the server has put it in its
 -- slot, as a purchase is. The view and reach are GroundGuns', the same ones
--- the server checks.
+-- the server checks. On a gamepad, RS is F, and the prompt says so while
+-- the pad's in use (system 68, Gamepad).
 --
 -- Everything is built here from plain parts, lives only on this client,
 -- never collides and is invisible to raycasts.
@@ -29,6 +30,7 @@ local Units = require(Shared.Units)
 local Ui = require(script.Parent.Debug.Ui)
 local BuyMenu = require(script.Parent.BuyMenu)
 local CameraController = require(script.Parent.CameraController)
+local InputSampler = require(script.Parent.InputSampler)
 local PlayerController = require(script.Parent.PlayerController)
 local WeaponLooks = require(script.Parent.Combat.WeaponLooks)
 
@@ -202,7 +204,8 @@ function GroundGunsView.start()
 		local slot = if gun then GroundGuns.slotOf(gun.weapon) else nil
 		if gun and slot and sim then
 			local name = string.upper(WeaponConfig.get(gun.weapon).name)
-			prompt.Text = if sim.weapons.loadout[slot] == "" then "F  PICK UP " .. name else "F  SWAP FOR " .. name
+			local key = if InputSampler.padActive then "RS" else "F"
+			prompt.Text = if sim.weapons.loadout[slot] == "" then key .. "  PICK UP " .. name else key .. "  SWAP FOR " .. name
 			prompt.Visible = true
 		else
 			prompt.Visible = false

@@ -1227,8 +1227,8 @@ function MinimapView.bottom(): number
 	return shownBottom
 end
 
--- Opens the big map as holding Caps Lock does, or closes it (TestAim's
--- VFTestMap).
+-- Opens the big map as holding Caps Lock does, or closes it: a gamepad's
+-- Select tapped (system 68, Gamepad), and TestAim's VFTestMap.
 function MinimapView.setBig(open: boolean)
 	testBig = open
 end

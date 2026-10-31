@@ -5,7 +5,8 @@
 -- weapons while you carry it, a light at the top flashing with the planted
 -- spike's beeps, and a banner as it's planted, defused or detonates. And an
 -- Ultimate Orb (system 49): "HOLD F FOR THE ULTIMATE ORB" within reach of
--- one, and a gold bar while you take it.
+-- one, and a gold bar while you take it. While a gamepad's in use (system
+-- 68, Gamepad), the prompts name its buttons: D-pad Down for 4, RS for F.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,6 +20,7 @@ local UltimateOrbs = require(Shared.Spike.UltimateOrbs)
 
 local Ui = require(script.Parent.Debug.Ui)
 local ClientSpike = require(script.Parent.ClientSpike)
+local InputSampler = require(script.Parent.InputSampler)
 local PlayerController = require(script.Parent.PlayerController)
 local SpikeView = require(script.Parent.SpikeView)
 
@@ -28,7 +30,6 @@ local DT = 1 / MovementConfig.TickRate.value
 local RED = Color3.fromRGB(235, 70, 60)
 local CYAN = Color3.fromRGB(90, 220, 230)
 local GOLD = Color3.fromRGB(230, 200, 120) -- an Ultimate Orb's (OrbServer)
-local ORB_PROMPT = "HOLD F FOR THE ULTIMATE ORB"
 local BAR_W = 320
 local BANNER_TIME = 2.5 -- seconds a banner stays up (estimate)
 
@@ -167,17 +168,18 @@ function SpikeHud.start()
 		-- What you could start here.
 		local ctx = ClientSpike.context()
 		local feet = s.movement.position
-		local text = ""
+		local pad = InputSampler.padActive
+		local text, colour = "", CYAN
 		if SpikeSim.carrying(w) and ctx.canPlant and Spike.siteAt(ctx.zones, feet) then
-			text = "HOLD 4 TO PLANT"
+			text, colour = if pad then "HOLD D-PAD DOWN TO PLANT" else "HOLD 4 TO PLANT", RED
 		elseif ctx.canDefuse and ctx.planted and not SpikeSim.inHand(w) and Spike.inDefuseRange(feet, ctx.planted) then
-			text = if ctx.halfSaved then "HOLD 4 TO DEFUSE  (half saved)" else "HOLD 4 TO DEFUSE"
+			text = string.format("HOLD %s TO DEFUSE%s", if pad then "D-PAD DOWN" else "4", if ctx.halfSaved then "  (half saved)" else "")
 		elseif ctx.orbs and UltimateOrbs.inReach(ctx.orbs, feet) then
-			text = ORB_PROMPT
+			text, colour = string.format("HOLD %s FOR THE ULTIMATE ORB", if pad then "RS" else "F"), GOLD
 		end
 		prompt.Visible = text ~= ""
 		prompt.Text = text
-		prompt.TextColor3 = if text == "HOLD 4 TO PLANT" then RED elseif text == ORB_PROMPT then GOLD else CYAN
+		prompt.TextColor3 = colour
 	end)
 
 	-- Back to nothing to show as a life starts.

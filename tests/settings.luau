@@ -239,7 +239,7 @@ do
 	local s = PlayerSettings.copy(PlayerSettings.DEFAULTS)
 	s.sensitivity, s.scoped, s.dpi, s.crosshair = 0.314, 0.85, 1600, "0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0"
 	local text = PlayerSettings.toText(s)
-	check("as text: key=value lines", text == "sensitivity=0.314\nscoped=0.85\ndpi=1600\ncrosshair=0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0\nmapRotate=1\nmapBySide=1\nmapCentred=0\nmapSize=1\nmapZoom=0.9\nmapCones=1\nmapNames=always")
+	check("as text: key=value lines", text == "sensitivity=0.314\nscoped=0.85\ndpi=1600\ncrosshair=0;P;c;5;h;0;0l;4;0o;2;0a;1;0f;0;1b;0\nmapRotate=1\nmapBySide=1\nmapCentred=0\nmapSize=1\nmapZoom=0.9\nmapCones=1\nmapNames=always\npadLook=220\npadFocus=0.5\npadInvert=0\npadWalk=0")
 	check("and back", PlayerSettings.equal(PlayerSettings.fromText(text), s))
 
 	local wild = PlayerSettings.sanitize({ sensitivity = -1, scoped = 0 / 0, dpi = 1e9, crosshair = "garbage" })
@@ -249,6 +249,16 @@ do
 	local extra = PlayerSettings.fromText("sensitivity=0.6\nfov=110\nnonsense\ncrosshair=0;P;d;1")
 	check("keys it doesn't know are ignored", extra.sensitivity == 0.6 and extra.scoped == 1 and extra.crosshair == "0;P;d;1")
 	check("text that's too long is all defaults", PlayerSettings.equal(PlayerSettings.fromText(string.rep("x", 2000)), PlayerSettings.DEFAULTS))
+	local pad = PlayerSettings.fromText("padLook=5000\npadFocus=0\npadInvert=on\npadWalk=1")
+	check(
+		"a gamepad's (system 68): the look speed and Focus's share held to their bounds, the switches read",
+		pad.padLook == 720 and pad.padFocus == 0.1 and pad.padInvert and pad.padWalk
+	)
+	local plain = PlayerSettings.sanitize(nil)
+	check(
+		"and by default 220 degrees a second, half in Focus, not inverted",
+		plain.padLook == 220 and plain.padFocus == 0.5 and not plain.padInvert
+	)
 end
 
 do

@@ -20,6 +20,13 @@
 -- Minimap Size and Zoom, Minimap Vision Cones, and Show Map Region Names on
 -- the big map: Always, Only in Buy Phase or Never (the UI Settings FAQ).
 --
+-- A gamepad's (system 68, PadRules): how fast the right stick turns the
+-- view, in degrees a second at full tilt; Focus's share of that; inverting
+-- it; and walking while in Focus. The reference's console version has
+-- these as "Base", "Focus" and the other sensitivities, and "Walk While in
+-- Focus" (charlieintel.com, community), on scales it doesn't publish: the
+-- numbers here are ours.
+--
 -- Settings travel as text, "key=value" lines, in the VFSettings attribute
 -- and the data store; keys this doesn't know are ignored, so older servers
 -- read newer settings, and settings kept before a key was known take its
@@ -40,6 +47,11 @@ export type Settings = {
 	mapZoom: number,
 	mapCones: boolean, -- Minimap Vision Cones
 	mapNames: string, -- Show Map Region Names: "always", "buy" (Only in Buy Phase) or "never"
+	-- A gamepad (system 68).
+	padLook: number, -- degrees a second the view turns at full tilt
+	padFocus: number, -- Focus's share of that
+	padInvert: boolean, -- up on the stick looks down
+	padWalk: boolean, -- Walk While in Focus
 }
 
 local PlayerSettings = {}
@@ -66,6 +78,10 @@ PlayerSettings.DEFAULTS = table.freeze({
 	mapZoom = 0.9,
 	mapCones = true,
 	mapNames = "always",
+	padLook = 220, -- ours: about a second and a half for a turn at full tilt, before the ramp
+	padFocus = 0.5,
+	padInvert = false,
+	padWalk = false, -- charlieintel.com's: 'Turn off Walk While in Focus lets you move quicker'
 })
 
 PlayerSettings.LIMITS = table.freeze({
@@ -74,6 +90,8 @@ PlayerSettings.LIMITS = table.freeze({
 	dpi = { 0, 32000 },
 	mapSize = { 0.8, 1.2 },
 	mapZoom = { 0.6, 1.4 },
+	padLook = { 30, 720 },
+	padFocus = { 0.1, 1 },
 })
 
 -- Show Map Region Names' choices, in the menu's order.
@@ -135,6 +153,10 @@ function PlayerSettings.sanitize(raw: any): Settings
 		mapZoom = clampNumber(t.mapZoom, L.mapZoom, D.mapZoom),
 		mapCones = switch(t.mapCones, D.mapCones),
 		mapNames = if table.find(PlayerSettings.MAP_NAMES, t.mapNames) then t.mapNames else D.mapNames,
+		padLook = clampNumber(t.padLook, L.padLook, D.padLook),
+		padFocus = clampNumber(t.padFocus, L.padFocus, D.padFocus),
+		padInvert = switch(t.padInvert, D.padInvert),
+		padWalk = switch(t.padWalk, D.padWalk),
 	}
 end
 
@@ -155,6 +177,10 @@ function PlayerSettings.toText(s: Settings): string
 		"mapZoom=" .. Crosshair.number(s.mapZoom),
 		"mapCones=" .. bit(s.mapCones),
 		"mapNames=" .. s.mapNames,
+		"padLook=" .. Crosshair.number(s.padLook),
+		"padFocus=" .. Crosshair.number(s.padFocus),
+		"padInvert=" .. bit(s.padInvert),
+		"padWalk=" .. bit(s.padWalk),
 	}, "\n")
 end
 

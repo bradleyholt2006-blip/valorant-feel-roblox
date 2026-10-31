@@ -25,6 +25,10 @@
 -- Watching a bot on your side, F takes it over for the rest of the round
 -- (system 62, BotTakeover), where what's played lets the dead: the server
 -- starts your new life in its body, and the line under the name says so.
+--
+-- On a gamepad (system 68, Gamepad), RT and LT switch as left and right
+-- click do, and RS takes over as F does; the line says so while the pad's
+-- in use.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -43,6 +47,7 @@ local Units = require(Shared.Units)
 
 local Ui = require(script.Parent.Debug.Ui)
 local CameraController = require(script.Parent.CameraController)
+local InputSampler = require(script.Parent.InputSampler)
 local PlayMenu = require(script.Parent.PlayMenu)
 local PlayerController = require(script.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.RemoteEntities)
@@ -165,6 +170,25 @@ function Spectate.takeControl(): boolean
 	return true
 end
 
+-- Watches the next player (1) or the one before (-1), as left and right
+-- click do; either ends a death's moment early. Not while the mouse moves a
+-- cursor on the big map, whose left click pings (system 52), or a menu's.
+function Spectate.step(by: number)
+	if CameraController.cursorFree or CameraController.mapCursor or PlayerController.alive then
+		return
+	end
+	local current = Spectate.watching
+	if not current then
+		holdUntil = 0
+		return
+	end
+	local list = watchable()
+	local index = indexOf(list, current)
+	if index and #list > 1 then
+		Spectate.watching = list[(index - 1 + by) % #list + 1]
+	end
+end
+
 function Spectate.start()
 	local gui = Ui.screen("VFSpectate", 15)
 	local title = Ui.label(gui, {
@@ -234,10 +258,12 @@ function Spectate.start()
 		if target and askedFor == target.id and now - askedAt < TAKE_WAIT then
 			text = "Taking control"
 		elseif takeable(target, arena) then
-			text = "F  take control"
+			text = if InputSampler.padActive then "RS  take control" else "F  take control"
 		end
 		if target and #list > 1 then
-			text ..= (if text ~= "" then "     " else "") .. "LEFT / RIGHT CLICK  switch"
+			text ..= (if text ~= "" then "     " else "") .. (if InputSampler.padActive
+				then "RT / LT  switch"
+				else "LEFT / RIGHT CLICK  switch")
 		end
 		title.Visible = target ~= nil and not over
 		if target then
@@ -263,18 +289,8 @@ function Spectate.start()
 			then 1
 			elseif input.UserInputType == Enum.UserInputType.MouseButton2 then -1
 			else 0
-		if step == 0 or processed or CameraController.cursorFree or CameraController.mapCursor or PlayerController.alive then
-			return
-		end
-		local current = Spectate.watching
-		if not current then
-			holdUntil = 0
-			return
-		end
-		local list = watchable()
-		local index = indexOf(list, current)
-		if index and #list > 1 then
-			Spectate.watching = list[(index - 1 + step) % #list + 1]
+		if step ~= 0 and not processed then
+			Spectate.step(step)
 		end
 	end)
 end

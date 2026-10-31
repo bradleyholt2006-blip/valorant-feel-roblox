@@ -785,11 +785,44 @@ function PlayerController.requestWeapon(id: string)
 	end
 end
 
+-- Switches off the Input Action System's bindings under `root`, now and as
+-- they come, and keeps them off: each InputContext. Returns a count of
+-- those switched off, which goes up as more come.
+local function switchOffContexts(root: Instance): () -> number
+	local count = 0
+	local function off(d: Instance)
+		if not d:IsA("InputContext") then
+			return
+		end
+		count += 1
+		local context = d :: any
+		pcall(function()
+			context.Enabled = false
+			d:GetPropertyChangedSignal("Enabled"):Connect(function()
+				if context.Enabled then
+					context.Enabled = false
+				end
+			end)
+		end)
+	end
+	for _, d in root:GetDescendants() do
+		off(d)
+	end
+	root.DescendantAdded:Connect(off)
+	return function()
+		return count
+	end
+end
+
 -- Roblox's default controls would also drive the character, so they are
 -- switched off. Their PlayerModule is in PlayerScripts with the legacy player
 -- scripts, and in StarterPlayer with the ones built on the Input Action
 -- System (Workspace.PlayerScriptsUseInputActionSystem: opt-in since July
--- 2026, every place's default from 2027), which may not have GetControls.
+-- 2026, every place's default from 2027), which have no GetControls (in
+-- Studio: 'attempt to call missing method 'GetControls''): theirs are
+-- InputContexts, switched off instead, in the module and in PlayerScripts.
+-- Ours are UserInputService's, so a gamepad's buttons stay ours too
+-- (system 68).
 -- The anchored root and zero WalkSpeed already keep the defaults from moving
 -- the character, so this is best effort and never holds up the start.
 local function disableDefaultControls()
@@ -810,7 +843,14 @@ local function disableDefaultControls()
 		local controls = (require(playerModule) :: any):GetControls()
 		controls:Disable()
 	end)
-	if not ok then
+	if ok then
+		return
+	end
+	local inModule = switchOffContexts(playerModule)
+	local inScripts = if playerModule:IsDescendantOf(playerScripts) then nil else switchOffContexts(playerScripts)
+	-- They may come a moment after the module's required.
+	task.wait(3)
+	if inModule() == 0 and (inScripts == nil or inScripts() == 0) then
 		warn("[VF] Roblox's default controls are still on: " .. tostring(problem))
 	end
 end

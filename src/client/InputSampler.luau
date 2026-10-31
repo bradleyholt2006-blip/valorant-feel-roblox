@@ -6,6 +6,9 @@
 -- starts and ends between two frames would never be seen as held. Presses are
 -- latched: anything pressed since the last sample counts as held for one
 -- tick, which is what makes a fast semi-auto tap always fire.
+--
+-- A gamepad's flags come on top (system 68, Gamepad): held each tick as its
+-- hook says, and its presses latched as a key's are.
 
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -65,6 +68,11 @@ InputSampler.blockMouse = false
 -- Flags never sent, whatever's held: G's in gun game, whose guns can't be
 -- dropped (ArenaHud, system 23).
 InputSampler.blockButtons = 0
+-- The gamepad's flags for each tick (Gamepad, system 68), and whether the
+-- last input was the gamepad's, for the prompts on the HUD. Its fire and
+-- alt fire are the mouse buttons', blocked as they are.
+InputSampler.padSample = nil :: (() -> number)?
+InputSampler.padActive = false
 
 local function flagFor(input: InputObject): number
 	for _, binding in InputSampler.Bindings do
@@ -76,6 +84,11 @@ local function flagFor(input: InputObject): number
 		end
 	end
 	return 0
+end
+
+-- Flags pressed on the gamepad, held for the next tick as a key's press is.
+function InputSampler.padPress(flags: number)
+	latched = bit32.bor(latched, flags)
 end
 
 function InputSampler.start()
@@ -102,6 +115,14 @@ function InputSampler.sample(): number
 		real = bit32.band(real, bit32.bnot(MOUSE_FLAGS))
 	end
 	local buttons = bit32.bor(real, InputSampler.extraButtons)
+	local pad = InputSampler.padSample
+	if pad then
+		local flags = pad()
+		if blocked then
+			flags = bit32.band(flags, bit32.bnot(MOUSE_FLAGS))
+		end
+		buttons = bit32.bor(buttons, flags)
+	end
 	for _, binding in InputSampler.Bindings do
 		if bit32.band(buttons, binding.flag) ~= 0 then
 			continue

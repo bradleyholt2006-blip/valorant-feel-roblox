@@ -80,7 +80,8 @@ local Who = require(script.Parent.Who)
 
 local Scoreboard = {}
 
--- Whether it's held open: Tab, or TestAim's VFTestBoard.
+-- Whether it's held open: Tab, a gamepad's Select held (system 68,
+-- Gamepad), or TestAim's VFTestBoard.
 Scoreboard.held = false
 
 local ROWS = 5 -- a side, at most
