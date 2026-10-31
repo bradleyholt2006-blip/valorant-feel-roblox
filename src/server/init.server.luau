@@ -77,6 +77,7 @@ local ReportServer = require(script.ReportServer)
 local BannerServer = require(script.BannerServer)
 local CalloutServer = require(script.CalloutServer)
 local ModeServers = require(script.ModeServers)
+local TrainingServer = require(script.TrainingServer)
 local MapDresser = require(script.MapDresser)
 
 TestRange.buildIfMissing()
@@ -119,6 +120,7 @@ SettingsServer.start()
 CareerServer.start()
 Dummies.start()
 BotServer.start()
+TrainingServer.start()
 -- Before the arena starts, so whoever joins starts in the Play menu where
 -- they should (system 24).
 ModeServers.start()

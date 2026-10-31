@@ -11,6 +11,7 @@ local ArenaConfig = require("../Arena/ArenaConfig")
 local DeathmatchConfig = require("../Arena/DeathmatchConfig")
 local GunGameConfig = require("../Arena/GunGameConfig")
 local TeamDeathmatchConfig = require("../Arena/TeamDeathmatchConfig")
+local TrainingConfig = require("../Training/TrainingConfig")
 local MatchConfig = require("./MatchConfig")
 
 export type Status = "confirmed" | "community" | "estimate"
@@ -21,15 +22,17 @@ local function p(value: number, status: Status, source: string): Param
 end
 
 -- A mode on the menu: what the arena plays for it (Workspace's
--- ArenaConfig.MODE, and for the spike rounds MatchConfig.FORMAT), and how
--- many play its match at once: two sides of its side size, or in a free for
--- all everyone it has room for. More can be on its server, waiting in line
--- or in the menu.
+-- ArenaConfig.MODE, and for the spike rounds MatchConfig.FORMAT), or
+-- nothing for Basic Training, played on the course with the arena off
+-- (TrainingConfig.ON); and how many play its match at once: two sides of
+-- its side size, or in a free for all everyone it has room for, or one, on
+-- a server of their own. More can be on its server, waiting in line or in
+-- the menu.
 export type Mode = {
 	key: string, -- the menu's and the server list's name for it
 	name: string,
 	blurb: string, -- how it's won, in a line
-	arena: string,
+	arena: string?,
 	format: string?,
 	players: number,
 	freeForAll: boolean?, -- everyone for themselves, with no sides
@@ -43,10 +46,17 @@ local TEAM_DEATHMATCH = TeamDeathmatchConfig.Rules.sideSize.value
 local SPIKE = MatchConfig.Rules.sideSize.value
 local F = MatchConfig.Formats
 
--- In the menu's order. The spike rounds' formats are the reference's own
--- queues, by its names for them: Standard is Unrated. Each blurb is from
--- the rules it names, so it stays true to them.
+-- In the menu's order: Basic Training first, for a new player (system
+-- 72). The spike rounds' formats are the reference's own queues, by its
+-- names for them: Standard is Unrated. Each blurb is from the rules it
+-- names, so it stays true to them.
 PlayConfig.Modes = {
+	{
+		key = TrainingConfig.KEY,
+		name = "Basic Training",
+		blurb = string.format("Learn the basics a step at a time, %d steps on your own", #TrainingConfig.Steps - 1),
+		players = 1,
+	},
 	{
 		key = "skirmish",
 		name = "Skirmish",
@@ -130,11 +140,12 @@ end
 -- as the arena has from system 21).
 PlayConfig.DEFAULT = "skirmish"
 
--- The mode Workspace's attributes ask the arena for, as given (the arena
--- on, its mode and the spike rounds' format); nil with the arena off.
-function PlayConfig.keyOf(on: any, arenaMode: any, format: any): string?
+-- The mode Workspace's attributes ask for, as given (the arena on, its
+-- mode and the spike rounds' format, and Basic Training on); nil on the
+-- course with neither.
+function PlayConfig.keyOf(on: any, arenaMode: any, format: any, training: any): string?
 	if on ~= true then
-		return nil
+		return if training == true then TrainingConfig.KEY else nil
 	elseif arenaMode == "spike" then
 		return if typeof(format) == "string" and PlayConfig.ByKey[format] then format else MatchConfig.DEFAULT_FORMAT
 	elseif arenaMode == "duel" or arenaMode == "gungame" or arenaMode == "deathmatch" or arenaMode == "teamdeathmatch" then

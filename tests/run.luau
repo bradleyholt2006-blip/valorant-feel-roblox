@@ -78,5 +78,6 @@ require("./pad")
 require("./rejoin")
 require("./afk")
 require("./touch")
+require("./training")
 
 H.finish()

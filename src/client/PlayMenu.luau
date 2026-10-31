@@ -12,6 +12,8 @@
 -- on as the server started. While it's up the mouse moves a cursor, and
 -- behind it is whoever Spectate watches.
 --
+-- Basic Training's card (system 72) reads SOLO: a server of your own.
+--
 -- Each card also has your own record in its mode (system 67): matches won
 -- and lost and kills a death, and on Competitive's your rank, or the
 -- placements played.
@@ -24,9 +26,10 @@
 -- server that has you pick first, and says why.
 --
 -- Everything comes from attributes: Workspace's PlayConfig.COUNTS and what
--- the arena plays (ArenaConfig.ON and MODE, MatchConfig.FORMAT), and your
--- own PlayConfig.PLAYING, PlayConfig.REJOIN, CareerRules.ATTRIBUTE and
--- RankConfig's; and from the Play remote, what came of a press.
+-- the arena plays (ArenaConfig.ON and MODE, MatchConfig.FORMAT, and on the
+-- course TrainingConfig.ON), and your own PlayConfig.PLAYING,
+-- PlayConfig.REJOIN, CareerRules.ATTRIBUTE and RankConfig's; and from the
+-- Play remote, what came of a press.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -44,6 +47,7 @@ local MatchConfig = require(Shared.Match.MatchConfig)
 local PlayConfig = require(Shared.Match.PlayConfig)
 local ServerList = require(Shared.Match.ServerList)
 local Remotes = require(Shared.Net.Remotes)
+local TrainingConfig = require(Shared.Training.TrainingConfig)
 
 local BuyMenu = require(script.Parent.BuyMenu)
 local CameraController = require(script.Parent.CameraController)
@@ -83,12 +87,14 @@ type Card = { key: string, button: TextButton, stroke: UIStroke, here: TextLabel
 
 local me = Players.LocalPlayer
 
--- The mode this server plays, by its key; nil on the course.
+-- The mode this server plays, by its key; nil on the course, with Basic
+-- Training off.
 local function current(): string?
 	return PlayConfig.keyOf(
 		Workspace:GetAttribute(ArenaConfig.ON),
 		Workspace:GetAttribute(ArenaConfig.MODE),
-		Workspace:GetAttribute(MatchConfig.FORMAT)
+		Workspace:GetAttribute(MatchConfig.FORMAT),
+		Workspace:GetAttribute(TrainingConfig.ON)
 	)
 end
 
@@ -197,7 +203,7 @@ function PlayMenu.start()
 			Size = UDim2.fromOffset(CARD_W - 16, 14),
 		})
 		Ui.label(button, {
-			Text = if mode.freeForAll then "FFA" else string.format("%dv%d", side, side),
+			Text = if mode.freeForAll then "FFA" elseif mode.players == 1 then "SOLO" else string.format("%dv%d", side, side),
 			Font = Enum.Font.GothamBold,
 			TextSize = 30,
 			TextXAlignment = Enum.TextXAlignment.Center,
