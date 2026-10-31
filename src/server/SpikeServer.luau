@@ -600,6 +600,24 @@ function SpikeServer.botTaken(id: number, to: number)
 	end
 end
 
+-- Someone out of play with no death: gone from the server (`left`, with
+-- their simulation), or taken out of the match while they stay in it
+-- (system 69). The spike they carried lies where they were, and the half
+-- of a defuse they reached is kept.
+function SpikeServer.gone(id: number, left: boolean)
+	local sim = if left then nil else simOf(id)
+	keepHalf(sim)
+	if carrier == id then
+		if left then
+			carrier = nil -- gone, with their simulation
+		end
+		lay(if sim then sim.movement.position else carrierFeet or startAt)
+	end
+	if stepOff == id then
+		stepOff = nil
+	end
+end
+
 -- The spike as the bots' plans know it, in the spike rounds; nil else.
 function SpikeServer.view(): View?
 	if layout == nil or events == nil then
@@ -633,13 +651,7 @@ function SpikeServer.start()
 		onDeath(player.UserId)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
-		if carrier == player.UserId then
-			carrier = nil -- gone, with their simulation
-			lay(carrierFeet or startAt)
-		end
-		if stepOff == player.UserId then
-			stepOff = nil
-		end
+		SpikeServer.gone(player.UserId, true)
 	end)
 
 	Workspace:GetAttributeChangedSignal(ArenaConfig.ON):Connect(function()

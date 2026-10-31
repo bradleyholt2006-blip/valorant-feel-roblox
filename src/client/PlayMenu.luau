@@ -16,10 +16,14 @@
 -- and lost and kills a death, and on Competitive's your rank, or the
 -- placements played.
 --
+-- With a place held for you in a match under way (system 69), here or on
+-- another server, its mode is picked and PLAY reads RECONNECT: pressed, it
+-- puts you back in that match, sent back to its server if it's another.
+--
 -- Everything comes from attributes: Workspace's PlayConfig.COUNTS and what
 -- the arena plays (ArenaConfig.ON and MODE, MatchConfig.FORMAT), and your
--- own PlayConfig.PLAYING, CareerRules.ATTRIBUTE and RankConfig's; and from
--- the Play remote, what came of a press.
+-- own PlayConfig.PLAYING, PlayConfig.REJOIN, CareerRules.ATTRIBUTE and
+-- RankConfig's; and from the Play remote, what came of a press.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -92,6 +96,12 @@ local function arrivedFor(): string?
 		return TeleportService:GetLocalPlayerTeleportData()
 	end)
 	local key = if ok and typeof(data) == "table" then (data :: any)[PlayConfig.DATA_KEY] else nil
+	return if typeof(key) == "string" and PlayConfig.ByKey[key] then key else nil
+end
+
+-- The mode of a match under way that holds a place for you (system 69).
+local function heldFor(): string?
+	local key = me:GetAttribute(PlayConfig.REJOIN)
 	return if typeof(key) == "string" and PlayConfig.ByKey[key] then key else nil
 end
 
@@ -265,6 +275,8 @@ function PlayMenu.start()
 	-- Your totals, as last read from your CareerRules.ATTRIBUTE.
 	local careerText: any = nil
 	local career: { [string]: CareerRules.Totals } = {}
+	-- The held place's mode last seen, so it's picked once as it comes.
+	local offered: string? = nil
 
 	-- Whether you've yet to press PLAY on a server that has you pick first.
 	local function mustPick(): boolean
@@ -283,7 +295,7 @@ function PlayMenu.start()
 		hovered = nil
 		if open then
 			BuyMenu.setOpen(false)
-			selected = current() or PlayConfig.DEFAULT
+			selected = heldFor() or current() or PlayConfig.DEFAULT
 		elseif not SettingsMenu.open then
 			CameraController.cursorFree = false
 			InputSampler.blockMouse = false
@@ -291,6 +303,7 @@ function PlayMenu.start()
 	end
 	PlayMenu.setOpen = setOpen
 
+	-- PLAY for the mode of a place held for you is RECONNECT (system 69).
 	local function press(key: string)
 		if busy or not PlayConfig.ByKey[key] then
 			return
@@ -298,7 +311,7 @@ function PlayMenu.start()
 		busy = true
 		busySince = os.clock()
 		note = ""
-		Remotes.get().Play:FireServer(key)
+		Remotes.get().Play:FireServer(key, heldFor() == key)
 	end
 	PlayMenu.play = press
 	playButton.MouseButton1Click:Connect(function()
@@ -353,6 +366,13 @@ function PlayMenu.start()
 				then "   In Studio, PLAY another mode and this server switches to it"
 				else "   PLAY another mode and you go to a server playing it"
 		hint.Text = if mustPick() then "" else "M  close"
+		local held = heldFor()
+		if held ~= offered then
+			offered = held
+			if held then
+				selected = held
+			end
+		end
 		local counts = ServerList.parseCounts(Workspace:GetAttribute(PlayConfig.COUNTS))
 		local text = me:GetAttribute(CareerRules.ATTRIBUTE)
 		if text ~= careerText then
@@ -377,10 +397,17 @@ function PlayMenu.start()
 			card.button.BackgroundColor3 = if card.key == hovered or card.key == selected then TILE_HOVER else TILE
 		end
 		local picked = PlayConfig.ByKey[selected]
-		playButton.Text = if busy then "..." elseif picked then "PLAY " .. string.upper(picked.name) else "PLAY"
+		local back = held ~= nil and held == selected
+		playButton.Text = if busy then "..." elseif back then "RECONNECT" elseif picked then "PLAY " .. string.upper(picked.name) else "PLAY"
 		playButton.BackgroundTransparency = if busy then 0.5 else 0
-		status.Text = note
-		status.TextColor3 = noteColour
+		local heldMode = if held then PlayConfig.ByKey[held] else nil
+		if note == "" and heldMode and not busy then
+			status.Text = string.format("YOUR %s MATCH IS STILL ON: RECONNECT TO GET BACK IN", string.upper(heldMode.name))
+			status.TextColor3 = GOLD
+		else
+			status.Text = note
+			status.TextColor3 = noteColour
+		end
 	end)
 end
 

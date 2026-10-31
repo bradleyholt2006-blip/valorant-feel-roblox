@@ -175,6 +175,17 @@
 -- its mode, and in Competitive their rank. Leaving a Competitive match
 -- under way is a loss.
 --
+-- A player who leaves the spike rounds' match under way has their place
+-- held (system 69, MatchRules): their record, side, credits and agent wait
+-- for them (AgentServer.keeps), a bot fills in meanwhile, and joining
+-- again (PLAY, or the menu's RECONNECT, PlayConfig.REJOIN) puts them back,
+-- the bot giving way on their side (BotFill). What the match counts for
+-- them in their career waits for its end (CareerServer.hold): away then,
+-- it's leaving, and so it is for anyone still away as the server closes.
+-- ModeServers says where the match is to a player who comes back to
+-- another server (Arena.onHold and onRelease). In Studio, Workspace's
+-- VFTestAway takes a player out as if they'd left.
+--
 -- P (Studio or the place owner) moves on through the arena, the 1v1, gun
 -- game, the spike rounds in the standard format, the spike rounds in
 -- Swiftplay's, and off. So do Workspace's attributes, set from the server,
@@ -258,6 +269,11 @@ local Arena = {}
 -- Whether players join what's played only once they press PLAY for it
 -- (system 24), rather than as they join the server. ModeServers sets it.
 Arena.menuFirst = false
+-- A place held in the spike rounds (system 69), by a player's id in the
+-- rules: as they leave a match under way, with the mode's key, and as it's
+-- let go (they're back, or the match is over). ModeServers sets them.
+Arena.onHold = nil :: ((id: number, key: string) -> ())?
+Arena.onRelease = nil :: ((id: number) -> ())?
 
 export type Mode = "skirmish" | "duel" | "spike" | "gungame" | "deathmatch" | "teamdeathmatch"
 
@@ -354,6 +370,9 @@ local livedMatch, livedRound = 0, 0
 local endedMatch, endedRound = 0, 0
 -- The last match counted in everyone's careers (system 67), by its key.
 local counted: string? = nil
+-- Places held for players away from the spike rounds' match (system 69),
+-- by id, until the rules let them go.
+local heldPlaces: { [number]: boolean } = {}
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -1133,13 +1152,13 @@ local function join(id: number)
 	spawn(ids)
 end
 
-local function leave(id: number)
+local function leave(id: number, hold: boolean?)
 	local ids: { number }
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	if s then
 		ids = ArenaRules.leave(s, id, now())
 	elseif m then
-		ids = MatchRules.leave(m, id, now())
+		ids = MatchRules.leave(m, id, now(), hold)
 	elseif g then
 		ids = GunGameRules.leave(g, id, now())
 	elseif d then
@@ -1173,7 +1192,23 @@ local function standing(): CareerRules.Match?
 			score = member.score,
 			rounds = member.rounds,
 			bot = BotServer.has(id),
+			left = member.left,
 		}
+	end
+	-- And those away, their places held (system 69).
+	if m then
+		for id, member in m.away do
+			players[id] = {
+				side = member.side,
+				kills = member.kills,
+				deaths = member.deaths,
+				assists = member.assists,
+				score = member.score,
+				rounds = member.rounds,
+				bot = false,
+				away = true,
+			}
+		end
 	end
 	local state = s or m
 	return {
@@ -1219,7 +1254,11 @@ local function fill()
 	end
 	local on = sides ~= nil and mode ~= nil and Workspace:GetAttribute(BotConfig.ON) ~= false
 	local quota = if on and mode then BotConfig.Quotas[mode].value else 0
-	local add, leaving = BotFill.plan(quota, players, seats, phase)
+	-- A player first in line coming back to a place held for them (system
+	-- 69): the bot to give way is on their side.
+	local first = if sides then sides.queue[1] else nil
+	local held = if m and first then m.away[first] else nil
+	local add, leaving = BotFill.plan(quota, players, seats, phase, if held then held.side else nil)
 	for _, id in leaving do
 		leave(id)
 		BotServer.remove(id)
@@ -1663,11 +1702,91 @@ local function seesFor(key: string): DeathmatchSpawns.Sees
 	return clear
 end
 
+-- The Play menu's key for what's played (PlayConfig.keyOf); nil with
+-- nothing.
+local function modeKey(): string?
+	local m = match
+	return if mode then PlayConfig.keyOf(true, mode, if m then m.formatKey else nil) else nil
+end
+
+-- A player's place held as they leave the spike rounds' match under way
+-- (system 69): what it counts for in their career waits for its end, and
+-- ModeServers says where it is.
+local function held(id: number)
+	heldPlaces[id] = true
+	CareerServer.hold(id, true)
+	local hook, key = Arena.onHold, modeKey()
+	if hook and key then
+		hook(id, key)
+	end
+	if RunService:IsStudio() then
+		-- For checks.
+		print(string.format("[VF] place held: %d in %s", id, key or "?"))
+	end
+end
+
+-- Places the rules hold no longer let go: the player's back, the match
+-- has ended, or nothing's played.
+local function releaseHolds()
+	local m = match
+	for id in heldPlaces do
+		if m and MatchRules.held(m, id) then
+			continue
+		end
+		heldPlaces[id] = nil
+		CareerServer.hold(id, false)
+		AgentServer.forget(id)
+		local player = playerFor(id)
+		if player then
+			player:SetAttribute(PlayConfig.REJOIN, nil)
+		end
+		local hook = Arena.onRelease
+		if hook then
+			hook(id)
+		end
+		if RunService:IsStudio() then
+			print(string.format("[VF] place let go: %d, %s", id, if m and m.members[id] then "back" else "its match ended"))
+		end
+	end
+end
+
+-- What the arena keeps of a player in the rules, gone as they leave.
+local function forgetPlayer(player: Player)
+	local id = player.UserId
+	queued[player] = nil
+	taking[player] = nil
+	kitMatch[id] = nil
+	loadouts[id] = nil
+	killedWith[id] = nil
+	diedAt[id] = nil
+end
+
+-- A player out of the spike rounds' match under way while they stay in
+-- the server (system 69), as if they'd left: their place held, no life,
+-- the spike they carried on the ground, and back in the menu, where
+-- RECONNECT puts them back.
+local function takeOut(player: Player)
+	local m, id = match, player.UserId
+	if not m or not MatchRules.underWay(m) or not m.members[id] then
+		return
+	end
+	SpikeServer.gone(id, false)
+	PlayerSimServer.unspawn(player)
+	forgetPlayer(player)
+	chosen[player] = nil
+	player:SetAttribute(PlayConfig.PLAYING, nil)
+	leave(id, true)
+	held(id)
+	player:SetAttribute(PlayConfig.REJOIN, modeKey())
+end
+
 -- Someone has pressed PLAY for what's played here (system 24): they join
--- it, now if it's on, or as it starts.
+-- it, now if it's on, or as it starts; back in a place held for them, if
+-- there's one (system 69).
 function Arena.play(player: Player)
 	chosen[player] = true
 	player:SetAttribute(PlayConfig.PLAYING, true)
+	player:SetAttribute(PlayConfig.REJOIN, nil)
 	join(player.UserId)
 end
 
@@ -1676,6 +1795,13 @@ function Arena.has(player: Player): boolean
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	local sides: Roster.Sides? = if s then s elseif m then m elseif g then g elseif d then d elseif t then t else nil
 	return sides ~= nil and (sides.members[player.UserId] ~= nil or Roster.placeInLine(sides, player.UserId) ~= nil)
+end
+
+-- Whether a place is held for someone in the spike rounds' match under way
+-- (system 69).
+function Arena.holds(player: Player): boolean
+	local m = match
+	return m ~= nil and MatchRules.held(m, player.UserId)
 end
 
 -- How many players are in what's played, on a side (not waiting in line,
@@ -1702,6 +1828,7 @@ end
 
 -- The rounds' clock, once a server frame.
 function Arena.step(time: number)
+	releaseHolds()
 	local ids: { number }
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	if s then
@@ -1802,6 +1929,22 @@ function Arena.start()
 			publish()
 		end
 	end)
+	-- Studio's stand-in for a player leaving and coming back (system 69),
+	-- as a Local Server's can't come back: out of the match, their place
+	-- held.
+	if RunService:IsStudio() then
+		Workspace:GetAttributeChangedSignal(MatchConfig.AWAY):Connect(function()
+			local id = Workspace:GetAttribute(MatchConfig.AWAY)
+			if id == nil then
+				return
+			end
+			Workspace:SetAttribute(MatchConfig.AWAY, nil)
+			local player = if typeof(id) == "number" then Players:GetPlayerByUserId(id) else nil
+			if player then
+				takeOut(player)
+			end
+		end)
+	end
 	-- F watching a bot on their side, down: take it over (system 62).
 	Remotes.get().TakeOver.OnServerEvent:Connect(function(player, bot)
 		if typeof(bot) == "number" then
@@ -1987,6 +2130,16 @@ function Arena.start()
 		local number = if s then s.match elseif m then m.match elseif t then t.match else 0
 		local side = if sides then Roster.sideOf(sides, id) else nil
 		return AgentSelect.moment(mode, phase, number, begun, side)
+	end
+	-- A player leaving the spike rounds' match under way keeps their agent,
+	-- as their place is held (system 69).
+	AgentServer.keeps = function(id: number): boolean
+		local m = match
+		return m ~= nil and MatchRules.underWay(m) and (m.members[id] ~= nil or m.away[id] ~= nil)
+	end
+	AgentServer.away = function(id: number): boolean
+		local m = match
+		return m ~= nil and MatchRules.held(m, id)
 	end
 	AgentServer.swapsNow = function(_: Instance, id: number): boolean
 		local s, m, t = skirmish, match, tdm
@@ -2223,30 +2376,42 @@ function Arena.start()
 	end
 
 	Players.PlayerAdded:Connect(function(player)
+		local m = match
 		if not Arena.menuFirst then
 			join(player.UserId)
+		elseif m and MatchRules.held(m, player.UserId) then
+			-- Back with a place held here (system 69): the menu's RECONNECT.
+			player:SetAttribute(PlayConfig.REJOIN, modeKey())
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		local id = player.UserId
-		queued[player] = nil
-		taking[player] = nil
-		kitMatch[id] = nil
-		loadouts[id] = nil
-		killedWith[id] = nil
+		forgetPlayer(player)
 		chosen[player] = nil
-		diedAt[id] = nil
-		-- Leaving a Competitive match under way (system 67): a loss, as it
-		-- stands.
+		-- Leaving the spike rounds' match under way (system 69): the place
+		-- is held, and what the match counts for in their career waits for
+		-- its end.
 		local m = match
-		if m and m.formatKey == CareerRules.RANKED and m.phase ~= "matchOver" and m.phase ~= "vote" then
-			local stands = standing()
-			if stands then
+		local holds = m ~= nil and MatchRules.underWay(m) and m.members[id] ~= nil
+		leave(id, holds)
+		if holds then
+			held(id)
+		end
+	end)
+	-- Closing (system 69): anyone still away from a Competitive match under
+	-- way has left it, as it stands.
+	CareerServer.beforeClose = function()
+		local m = match
+		if not m or m.formatKey ~= CareerRules.RANKED or not MatchRules.underWay(m) then
+			return
+		end
+		local stands = standing()
+		if stands then
+			for id in m.away do
 				CareerServer.left(stands, id)
 			end
 		end
-		leave(id)
-	end)
+	end
 
 	Workspace:SetAttribute(ArenaConfig.ON, on)
 end

@@ -39,6 +39,9 @@ export type Member = {
 	-- In this round from its start: not someone who joined it under way, so
 	-- a round they sat out doesn't pull their average down.
 	played: boolean,
+	-- Left the match under way and came back to it (system 69, the spike
+	-- rounds), for what it counts for in their career.
+	left: boolean?,
 }
 
 -- By member: who on the other side has damaged their life under way, for
@@ -210,6 +213,7 @@ end
 function Roster.clearRecord(m: Member)
 	m.kills, m.deaths, m.assists = 0, 0, 0
 	m.score, m.rounds, m.roundKills = 0, 0, 0
+	m.left = nil
 end
 
 -- A round has been played to its end: it counts toward the average of

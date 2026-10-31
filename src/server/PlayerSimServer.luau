@@ -705,6 +705,29 @@ function PlayerSimServer.takeOver(player: Player, take: () -> Body?)
 	end)
 end
 
+-- A player taken out of play with no death (system 69, out of a match
+-- while they stay in the server): the life under way, or one asked for,
+-- ends, and the character goes, as before a first spawn.
+function PlayerSimServer.unspawn(player: Player)
+	local r = records[player]
+	if not r then
+		return
+	end
+	r.alive = false
+	r.spawnAskedAt = nil
+	r.revive = nil
+	r.takeover = nil
+	InputQueue.clear(r.inputs)
+	local character = r.character
+	r.character, r.root = nil, nil
+	if player.Character then
+		player.Character = nil
+	end
+	if character then
+		character:Destroy()
+	end
+end
+
 -- Whether a new life has been asked for and hasn't started yet.
 function PlayerSimServer.spawnPending(player: Player): boolean
 	local r = records[player]

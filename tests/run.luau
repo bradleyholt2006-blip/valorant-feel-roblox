@@ -75,5 +75,6 @@ require("./takeover")
 require("./body")
 require("./rank")
 require("./pad")
+require("./rejoin")
 
 H.finish()

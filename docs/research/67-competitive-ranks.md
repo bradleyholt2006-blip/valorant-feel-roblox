@@ -158,7 +158,9 @@ or more to their end (Roster's `rounds`), so joining near the end isn't a match 
 others for everyone in it then. A draw is a Team Deathmatch ended level; in deathmatch the winner
 won and everyone else lost. Leaving a Competitive match under way, once a round of it's been played
 to its end, is a loss as the match stands: the reference says leaving costs RR without saying how
-much, and ours is the loss alone, as rejoining after a dropped connection isn't in yet. A match
+much, and ours is the loss alone. Since rejoining (system 69, [69-rejoining.md](69-rejoining.md)) a
+leaver's place is held and the loss waits for the match's end: away then, or back too late to have
+played half its rounds, it's the loss; back in time, the match counts as for everyone else. A match
 ended by turning the arena off counts for nobody.
 
 ### Keeping it
@@ -170,9 +172,9 @@ between modes' servers, nothing's lost. Each result has an id, and the store kee
 write retried after it went through counts once. Writes go at most every 6 s, the store's limit for
 a key; one that fails is tried twice more before the session's career stops being kept. A read that
 fails keeps the session's results out of the store, as what it holds is unknown. A player who leaves
-is kept 10 s more for the arena's word on a match they left, and until what's theirs is written, and
-the server closing writes everything still to write. A Local Server's test player in Studio, with a
-UserId under 1, keeps nothing, so the next test's starts from its placements.
+is kept 10 s more, or while their place in a match is held (system 69), and until what's theirs is
+written, and the server closing writes everything still to write. A Local Server's test player in
+Studio, with a UserId under 1, keeps nothing, so the next test's starts from its placements.
 
 ### On screen
 

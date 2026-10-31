@@ -20,6 +20,9 @@
 -- last agent's kit this buy phase is sold back (ShopServer.refundCharges).
 -- Each player's pick goes to clients as player attributes (AgentSelect's),
 -- so teammates see what they select.
+-- A player who leaves a match under way with their place held (system 69)
+-- keeps their pick: the agent stays theirs, taken from their teammates,
+-- and goes back on their kit as they're back.
 -- Bots pick too (system 65), after every player, on their stand-ins: each
 -- selects an agent nobody on its side has locked in or selected yet, at
 -- random, and selects again if a teammate takes it, and what it's
@@ -48,10 +51,19 @@ AgentServer.momentOf = nil :: ((holder: Instance, id: number) -> string?)?
 -- (AgentSelect.swapsNow), as Arena has it, or with their next life; until
 -- it's set, at once.
 AgentServer.swapsNow = nil :: ((holder: Instance, id: number) -> boolean)?
+-- Whether a player leaving keeps their pick, their place held in a match
+-- under way (system 69), as Arena has it; until it's set, nobody does.
+AgentServer.keeps = nil :: ((id: number) -> boolean)?
+-- Whether a player's place is held while they're away from the match
+-- (system 69): in the server again, or taken out in Studio, their pick
+-- waits as it was, still theirs, until they're back in it.
+AgentServer.away = nil :: ((id: number) -> boolean)?
 
 local state = AgentSelect.new()
 -- What each player's attributes say, all in one.
 local shown: { [Instance]: string } = {}
+-- The agent last put on each player's kit.
+local onKit: { [Instance]: string } = {}
 -- The bots picking last step, and the side of a match each one last
 -- picked at random for.
 local botIds: { [number]: Instance } = {}
@@ -62,6 +74,7 @@ local dice = Random.new()
 -- what they'd bought into the last agent's this buy phase sold back, or
 -- with their next life.
 local function apply(player: Instance, id: number, agent: string, time: number)
+	onKit[player] = agent
 	local swaps = AgentServer.swapsNow
 	if AbilityServer.choose(player, agent, time, swaps == nil or swaps(player, id)) and player:IsA("Player") then
 		ShopServer.refundCharges(player)
@@ -150,9 +163,13 @@ end
 -- locked in as one closes put on their kit.
 function AgentServer.step(time: number)
 	local momentOf = AgentServer.momentOf
+	local away = AgentServer.away
 	local ids: { number } = {}
 	local holders: { [number]: Instance } = {}
 	for _, player in Players:GetPlayers() do
+		if away and away(player.UserId) then
+			continue
+		end
 		table.insert(ids, player.UserId)
 		holders[player.UserId] = player
 	end
@@ -184,6 +201,12 @@ function AgentServer.step(time: number)
 		if bots[id] then
 			changed[id] = botSelect(id) or changed[id]
 		end
+		-- Back in a match with their pick kept (system 69): the agent they
+		-- locked in before they went, on the kit they're back with.
+		local pick = AgentSelect.pickOf(state, id)
+		if not bots[id] and pick.status == "locked" and onKit[holders[id]] ~= pick.agent then
+			changed[id] = changed[id] or pick.agent
+		end
 		local agent = changed[id]
 		if agent then
 			apply(holders[id], id, agent, time)
@@ -192,11 +215,23 @@ function AgentServer.step(time: number)
 	end
 end
 
+-- A pick kept for a player who left (system 69) let go, their place no
+-- longer held, unless they're back.
+function AgentServer.forget(id: number)
+	if not Players:GetPlayerByUserId(id) then
+		AgentSelect.leave(state, id)
+	end
+end
+
 function AgentServer.start()
 	Remotes.get().AgentPick.OnServerEvent:Connect(onPick)
 	Players.PlayerRemoving:Connect(function(player: Player)
-		AgentSelect.leave(state, player.UserId)
+		local keeps = AgentServer.keeps
+		if not (keeps and keeps(player.UserId)) then
+			AgentSelect.leave(state, player.UserId)
+		end
 		shown[player] = nil
+		onKit[player] = nil
 	end)
 end
 

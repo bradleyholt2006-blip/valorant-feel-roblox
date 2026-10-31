@@ -12,6 +12,10 @@
 --     opening new ones
 --   * a line not updated for a while is a server that's gone, and sends
 --     nobody
+--   * a place held in a match under way (system 69) has an entry of its
+--     own, by the player's UserId: the key of the server's line and the
+--     mode, so a player who comes back to another server can be sent back
+--     to it while its line says it's up and how to get there
 --
 -- No Roblox APIs here: ModeServers reads and writes the lines and teleports.
 
@@ -102,6 +106,34 @@ local function reachable(line: Line): boolean
 		return line.job ~= nil
 	end
 	return line.code ~= nil
+end
+
+-- A place held for a player (system 69): the key of the line of the server
+-- whose match holds it, and the mode.
+export type Held = { server: string, mode: string }
+
+function ServerList.encodeHeld(held: Held): { [string]: any }
+	return { server = held.server, mode = held.mode }
+end
+
+-- A held place's entry back from the memory store, or nil if anything in
+-- it is missing or the wrong type.
+function ServerList.decodeHeld(value: any): Held?
+	if typeof(value) ~= "table" then
+		return nil
+	end
+	local server, mode = text(value.server), text(value.mode)
+	if not server or not mode then
+		return nil
+	end
+	return { server = server, mode = mode }
+end
+
+-- Whether a held place's server, by its line, can be sent back to at
+-- `now`: the line up to date, for the held place's mode still, and saying
+-- how to get there.
+function ServerList.canRejoin(line: Line, held: Held, now: number, stale: number): boolean
+	return line.key == held.server and line.mode == held.mode and ServerList.fresh(line, now, stale) and reachable(line)
 end
 
 -- The server to send `group` players to who picked `mode`, at `now`: one

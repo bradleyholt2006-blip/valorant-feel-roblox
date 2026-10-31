@@ -518,6 +518,13 @@ Built one system at a time:
     it, the prompts name the pad's buttons while it's in use, and the settings menu sets the look
     speed, Focus's share of it, inverting it and walking in Focus -
     [research and design](docs/research/68-controller.md)
+69. **Rejoining a match**: a player who drops out of a spike rounds' match under way keeps their
+    place in it until it ends: their record, side, credits (paid each round as their side is) and
+    agent wait for them while a bot fills in. Coming back, the Play menu's PLAY reads RECONNECT,
+    which puts them back on their side, sending them back to the match's server if they've landed
+    on another, and the bot on their side gives way. In Competitive the loss for leaving waits for
+    the match's end: back in time, they get the match's result -
+    [research and design](docs/research/69-rejoining.md)
 
 ## Running it
 
@@ -831,7 +838,9 @@ feet, the hands on what they hold, a jump, a reload, a plant and a draw, and no 
 abilities (what each casts when, and where its throws land on each map) and Competitive's ranks
 (placements, RR, promotions, demotions and shields, the MMR, and each player's record) and a
 controller (the sticks as keys and turns, the bumpers' chord, taps and holds, LT's role and the zoom
-it wants, and the presses that bring a scope to it) are pure Luau and run outside Roblox:
+it wants, and the presses that bring a scope to it) and rejoining a match (the place held and paid,
+the player back on their side, the bot that gives way, what the career counts and the entry another
+server finds) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

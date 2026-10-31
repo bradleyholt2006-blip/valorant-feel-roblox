@@ -9,8 +9,11 @@
 -- their end, so joining a match near its end isn't a match played, and in
 -- the others for everyone in it then. Leaving a Competitive match under
 -- way, with a round of it played to its end, counts as a loss as it stands
--- (CareerRules.left). Bots have no career, but in Competitive each counts
--- at its MMR (RankConfig.BotMmr) in its side's.
+-- (CareerRules.left). Its place is held for the rest of the match (system
+-- 69): away as it ends, or back too late to have played half its rounds,
+-- it's the loss; back in time, the match counts as for everyone else. Bots
+-- have no career, but in Competitive each counts at its MMR
+-- (RankConfig.BotMmr) in its side's.
 --
 -- Each result has an id, kept with the last few applied, so a result
 -- written twice is counted once.
@@ -54,7 +57,9 @@ export type Result = {
 }
 
 -- Someone in a match, by the record the rules keep (Roster.Member): their
--- side (in deathmatch one of their own), and whether they're a bot.
+-- side (in deathmatch one of their own), and whether they're a bot; and
+-- in the spike rounds (system 69) whether they're away, their place held,
+-- or left under way and came back.
 export type Player = {
 	side: number,
 	kills: number,
@@ -63,6 +68,8 @@ export type Player = {
 	score: number,
 	rounds: number,
 	bot: boolean,
+	away: boolean?,
+	left: boolean?,
 }
 
 -- A match, as it ends or as someone leaves it: its mode (a PlayConfig key),
@@ -158,7 +165,17 @@ end
 function CareerRules.results(match: Match, mmrOf: MmrOf, newId: () -> string): { [number]: Result }
 	local out = {}
 	for id, p in match.players do
-		if p.bot or (match.rounds > 0 and p.rounds * 2 < match.rounds) then
+		local short = match.rounds > 0 and p.rounds * 2 < match.rounds
+		if p.bot then
+			continue
+		elseif p.away or (p.left and short) then
+			-- Left under way, and not back or back too late: as leaving.
+			local result = CareerRules.left(match, id, mmrOf, newId)
+			if result then
+				out[id] = result
+			end
+			continue
+		elseif short then
 			continue
 		end
 		local outcome: RankRules.Outcome = if match.winner == nil then "draw" elseif p.side == match.winner then "won" else "lost"

@@ -157,6 +157,14 @@ PlayConfig.PLAYING = "VFPlaying"
 PlayConfig.DATA_KEY = "vfMode"
 -- The memory store sorted map that lists the servers.
 PlayConfig.LIST = "VFModeServers"
+-- The memory store sorted map of places held (system 69): by a player's
+-- UserId, the line's key of the server whose match under way holds their
+-- place, and its mode.
+PlayConfig.HELD = "VFHeldPlaces"
+-- A player's attribute: the mode's key of a match under way that holds a
+-- place for them (system 69), on this server or another, for the menu's
+-- RECONNECT.
+PlayConfig.REJOIN = "VFRejoin"
 
 PlayConfig.Rules = {
 	refresh = p(15, "estimate", "Seconds between each server's updates of its line in the list (ours)"),
@@ -175,6 +183,12 @@ PlayConfig.Rules = {
 	listEvery = p(20, "estimate", "Seconds between reads of the whole list, for the menu's counts (ours)"),
 	cooldown = p(3, "estimate", "Seconds a player waits between presses of PLAY that send them away (ours)"),
 	teleportWait = p(30, "estimate", "Seconds a teleport asked for is waited on before it's given up (ours)"),
+	heldFor = p(
+		7200,
+		"estimate",
+		"Seconds a held place's entry lasts unless the match's end or the player's return takes it out first: longer than"
+			.. " a match with overtime (ours)"
+	),
 }
 
 return PlayConfig
