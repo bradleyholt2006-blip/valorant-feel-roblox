@@ -135,6 +135,17 @@ function LeerSim.at(e: Eye, age: number): vector
 	return e.start + e.way * math.min(LE.travel.value * k, e.travel)
 end
 
+-- How fast an eye is flying `age` seconds after it was cast (metres a
+-- second): at its pace until it's flown as far as it goes, still from then
+-- on.
+function LeerSim.velocity(e: Eye, age: number): vector
+	local pace = LE.travel.value / LE.windup.value
+	if age < 0 or pace * age >= e.travel then
+		return vector.zero
+	end
+	return e.way * pace
+end
+
 -- Where an eye comes to rest.
 function LeerSim.rest(e: Eye): vector
 	return LeerSim.at(e, math.huge)

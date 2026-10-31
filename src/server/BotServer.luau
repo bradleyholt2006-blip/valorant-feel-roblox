@@ -61,6 +61,17 @@
 -- nearsight's range. A Reyna in a Dismiss in her Empress's frenzy is
 -- hidden from its looks too, as from her enemies' eyes (system 75).
 --
+-- Its looks take in an enemy's utility too (system 76), which players are
+-- told to shoot: a Recon Bolt stuck, an Owl Drone flying and Leer's eye
+-- (ReconServer.standing, DroneServer.flying, LeerServer.standing), each
+-- looked for at its middle as an enemy is and shot once it's noticed and
+-- no enemy is, its bullets striking it as a player's do. Its own side's
+-- are left be, and it sees none with a knife in hand or while it plants or
+-- defuses. A nearsight hides one past its range, but for Leer's eye, a
+-- ball of light, which shows through it as it does on a player's screen.
+-- What its side has seen, and how long it's been quiet, are of enemies
+-- alone.
+--
 -- And it casts them as a player would (system 66, BotUtility): each time
 -- its side's plan is gone over, a bot that isn't fighting or casting is
 -- told the moment, where it is in the plan (BotTeam.placeOf), what its
@@ -109,6 +120,7 @@ local MovePacer = require(Shared.Net.MovePacer)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local PlayerSim = require(Shared.PlayerSim)
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local FlareSim = require(Shared.Abilities.FlareSim)
 local ParanoiaSim = require(Shared.Abilities.ParanoiaSim)
@@ -122,12 +134,15 @@ local BarrierServer = require(script.Parent.BarrierServer)
 local BlazeServer = require(script.Parent.BlazeServer)
 local CloudServer = require(script.Parent.CloudServer)
 local CombatServer = require(script.Parent.CombatServer)
+local DroneServer = require(script.Parent.DroneServer)
 local Entities = require(script.Parent.Entities)
 local FlareServer = require(script.Parent.FlareServer)
 local FogServer = require(script.Parent.FogServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
+local LeerServer = require(script.Parent.LeerServer)
 local MinimapServer = require(script.Parent.MinimapServer)
 local PlayerSimServer = require(script.Parent.PlayerSimServer)
+local ReconServer = require(script.Parent.ReconServer)
 local SpikeServer = require(script.Parent.SpikeServer)
 local Tuning = require(script.Parent.Tuning)
 
@@ -228,6 +243,17 @@ type Bot = {
 -- system 75).
 type Seen = { id: number, side: number, points: { vector }, velocity: vector, hidden: boolean }
 
+-- A piece of utility standing, as its server tells it (system 76): what
+-- names it, whose it is (an entity id) and their side (nil on the course),
+-- and where its middle is and how fast it moves.
+type Piece = { key: any, owner: number, side: number?, at: vector, velocity: vector }
+
+-- A piece of utility as this frame's looks see it: its id in the bots'
+-- minds (made for it, below every entity's), whose it is and their side,
+-- where its middle is and how fast it moves, its size across (metres), and
+-- whether it shows through a nearsight.
+type Thing = { id: number, owner: number, side: number?, at: vector, velocity: vector, size: number, lit: boolean }
+
 -- Someone alive on a side, for its bots' casts (system 66): their entity
 -- id, eye, chest and health, and whether they're defusing the spike.
 type Mate = { id: number, eye: vector, chest: vector, health: number, defusing: boolean }
@@ -263,6 +289,10 @@ local teamRound: { [number]: number } = {}
 local thinkAt = 0
 -- The bot (by its place in order) the next think's casts start from.
 local castFrom = 1
+-- Each piece of utility's id in the bots' minds, by what names it, and how
+-- many have had one.
+local thingIds: { [any]: number } = setmetatable({}, { __mode = "k" }) :: any
+local thingCount = 0
 -- In Studio, the time the bots have taken of the server's frames since
 -- spentSince, over how many.
 local spent, frames, spentSince = 0, 0, 0
@@ -585,11 +615,39 @@ local function everyone(): { Seen }
 	return out
 end
 
+-- The utility standing that bots shoot an enemy's of (system 76): Recon
+-- Bolts, Owl Drones and Leer's eyes, with Leer's alone lit.
+local function things(now: number): { Thing }
+	local out: { Thing } = {}
+	local function add(pieces: { Piece }, size: number, lit: boolean)
+		for _, p in pieces do
+			local id = thingIds[p.key]
+			if not id then
+				thingCount += 1
+				id = -thingCount
+				thingIds[p.key] = id
+			end
+			table.insert(
+				out,
+				{ id = id :: number, owner = p.owner, side = p.side, at = p.at, velocity = p.velocity, size = size, lit = lit }
+			)
+		end
+	end
+	local drone = AbilityConfig.OwlDrone
+	add(ReconServer.standing(now), AbilityConfig.ReconBolt.width.value, false)
+	add(DroneServer.flying(), math.min(drone.width.value, drone.height.value), false)
+	add(LeerServer.standing(now), AbilityConfig.Leer.size.value, true)
+	return out
+end
+
 -- A look at every enemy: those near its view are looked for in the level,
 -- but none while a flash has it blinded, none past the nearsight's range
 -- while it's nearsighted, by Paranoia or Leer (systems 65 and 74), and
--- never a Reyna in a Dismiss in her Empress's frenzy (system 75).
-local function look(bot: Bot, now: number, seen: { Seen }, o: Sight.Occluders, cfg: MovementConfig.Values)
+-- never a Reyna in a Dismiss in her Empress's frenzy (system 75). An
+-- enemy's utility is looked for the same way at its middle (system 76), a
+-- lit piece past a nearsight's range too, but none with a knife in hand or
+-- the spike being planted or defused.
+local function look(bot: Bot, now: number, seen: { Seen }, found: { Thing }, o: Sight.Occluders, cfg: MovementConfig.Values)
 	local eye = PlayerSim.eye(bot.sim, cfg)
 	local blind = FlareSim.decode(bot.standIn:GetAttribute(FlareSim.BLIND_ATTRIBUTE))
 	local blinded = blind ~= nil and FlareSim.whiteAt(blind, now) >= P.blindFrom.value
@@ -612,6 +670,19 @@ local function look(bot: Bot, now: number, seen: { Seen }, o: Sight.Occluders, c
 			end
 		end
 		table.insert(targets, { id = s.id, head = s.points[1], chest = chest, velocity = s.velocity, visible = visible })
+	end
+	local sim = bot.sim
+	local busy = sim.spike.channel ~= SpikeSim.NONE or WeaponSim.equippedDef(sim.weapons).melee ~= nil
+	for _, t in found do
+		if t.owner == bot.entity.id or (t.side ~= nil and t.side == bot.side) then
+			continue
+		end
+		local visible = false
+		if not blinded and not busy and (t.lit or range == nil or vector.magnitude(t.at - eye) <= range) then
+			local yaw = BotBrain.anglesTo(eye, t.at)
+			visible = math.abs(BotBrain.wrap(yaw - bot.yaw)) <= NEAR_VIEW and not Sight.hidden(eye, t.at, o)
+		end
+		table.insert(targets, { id = t.id, head = t.at, chest = t.at, velocity = t.velocity, visible = visible, size = t.size })
 	end
 	BotBrain.look(bot.brain, now, eye, targets)
 end
@@ -696,7 +767,9 @@ local function momentOf(
 	local brain = bot.brain
 	local last = brain.hurtAt
 	for _, k in brain.known do
-		last = math.max(last, k.seen)
+		if k.size == nil then
+			last = math.max(last, k.seen)
+		end
 	end
 	local allies: { BotUtility.Ally } = {}
 	local mates: { vector } = {}
@@ -802,7 +875,7 @@ local function think(now: number, s: Situation, w: World)
 		local seen = sightings[side] or {}
 		sightings[side] = seen
 		for _, k in bot.brain.known do
-			if now - k.seen <= BotTeam.MEMORY then
+			if k.size == nil and now - k.seen <= BotTeam.MEMORY then
 				table.insert(seen, { at = k.at - w.origin, time = k.seen })
 			end
 		end
@@ -1012,7 +1085,11 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	local onto = if job and job.onto and w then job.onto + w.origin else nil
 	local toward = if onto then vector.create(onto.x - feet.x, 0, onto.z - feet.z) else nil
 	local buttons = 0
-	if def.melee and target then
+	if def.melee and target and target.size ~= nil then
+		-- A knife's no use on utility: it goes on its way.
+		act.stop, act.fire = false, false
+	end
+	if def.melee and target and target.size == nil then
 		-- A knife: straight at them, and a slash once they're in reach.
 		local flat = vector.create(target.at.x - feet.x, 0, target.at.z - feet.z)
 		local distance = vector.magnitude(flat)
@@ -1465,6 +1542,7 @@ function BotServer.step(now: number)
 		end
 	end
 	local seen: { Seen }? = nil
+	local found: { Thing }? = nil
 	local o: Sight.Occluders? = nil
 	for _, bot in order do
 		if not bot.alive then
@@ -1472,8 +1550,9 @@ function BotServer.step(now: number)
 		end
 		if now >= bot.lookAt then
 			seen = seen or everyone()
+			found = found or things(now)
 			o = o or occluders(now)
-			look(bot, now, seen :: { Seen }, o :: Sight.Occluders, cfg)
+			look(bot, now, seen :: { Seen }, found :: { Thing }, o :: Sight.Occluders, cfg)
 			-- Each one's looks start somewhere in the first interval, so
 			-- they're spread over its frames.
 			local every = P.lookEvery.value

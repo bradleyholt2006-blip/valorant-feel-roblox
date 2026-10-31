@@ -199,8 +199,9 @@ Her checks in section 77 passed, and found these, fixed here:
 - **Fire and Hunter's Fury.** Since Patch 5.12 damage from abilities breaks it; here only bullets
   and knives do, as for the Recon Bolt and the Owl Drone.
 - **Empress.** Played since system 75 (75-empress.md).
-- **Bots against it.** Bots don't look away from an eye or shoot it; they're nearsighted by it as by
-  Paranoia.
+- **Bots against it.** Since system 76 bots shoot an enemy's eye they see
+  (76-bots-shoot-utility.md), and see it through its nearsight, as players now do; they never look
+  away from one, and are nearsighted by it as by Paranoia.
 - **Late joiners** don't see an eye already standing.
 - **Voices.** The reference's Reyna calls out; there are no voices here.
 - **The look, the sounds, the cone, the pace and the floor** are ours until clips are stepped

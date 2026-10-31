@@ -15,12 +15,16 @@
 --     with its sound, as the frame on your screen reaches it; one whose
 --     caster's started a new life ("gone") just goes
 -- The nearsight it gives is drawn by ParanoiaView, from the attribute it's
--- kept on. The eyes standing are in the level your shots are traced
--- through (ClientShots.eyes), as the server's are in its own. In
--- Workspace's VFLeer each eye is an `Eye` ball with its `Pupil` ball, and
--- each burst a `Break` ball; they all go when the server says every fire's
--- out (a new round, "out"). VFLeer's `Eyes` attribute says how many are
--- drawn, which scripted checks read.
+-- kept on. An eye past the dark drawn round your screen, a nearsight's or
+-- a Shade's, shows through it (system 76), as a ball of light: it's drawn
+-- just inside the dark, where and as big as it looks, unless the level or
+-- a smoke hides it, so it can be shot, as the guides have players do with
+-- an eye that's nearsighting them. The eyes standing are in the level your
+-- shots are traced through (ClientShots.eyes), as the server's are in its
+-- own. In Workspace's VFLeer each eye is an `Eye` ball with its `Pupil`
+-- ball, and each burst a `Break` ball; they all go when the server says
+-- every fire's out (a new round, "out"). VFLeer's `Eyes` attribute says
+-- how many are drawn, which scripted checks read.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -31,6 +35,8 @@ local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local LeerSim = require(Shared.Abilities.LeerSim)
 local Penetration = require(Shared.Combat.Penetration)
+local Sight = require(Shared.Combat.Sight)
+local Minimap = require(Shared.Match.Minimap)
 local RobloxWorld = require(Shared.Movement.RobloxWorld)
 local Remotes = require(Shared.Net.Remotes)
 local SoundConfig = require(Shared.Audio.SoundConfig)
@@ -39,6 +45,8 @@ local Units = require(Shared.Units)
 local NetSim = require(script.Parent.NetSim)
 local PlayerController = require(script.Parent.PlayerController)
 local RemoteEntities = require(script.Parent.RemoteEntities)
+local CloudView = require(script.Parent.CloudView)
+local ParanoiaView = require(script.Parent.ParanoiaView)
 local ClientShots = require(script.Parent.Combat.ClientShots)
 local GameSounds = require(script.Parent.Audio.GameSounds)
 
@@ -62,6 +70,17 @@ local KEEP = 5 -- seconds your casts are remembered, so the server's word on one
 -- Seconds an eye the server told of is kept for your shots after it's
 -- gone, as the server keeps its own (ours: past SlowSim.LAG).
 local AFTER = 2
+-- How far in from the dark round your screen an eye past it is drawn, of
+-- the dark's distance: inside its slabs, which are no more than 3% further
+-- out.
+local INSIDE = 0.95
+-- Barriers a line from the camera goes through, at most (as HealView's).
+local PASSES = 4
+
+local params = RaycastParams.new()
+params.FilterType = Enum.RaycastFilterType.Exclude
+params.CollisionGroup = RobloxWorld.CHARACTER_GROUP
+params.RespectCanCollide = true
 
 -- An eye drawn: when it was cast on its clock, os.clock() for yours and
 -- the render clock for others', when it broke or went on that clock, if
@@ -243,8 +262,50 @@ local function onEvent(event: any)
 	show(key, eye, os.clock() - (Workspace:GetServerTimeNow() - event.at), true)
 end
 
--- One eye, a frame on: `now` on its clock. False once it's gone.
-local function frame(s: Shown, now: number, view: vector?): boolean
+-- Whether the level or a smoke standing at `render` (the render clock) is
+-- in the way from `a` to `b` (metres), through the spawns' barriers, as for
+-- the server's sight (FogServer).
+local function hidden(a: vector, b: vector, render: number): boolean
+	for _, cloud in CloudView.standing(render) do
+		if Sight.cloudHides(cloud, a, b) then
+			return true
+		end
+	end
+	local from = Units.toStuds(a)
+	local along = Units.toStuds(b) - from
+	for _ = 1, PASSES do
+		local hit = Workspace:Raycast(from, along, params)
+		if not hit then
+			return false
+		end
+		if hit.Instance.Name ~= Minimap.BARRIER then
+			return true
+		end
+		params:AddToFilter(hit.Instance)
+	end
+	return true
+end
+
+-- Where to draw an eye whose middle is at `at`, seen from the camera at
+-- `view`, and its size there, as a share of its own: just inside the dark
+-- round your screen if it's past it and nothing hides it, else where it is.
+local function seenAt(at: vector, view: vector?, render: number): (vector, number)
+	local reach = ParanoiaView.reach
+	if not view or reach == math.huge then
+		return at, 1
+	end
+	local d = vector.magnitude(at - view)
+	local inside = reach * INSIDE
+	if d <= inside or hidden(view, at, render) then
+		return at, 1
+	end
+	local share = inside / d
+	return view + (at - view) * share, share
+end
+
+-- One eye, a frame on: `now` on its clock, `render` on the render clock.
+-- False once it's gone.
+local function frame(s: Shown, now: number, render: number, view: vector?): boolean
 	local age = now - s.start
 	local ended = s.ended
 	if ended and now >= ended then
@@ -277,13 +338,14 @@ local function frame(s: Shown, now: number, view: vector?): boolean
 		end
 	end
 	local fade = math.clamp((life - age) / FADE, 0, 1)
-	local size = LE.size.value * (SMALL + (1 - SMALL) * open)
-	local at = LeerSim.at(s.eye, age)
+	local at, share = seenAt(LeerSim.at(s.eye, age), view, render)
+	local size = LE.size.value * (SMALL + (1 - SMALL) * open) * share
 	local see = CAST_SEE + (OPEN_SEE - CAST_SEE) * open
 	s.ball.Size = Vector3.one * size * Units.STUDS_PER_METRE
 	s.ball.CFrame = CFrame.new(Units.toStuds(at))
 	s.ball.Transparency = 1 - (1 - see) * fade
-	s.light.Brightness = 2 * open * fade
+	-- Its light where it is, but not drawn in close.
+	s.light.Brightness = if share < 1 then 0 else 2 * open * fade
 	-- The pupil, on the side the camera's on.
 	local toward = if view and vector.magnitude(view - at) > 1e-6 then vector.normalize(view - at) else -s.eye.way
 	s.pupil.Size = Vector3.one * size * PUPIL_SIZE * Units.STUDS_PER_METRE
@@ -305,7 +367,7 @@ function LeerView.start()
 		local view = if camera then Units.toMetres(camera.CFrame.Position) else nil
 		local count = 0
 		for key, s in shown do
-			if frame(s, if s.own then clock else render, view) then
+			if frame(s, if s.own then clock else render, render, view) then
 				count += 1
 			else
 				drop(key)

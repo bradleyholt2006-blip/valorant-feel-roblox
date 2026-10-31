@@ -244,6 +244,21 @@ function LeerServer.step(now: number)
 	end
 end
 
+-- Each eye standing at `now`, for the bots that shoot an enemy's (system
+-- 76): what names it, whose it is (an entity id) and their side (nil on
+-- the course), and where its middle is and how fast it flies.
+function LeerServer.standing(now: number): { { key: any, owner: number, side: number?, at: vector, velocity: vector } }
+	local out = {}
+	for _, k in kept do
+		local e = k.eye
+		if LeerSim.standing(e, now) then
+			local age = now - e.at
+			table.insert(out, { key = e, owner = e.owner, side = k.side, at = LeerSim.at(e, age), velocity = LeerSim.velocity(e, age) })
+		end
+	end
+	return out
+end
+
 -- Every eye gone (a new round). FireServer.clear tells every client.
 function LeerServer.clear()
 	table.clear(kept)
