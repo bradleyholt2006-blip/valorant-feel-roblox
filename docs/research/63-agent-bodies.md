@@ -2,13 +2,14 @@
 
 Other players and bots are drawn as an agent's body: a rigged model, for now the kit body
 Superhero_Male_A, 1.75 m tall, its bones posed every frame from what the snapshots say each one is
-doing. Its legs step at the speed it moves, a foot that's down staying where it's put; its hips turn
-toward the way it moves while its chest faces its aim; it crouches, leans into a run, tucks its legs
-in a jump, bends its knees landing and lets its legs hang gliding. It holds what's in its hand as
-that kind of thing is held: a long gun at the shoulder with the left hand on the foregrip, a sidearm
-out in front in both hands, the knife low in the right hand, the spike in both and an ability's item
-up in the right. It reloads, plants and defuses, takes an orb, and switches what it holds, the new
-thing coming up from low.
+doing. Its legs step at the speed it moves, a foot that's down staying where it's put; standing, it
+turns on the spot with its feet where they stand until it's turned far enough, then steps round
+after the turn; its hips turn toward the way it moves while its chest faces its aim; it crouches,
+leans into a run, tucks its legs in a jump, bends its knees landing and lets its legs hang gliding.
+It holds what's in its hand as that kind of thing is held: a long gun at the shoulder with the left
+hand on the foregrip, a sidearm out in front in both hands, the knife low in the right hand, the
+spike in both and an ability's item up in the right. Its gun kicks as it fires; it reloads, plants
+and defuses, takes an orb, and switches what it holds, the new thing coming up from low.
 
 What can be hit doesn't change. The hitboxes stay the analytic boxes the server tests shots against,
 and the body is posed round them: wherever the pose would put the head, the whole body moves so the
@@ -66,7 +67,7 @@ here comes from the reference's animation. Every number in `BodyConfig` is ours,
 
 ## 3. What can be measured, and how
 
-The pose is plain Luau, so the offline tests (`tests/body.luau`, 49 checks) play bodies frame by
+The pose is plain Luau, so the offline tests (`tests/body.luau`, 63 checks) play bodies frame by
 frame at 60 frames a second, the speed, the aim and the crouch changing only as quickly as the
 snapshots can change them: a counter-strafe's braking, a quick flick, the crouch's transition. They
 pose nine ways of moving (standing; running ahead, back, sideways and diagonally; walking; running
@@ -80,11 +81,18 @@ of hold, and measure:
 | The lowest a foot's joint goes | 0.004 m above the ground | 0.005 m below |
 | The furthest a limb reaches, of its length | 0.985 | 1 |
 | A planted foot's slide, of the body's speed | Walking 4%, running 3%, with the knife 3%, backward 2%, crouched 8%; sideways 22%, not checked | 15% |
-| The most a joint moves in a frame, past the ground's own move | 0.123 m, a finger as the hands go down to plant | 0.15 m |
+| The most a joint moves in a frame, past the ground's own move | 0.128 m, a finger as the hands come up from a defuse | 0.15 m |
 | The feet in a jump | The left 0.26 m up, the right 0.17 m | The left higher |
 | The feet gliding | 0.12 m apart, the hips 0.23 m | Closer than the hips by 0.06 m |
 | The left hand reloading | 0.23 m down from the foregrip, and back on it after | 0.15 m; 0.01 m |
+| ...through a 2.5 s reload | Lowest 1.0 to 1.5 s in, under 3 cm a frame, and back on the foregrip after | No pop at the trip's end |
 | A new gun's barrel, its first frame | 0.78 of its way down | Over 0.5 down, then along the aim |
+| Turning on the spot 0.4 radians | Both feet within 0.01 m of where they stood, the hips turned part way to them | 0.01 m |
+| Turning a quarter | Each foot steps round, the left first turning left, and stands square under the body after | Lifted over 0.03 m; within 0.02 m after |
+| A flick of 12 radians a second | The feet turned no further than 1.2 radians from the body, then round with it running off | 1.2 radians |
+| A shot | The muzzle up and the gun back, settled again 0.5 s later | Over 0.05 up and 0.01 m back |
+| Landing a 0.6 s fall | The hips down over 0.04 m, the head's middle in its box | 0.04 m |
+| Defusing crouched | The wrists under 0.52 m up, the arms within their length | 0.52 m; 1 |
 
 The kit's skeleton, read as the importer brings it in and drawn 1.75 m tall, has its hip joints at
 0.980 m, thighs of 0.444 m and shins of 0.416 m, upper arms of 0.286 m and forearms of 0.268 m, and
@@ -98,6 +106,18 @@ the block's middle as the pose puts it; the ankles stood 0.13 m over the soles s
 to 0.36 m in the stride; and the bodies took 0.43 ms of a frame on average, 0.52 ms at most, and
 0.67 ms with five. The meshes kept the pose they were imported in until each copy's parts were
 jointed to its root part (section 5).
+
+Section 67's checks in the place, with two players and then bots: the head was in its box in every
+one, and a body took 0.14 to 0.15 ms of a frame, four 0.58 ms at 158 frames a second in view and 169
+looking away. What didn't look right then is changed here: turning on the spot, the feet turned with
+the hips, lifting 0.02 m; the hips dipped 0.02 m landing a jump and not at all after a 0.7 m drop
+(a landing then needed 0.25 s in the air); 1.65 s into a reload the left hand jumped 0.15 m back to
+a Vandal's foregrip, 0.12 m to a Classic's, as its 1.6 s trip started over; firing didn't move the
+hands; a defuse's hands stayed 0.59 m up; a bot planting held the spike up and a bot defusing kept
+its gun drawn, as their snapshots never said they were; and four bodies cost the same 0.55 ms
+looking at the sky as at them. In extreme poses some joints were outside their own boxes: looking
+up, the left shin 0.14 m out of the legs' box; crouched looking down, the lower spine 0.15 m out of
+the body's and the right foot 0.12 m out of the legs'. Breathing moved the chest 3 mm.
 
 ## 4. Confirmed vs estimated, as implemented
 
@@ -117,7 +137,13 @@ jointed to its root part (section 5).
 | A long gun's bladed stance | The chest turned 0.5 radians, its left shoulder forward; a sidearm's 0.12, the knife's 0.15 | Estimate | So the left hand reaches the foregrip |
 | Where each kind of thing is held | `BodyConfig.Hold`, from the top of the chest along the aim | Estimate | Ours |
 | A switch, a draw | The hands over 0.2 s; the new thing up from low over 0.35 s | Estimate | About the quickest equip |
-| Reloading | The left hand to the magazine and back every 1.6 s | Estimate | Ours |
+| Reloading | The left hand to the magazine, out, back in and to the foregrip, once over the gun's reload time (1.6 s if not known) | Estimate | Ours |
+| Turning on the spot | The feet stay until the body's 0.6 radians from them, then step round over 0.25 s, lifting 0.06 m: the foot on the side it turns toward first, the other following if it's 0.2 radians out; past 1.2 radians a foot turns where it stands | Estimate | Ours |
+| The hips standing | Half way from the aim toward the feet | Estimate | Ours |
+| A shot's kick | The muzzle 0.1 radians up and the gun 0.025 m back, settling to a third in 0.07 s | Estimate | Ours |
+| A landing | The head and hips down 0.06 m after 0.6 s in the air, less after a shorter fall, none under 0.15 s, back up over 0.3 s | Estimate | The head's middle stays in its box |
+| Planting or defusing | Both hands at 0.95 m standing, 0.41 m up and 0.22 m ahead crouched | Estimate | As far as the arms reach with the head in its box |
+| A body off the screen | Moved with its entity, not posed | Estimate | Ours: posing it is most of what a body costs |
 | A bone's `Transform` | Applied on top of its rest, not replicated | Confirmed | Roblox's `Bone` |
 | A rig's leaf bones | Off when exporting from Blender; the kit's FBX has them, and they're harmless | Confirmed (Roblox) | Roblox's export requirements |
 
@@ -138,16 +164,22 @@ tips its FBX carries, is kept in `BodyRig` as imported, for the offline tests.
 ### What the body is doing
 
 `BodyMotion` works out from each frame's interpolated pose (where the feet are, the yaw and pitch,
-the crouch, whether on the ground, the weapon, a reload, a plant, a defuse or an orb, and a glide)
-how the body moves in its own space, smoothed over 0.08 s; turning on the spot shuffles the feet as
-stepping sideways would. The stride follows the speed: its rate rises with the speed, its share on
-the ground falls, and the sweep under the body is the speed times the time a foot's down, so a
-planted foot stays put. Where that sweep would be longer than the legs reach, the steps get quicker
-instead, up to 2.8 strides a second, past which a foot slides a little. Strides are shorter looking
-up or down, since the head drops as it tips. The hips turn toward the way the legs step; stepping
-backward they turn the other way, with a margin either side of straight sideways so they don't flip
-about. It notes leaving the ground and landing (a landing after a fall bends the knees a moment),
-reloads, plants, defuses, orbs and glides, each eased in and out, and when what's held changed.
+the crouch, whether on the ground, the weapon and its reload time, a reload, a plant, a defuse or an
+orb, a glide, and when it last fired) how the body moves in its own space, smoothed over 0.08 s. The
+stride follows the speed: its rate rises with the speed, its share on the ground falls, and the
+sweep under the body is the speed times the time a foot's down, so a planted foot stays put. Where
+that sweep would be longer than the legs reach, the steps get quicker instead, up to 2.8 strides a
+second, past which a foot slides a little. Strides are shorter looking up or down, since the head
+drops as it tips. The hips turn toward the way the legs step; stepping backward they turn the other
+way, with a margin either side of straight sideways so they don't flip about. Standing, each foot
+keeps the way it faced as it was set down while the body turns on the spot; once the body's 0.6
+radians from it, it steps round after the turn over 0.25 s, lifting, the foot on the side the body
+turns toward first and the other following once it's down, and past 1.2 radians a foot turns where
+it stands, as a quick flick turns it; the hips turn half way toward the feet, the back twisting the
+rest. Moving, the feet come round with the body. It notes leaving the ground and landing (a landing
+after a fall bends the knees a moment, more the longer the fall), reloads (how far through the
+reload's time it is), plants, defuses, orbs and glides, each eased in and out, when what's held
+changed, and a shot's kick.
 
 ### The pose
 
@@ -158,9 +190,10 @@ reloads, plants, defuses, orbs and glides, each eased in and out, and when what'
    held in (bladed with a long gun) and taking its share of the aim; the neck and head look along
    the aim, the head tipped toward a long gun's stock.
 2. The whole body moves so the middle of its head is in the middle of the head box, with a little
-   bob and sway with the step and a dip landing.
-3. Each foot goes where it stands (apart, a long gun's left foot ahead and the right turned out) or
-   along its stride: down, it sweeps back under the hips; up, it swings forward, lifting, and its
+   bob and sway with the step and a dip landing, up to 0.06 m.
+3. Each foot goes where it stands (apart, a long gun's left foot ahead and the right turned out,
+   turned as it stands while the body turns on the spot, and lifting as it steps round) or along
+   its stride: down, it sweeps back under the hips; up, it swings forward, lifting, and its
    heel comes up as it goes behind the hips, the toes bending to stay on the ground. In the air the
    legs tuck, the left higher; gliding they hang together. A foot the leg can't reach rises onto its
    ball, and only if that's not enough do the hips come down.
@@ -170,10 +203,13 @@ reloads, plants, defuses, orbs and glides, each eased in and out, and when what'
    round the right; the knife's left hand is up in front of the chest, and a free hand hangs and
    swings with the stride. The fingers close round what's held, the right index resting on a gun's
    trigger.
-5. Reloading, the left hand goes to the magazine, down out of the gun and back; planting or
-   defusing, both hands go down to the spike; taking an orb, the right hand reaches out. Switching
-   what's held, the stance and the hands go from the old hold to the new over 0.2 s, and the new
-   thing comes up from low.
+5. Firing, the gun kicks up and back and settles. Reloading, the left hand goes to the magazine,
+   takes it down out of the gun, brings the next up into it and goes back to the foregrip, once
+   over the gun's reload time; planting or defusing, both hands go down to the spike, to the waist
+   standing and down on it crouched; taking an orb, the right hand reaches out. Switching what's
+   held, the stance and the hands go from the old hold to the new over 0.2 s, and the new thing
+   comes up from low; put away for a defuse or an orb, the hands go from what was held straight to
+   the work.
 
 ### Drawing it
 
@@ -193,6 +229,14 @@ the meshes. What's held is built from its look (`WeaponLooks`), an ability's ite
 pieces only, and placed at the right hand's grip; it's hidden while planting, defusing or taking an
 orb.
 
+A body off the screen (a sphere 1.3 m round its middle outside the camera's view) isn't posed: its
+parts still move with the entity, so it's never seen where it was, and what it holds is hidden until
+it's posed again. Each round another player or a bot fires that the server sends this client to
+draw (`ShotFx`, with the shooter's entity) kicks its body's gun. A bot's snapshot carries its plant
+or defuse and puts its weapon away for a defuse, as a player's does, so it's drawn doing them. A
+body whose rig is taken out of ReplicatedStorage goes, and the agent's drawn as blocks until a rig's
+back.
+
 A hit lights the body white, a Shade (system 43) draws it dark and see-through, and spawn protection
 in gun game draws it as a force field. The agent's blocks stay on the hitboxes, unseen, for the
 label over the head and anything that finds an entity by them, and the outline round another player
@@ -206,14 +250,15 @@ server knows nothing of bodies.
 
 ### The tests
 
-`tests/body.luau` has 49 checks: the rotations; the kit's skeleton (its 79 bones in order, its
+`tests/body.luau` has 63 checks: the rotations; the kit's skeleton (its 79 bones in order, its
 height, its soles on the ground, its limbs mirrored, its head in the head box at rest, the same
 skeleton read off a rig at any scale and wherever it stands, and a rig missing a bone not posed);
 how each weapon is held; the head in its box, the feet out of the ground and every limb reached
 across the ways of moving, aims, crouches and holds; planted feet; the hands on what they hold, the
 gun and the head along the aim, the fingers closed and the two sides mirrored standing empty-handed;
-the legs in a jump and a glide; the reload, the plant and the draw; and no joint jumping 15 cm in a
-frame whatever the body does next.
+the legs in a jump, a landing and a glide; the reload, a long gun's reload, a shot's kick, the
+plant, the defuse and the draw; the feet turning on the spot, stepping round and turning with a
+flick; and no joint jumping 15 cm in a frame whatever the body does next.
 
 ## 6. Implementation map
 
@@ -225,9 +270,11 @@ frame whatever the body does next.
 | `src/shared/Body/BodyMotion.luau` | New: what the body's doing from frame to frame, and the stride |
 | `src/shared/Body/BodyPose.luau` | New: the pose |
 | `src/client/BodyView.luau` | New: a body copied from `VFBodies`, posed, moved and painted, with what it holds |
-| `src/client/RemoteEntities.luau` | Players and bots drawn as bodies, their blocks unseen; what the bodies cost, in Studio |
+| `src/client/RemoteEntities.luau` | Players and bots drawn as bodies, their blocks unseen, posed only on the screen and kicking as they fire; a body gone with its rig; what the bodies cost, in Studio |
+| `src/client/Combat/WeaponEffects.luau` | Others' shots to `RemoteEntities`, for the kick |
+| `src/server/BotServer.luau` | A bot's snapshot with its plant or defuse, its weapon put away for a defuse |
 | `src/client/Debug/HitboxOverlay.luau` | The note that the boxes are drawn round the body |
-| `tests/body.luau`, `tests/run.luau` | New: the 49 checks |
+| `tests/body.luau`, `tests/run.luau` | New: the 63 checks |
 | `docs/studio-checklist.md` | Section 67 |
 
 ## 7. Debug tools
@@ -235,7 +282,8 @@ frame whatever the body does next.
 - F10's hitbox overlay draws each other player's and bot's boxes round its body, through walls (on a
   live server, not an enemy's): the head should sit in the head box, standing and crouched.
 - A model put in ReplicatedStorage's `VFBodies`, named `Default`, is the one drawn; with no
-  `VFBodies`, or a model that can't be posed, the agents are blocks again.
+  `VFBodies`, or a model that can't be posed, the agents are blocks again, as they are at once if
+  `VFBodies` is taken out of ReplicatedStorage while a game runs.
 - In Studio, Workspace's `VFBodyMs` on a client has the milliseconds the bodies take of each of its
   frames, on average over the last second.
 
@@ -260,5 +308,8 @@ frame whatever the body does next.
 - Planting or defusing standing, the hands go down only to about the waist: the head stays in the
   standing head box, so the body can't kneel. Crouched, they reach the spike.
 - A foot slides about a fifth of the body's speed running sideways (section 3).
+- The turn on the spot, a shot's kick, a landing, a long gun's reload and a crouched defuse as they
+  look now, a bot's plant and defuse, and the bodies' cost looking away from them.
+- Some joints outside their own boxes in extreme poses, by up to 0.15 m (section 3).
 
 Section 67 of the [Studio checklist](../studio-checklist.md) covers these.

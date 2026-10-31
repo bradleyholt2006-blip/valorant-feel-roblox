@@ -478,10 +478,10 @@ Built one system at a time:
 63. **Agent bodies**: other players and bots are drawn as an agent's body, a rigged model in
     ReplicatedStorage's `VFBodies` (for now the kit body Superhero_Male_A), 1.75 m tall and posed
     every frame from their snapshots by procedural animation: its legs step with the speed and keep
-    a planted foot still, its hips turn toward the way it moves while its chest faces its aim, it
-    crouches, jumps, lands and glides, and it holds each kind of weapon as that kind is held,
-    reloads, switches, plants and defuses. What can be hit doesn't change: the body is posed round
-    the hitboxes, its head kept in the head box -
+    a planted foot still, its hips turn toward the way it moves while its chest faces its aim, its
+    feet step round after a turn, it crouches, jumps, lands and glides, and it holds each kind of
+    weapon as that kind is held, kicks as it fires, reloads, switches, plants and defuses. What can
+    be hit doesn't change: the body is posed round the hitboxes, its head kept in the head box -
     [research and design](docs/research/63-agent-bodies.md)
 64. **The 1v1**: Duel on the Play menu, Skirmish's rounds one a side, first to 10, on a map built
     by hand in the place, Workspace's `1v1Map` with spawn rooms `Spawn1` and `Spawn2`: the spawn

@@ -19,7 +19,8 @@
 -- where the bone rests (its CFrame): a bone's turn from rest in the body's
 -- space (BodyPose) is turned into its own axes, and the root bone is moved
 -- as the pose moves it. Bones the pose doesn't turn keep their parent's
--- turn, as at rest, and aren't written.
+-- turn, as at rest, and aren't written. A body off the screen isn't posed:
+-- it only moves with its entity, what it holds hidden, until it's back.
 
 local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -79,6 +80,7 @@ export type Body = {
 	held: Held?,
 	look: string,
 	last: number?,
+	source: Model, -- the rig it was copied from
 }
 
 local template: Model? = nil
@@ -122,10 +124,11 @@ local function fetch(model: Model)
 end
 
 -- The body to draw agents with, if there's one in ReplicatedStorage and its
--- meshes have loaded.
+-- meshes have loaded. One taken out of ReplicatedStorage is gone, though
+-- its folder's still about.
 function BodyView.template(): Model?
 	local found = template
-	if found and found.Parent and not broken[found] then
+	if found and found:IsDescendantOf(ReplicatedStorage) and not broken[found] then
 		return found
 	end
 	template = nil
@@ -284,6 +287,7 @@ function BodyView.new(source: Model): Body?
 		held = nil,
 		look = "",
 		last = nil,
+		source = source,
 	}
 end
 
@@ -333,11 +337,13 @@ local function frameOf(q: Quat.Quat): CFrame
 end
 
 -- Poses a body for this frame from an entity's interpolated pose, and
--- moves it there. `now` is os.clock().
-function BodyView.update(body: Body, pose: PlayerCodec.Pose, now: number)
+-- moves it there. `now` is os.clock(); `sinceShot` the seconds since the
+-- entity last fired, if it has; `unseen`, off the screen: moved, not posed.
+function BodyView.update(body: Body, pose: PlayerCodec.Pose, now: number, sinceShot: number?, unseen: boolean?)
 	local dt = if body.last then now - body.last else 0
 	body.last = now
 	local weapon = if pose.weapon > 0 then WeaponConfig.Ids[pose.weapon] else nil
+	local def = if weapon then WeaponConfig.Defs[weapon] else nil
 	local hold: BodyMotion.Hold = BodyMotion.holdOf(weapon)
 	BodyMotion.step(body.state, {
 		position = pose.position,
@@ -348,11 +354,11 @@ function BodyView.update(body: Body, pose: PlayerCodec.Pose, now: number)
 		hold = hold,
 		foregrip = if hold == "rifle" and weapon then foregripOf(weapon) else nil,
 		reloading = pose.reloading,
+		reloadLength = if def and def.reloadTime then def.reloadTime.value else nil,
 		channel = pose.channel,
 		gliding = pose.gliding,
+		sinceShot = sinceShot,
 	}, dt)
-	local skeleton, posed = body.skeleton, body.pose
-	BodyPose.solve(skeleton, body.state, posed)
 
 	-- The body's origin on the entity's feet, facing its way; every part
 	-- where it rests from the root part.
@@ -363,6 +369,19 @@ function BodyView.update(body: Body, pose: PlayerCodec.Pose, now: number)
 		moved[i] = root * offsets[i]
 	end
 	Workspace:BulkMoveTo(body.parts, moved, Enum.BulkMoveMode.FireCFrameChanged)
+	if unseen then
+		local held = body.held
+		if held then
+			for _, part in held.parts do
+				if part.Transparency ~= 1 then
+					part.Transparency = 1
+				end
+			end
+		end
+		return
+	end
+	local skeleton, posed = body.skeleton, body.pose
+	BodyPose.solve(skeleton, body.state, posed)
 
 	-- The bones: the root moved and turned, and each bone the pose turns
 	-- that's turned since it was last written (a hand's fingers, curled

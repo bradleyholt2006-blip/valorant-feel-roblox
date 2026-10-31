@@ -205,12 +205,16 @@ local function footFor(leg: BodyRig.Leg, sign: number, s: State, gun: number, un
 	local phase = (s.phase + (if sign < 0 then 0 else 0.5)) % 1
 
 	-- Where it stands still: apart, the left ahead holding a gun (`gun` is
-	-- how much it holds one), under the hips as they turn.
+	-- how much it holds one), under the hips as they turn; standing, turned
+	-- as the foot stands (BodyMotion: it stays put as the body turns on the
+	-- spot, and steps round after it, lifting).
+	local k = if sign < 0 then 1 else 2
 	local width = G.width.value + (G.crouchWidth.value - G.width.value) * c + G.sideWidth.value * math.abs(s.direction.x) * m
 	local stagger = lerp(G.crouchStagger.value * 0.5 * c, lerp(G.stagger.value, G.crouchStagger.value, c), gun) * (1 - 0.7 * m)
+	local own = lerp(s.feet[k], s.hipYaw, m)
+	local spot = Quat.rotate(Quat.aboutY(own), vector.create(sign * width, 0, sign * stagger)) + under
 	local hips = Quat.aboutY(s.hipYaw)
-	local spot = Quat.rotate(hips, vector.create(sign * width, 0, sign * stagger)) + under
-	local yaw = s.hipYaw - sign * G.turnOut.value + (if sign > 0 then -G.bladeTurn.value * gun * (1 - m) * (1 - 0.5 * c) else 0)
+	local yaw = own - sign * G.turnOut.value + (if sign > 0 then -G.bladeTurn.value * gun * (1 - m) * (1 - 0.5 * c) else 0)
 	local facing = Quat.aboutY(lerp(yaw, s.hipYaw, s.glide))
 	local toBall = leg.ball - leg.ankle
 	local still = spot + Quat.rotate(facing, vector.create(toBall.x, 0, toBall.z)) + vector.create(0, leg.ball.y, 0)
@@ -231,7 +235,7 @@ local function footFor(leg: BodyRig.Leg, sign: number, s: State, gun: number, un
 		lift = s.lift * math.sin(math.pi * t)
 		flat = 1 - e
 	end
-	local ball = still + s.direction * (along * m) + vector.create(0, lift * m, 0)
+	local ball = still + s.direction * (along * m) + vector.create(0, lift * m + s.footLift[k] * (1 - m), 0)
 	-- The heel comes up as the foot goes behind the hips.
 	local behind = ball.z - still.z
 	local heel = G.heelLift.value * smooth(behind / G.heelReach.value) * m
@@ -286,7 +290,9 @@ local function handsFor(sk: Skeleton, s: State, out: Pose, hold: BodyMotion.Hold
 	local cycle = s.phase * 2 * math.pi
 	local ahead = -s.direction.z
 	local tip = H.reloadDip.value * s.reload + 0.9 * low
-	local held = Quat.mul(Quat.aboutX(s.pitch - tip), Quat.aboutZ(H.reloadTilt.value * s.reload))
+	-- A gun kicks up and back with each shot.
+	local kick = if hold == "rifle" or hold == "pistol" then s.kick else 0
+	local held = Quat.mul(Quat.aboutX(s.pitch - tip + H.kick.value * kick), Quat.aboutZ(H.reloadTilt.value * s.reload))
 	if hold == "knife" then
 		held = Quat.mul(held, Quat.aboutX(0.6))
 	end
@@ -295,6 +301,7 @@ local function handsFor(sk: Skeleton, s: State, out: Pose, hold: BodyMotion.Hold
 	local grip = chest
 		+ Quat.rotate(Quat.aboutX(s.pitch * H.follow.value), if place then place.value else vector.zero)
 		+ vector.create(0, -0.1 * low - 0.04 * s.reload + 0.008 * math.cos(2 * cycle) * m, 0)
+		+ Quat.rotate(held, vector.create(0, 0, H.kickBack.value * kick))
 	local grasps: { Grasp? } = if hold == "rifle"
 		then { grasp(s.foregrip or H.foregrip.value, RIFLE_LEFT.along, RIFLE_LEFT.palm), GUN_RIGHT }
 		else HOLDS[hold] or {}
@@ -317,18 +324,19 @@ local function handsFor(sk: Skeleton, s: State, out: Pose, hold: BodyMotion.Hold
 			wrist = out.joints[arm.upper] + vector.create(sign * 0.07, -(arm.upperLength + arm.foreLength) * 0.93, 0.03 + swing)
 		end
 		local turn = handTurn(arm, along, palm)
-		-- Reloading, the left hand goes to the magazine, down out of the gun
-		-- and back.
+		-- Reloading, the left hand goes to the magazine, takes it down out of
+		-- the gun, brings the next up into it and goes back, once over the
+		-- gun's reload.
 		if g and k == 1 and (hold == "rifle" or hold == "pistol") and s.reload > 0.01 then
-			local u = (s.reloadTime % H.reloadCycle.value) / H.reloadCycle.value
+			local u = s.reloadShare
 			local mag = if hold == "rifle" then RIFLE_MAG else PISTOL_MAG
 			local pulled = mag + vector.create(0, -0.25, 0.05)
-			local spot = if u < 0.25
+			local spot = if u < 0.2
 				then mag
-				elseif u < 0.5 then mix(mag, pulled, smooth((u - 0.25) / 0.25))
-				elseif u < 0.75 then mix(pulled, mag, smooth((u - 0.5) / 0.25))
+				elseif u < 0.45 then mix(mag, pulled, smooth((u - 0.2) / 0.25))
+				elseif u < 0.7 then mix(pulled, mag, smooth((u - 0.45) / 0.25))
 				else mag
-			local weight = s.reload * (if u < 0.25 then smooth(u / 0.25) else 1)
+			local weight = s.reload * (if u < 0.2 then smooth(u / 0.2) elseif u > 0.85 then smooth((1 - u) / 0.15) else 1)
 			local magAlong, magPalm = Quat.rotate(held, MAG_HAND.along), Quat.rotate(held, MAG_HAND.palm)
 			wrist = mix(wrist, wristFor(arm, grip + Quat.rotate(held, spot), magAlong, magPalm), weight)
 			turn = Quat.nlerp(turn, handTurn(arm, magAlong, magPalm), weight)
@@ -422,8 +430,11 @@ function BodyPose.solve(sk: Skeleton, s: State, out: Pose)
 	-- the steps, and a dip landing).
 	forward(sk, out)
 	local headNow = out.joints[sk.head] + Quat.rotate(out.world[sk.head], sk.headCentre - sk.headJoint)
-	local target =
-		vector.create(B.sway.value * math.sin(cycle) * m, headBoxMiddle(c) + B.bob.value * math.cos(2 * cycle) * m - 0.03 * s.land, 0)
+	local target = vector.create(
+		B.sway.value * math.sin(cycle) * m,
+		headBoxMiddle(c) + B.bob.value * math.cos(2 * cycle) * m - B.landDip.value * s.land,
+		0
+	)
 	local root = target - headNow
 
 	-- The feet, under the hips part way. A foot the leg can't reach from
@@ -495,12 +506,14 @@ function BodyPose.solve(sk: Skeleton, s: State, out: Pose)
 
 	-- What's held, and the hands on it. Switching what's held, the hands
 	-- go from the old hold to the new over a moment, and the new thing
-	-- comes up from low.
+	-- comes up from low; put away for a defuse or an orb, they go from
+	-- what was held straight to the work, not by the sides on the way.
 	local low = 1 - smooth(s.draw / H.drawTime.value)
-	local hands = handsFor(sk, s, out, hold, low)
+	local stowed = hold == "none" and s.previous ~= "none" and busy > 0.001
+	local hands = if stowed then handsFor(sk, s, out, s.previous, 0) else handsFor(sk, s, out, hold, low)
 	out.grip, out.held = hands.grip, hands.held
 	out.shown = hold ~= "none" and busy < 0.5
-	local before = if switching > 0 then handsFor(sk, s, out, s.previous, 0) else nil
+	local before = if switching > 0 and not stowed then handsFor(sk, s, out, s.previous, 0) else nil
 	local chestJoint = out.joints[spine[5]]
 	for k, arm in { sk.left, sk.right } do
 		local sign = arm.side
@@ -521,7 +534,8 @@ function BodyPose.solve(sk: Skeleton, s: State, out: Pose)
 		-- orb, the right reaches out.
 		if plant > 0.001 then
 			local pump = if s.channel == 2 then 0.025 * math.sin(s.time * 2 * math.pi * 3) else 0
-			local spot = vector.create(sign * 0.09, lerp(0.95, 0.55, c) + pump, -0.3)
+			local press = mix(H.press.value, H.pressCrouched.value, c)
+			local spot = vector.create(sign * press.x, press.y + pump, press.z)
 			local along, palm = PRESSING.along, PRESSING.palm
 			wrist = mix(wrist, wristFor(arm, spot, along, palm), plant)
 			turn = Quat.nlerp(turn, handTurn(arm, along, palm), plant)

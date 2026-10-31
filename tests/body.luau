@@ -2,10 +2,11 @@
 -- Agents' bodies (system 63): the rotations, the kit's skeleton as the
 -- importer gives it (and any rig with its bone names, at any scale), and
 -- the pose: the head in the head box in every stance, aim and step, the
--- feet on the ground and kept still while down, the limbs reaching what
--- they reach for and the hands on what they hold, the legs tucking in the
--- air, the reload, the plant and the draw, and no pops from frame to
--- frame.
+-- feet on the ground and kept still while down, standing as the body turns
+-- on the spot until they step round after it, the limbs reaching what they
+-- reach for and the hands on what they hold, the legs tucking in the air
+-- and the knees bending as they land, the reload, the kick, the plant, the
+-- defuse and the draw, and no pops from frame to frame.
 
 local BodyConfig = require("../src/shared/Body/BodyConfig")
 local BodyMotion = require("../src/shared/Body/BodyMotion")
@@ -170,8 +171,10 @@ type Play = {
 	air: boolean?,
 	foregrip: vector?,
 	reloading: boolean?,
+	reloadLength: number?,
 	channel: number?,
 	gliding: boolean?,
+	fireRate: number?, -- shots a second
 }
 
 type Body = {
@@ -182,6 +185,7 @@ type Body = {
 	yaw: number,
 	pitch: number,
 	crouch: number,
+	sinceShot: number?,
 }
 
 local function newBody(): Body
@@ -193,6 +197,7 @@ local function newBody(): Body
 		yaw = 0,
 		pitch = 0,
 		crouch = 0,
+		sinceShot = nil,
 	}
 end
 
@@ -221,6 +226,15 @@ local function play(body: Body, input: Play, seconds: number, each: ((number) ->
 		body.yaw += (input.turn or 0) * DT
 		body.pitch = toward(body.pitch, input.pitch or 0, FLICK * DT)
 		body.crouch = toward(body.crouch, input.crouch or 0, DT / CROUCH_TIME)
+		local rate = input.fireRate
+		local since = body.sinceShot
+		if since then
+			since += DT
+		end
+		if rate and (since == nil or since >= 1 / rate - 1e-9) then
+			since = 0
+		end
+		body.sinceShot = since
 		BodyMotion.step(body.state, {
 			position = body.position,
 			yaw = body.yaw,
@@ -230,8 +244,10 @@ local function play(body: Body, input: Play, seconds: number, each: ((number) ->
 			hold = input.hold or "rifle",
 			foregrip = input.foregrip,
 			reloading = input.reloading == true,
+			reloadLength = input.reloadLength,
 			channel = input.channel or 0,
 			gliding = input.gliding == true,
+			sinceShot = body.sinceShot,
 		}, DT)
 		BodyPose.solve(sk, body.state, body.pose)
 		if each then
@@ -242,6 +258,11 @@ end
 
 local function joint(body: Body, name: string): vector
 	return body.pose.joints[sk.index[name]]
+end
+
+-- Where a joint is in the world.
+local function placed(body: Body, name: string): vector
+	return body.position + Quat.rotate(Quat.aboutY(body.yaw), joint(body, name))
 end
 
 -- Where a hand holds: the middle of its grip, from its wrist and its turn.
@@ -499,6 +520,21 @@ do
 	play(body, {}, 1)
 	check("back on the ground the feet stand where they stood", close(joint(body, "foot.L"), standL, 0.02))
 
+	-- Landing a long fall: the hips come down a moment, bending the knees,
+	-- the head's middle still in its box.
+	local fall = newBody()
+	play(fall, {}, 1)
+	local hipsUp = joint(fall, "spine01").y
+	play(fall, { air = true }, BodyConfig.Gait.landLongest.value)
+	local lowestHips, worstHead = math.huge, 0
+	local headBox = Hitboxes.build({ position = vector.zero, yaw = 0, crouchAlpha = 0 })[1]
+	play(fall, {}, 0.5, function()
+		lowestHips = math.min(lowestHips, joint(fall, "spine01").y)
+		worstHead = math.max(worstHead, math.abs(fall.pose.headCentre.y - headBox.center.y))
+	end)
+	check("landing a long fall, the hips dip, bending the knees", hipsUp - lowestHips > 0.04, string.format("%.3f m", hipsUp - lowestHips))
+	check("...with the head's middle in its box meanwhile", worstHead < headBox.half.y, string.format("%.3f m", worstHead))
+
 	-- Reloading: the left hand leaves the foregrip for the magazine, down
 	-- and back up; after, it's on the foregrip again.
 	local reload = newBody()
@@ -512,6 +548,51 @@ do
 	check("reloading, the left hand goes down to the magazine and out", before.y - lowest > 0.15, string.format("%.2f", before.y - lowest))
 	check("...and after it's back on the foregrip", close(joint(reload, "hand.L"), before, 0.01))
 
+	-- A Vandal's 2.5 s reload: the hand's trip takes all of it, smoothly,
+	-- and it's back on the foregrip as it ends.
+	local long = newBody()
+	play(long, { hold = "rifle" }, 1)
+	local grip = joint(long, "hand.L")
+	local last = grip
+	local jump, lowestAt, deepest = 0, 0, math.huge
+	local function track(frame: number)
+		local hand = joint(long, "hand.L")
+		jump = math.max(jump, vector.magnitude(hand - last))
+		last = hand
+		if hand.y < deepest then
+			deepest, lowestAt = hand.y, frame * DT
+		end
+	end
+	play(long, { hold = "rifle", reloading = true, reloadLength = 2.5 }, 2.5, track)
+	play(long, { hold = "rifle" }, 1, function()
+		local hand = joint(long, "hand.L")
+		jump = math.max(jump, vector.magnitude(hand - last))
+		last = hand
+	end)
+	check(
+		"a long gun's reload: the left hand's lowest about halfway through it, not before the second",
+		lowestAt > 1 and lowestAt < 1.5,
+		string.format("%.2f s", lowestAt)
+	)
+	check("...moving no more than 3 cm a frame, through it and after (no pop)", jump < 0.03, string.format("%.3f m", jump))
+	check("...and on the foregrip again after", close(joint(long, "hand.L"), grip, 0.01))
+
+	-- Firing: the gun kicks up and back with a shot, and settles.
+	local fire = newBody()
+	play(fire, { hold = "rifle" }, 1)
+	local aim = Quat.rotate(fire.pose.held, AHEAD)
+	local rest = fire.pose.grip
+	play(fire, { hold = "rifle", fireRate = 1 }, DT)
+	local kicked = Quat.rotate(fire.pose.held, AHEAD)
+	local back = fire.pose.grip
+	play(fire, { hold = "rifle" }, 0.5)
+	check(
+		"firing, the muzzle kicks up and the gun comes back",
+		kicked.y - aim.y > 0.05 and back.z - rest.z > 0.01,
+		string.format("%.3f up, %.3f m back", kicked.y - aim.y, back.z - rest.z)
+	)
+	check("...and settles again", close(Quat.rotate(fire.pose.held, AHEAD), aim, 1e-3) and close(fire.pose.grip, rest, 1e-3))
+
 	-- Planting crouched: both hands down in front, the spike not drawn in hand.
 	local plant = newBody()
 	play(plant, { hold = "spike", channel = 1, crouch = 1 }, 1)
@@ -523,6 +604,16 @@ do
 	)
 	check("...and what's held isn't drawn", plant.pose.shown == false)
 
+	-- Defusing crouched: both hands down on the spike on the ground.
+	local defuse = newBody()
+	play(defuse, { hold = "none", channel = 2, crouch = 1 }, 1)
+	local dl, dr = joint(defuse, "hand.L"), joint(defuse, "hand.R")
+	check(
+		"defusing crouched, the hands go down on the spike, as far as the arms reach",
+		dl.y < 0.52 and dr.y < 0.52 and defuse.pose.stretch.leftArm <= 1 and defuse.pose.stretch.rightArm <= 1,
+		string.format("%.2f m up, the arms %.2f of their length", dl.y, defuse.pose.stretch.leftArm)
+	)
+
 	-- Drawing: the gun comes up from low.
 	local draw = newBody()
 	play(draw, { hold = "pistol" }, 1)
@@ -533,6 +624,82 @@ do
 		"a new gun starts pointing down and comes up to the aim",
 		first.y < -0.5 and close(Quat.rotate(draw.pose.held, AHEAD), AHEAD, 1e-3),
 		string.format("%.2f", first.y)
+	)
+end
+
+-- Turning on the spot ------------------------------------------------------------------------------
+
+H.section("Agent bodies: turning on the spot (system 63)")
+
+do
+	-- A small turn leaves the feet where they stand.
+	local body = newBody()
+	play(body, {}, 1)
+	local standL, standR = placed(body, "foot.L"), placed(body, "foot.R")
+	local restL, restR = joint(body, "foot.L"), joint(body, "foot.R")
+	play(body, { turn = 1 }, 0.4)
+	play(body, {}, 0.5)
+	check(
+		"turning on the spot a little, the feet stay where they stand",
+		close(placed(body, "foot.L"), standL, 0.01) and close(placed(body, "foot.R"), standR, 0.01),
+		string.format("%.3f, %.3f m", vector.magnitude(placed(body, "foot.L") - standL), vector.magnitude(placed(body, "foot.R") - standR))
+	)
+	check("...the hips turned part way toward them", body.state.hipYaw < -0.05, string.format("%.2f", body.state.hipYaw))
+
+	-- A quarter turn: the feet step round after it, one lifting then the
+	-- other, and come to stand square under the body again.
+	local turned = newBody()
+	play(turned, {}, 1)
+	local liftL, liftR = 0, 0
+	local order: { string } = {}
+	play(turned, { turn = 2 }, math.pi / 4, function()
+		local l, r = joint(turned, "foot.L").y - restL.y, joint(turned, "foot.R").y - restR.y
+		liftL, liftR = math.max(liftL, l), math.max(liftR, r)
+		if l > 0.02 and order[#order] ~= "left" then
+			table.insert(order, "left")
+		elseif r > 0.02 and order[#order] ~= "right" then
+			table.insert(order, "right")
+		end
+	end)
+	play(turned, {}, 1, function()
+		local l, r = joint(turned, "foot.L").y - restL.y, joint(turned, "foot.R").y - restR.y
+		liftL, liftR = math.max(liftL, l), math.max(liftR, r)
+		if l > 0.02 and order[#order] ~= "left" then
+			table.insert(order, "left")
+		elseif r > 0.02 and order[#order] ~= "right" then
+			table.insert(order, "right")
+		end
+	end)
+	check(
+		"turning a quarter to the left, the feet step round after it, the left first",
+		liftL > 0.03 and liftR > 0.03 and order[1] == "left",
+		string.format("lifts %.3f, %.3f; %s", liftL, liftR, table.concat(order, " then "))
+	)
+	check(
+		"...and stand square under the body again",
+		close(joint(turned, "foot.L"), restL, 0.02) and close(joint(turned, "foot.R"), restR, 0.02),
+		string.format("%.3f, %.3f m", vector.magnitude(joint(turned, "foot.L") - restL), vector.magnitude(joint(turned, "foot.R") - restR))
+	)
+
+	-- A flick turns the feet with it past the most they twist, and they step
+	-- after; walking off, they come round with the body.
+	local flick = newBody()
+	play(flick, {}, 1)
+	play(flick, { turn = 12 }, 0.2)
+	local most = 0
+	for k = 1, 2 do
+		most = math.max(most, math.abs(flick.state.feet[k]))
+	end
+	check(
+		"a flick turns the feet as far as they twist, no further",
+		most <= BodyConfig.Gait.turnMost.value + 1e-6,
+		string.format("%.2f", most)
+	)
+	play(flick, { velocity = vector.create(0, 0, -RIFLE) }, 1)
+	check(
+		"...and running off, they come round with the body",
+		math.abs(flick.state.feet[1]) < 0.05 and math.abs(flick.state.feet[2]) < 0.05,
+		string.format("%.2f, %.2f", flick.state.feet[1], flick.state.feet[2])
 	)
 end
 
@@ -575,10 +742,15 @@ do
 			{ "sideways and ahead", { velocity = vector.create(RIFLE, 0, -RIFLE * 0.2) } :: Play, 0.6 },
 			{ "crouching", { crouch = 1 } :: Play, 0.6 },
 			{ "turning on the spot", { turn = 4 } :: Play, 0.8 },
+			{ "turning slowly", { turn = 1.5 } :: Play, 1.2 },
+			{ "standing after the turn", {} :: Play, 0.6 },
 			{ "jumping", { air = true, velocity = vector.create(0, 0, -RIFLE) } :: Play, 0.5 },
 			{ "landing", { velocity = vector.create(0, 0, -RIFLE) } :: Play, 0.5 },
 			{ "drawing a pistol", { hold = "pistol" } :: Play, 0.6 },
 			{ "reloading", { hold = "pistol", reloading = true } :: Play, 1 },
+			{ "reloading a long gun", { hold = "rifle", reloading = true, reloadLength = 2.5 } :: Play, 2.7 },
+			{ "firing", { hold = "rifle", fireRate = 9.75 } :: Play, 0.6 },
+			{ "defusing crouched", { hold = "none", channel = 2, crouch = 1 } :: Play, 1 },
 			{ "looking up", { pitch = 1.2 } :: Play, 0.4 },
 			{ "planting", { hold = "spike", channel = 1 } :: Play, 1 },
 		} :: { { any } }

@@ -5726,41 +5726,49 @@ to 10 m in front of player 1, and window 1 watches.
   bar. **Send:** whether the head ever left its box, how the stance looked, and the number.
 
 - **AB2 Moving.** In window 2, run ahead, back, left, right and diagonally, then walk (Shift) and
-  crouch-walk the same ways, stopping in between, and turn on the spot with the mouse. In window 1:
-  the legs step with the speed, quicker running, and a foot that's down stays where it's put,
-  sliding a little only running sideways; the hips turn toward the way player 2 moves while the
-  chest and the gun keep facing the aim; the feet come to stand where they stop; and turning on the
-  spot shuffles the feet. In window 2, jump on the spot, then off the red 1.00 m jump box: the legs
-  tuck, the left higher, and after the drop the knees bend a moment as they land. Pick Jett (T) and
-  hold Space in the air: the legs hang together, the toes pointed. **Send:** anything that looked
-  wrong, and which way player 2 was moving.
+  crouch-walk the same ways, stopping in between. In window 1: the legs step with the speed,
+  quicker running, and a foot that's down stays where it's put, sliding a little only running
+  sideways; the hips turn toward the way player 2 moves while the chest and the gun keep facing the
+  aim; and the feet come to stand where they stop. Standing still in window 2, turn a little with
+  the mouse, then slowly a quarter turn: on the little turn the feet stay put and the hips turn a
+  touch with it; on the quarter turn the feet step round after it, lifting a little, the one on the
+  side it turns to first, until they stand square again. Jump on the spot, then jump up onto the
+  red 0.70 m jump box and step off it: the legs tuck, the left higher, and as they land the knees
+  bend a moment and the head dips a little. Pick Jett (T, or set `VFTestAgents` to true,
+  `VFTestAgent` to `jett`, then `VFTestAgent` to `lock`) and hold Space in the air: the legs hang
+  together, the toes pointed. **Send:** anything that looked wrong, and which way player 2 was
+  moving.
 
 - **AB3 Holding.** In window 2, draw the Vandal (1), the Classic (2) and the knife (3) in turn,
   waiting a moment after each, then fire a few rounds from each gun and reload it (R). In window 1:
   the Classic is out in front in both hands; the knife is low in the right hand, the left up in
   front of the chest; at each switch the hands go from the old hold to the new without a snap, and
-  the new weapon comes up from pointing down; reloading, the left hand goes down to the magazine,
-  out and back. Pick Sage (T) and press Q: player 2 holds the Slow Orb's glowing piece up in the
-  right hand. **Send:** anything that looked wrong.
+  the new weapon comes up from pointing down; each shot kicks the gun up and back a little, and it
+  settles again; reloading, the left hand goes down to the magazine, pulls it out, puts it back and
+  returns to the barrel, taking the whole reload, with no jump at its start or end. Pick Sage (T)
+  and press Q: player 2 holds the Slow Orb's glowing piece up in the right hand. **Send:** anything
+  that looked wrong.
 
 - **AB4 The spike.** In window 2, pick up the spike (it waits 4 m behind the spawn), draw it (4) and
   hold 4 in a site's plant area until it's planted, standing; then hold F by it to defuse it,
   crouched. In window 1: planting, both hands go down in front, to about the waist's height standing
   (the head stays in the standing head box), and the spike in hand isn't drawn meanwhile; defusing
-  crouched, the hands go down to the spike, working a little. **Send:** anything that looked wrong.
+  crouched, nothing's in the hands and they go down onto the spike, working a little, the head in
+  the crouched head box. **Send:** anything that looked wrong.
 
 - **AB5 Hits, a Shade and a force field.** In window 1, shoot player 2 a few times: the whole body
   flashes white with each hit. In window 2, pick Omen (T) and send him 25 m down the target lane
   with From the Shadows, as in FS4: while he's a Shade there, window 1 sees the body dark and
-  see-through, then whole again as he forms. In window 1, press P twice, which starts gun game, and
-  kill player 2: as they come back, the body's drawn as a force field until their spawn protection
-  ends. **Send:** anything that looked wrong.
+  see-through, then whole again as he forms. In window 1, press P three times (Skirmish, the 1v1,
+  then gun game) and kill player 2: as they come back, the body's drawn as a force field until
+  their spawn protection ends. **Send:** anything that looked wrong.
 
 - **AB6 Bots.** Stop the game and start a Local Server with 1 player. In the server's command bar,
   set `VFMatchMap` to `outpost`, `VFArenaMode` to `spike` and `VFArenaOn` to true, as in section 65.
   In the buy phase your side's four bots are bodies, standing with their Classics; once the round's
-  live they run off together, their legs keeping up. Run this in the player's command bar: it
-  prints, every second for 30 s, how many bodies are drawn and what they cost:
+  live they run off together, their legs keeping up. A bot that plants or defuses in view is drawn
+  as in AB4, its gun put away. Run this in the player's command bar: it prints, every second for
+  30 s, how many bodies are drawn and what they cost:
 
   ```lua
   for _ = 1, 30 do
@@ -5775,14 +5783,17 @@ to 10 m in front of player 1, and window 1 watches.
   end
   ```
 
-  Then get killed and watch a bot of yours: the one you watch isn't drawn, and the others are.
-  **Send:** the highest pair of numbers, and the F3 panel's `fps` with the bodies in view and
-  looking away from them.
+  Looking away from the bodies, the cost drops: a body off the screen isn't posed. Then get killed
+  and watch a bot of yours: the one you watch isn't drawn, and the others are. **Send:** the
+  highest pair of numbers, the cost looking away, and the F3 panel's `fps` with the bodies in view
+  and looking away from them.
 
-- **AB7 Without a body (optional).** Stop the game, move `VFBodies` from ReplicatedStorage to
-  ServerStorage in the Explorer, start a Local Server with 2 players and check T2: each window draws
-  the other player as red blocks, as before. Move `VFBodies` back into ReplicatedStorage afterwards.
-  **Send:** whether the blocks were back.
+- **AB7 Without a body (optional).** With AB6's game still running, run this in the server's
+  command bar: `game.ReplicatedStorage.VFBodies.Parent = game.ServerStorage`. Within a second the
+  bots are drawn as red blocks, as before. Then run
+  `game.ServerStorage.VFBodies.Parent = game.ReplicatedStorage`: they're bodies again. The place
+  isn't changed, as the game's copy of it goes when the game stops. **Send:** whether the blocks
+  came, and then the bodies again.
 
 ## 68. The 1v1
 
@@ -6389,8 +6400,8 @@ AB2 what looked wrong, and moving which way: ___
 AB3 what looked wrong: ___
 AB4 the plant: ___; the defuse: ___
 AB5 the hits: ___; the Shade: ___; the force field: ___
-AB6 the most bodies and VFBodyMs: ___ ___; fps with them in view: ___, looking away: ___
-AB7 blocks without a body: yes / no
+AB6 the most bodies and VFBodyMs: ___ ___; VFBodyMs looking away: ___; fps with them in view: ___, looking away: ___
+AB7 blocks without a body: yes / no; the bodies again: yes / no
 BK1 before the window closed: ___; after: ___; the scoreboard and the top bar: ___
 BK2 after round 1: ___; after round 2: ___
 BK3 shot while blinded: yes / no; VFBlind: ___; the nearsighted bots shot from about ___ m
@@ -6796,11 +6807,11 @@ Didn't look right (IDs and what you saw):
 | 62 | A takeover asked for as the bot's gone: no life, and watching goes on | BC5 |
 | 63 | The `Transform` sums on the real rig: each bone where the pose puts it, the skinned mesh following, and the body scaled to 1.75 m | AB1, AB2 |
 | 63 | The head in the head box, standing, crouched, and aiming up and down | AB1 |
-| 63 | The steps, the stance, a jump, a landing and a glide, as they look | AB2 |
-| 63 | The holds, a switch, a reload, an ability's item, the plant and the defuse, as they look | AB3, AB4 |
+| 63 | The steps, the stance, turning on the spot, a jump, a landing and a glide, as they look | AB2 |
+| 63 | The holds, a switch, a shot's kick, a reload, an ability's item, the plant and the defuse, as they look | AB3, AB4 |
 | 63 | A hit, a Shade and spawn protection on the body; the outline round it, not round the unseen blocks; the label over the head | AB1, AB5 |
-| 63 | Bots drawn as bodies, the one watched not drawn, and what nine bodies cost a client's frame | AB6 |
-| 63 | Blocks again without a body | AB7 |
+| 63 | Bots drawn as bodies, planting and defusing too, the one watched not drawn, and what nine bodies cost a client's frame, in view and looking away | AB6 |
+| 63 | Blocks again without a body, and the body again once it's back | AB7 |
 | 65 | Bots picking in the agent select window, one of each agent on a side, never what a player selected | BK1 |
 | 65 | Bots' agents and ultimates on the top bar and the scoreboard | BK1, BK2 |
 | 65 | A bot's kit: its signature's free charge, and points for kills and deaths | BK2 |

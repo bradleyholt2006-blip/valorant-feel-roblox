@@ -331,9 +331,12 @@ local function currentPose(bot: Bot): PlayerCodec.Pose
 		-- A dash makes no steps (system 17).
 		quiet = StepTracker.isQuiet(bot.buttons, m.crouched) or AbilitySim.dashing(bot.sim.abilities, m.tick * DT),
 		reloading = WeaponSim.isReloading(w),
-		weapon = WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
-		channel = 0,
+		-- Planting, defusing and its weapon put away for a defuse, as a
+		-- player's (PlayerSimServer), so it's drawn doing them.
+		weapon = if SpikeSim.stowed(bot.sim.spike) then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		channel = bot.sim.spike.channel,
 		gliding = m.gliding,
+		shade = AbilitySim.shaded(bot.sim.abilities, m.tick * DT),
 	}
 end
 

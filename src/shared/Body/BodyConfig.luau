@@ -48,6 +48,9 @@ BodyConfig.Body = {
 	-- (up and down, side to side).
 	bob = p(0.012, "estimate", "Small enough that the head never leaves its box (the tests check it)"),
 	sway = p(0.008, "estimate", "As bob"),
+	-- How far the head, and with it the hips, dips landing a long fall (a
+	-- jump's landing dips less), bending the knees.
+	landDip = p(0.06, "estimate", "The head's middle stays inside its box, which reaches 0.13 m below it"),
 }
 
 -- Standing and stepping -------------------------------------------------------------------------
@@ -117,13 +120,25 @@ BodyConfig.Gait = {
 	-- How quickly the body's speed and the step's weight follow the motion.
 	smoothing = p(0.08, "estimate", "Seconds; snapshots arrive about every 17 ms"),
 	settle = p(0.12, "estimate", "Seconds for the legs to come to a stop or get going"),
-	-- Turning on the spot shuffles the feet as if moving this fast for each
-	-- radian a second.
-	turnStep = p(0.22, "estimate", "Metres a second of stepping per radian a second of turning"),
+	-- Turning on the spot, a foot that's down stays where it stands until
+	-- the body's turned this far from it, then steps round after it: the
+	-- foot on the side it turns toward first, the other following once it's
+	-- this far out. Past the most, a foot turns where it stands.
+	turnStepAt = p(0.6, "estimate", "About 34 degrees: a small turn of the aim leaves the feet be"),
+	turnFollow = p(0.2, "estimate", "Radians: the second foot squares up to the first"),
+	turnMost = p(1.2, "estimate", "About 69 degrees: a flick turns the feet with it, and they step after"),
+	turnStepTime = p(0.25, "estimate", "Seconds a step round takes"),
+	turnLift = p(0.06, "estimate", "Metres a foot comes up stepping round"),
+	-- Standing, the hips turn this share of the way from the aim toward the
+	-- feet, the back twisting the rest.
+	hipFollow = p(0.5, "estimate", "Halfway, so neither the hips nor the back twist far"),
 	-- In the air the legs tuck, one higher than the other.
 	tuck = p(0.22, "estimate", "How far the feet come up in a jump"),
-	-- Landing from a fall bends the knees a moment.
+	-- Landing from a fall bends the knees a moment: after this long in the
+	-- air, more the longer it was, all of it after the longest.
 	landTime = p(0.3, "estimate", "Seconds to come back up"),
+	landFrom = p(0.15, "estimate", "Seconds in the air: a hop off a step doesn't"),
+	landLongest = p(0.6, "estimate", "Seconds in the air: about a 1.5 m drop"),
 }
 
 -- Leaning, crouching and aiming ------------------------------------------------------------------
@@ -188,10 +203,27 @@ BodyConfig.Hold = {
 	-- Drawing: the gun comes up from low over this long.
 	drawTime = p(0.35, "estimate", "About as long as the quickest equip"),
 	switchTime = p(0.2, "estimate", "The hands going from the old hold to the new"),
-	-- Reloading: the gun tips, the left hand goes to the magazine and back.
+	-- Reloading: the gun tips, the left hand goes to the magazine, takes it
+	-- out, puts the next in and goes back, once over the gun's reload.
 	reloadTilt = p(0.45, "estimate", "Radians the gun rolls"),
 	reloadDip = p(0.35, "estimate", "Radians the gun points down"),
-	reloadCycle = p(1.6, "estimate", "Seconds for the left hand's trip"),
+	reloadCycle = p(1.6, "estimate", "Seconds for the left hand's trip when the gun's reload time isn't known"),
+	-- Firing: the muzzle kicks up and the gun back into the shoulder with
+	-- each shot, and settles.
+	kick = p(0.1, "estimate", "Radians the muzzle rises"),
+	kickBack = p(0.025, "estimate", "Metres the gun comes back"),
+	kickTime = p(0.07, "estimate", "Seconds for the kick to settle to a third"),
+	-- Planting or defusing, both hands press down in front: standing, at
+	-- the waist; crouched, on the spike on the ground (x is outward, either
+	-- side).
+	press = at(0.09, 0.95, -0.3, "estimate", "Waist height, the head kept in the standing head box"),
+	pressCrouched = at(
+		0.09,
+		0.41,
+		-0.22,
+		"estimate",
+		"On the spike (its top about 0.4 m up, SpikeView), as far down as the arms reach with the head in the crouched head box"
+	),
 }
 
 return BodyConfig
