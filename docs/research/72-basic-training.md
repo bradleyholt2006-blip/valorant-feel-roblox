@@ -4,7 +4,7 @@ A new player's first mode on the Play menu: a tutorial, a step at a time, on the
 of its own. A panel at the top of the screen says what the step under way asks, naming the buttons
 as the input in use has them (the keys, a gamepad's or a touch screen's), and how far through it the
 player is; a gold marker shows where: a column of light at a spot to reach or the spike to fetch, a
-ring under a target. Fourteen steps lead to the last: move to the end of the sprint lane; crouch
+ring round the targets. Fourteen steps lead to the last: move to the end of the sprint lane; crouch
 into the low tunnel; jump onto the lowest box; walk 6 m; shoot a target down; down another standing
 still as the shot goes off; down the one behind the cover with a headshot; reload; aim down a
 Vandal's sights and down a target 30 m away; buy a shield; use C, Q and E once each; use the
@@ -117,11 +117,11 @@ target downed by the step's spot but not as it asks leaves a note: moving as the
 the head, or not aimed down sights. The spike gone off while it's to be defused is back to planting,
 with a note. A step that gives a weapon (the Vandal) puts it in its slot as it starts and in each
 life during it, if it isn't there already. A gun run dry, magazine and reserve, is given again full,
-so nobody's held up for rounds. An ability the kit can't play yet (Reyna's Leer and Empress,
-system 73) counts as used, and while her Devour or Dismiss is still to use, the step's progress ends
-with a hint that each takes a Soul Orb. The step under way, how far through it the player is (the
-metres walked, the abilities used, and that hint) and the note go on the player as attributes, with
-a count of the notes given, so the same note given again shows again.
+so nobody's held up for rounds. An ability the kit can't play yet (Reyna's Empress, system 73, and
+her Leer until system 74) counts as used, and while her Devour or Dismiss is still to use, the
+step's progress ends with a hint that each takes a Soul Orb. The step under way, how far through it
+the player is (the metres walked, the abilities used, and that hint) and the note go on the player
+as attributes, with a count of the notes given, so the same note given again shows again.
 
 ### On the client
 
@@ -130,8 +130,9 @@ the step's number, its title, what it says with the buttons named for the input 
 (`TrainingRules.text`: the keys, a gamepad's or the touch screen's), and at the bottom how far
 through it they are, or for 5 s a note in red. It moves down under the spike's light while the
 spike's planted. A gold marker shows where: a column of light at a spot or the spike to fetch, a
-ring on the floor under a target. The spike's column follows it wherever it's dropped, and goes
-while it's carried. A gun the step hands over mid-life is drawn.
+ring on the floor round the targets, as wide as where a target downed counts (since system 74; it
+was 1.6 m across before). The spike's column follows it wherever it's dropped, and goes while it's
+carried. A gun the step hands over mid-life is drawn.
 
 ### Not in yet
 

@@ -25,7 +25,7 @@
 -- Recon Bolt, his Shock Bolt (system 45), his Hunter's Fury (system 46)
 -- and his Owl Drone (system 47). Reyna is the sixth (system 73), with her
 -- Devour and her Dismiss, each taking a Soul Orb an enemy she's downed
--- leaves.
+-- leaves, and her Leer (system 74).
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -179,6 +179,7 @@ AbilityConfig.TeamDeathmatch = {
 			"Ours: no source we could read gives Reyna's; between the 29 s and 54 s the wiki gives other basic abilities"
 		),
 		dismiss = p(40, "estimate", "Ours, as Devour's: each needs a Soul Orb as well as a charge"),
+		leer = p(44, "estimate", "Ours, as Curveball's (44 s, the wiki), the other flash"),
 	},
 	signatureStart = p(1, "community", TDM_WIKI .. ": 'Most agents start the match with one full charge of their signature ability'"),
 	headStart = p(
@@ -252,6 +253,10 @@ local P811 = "Patch 8.11"
 local P1202 = "Patch 12.02"
 local REYNA_PCGAMER = "PC Gamer's Reyna guide"
 local REYNA_ESPORTS = "esports.net's Reyna guide"
+local P507 = "Patch 5.07"
+local REYNA_BOOSTING = "Boosting Ground's Reyna guide"
+local REYNA_TRACKER = "valoranttracker.org, Reyna"
+local REYNA_STEELSERIES = "SteelSeries' Reyna guide"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -476,7 +481,8 @@ AbilityConfig.Defs = {
 	},
 	-- Reyna's (system 73): her kit as Liquipedia lists it, Leer her
 	-- signature, bought as her others are. Her Devour and her Dismiss can be
-	-- played, each taking a Soul Orb (AbilityConfig.Reyna).
+	-- played, each taking a Soul Orb (AbilityConfig.Reyna), and her Leer
+	-- (system 74).
 	leer = {
 		id = "leer",
 		name = "Leer",
@@ -484,7 +490,8 @@ AbilityConfig.Defs = {
 		kind = "signature",
 		cost = p(250, "community", REYNA .. ": Leer, 250 credits (Patch 3.0: 200 to 250)"),
 		charges = p(2, "community", REYNA .. ": Leer, Max Charges 2"),
-		description = "C readies an eye, and fire casts it a short way ahead: any enemy who looks at it is nearsighted.",
+		weapon = "leereye",
+		description = "C readies an eye. Fire casts it 10 m ahead, through walls: for 2 s any enemy who looks at it is nearsighted, unless they shoot it.",
 	},
 	devour = {
 		id = "devour",
@@ -1424,14 +1431,77 @@ AbilityConfig.Reyna = {
 	dismissSpeed = p(12, "confirmed", P811 .. ": 'Top speed increased 9.1 meters/second >>> 12 meters/second'"),
 }
 
+-- Reyna's Leer (system 74): C puts the eye in hand (WeaponConfig's leereye,
+-- in the fifth slot, as Paranoia's orb is), and fire casts it. It flies
+-- from her eye along the crosshair, through walls, its travel over its
+-- windup, unless a floor stops it first, and hangs there (LeerSim). From
+-- then, for its duration, any enemy who has it in view, with nothing
+-- between, at any distance, is nearsighted as Paranoia nearsights
+-- (AbilityConfig.Paranoia's vision), but not deafened: whole while they
+-- look and a moment after, then clearing over its fade. Shots and knives
+-- break it once they've taken its health. Riot gives the times; guides the
+-- travel and the health (74-leer.md, section 2).
+AbilityConfig.Leer = {
+	-- From the cast until the gun's back in hand.
+	unequip = p(0.5, "confirmed", P507 .. ": 'Nearsight unequip delay decreased: .7 >>> .5'"),
+	-- From the cast until it nearsights, and how long it does then.
+	windup = p(0.4, "confirmed", P507 .. ": 'Wind-up of nearsight effect decreased .6s >>> .4s'"),
+	duration = p(
+		2,
+		"confirmed",
+		P507
+			.. ": 'Duration decreased 2.6s >>> 2.0s', from its windup's end ("
+			.. REYNA_BOOSTING
+			.. ": 'The Nearsight effect lasts for 2 seconds after a brief wind-up period of 0.4 seconds')"
+	),
+	-- How far it flies from her eye, which it does over its windup, unless
+	-- a floor in its way stops it first (LeerSim.reach).
+	travel = p(
+		10,
+		"community",
+		REYNA_TRACKER
+			.. ": 'it will travel a fixed distance of ten meters away unless thrown on the ground'; flown over its windup,"
+			.. " through walls but not floors, is ours ("
+			.. REYNA_STEELSERIES
+			.. ": 'It can travel through walls (like Omen) for a short distance')"
+	),
+	-- How much damage breaks it, and how big it is to shots (metres
+	-- across).
+	health = p(
+		100,
+		"community",
+		REYNA_BOOSTING
+			.. ": 'possesses 100 Health Points (HP)' ("
+			.. REYNA_PCGAMER
+			.. " and "
+			.. REYNA_TRACKER
+			.. " the same; Dot Esports reports a player's test at 97.5 to 100)"
+	),
+	size = p(0.5, "estimate", "Ours: about a head across"),
+	-- Who it nearsights: those with it no further than this off where they
+	-- look (degrees), at any distance (Patch 5.07: 'Range Restriction on
+	-- Leer removed').
+	cone = p(
+		50,
+		"estimate",
+		"Ours, degrees: the view's sides (103 degrees across, CameraController), as Curveball's fullAngle; "
+			.. REYNA
+			.. ": 'The eye will nearsight all enemies who look at it'"
+	),
+	-- The nearsight: whole while they look, and this long after, then
+	-- clearing over its fade; as far as they see then is Paranoia's vision.
+	linger = p(0.2, "estimate", "Ours, seconds: a moment, so it's sent a few times a second rather than every frame"),
+	fade = p(0.5, "estimate", "Ours, as Paranoia's: the dark clears over a moment"),
+}
+
 -- How long after a throw the gun's back in hand, by the ability thrown (and
 -- for Blaze, after its run's let go, for the Healing Orb, after its heal,
 -- for the Barrier Orb, after its wall's raised, for the Resurrection,
 -- after it's cast, for Shrouded Step, after it's fired: its windup, his
 -- time gone and the draw, and for From the Shadows, after it's fired: its
 -- windup and his time as a Shade, when the gun's drawn again, for the
--- Recon Bolt and the Shock Bolt, after it's loosed, and for the Owl Drone,
--- after its flight's over).
+-- Recon Bolt and the Shock Bolt, after it's loosed, for the Owl Drone,
+-- after its flight's over, and for Leer, after it's cast).
 function AbilityConfig.unequip(id: string): number
 	if id == "hothands" then
 		return AbilityConfig.HotHands.unequip.value
@@ -1461,6 +1531,8 @@ function AbilityConfig.unequip(id: string): number
 		return AbilityConfig.ShockBolt.unequip.value
 	elseif id == "owldrone" then
 		return AbilityConfig.OwlDrone.unequip.value
+	elseif id == "leer" then
+		return AbilityConfig.Leer.unequip.value
 	end
 	return AbilityConfig.Curveball.unequip.value
 end

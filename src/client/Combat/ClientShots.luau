@@ -178,16 +178,21 @@ ClientShots.bolts = nil :: ((Penetration.Level, number) -> Penetration.Level)?
 -- A level with Sova's Owl Drones in it as they were drawn at a server time
 -- (system 47, DroneView); none without.
 ClientShots.drones = nil :: ((Penetration.Level, number) -> Penetration.Level)?
+-- A level with Reyna's Leer's eyes standing in it at a server time (system
+-- 74, LeerView); none without.
+ClientShots.eyes = nil :: ((Penetration.Level, number) -> Penetration.Level)?
 
 -- The level as a screen showed it at server time `time`: with Sage's walls,
--- Sova's bolts and his drones then in it.
+-- Sova's bolts and his drones, and Reyna's eyes, then in it.
 function ClientShots.levelAt(time: number): Penetration.Level
 	local walls = ClientShots.barriers
 	local level = if walls then BarrierSim.level(ClientShots.level, walls(), time) else ClientShots.level
 	local bolts = ClientShots.bolts
 	level = if bolts then bolts(level, time) else level
 	local drones = ClientShots.drones
-	return if drones then drones(level, time) else level
+	level = if drones then drones(level, time) else level
+	local eyes = ClientShots.eyes
+	return if eyes then eyes(level, time) else level
 end
 
 -- Same rules as the server's trace: through the level first, then hitboxes.

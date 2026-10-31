@@ -281,6 +281,9 @@ local function currentPose(r: Record): PlayerCodec.Pose
 	local m, w, kit = r.sim.movement, r.sim.weapons, r.sim.abilities
 	local t = m.tick * DT
 	local body = AbilitySim.droning(kit) or math.abs(kit.landAt - t) < 1e-9
+	-- Defusing, taking an Ultimate Orb (system 49), flying the Owl Drone or
+	-- through Reyna's Dismiss (system 73), the weapon is put away.
+	local away = SpikeSim.stowed(r.sim.spike) or AbilitySim.droning(kit) or AbilitySim.dismissing(kit, t)
 	return {
 		id = r.entity.id,
 		position = m.position,
@@ -292,9 +295,7 @@ local function currentPose(r: Record): PlayerCodec.Pose
 		-- A dash makes no steps (system 17).
 		quiet = StepTracker.isQuiet(r.buttons, m.crouched) or AbilitySim.dashing(r.sim.abilities, m.tick * DT),
 		reloading = WeaponSim.isReloading(w),
-		-- Defusing, taking an Ultimate Orb (system 49) or flying the Owl
-		-- Drone, the weapon is put away.
-		weapon = if SpikeSim.stowed(r.sim.spike) or AbilitySim.droning(kit) then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		weapon = if away then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 		channel = r.sim.spike.channel,
 		gliding = m.gliding,
 		shade = AbilitySim.shaded(r.sim.abilities, m.tick * DT),

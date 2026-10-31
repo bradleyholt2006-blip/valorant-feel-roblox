@@ -6525,17 +6525,17 @@ end
 From [72-basic-training.md](research/72-basic-training.md). System 72 is a tutorial on the course, a
 step at a time, on a server of its own: the Play menu's first card, reading SOLO. A panel at the top
 of the screen says what the step under way asks, naming the buttons for the input in use, and a gold
-marker shows where: a column of light at a spot or the spike to fetch, a ring under a target. It
-starts on the Classic and the knife with no shield. Its steps, by the keys the local player's
-`VFTrainingStep` has for them: `move` to the sprint lane's 20 m post; `crouch` into the low tunnel;
-`jump` onto the 0.50 m box; `walk` 6 m; `shoot` the target 10 m down the range; `still`, the
-crouching target at 20 m downed standing still; `head`, the target behind the cover downed by a
-headshot; `reload`; `rifle`, a target at 30 m downed aiming down the sights of the Vandal it hands
-over; `shield`, one bought; `abilities`, C, Q and E used once each; `ultimate`; `plant`; `defuse`;
-and `done`. `VFTrainingProgress` says how far through the step you are, and `VFTrainingNote` why
-something didn't count; PlayerGui's `VFTraining` has the panel's `Text`, its lines apart by ` | `,
-and the `Note` shown. `VFTestTraining` set to a step's key moves you to it. Workspace's
-`VFTrainingOn` is true while it's played.
+marker shows where: a column of light at a spot or the spike to fetch, a ring on the floor round the
+targets, as wide as where one downed counts. It starts on the Classic and the knife with no shield.
+Its steps, by the keys the local player's `VFTrainingStep` has for them: `move` to the sprint
+lane's 20 m post; `crouch` into the low tunnel; `jump` onto the 0.50 m box; `walk` 6 m; `shoot` the
+target 10 m down the range; `still`, the crouching target at 20 m downed standing still; `head`, the
+target behind the cover downed by a headshot; `reload`; `rifle`, a target at 30 m downed aiming down
+the sights of the Vandal it hands over; `shield`, one bought; `abilities`, C, Q and E used once
+each; `ultimate`; `plant`; `defuse`; and `done`. `VFTrainingProgress` says how far through the step
+you are, and `VFTrainingNote` why something didn't count; PlayerGui's `VFTraining` has the panel's
+`Text`, its lines apart by ` | `, and the `Note` shown. `VFTestTraining` set to a step's key moves
+you to it. Workspace's `VFTrainingOn` is true while it's played.
 
 Press Play (F5), with one player, as Jett. Set `VFTestMute` if the sound's not wanted. Run this once
 in the command bar with it on the client, then each check's lines there: `set(name, value)` sets one
@@ -6659,20 +6659,20 @@ end
 
 - **TR3 Walking.** `set("VFTestYaw", 180)` and `hold(1, 0.6)`: running doesn't count,
   `walk 0 / 6 m`. `hold(17, 1)`: about `3 / 6 m`, counting on the panel's bottom line.
-  `hold(17, 1.5)`: `shoot`, and a gold ring under the target 10 m down the range. **Send:** the
-  lines.
+  `hold(17, 1.5)`: `shoot`, and a gold ring 4 m across round the target 10 m down the range.
+  **Send:** the lines.
 
 - **TR4 Shooting.** `walkTo(0, 0)` back to the spawn, then `shoot(0, -10, "body")`: the target
-  falls, and `still`, the ring under the crouching target at 20 m. `shoot(-2, -20, "head", 4, 6)`
+  falls, and `still`, the ring round the crouching target at 20 m. `shoot(-2, -20, "head", 4, 6)`
   strafes left for 0.4 s and fires as you go on strafing: once it falls, `step()` still prints
   `still`, with the note `You were moving as that shot went off: stop, then fire.`, red on the
   panel's bottom line for 5 s (if it doesn't fall, again). `walkTo(0, 0)`, then `shoot(-2, -20)`:
-  `head`, and the ring under the target behind the cover. `shoot(8, -22)`: `reload`. **Send:** the
+  `head`, and the ring round the target behind the cover. `shoot(8, -22)`: `reload`. **Send:** the
   lines.
 
 - **TR5 Reloading and a rifle.** `hold(512, 0.1)` (with a full magazine, `hold(128, 0.1)` first to
   fire one), then two seconds later `step()`: `rifle`, the Vandal in your hand with `25` in its
-  magazine, and the ring round the two targets at 30 m, centred on the strafing one (in BRINK it
+  magazine, and the ring, 7 m across, round both targets at 30 m (in BRINK the strafing one
   wandered 0.9 m to 2.9 m right of its spot). `shoot(1.5, -30, "head", 0, 3)` from the hip: once one
   falls, `step()` still prints `rifle`, with the note `Aim down sights first ({aim}).` and the
   panel's `Aim down sights first (RIGHT CLICK).` `hold(256, 0.1)` aims down the sights, and
@@ -6724,19 +6724,20 @@ end
 ## 77. Reyna's Devour and Dismiss
 
 From [73-reyna-soul-orbs.md](research/73-reyna-soul-orbs.md). System 73 adds Reyna, a Duelist and
-the sixth agent, with her Devour (Q) and Dismiss (E) to play; Leer (C) and Empress (X) are on her
-card, the bar and the buy menu, `NOT YET`. An enemy she kills, or who dies within 3 s of her last
-hurting them, whoever killed them, leaves her a Soul Orb where they fell, for 3 s: a purple ball 1 m
-up that only she sees. Dummies on the course leave them too. With one within 15 m of her eye and in
-sight, Q takes it and heals her 50 over 2 s, past 100 up to 150, and what's past 100 goes 10 s after
-the heal's last point. E takes it instead, and for 1.5 s nothing hurts her and she runs at up to 12
-m/s, but she can't fire, cast, plant or defuse, and her gun comes back as it ends. Your `VFSouls`
-attribute lists your orbs, each as its number, where it fell (metres) and when it goes, apart by
-`;`. PlayerGui's `VFSouls` carries `Orbs` (how many), `Reach` (the number of the one in reach, -1
-for none) and `Prompt` (the keys under the crosshair, empty for none); `VFCombatHud`'s `Health` is
-the health the HUD shows; and Workspace's `VFSouls` holds the balls (`VFSoulOrb`). In Studio the
-server's Output has a `[VF] soul:` line as each orb's earned (saying whether by her kill or her
-damage, and how long before), each is taken and each overheal goes.
+the sixth agent, with her Devour (Q) and Dismiss (E) to play; Leer (C) is played since system 74
+(section 78), and Empress (X) is on her card, the bar and the buy menu, `NOT YET`. An enemy she
+kills, or who dies within 3 s of her last hurting them, whoever killed them, leaves her a Soul Orb
+where they fell, for 3 s: a purple ball 1 m up that only she sees. Dummies on the course leave them
+too. With one within 15 m of her eye and in sight, Q takes it and heals her 50 over 2 s, past 100 up
+to 150, and what's past 100 goes 10 s after the heal's last point. E takes it instead, and for 1.5 s
+nothing hurts her and she runs at up to 12 m/s, but she can't fire, cast, plant or defuse, and her
+gun comes back as it ends. Your `VFSouls` attribute lists your orbs, each as its number, where it
+fell (metres) and when it goes, apart by `;`. PlayerGui's `VFSouls` carries `Orbs` (how many),
+`Reach` (the number of the one in reach, -1 for none) and `Prompt` (the keys over the crosshair,
+empty for none); `VFCombatHud`'s `Health` is the health the HUD shows; and Workspace's `VFSouls`
+holds the balls (`VFSoulOrb`). In Studio the server's Output has a `[VF] soul:` line as each orb's
+earned (saying whether by her kill or her damage, and how long before), each is taken and each
+overheal goes.
 
 Press Play (F5), with one player, and pick Reyna: press T, click REYNA's card and PICK REYNA (or set
 `VFTestAgents` to true, `VFTestAgent` to `reyna`, then `VFTestAgent` to `lock`). Set `VFTestMute` if
@@ -6748,7 +6749,9 @@ dummy's head and fires up to `n` times (8 if left out) until you've an orb more,
 for 0.5 s, presses E as you go on, fires 0.35 s later, and prints your speed before and in it and
 `VFKit` in it and 1.5 s after it. Dummy 1, 10 m down the target lane, is 4294901761, and Dummy 6, 50
 m down it, 4294901766. On the course a spent charge comes back 1.5 s after it's spent. Start each
-check at the spawn facing down the lane (`set("VFTestYaw", 0)`), with the Vandal in hand.
+check 1.2 m left of the spawn (`pos` on the F3 panel about `-1.20 0.00 0.00`), facing down the lane
+(`set("VFTestYaw", 0)`), with the Vandal in hand: from the spawn itself, the sprint lane's first
+post, 7 m out, hides Dummy 1's orb.
 
 ```lua
 me = game.Players.LocalPlayer
@@ -6814,13 +6817,14 @@ end
   `With a Soul Orb in reach, Q takes it and heals you 50 over 2 s, past full health up to 150 for 10 s.`,
   and E DISMISS lit,
   `With a Soul Orb in reach, E takes it: for 1.5 s nothing hurts you and you run faster, but you can't fire or cast.`;
-  C LEER and X EMPRESS read `NOT YET`. Click PICK REYNA: the button reads `PLAYING REYNA`, and
-  `VFAgent` reads `reyna`. Close it with T. `souls()` prints `nil 0 -1` and an empty prompt, then
-  `C2/2 Q2/2 E2/2 X7/7 100`. **Send:** the lines, and how her card looks.
+  C LEER is lit too (section 78), and X EMPRESS reads `NOT YET`. Click PICK REYNA: the button reads
+  `PLAYING REYNA`, and `VFAgent` reads `reyna`. Close it with T. `souls()` prints `nil 0 -1` and an
+  empty prompt, then `C2/2 Q2/2 E2/2 X0/7 100`: Empress can't be played, so the course doesn't fill
+  its points. **Send:** the lines, and how her card looks.
 
 - **RY2 A Soul Orb.** `down(4294901761)`: Dummy 1 falls, the server's Output has
   `[VF] soul: <your name> earns 1 at 0.00, 0.00, -10.00 (her kill)` (or near those numbers), and a
-  purple ball floats 1 m over where it fell, pulsing, a little bigger than one out of reach. Under
+  purple ball floats 1 m over where it fell, pulsing, a little bigger than one out of reach. Over
   the crosshair, in purple, `Q DEVOUR    E DISMISS`. `souls()` prints `1,0.00,0.00,-10.00,` and a
   time, `1`, `1` and `Q DEVOUR    E DISMISS`. The ball fades over its last half second and is gone 3
   s after the dummy fell: `souls()` then prints `nil 0 -1` and an empty prompt, and Workspace's
@@ -6829,8 +6833,8 @@ end
 
 - **RY3 Out of reach.** `down(4294901766)`: Dummy 6 falls 50 m away, and its ball floats there,
   smaller and dimmer, with no prompt: `souls()` prints `1` orb and `-1` for `Reach`. `press(8192)`,
-  then `press(16384)`: nothing, no `devour` or `dismiss` line in the Output, and `VFKit` still reads
-  `C2/2 Q2/2 E2/2 X7/7`. Once the ball's gone, the same with no orb at all. **Send:** the lines.
+  then `press(16384)`: nothing, no `devour` or `dismiss` line in the Output, and `VFKit` still
+  starts `C2/2 Q2/2 E2/2`. Once the ball's gone, the same with no orb at all. **Send:** the lines.
 
 - **RY4 Devour.** Open the Sound Lab (F2 four times). `down(4294901761)`, then at once
   `press(8192)`: the Output has `[VF] soul: <your name> devour takes` the orb's number and
@@ -6843,12 +6847,12 @@ end
 
 - **RY5 Dismiss.** `set("VFTestYaw", 10)`, turning you a little left so you run past Dummy 1's spot.
   `down(4294901761)`, then `dismiss()`: the Output has `[VF] soul: <your name> dismiss takes` the
-  orb's number and `(there)`, a fizzle's logged as `fizzle`, `yours`, the Vandal goes, and the
-  screen darkens, purple round its edge, while E's square counts down. `dismiss()` prints about 5.4
-  m/s before it, about 12 m/s in it, and `VFKit` with `dismiss` and about `0.7` after it; the shot
-  it fires in it does nothing, with no shot heard or logged. 1.5 s after the press the darkening
-  goes and the Vandal comes back with its draw, and `dismiss()`'s last line reads
-  `C2/2 Q2/2 E2/2 X7/7`, E's charge back. **Send:** the lines, and how the screen looks in it.
+  orb's number and `(there)`, a fizzle's logged as `fizzle`, `yours`, the Vandal goes with no draw
+  heard, and the screen darkens, purple round its edge, while E's square counts down. `dismiss()`
+  prints about 5.4 m/s before it, about 12 m/s in it, and `VFKit` with `dismiss` and about `0.7`
+  after it; the shot it fires in it does nothing, with no shot heard or logged. 1.5 s after the
+  press the darkening goes and the Vandal comes back with its draw, and `dismiss()`'s last line
+  starts `C2/2 Q2/2 E2/2`, E's charge back. **Send:** the lines, and how the screen looks in it.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
 REYNA in window 1. Everyone on the course is everyone else's enemy. Player 2 stands about 5 m to one
@@ -6871,33 +6875,214 @@ side of player 1, where each sees the other, and window 1 runs this section's sc
 
   In window 1, `down(4294901761)`, then `press(16384)`: window 2's Vandal fires about ten shots at
   player 1, with no hit marker or damage number, and window 1's `souls()` afterwards still
-  reads 100. In window 2, player 1 turns dark and see-through as the fizzle's heard, for 1.5 s, then
-  looks as ever. Then run window 2's lines again without the `repeat` line: player 1 drops, so the
-  shots land outside a Dismiss. **Send:** window 1's health after the first burst, what window 2 saw
-  of player 1, and what the second burst did.
+  reads 100. In window 2, player 1 turns dark and see-through as the fizzle's heard, the gun gone
+  from their hands, for 1.5 s, then looks as ever, the gun back. Then run window 2's lines again
+  without the `repeat` line: player 1 drops, so the shots land outside a Dismiss. **Send:**
+  window 1's health after the first burst, what window 2 saw of player 1, and what the second burst
+  did.
 
 - **RY7 Basic Training with her kit.** Stop the game, press Play (F5) with one player, pick Reyna,
   and run section 76's script and this section's. `set("VFTestPlay", "training")`, then
   `set("VFTestTraining", "abilities")`: `step()` prints `abilities` and
-  `1 / 3   {q} and {e} take a Soul Orb: down a target first.`, Leer counted as it can't be played
-  yet, and `panel()` has `1 / 3   Q and E take a Soul Orb: down a target first.` With the Classic,
+  `0 / 3   {q} and {e} take a Soul Orb: down a target first.`, and `panel()` has
+  `0 / 3   Q and E take a Soul Orb: down a target first.` `hold(4096, 0.1)`, then a second later
+  `hold(128, 0.1)`: Leer's eye flies, and `1 / 3`, the hint still there. With the Classic,
   `down(4294901761)` (two headshots) and `press(8192)`: `2 / 3`, the hint still there. Once
   Dummy 1's back, `down(4294901761)` and `press(16384)`: `plant`, past `ultimate` at once, as
   Empress can't be played yet either. **Send:** the lines.
 
 - **RY8 Bots playing her.** Stop the game and start a Local Server with 1 player. In the server's
-  command bar, set `VFMatchMap` to `outpost`, `VFArenaMode` to `teamdeathmatch` and `VFArenaOn` to
-  true. Once the pre-game's over, run section 69's script: the bots with `VFAgent` `reyna` play her.
-  Each side leaves one agent out, so there's usually one on each; if there's none, set `VFArenaOn`
-  to false and true again. Let it play for 3 minutes. The server's Output has `[VF] soul:` lines for
-  those bots: `earns` after their kills (`her kill`) and after enemies they'd hurt died to their
-  side (`hurt ... s before`, never more than 3 s), now and then `devour takes ... (there)`, and
-  never `dismiss` from a bot. **Send:** the soul lines, and those bots' kills (Tab).
+  command bar, set `VFArenaMode` to `teamdeathmatch` and `VFArenaOn` to true: Team Deathmatch plays
+  whichever map its vote picks, as `VFMatchMap` names only the spike rounds' first. Once the
+  pre-game's over, run section 69's script: the bots with `VFAgent` `reyna` play her. Each side
+  leaves one agent out, so there's usually one on each; if there's none, set `VFArenaOn` to false
+  and true again. Let it play for 3 minutes. The server's Output has `[VF] soul:` lines for those
+  bots: `earns` after their kills (`her kill`) and after enemies they'd hurt died to their side
+  (`hurt ... s before`, never more than 3 s), now and then `devour takes ... (there)`, and never
+  `dismiss` from a bot. **Send:** the soul lines, and those bots' kills (Tab).
 
 - **RY9 The feel (Bradley).** Play her on the course and against bots, with the keys and a
   controller: whether the ball's easy to see and to take (its 15 m reach), whether Devour's heal and
   Dismiss's speed feel right, and whether the screen's darkening in Dismiss is too much. **Send:**
   what to change.
+
+## 78. Reyna's Leer
+
+From [74-leer.md](research/74-leer.md). System 74 has Reyna's Leer (C) played: C readies the eye,
+ready 0.8 s later, and fire casts it. It flies 10 m along the crosshair over 0.4 s, on through walls
+and ceilings, and hangs there, though a floor in its way stops it and it rests on that. From then
+for 2 s any enemy who has it within 50 degrees of where they look, at any distance, with nothing
+between, is nearsighted as by Paranoia, seeing no further than 7.5 m, while they look and 0.2 s
+after, then clearing over 0.5 s; it doesn't deafen. Her side never are, and on the course, with no
+sides, everyone but her is her enemy. It has 100 health: her enemies' bullets and knives take their
+damage off it, a bullet's to the body at its range, and at none it bursts; her side's do nothing,
+and on the course anyone's do, hers too. The gun's back 0.5 s after the cast. Your `VFLastLeer` is
+where your last eye came to rest (metres), set as it opens, `VFLeerHealth` the health it has left,
+and `VFLastLeered`, once it's gone, the names of those it nearsighted (empty for nobody). Anyone's
+`VFNearsight` is their nearsight while any of it's left, Paranoia's or Leer's, and `VFDeafened`
+Paranoia's deafening. Workspace's `VFLeer` holds each eye, an `Eye` ball with its `Pupil`, and each
+burst, a `Break` ball, and its `Eyes` says how many eyes are drawn.
+
+Press Play (F5), with one player, and pick Reyna as in section 77. Set `VFTestMute` if the sound's
+not wanted. Run this once in the command bar with it on the client, then each check's lines there:
+`press(buttons)` holds `buttons` for 0.1 s (4096 C, 128 fire, 256 the right button); `eye()` prints
+`Eyes`, your `VFLastLeer` and `VFLeerHealth`, then your `VFLastLeered`, `VFNearsight` and `VFKit`;
+`leer()` presses C, waits out its equip, fires, and 0.6 s later prints `eye()`; and `shoot(n)` aims
+at where your last eye came to rest and fires `n` single shots, printing `VFLeerHealth` after each.
+`VFTestYaw` and `VFTestPitch` aim, in degrees: positive yaw turns left, and positive pitch looks up.
+The F3 panel's `pos` line is where you stand, in metres. On the course a spent charge comes back 1.5
+s after it's spent. Start each check at the spawn facing down the lane (`VFTestYaw` 0,
+`VFTestPitch` 0), with the Vandal in hand.
+
+```lua
+me = game.Players.LocalPlayer
+function set(name, value)
+	me:SetAttribute(name, value)
+end
+function press(buttons)
+	me:SetAttribute("VFTestButtons", buttons)
+	task.wait(0.1)
+	me:SetAttribute("VFTestButtons", nil)
+end
+function eye()
+	local folder = workspace:FindFirstChild("VFLeer")
+	print(folder and folder:GetAttribute("Eyes"), me:GetAttribute("VFLastLeer"), me:GetAttribute("VFLeerHealth"))
+	print(me:GetAttribute("VFLastLeered"), me:GetAttribute("VFNearsight"), me:GetAttribute("VFKit"))
+end
+function leer()
+	press(4096)
+	task.wait(1)
+	press(128)
+	task.wait(0.6)
+	eye()
+end
+function shoot(n)
+	set("VFTestAimPoint", me:GetAttribute("VFLastLeer"))
+	for _ = 1, n do
+		task.wait(0.1)
+		press(128)
+		task.wait(0.15)
+		print(me:GetAttribute("VFLeerHealth"))
+	end
+	set("VFTestAimPoint", nil)
+end
+```
+
+- **LR1 Her kit.** In agent select (T), REYNA's card has C LEER lit now, with
+  `C readies an eye. Fire casts it 10 m ahead, through walls: for 2 s any enemy who looks at it is nearsighted, unless they shoot it.`,
+  and X EMPRESS still reads `NOT YET`. Close it with T. `eye()` prints `0 nil nil`, then `nil nil`
+  and a `VFKit` that starts `C2/2 Q2/2 E2/2`. **Send:** the lines.
+- **LR2 In hand.** Open the Sound Lab (F2 four times), and keep it open to LR5. `press(4096)`: a
+  quick whoosh, logged as `leerEquip`, `yours`; the Vandal goes, and an open hand comes up holding a
+  violet eye with a dark pupil. C's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
+  `Leer   [C]`, with no ammo; and `VFKit` ends in `equip`. `press(256)`: nothing's cast or heard.
+  `press(4096)` again: the Vandal's back, and `VFKit` still reads `C2/2`, nothing spent. **Send:** a
+  screenshot of it in hand.
+- **LR3 Down the lane.** `set("VFTestYaw", 10)`, turning you a little left so it stops clear of
+  Dummy 1, then `leer()`: a slowed swish, logged as `leerCast`, `yours`, and a small, dim violet
+  ball flies out from your view, growing and brightening, and stops about 10 m away as a low toll's
+  logged as `leerOpen`, its dark pupil turned to you. `eye()` prints `1`, about `-1.74, 1.62, -9.85`
+  and `100`, then an empty `VFLastLeered`, `nil` (her own eye doesn't nearsight her, though she's
+  looking at it) and a `VFKit` with `C1/2`. The Vandal's back 0.5 s after the cast. 2.4 s after the
+  cast the eye fades away: `eye()` then prints `0`, and `VFLastLeered` still empty, as dummies don't
+  look. Set `VFTestYaw` back to 0. **Send:** the lines, and a screenshot of the eye open.
+- **LR4 Through a wall, and onto the floor.** Walk to the wallbang lane, left of the spawn, and
+  stand 3 m in front of its line, facing the `concrete 0.10 m` wall (`pos` about
+  `-26.00 0.00 -13.00`, `VFTestYaw` 0). `leer()`: the eye flies on through the wall and past the
+  dummy behind it, and stops short of the backstop, `VFLastLeer` about `-26.00, 1.62, -23.00`. Walk
+  back to the spawn, set `VFTestPitch` to -30, looking down, and `leer()`: it flies down and stops
+  on the floor about 2.4 m ahead, resting on it, `VFLastLeer` about `0.00, 0.25, -2.37`, not under
+  the floor. Set `VFTestPitch` to -89, straight down, and `leer()`: it rests on the floor at your
+  feet, about `0.00, 0.25, 0.00`. Set `VFTestPitch` back to 0. **Send:** the lines.
+- **LR5 Shooting it.** `set("VFTestYaw", 10)`, `leer()`, then at once `shoot(3)`: it prints `60`,
+  `20` and `0`, 40 a Vandal bullet, and on the third the eye bursts in a violet flash with a sharp
+  crack, logged as `leerBreak`, `yours`; `eye()` then prints `0` eyes and `0` health. On the course
+  her own shots break it, so it can be tried alone. Set `VFTestYaw` back to 0, and press F2 to close
+  the Sound Lab. **Send:** the lines.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+REYNA in window 1. Everyone on the course is everyone else's enemy. Run this section's script in
+window 1, and open the Sound Lab in window 2. Player 2 walks 15 m down the target lane (`pos` about
+`0.00 0.00 -15.00`) and turns to face player 1 at the spawn (`VFTestYaw` 180).
+
+- **LR6 Nearsighted, and looking away.** In window 2, run this: it waits for an eye, prints its
+  nearsight, deafening and world muffle, turns its back on the eye for a second, then turns back to
+  it.
+
+```lua
+me = game.Players.LocalPlayer
+repeat task.wait() until (workspace.VFLeer:GetAttribute("Eyes") or 0) > 0
+task.wait(0.7)
+print("looking", me:GetAttribute("VFNearsight"), me:GetAttribute("VFDeafened"),
+game.SoundService.VFSound.world.worldMuffle.Bypass)
+me:SetAttribute("VFTestYaw", 0)
+task.wait(1)
+print("away", me:GetAttribute("VFNearsight"))
+me:SetAttribute("VFTestYaw", 180)
+task.wait(0.3)
+print("back", me:GetAttribute("VFNearsight"))
+```
+
+In window 1, `set("VFTestYaw", 10)` and `leer()`. As the eye opens about 5 m in front of player 2,
+window 2 hears a slowed tone, logged as `nearsight`, and its screen goes dark past about 7.5 m:
+player 1, 15 m off, is gone in it, while the eye still shows. Its script prints `looking`, a
+nearsight, `nil` and `true`: no deafening, nothing muffled. Turned away, it clears within about 0.7
+s: `away nil`. Turned back while the eye's still open, it's dark again: `back` and a nearsight.
+Window 1's own `VFNearsight` stays `nil`, and once the eye's gone, window 1's `eye()` has `Player2`
+as its `VFLastLeered`. **Send:** both windows' lines, and a screenshot of window 2 while it's dark.
+- **LR7 Shot by an enemy.** In window 2, run this: it waits for an eye, then fires three single
+  shots into it.
+
+```lua
+me = game.Players.LocalPlayer
+local p1 = game.Players.Player1
+repeat task.wait() until (workspace.VFLeer:GetAttribute("Eyes") or 0) > 0
+task.wait(0.6)
+me:SetAttribute("VFTestAimPoint", p1:GetAttribute("VFLastLeer"))
+for _ = 1, 3 do
+me:SetAttribute("VFTestButtons", 128)
+task.wait(0.1)
+me:SetAttribute("VFTestButtons", nil)
+task.wait(0.2)
+print(p1:GetAttribute("VFLeerHealth"))
+end
+me:SetAttribute("VFTestAimPoint", nil)
+```
+
+In window 1, `leer()` (`VFTestYaw` still 10). Window 2 prints `60`, `20` and `0`, and on the third
+shot the eye bursts on both screens, a crack logged as `leerBreak` in window 2's Sound Lab, and
+window 2's dark clears within about 0.7 s, though the eye's 2 s weren't up. **Send:** window 2's
+lines.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1. As round 1's buy phase starts, agent select
+comes up by itself: pick REYNA and LOCK IN in window 1, and LOCK IN in windows 2 and 3. Run this
+section's script in window 1. In Skirmish each life starts with every charge.
+
+- **LR8 Her side.** Once the round is live, players 2 and 3 stand side by side, 2 m apart, about 15
+  m in front of player 1 in the open, both facing player 1. In window 1, face the gap between them
+  and `leer()`: the eye opens about 5 m short of them, and window 2 goes dark past 7.5 m, its
+  `VFNearsight` set, while window 3 stays clear, its `VFNearsight` `nil`. Once the eye's gone,
+  window 1's `VFLastLeered` reads `Player2`. Run LR7's script in window 3, then `leer()` in window 1
+  again: player 3's shots go into the eye and do nothing, `100` three times, and it stands. Then run
+  the script in window 2, and `leer()` in window 1 once more: it falls by each hit's damage and
+  bursts at `0`. **Send:** the lines.
+
+Then the bots: stop the game, start a Local Server with 1 player, and set the spike rounds going on
+Outpost as in section 70 (`VFMatchMap` `outpost`, `VFArenaMode` `spike`, then `VFArenaOn` true), and
+run section 70's script in the server's command bar.
+
+- **LR9 Bots casting it.** Let it play for 4 minutes, staying back to watch. Each side leaves one
+  agent out, so there's usually a bot on Reyna on each side. The script prints a Reyna bot's
+  `leer push:leer:<n>` now and then as its side attacks, and `leer stall:leer:<n>` holding a way in
+  with attackers just seen there; the eyes fly and open where those it's for would see them, and
+  Workspace's `VFLeer` `Eyes` counts them on your screen as they show. With one opened in your view
+  by a bot on the other side, your screen goes dark past 7.5 m as in LR6. That bot's `VFLastLeered`,
+  in `ReplicatedStorage.VFBots`, names whom its last eye nearsighted. **Send:** the script's leer
+  lines, and any `VFLastLeered` that names someone.
+- **LR10 The feel (Bradley).** Play her with Leer on the course and against bots: whether the eye's
+  easy to place, whether its cone (looked at from 50 degrees off) and how long the nearsight lingers
+  feel right, and whether it's too easy or too hard to shoot. **Send:** what to change.
 
 ## Results
 
@@ -7414,6 +7599,16 @@ RY6 window 1's health after the first burst: ___; what window 2 saw: ___; the se
 RY7 the lines: ___
 RY8 the soul lines: ___; the Reyna bots' kills: ___
 RY9 what to change: ___
+LR1 the lines: ___
+LR2 a screenshot of it in hand: ___
+LR3 the lines: ___; a screenshot of the eye open: ___
+LR4 the lines: ___
+LR5 the lines: ___
+LR6 window 1's lines: ___; window 2's lines: ___; a screenshot of window 2 dark: ___
+LR7 window 2's lines: ___
+LR8 the lines: ___
+LR9 the leer lines: ___; a VFLastLeered naming someone: ___
+LR10 what to change: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -7854,11 +8049,19 @@ Didn't look right (IDs and what you saw):
 | 72 | Leaving it for another mode, with nothing of it left | TR10 |
 | 72 | On a live server: a new server for each player who picks it | TR11 |
 | 72 | The rifle step's ring over both 30 m targets, wherever the strafing one has got to | TR5 |
-| 73 | Her card, the bar and the kit, Leer and Empress not yet | RY1 |
+| 73 | Her card, the bar and the kit, Empress not yet (Leer since system 74) | RY1 |
 | 73 | An orb for her kill where it fell, drawn only for her, brighter in reach, gone after 3 s | RY2, RY3 |
 | 73 | Devour taking the orb in reach, 50 over 2 s up to 150, and the overheal gone 10 s after | RY4 |
 | 73 | Dismiss taking it: 12 m/s, no firing, the screen darkened, the gun back as it ends | RY5 |
 | 73 | Nothing hurting her through it, and others seeing her dark and see-through | RY6 |
-| 73 | Basic Training with her kit: Leer and Empress counted, the hint on Soul Orbs | RY7 |
+| 73 | Basic Training with her kit: Empress counted, Leer cast (system 74), the hint on Soul Orbs | RY7 |
 | 73 | Bots playing her: orbs for their side's kills on enemies they hurt, Devour when hurt, no Dismiss | RY8 |
 | 73 | Her reach, the heal, the speed and the darkening, as they feel | RY9 |
+| 74 | Leer on her card, and the eye in hand | LR1, LR2 |
+| 74 | The eye flying 10 m through walls, and stopping on the floor | LR3, LR4 |
+| 74 | Someone looking at it nearsighted until they look away, and not deafened | LR6 |
+| 74 | Her side never nearsighted, and unable to break it | LR8 |
+| 74 | Bullets breaking it at 100 | LR5, LR7 |
+| 74 | Bots casting it | LR9 |
+| 74 | The fixes: Dismiss's edge, her gun in Dismiss, the draw, the prompt, and the training ring | RY2, RY5, RY6, TR3, TR4, TR5 |
+| 74 | The cone, the linger and the eye's health, as they feel | LR10 |

@@ -55,9 +55,10 @@
 -- this answers for it there (PlayerSimServer.bots). Its kit carries from
 -- one life to the next, what it casts goes to castListeners and
 -- tickListeners, its deaths and lives to the ability servers too, and a
--- flash's blind or Paranoia's nearsight on it (its stand-in's attributes)
--- hides from its looks what it hides from a player's eyes: everything, at
--- a blind's whitest, and anyone past the nearsight's range.
+-- flash's blind or a nearsight on it, Paranoia's or Leer's (its
+-- stand-in's attributes), hides from its looks what it hides from a
+-- player's eyes: everything, at a blind's whitest, and anyone past the
+-- nearsight's range.
 --
 -- And it casts them as a player would (system 66, BotUtility): each time
 -- its side's plan is gone over, a bot that isn't fighting or casting is
@@ -321,6 +322,9 @@ end
 -- The bot's pose as the simulation has it now.
 local function currentPose(bot: Bot): PlayerCodec.Pose
 	local m, w = bot.sim.movement, bot.sim.weapons
+	-- Planting, defusing and its weapon put away for a defuse or through
+	-- Dismiss, as a player's (PlayerSimServer), so it's drawn doing them.
+	local away = SpikeSim.stowed(bot.sim.spike) or AbilitySim.dismissing(bot.sim.abilities, m.tick * DT)
 	return {
 		id = bot.entity.id,
 		position = m.position,
@@ -332,9 +336,7 @@ local function currentPose(bot: Bot): PlayerCodec.Pose
 		-- A dash makes no steps (system 17).
 		quiet = StepTracker.isQuiet(bot.buttons, m.crouched) or AbilitySim.dashing(bot.sim.abilities, m.tick * DT),
 		reloading = WeaponSim.isReloading(w),
-		-- Planting, defusing and its weapon put away for a defuse, as a
-		-- player's (PlayerSimServer), so it's drawn doing them.
-		weapon = if SpikeSim.stowed(bot.sim.spike) then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
+		weapon = if away then 0 else WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 		channel = bot.sim.spike.channel,
 		gliding = m.gliding,
 		shade = AbilitySim.shaded(bot.sim.abilities, m.tick * DT),
@@ -576,8 +578,8 @@ local function everyone(): { Seen }
 end
 
 -- A look at every enemy: those near its view are looked for in the level,
--- but none while a flash has it blinded, and none past Paranoia's range
--- while it's nearsighted (system 65).
+-- but none while a flash has it blinded, and none past the nearsight's
+-- range while it's nearsighted, by Paranoia or Leer (systems 65 and 74).
 local function look(bot: Bot, now: number, seen: { Seen }, o: Sight.Occluders, cfg: MovementConfig.Values)
 	local eye = PlayerSim.eye(bot.sim, cfg)
 	local blind = FlareSim.decode(bot.standIn:GetAttribute(FlareSim.BLIND_ATTRIBUTE))

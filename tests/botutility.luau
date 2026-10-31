@@ -5,7 +5,8 @@
 -- by its hands (BotUtility.hands, PlayerSim) on each map's own solids
 -- (TileWorld), then flown as the server flies it: smokes, clouds, mollies,
 -- slows, walls, flashes, bolts and blasts landing where they were meant to
--- (docs/research/66-bots-abilities.md).
+-- (docs/research/66-bots-abilities.md), and Leer's eyes where those they're
+-- for see them (system 74).
 
 local AbilityConfig = require("../src/shared/Abilities/AbilityConfig")
 local AbilitySim = require("../src/shared/Abilities/AbilitySim")
@@ -13,6 +14,7 @@ local BoltSim = require("../src/shared/Abilities/BoltSim")
 local CloudSim = require("../src/shared/Abilities/CloudSim")
 local FireballSim = require("../src/shared/Abilities/FireballSim")
 local FlareSim = require("../src/shared/Abilities/FlareSim")
+local LeerSim = require("../src/shared/Abilities/LeerSim")
 local ParanoiaSim = require("../src/shared/Abilities/ParanoiaSim")
 local SlowSim = require("../src/shared/Abilities/SlowSim")
 local BotConfig = require("../src/shared/Bots/BotConfig")
@@ -562,6 +564,28 @@ do
 					end
 					tally("Curveball round the corner at those holding", found, blinds)
 				end
+				-- Reyna's Leer: its eye at rest short of those holding, where
+				-- one looking at the way in sees it.
+				do
+					local sim = botAt(world, stage, "reyna", seed)
+					local c = BotUtility.choose(momentOf(sim, push), sim.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
+					local found = c ~= nil and c.ability == "leer"
+					local cast = if c and found then find(play(sim, c, world), "leer") else nil
+					local seen = false
+					if cast then
+						local rest = LeerSim.rest(LeerSim.cast(0, 0, 0, cast.origin, cast.direction))
+						for _, h in push.threats do
+							local look = (push.way :: vector) - h
+							seen = seen
+								or (
+									vector.magnitude(look) > 1e-6
+									and LeerSim.looks(rest, h, vector.normalize(look))
+									and sees(world, rest, h)
+								)
+						end
+					end
+					tally("Leer where those holding see it", found, seen)
+				end
 				-- Hot Hands on the spot.
 				do
 					local sim = botAt(world, stage, "phoenix", seed)
@@ -698,6 +722,11 @@ do
 		"Phoenix's flashes, where one's found, blind those holding and neither him nor his side",
 		landedAll("Curveball round the corner at those holding", 1),
 		show("Curveball round the corner at those holding")
+	)
+	check(
+		"Reyna's Leer: an eye for nearly every way in, each at rest where those holding it see it",
+		landedAll("Leer where those holding see it", math.ceil(sixteen * 0.75)),
+		show("Leer where those holding see it")
 	)
 	check("Hot Hands lands on the spot it's thrown at", landedAll("Hot Hands on it", 1), show("Hot Hands on it"))
 	check("and a throw found from where it stands is thrown from there, standing still", stoodStill)

@@ -80,5 +80,6 @@ require("./afk")
 require("./touch")
 require("./training")
 require("./soulharvest")
+require("./leer")
 
 H.finish()

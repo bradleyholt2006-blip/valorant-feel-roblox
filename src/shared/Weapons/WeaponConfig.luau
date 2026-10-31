@@ -896,6 +896,28 @@ local OWL_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: sending the drone out
 	adsCamera = OWL_NA,
 })
 
+-- Reyna's Leer (system 74): cast along the crosshair and flown by LeerSim,
+-- as Paranoia's orb is by ParanoiaSim, so no spread or kick moves it
+-- either. It has no alt fire.
+local REYNA = "Liquipedia, Reyna"
+local LEER_FLOWN = "n/a: LeerSim flies it from the crosshair"
+local LEER_NA = p(0, "estimate", LEER_FLOWN)
+local leerExact = accuracy(
+	c({ { 1, 0 } }, "estimate", LEER_FLOWN),
+	p(1, "estimate", LEER_FLOWN),
+	p(0.1, "estimate", LEER_FLOWN),
+	p(1, "estimate", LEER_FLOWN),
+	{ crouch = LEER_NA, walk = LEER_NA, run = LEER_NA, air = LEER_NA }
+)
+leerExact.landError = LEER_NA
+local LEER_KICK = recoil(c({ { 1, 0 } }, "estimate", "None: a cast eye doesn't kick"), NO_SWAY, {
+	run = p(1, "estimate", "n/a"),
+	crouchYaw = p(1, "estimate", "n/a"),
+	ads = p(1, "estimate", "n/a"),
+	camera = LEER_NA,
+	adsCamera = LEER_NA,
+})
+
 WeaponConfig.Defs = {
 	classic = {
 		id = "classic",
@@ -2088,6 +2110,33 @@ WeaponConfig.Defs = {
 		accuracy = owlExact,
 		recoil = OWL_KICK,
 	},
+	-- Reyna's Leer (system 74): put in hand in the fifth slot by C
+	-- (AbilityConfig.Leer), as Paranoia's orb is by Omen's Q. Fire casts the
+	-- eye; PlayerSim turns that into the ability's cast, which LeerSim
+	-- flies, so it fires no bullet. Whoever looks at it is nearsighted; the
+	-- eye itself hurts nobody.
+	leereye = {
+		id = "leereye",
+		name = "Leer",
+		category = "ability",
+		slot = 5,
+		price = p(0, "community", "Not bought here: C puts it in hand, a charge of Leer (" .. REYNA .. ")"),
+		-- Held, it goes as soon as it's in hand (ours, as the flare).
+		fireMode = "auto",
+		fireRate = ONE_THROW,
+		magazine = p(1, "community", REYNA .. ": Leer, Max Charges 2, an eye each"),
+		reserve = p(0, "community", "None: another eye is another charge (" .. REYNA .. ": Max Charges 2)"),
+		reloadTime = LEER_NA,
+		equipTime = p(0.8, "estimate", "Ours, as Curveball's flare, the other flash in hand (" .. CURVE .. ": 'Equip' 0.8 seconds)"),
+		moveMultiplier = p(1.0, "estimate", "Run speed with it in hand, assumed the knife's 6.75 m/s; not published"),
+		damage = { band(50, 0, 0, 0) },
+		damageSource = p(0, "estimate", "None: it nearsights (" .. REYNA .. "), and hurts nobody"),
+		penetration = "none",
+		suppressed = false,
+		ability = "leer",
+		accuracy = leerExact,
+		recoil = LEER_KICK,
+	},
 } :: { [string]: WeaponDef }
 
 -- Stable byte ids for the wire format (0 = empty slot): the first six as
@@ -2098,8 +2147,8 @@ WeaponConfig.Defs = {
 -- (system 38), the Resurrection (system 39), Dark Cover (system 40),
 -- Paranoia (system 41), Shrouded Step (system 42), From the Shadows
 -- (system 43), the Recon Bolt's bow (system 44), the Shock Bolt's
--- (system 45), Hunter's Fury's (system 46) and the Owl Drone (system 47)
--- last.
+-- (system 45), Hunter's Fury's (system 46), the Owl Drone (system 47) and
+-- Leer's eye (system 74) last.
 WeaponConfig.Ids = {
 	"classic",
 	"knife",
@@ -2139,6 +2188,7 @@ WeaponConfig.Ids = {
 	"shockbow",
 	"furybow",
 	"owl",
+	"leereye",
 }
 WeaponConfig.IndexOf = {} :: { [string]: number }
 for i, id in WeaponConfig.Ids do

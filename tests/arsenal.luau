@@ -106,8 +106,8 @@ do
 	check(
 		"wire ids: the first six as they always were, then the rest, the spike, Blade Storm's knives, Curveball's flare, Hot Hands' fireball,"
 			.. " Blaze's flame, the Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb, Dark Cover's, Paranoia's,"
-			.. " Shrouded Step's, From the Shadows' map, the Recon Bolt's bow, the Shock Bolt's, Hunter's Fury's, then the Owl Drone",
-		#ids == 38
+			.. " Shrouded Step's, From the Shadows' map, the Recon Bolt's bow, the Shock Bolt's, Hunter's Fury's, the Owl Drone, then Leer's eye",
+		#ids == 39
 			and ids[1] == "classic"
 			and ids[2] == "knife"
 			and ids[3] == "operator"
@@ -131,6 +131,7 @@ do
 			and ids[36] == "shockbow"
 			and ids[37] == "furybow"
 			and ids[38] == "owl"
+			and ids[39] == "leereye"
 	)
 	local quiet = {}
 	for _, id in ids do

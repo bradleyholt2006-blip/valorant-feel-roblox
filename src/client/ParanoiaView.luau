@@ -18,11 +18,14 @@
 --     its vision dark, a shell of shadow round the camera that far out,
 --     seen from inside, as the reference's nearsight has what's past it
 --     'replaced with dark, opaque colors' (the VALORANT Wiki's Status
---     Effect page; community); the World and Self buses muffled
---     (SoundEngine.setDeafened), and the minimap covered (MinimapView, by
+--     Effect page; community), and the minimap covered (MinimapView, by
 --     ParanoiaView.dark); then all of it clearing over the fade, the dark
 --     drawing back and thinning away. Yours starting sounds on the UI bus
---     (GameSounds.playNearsight)
+--     (GameSounds.playNearsight). Reyna's Leer's (system 74) is drawn the
+--     same way
+--   * Your deafening, or the watched player's, the same way
+--     (ParanoiaSim.DEAF_ATTRIBUTE): the World and Self buses muffled
+--     (SoundEngine.setDeafened), clearing as it clears
 --   * Others': a wisp of shadow round the head while it lasts. The watched
 --     player's is on your screen instead
 --   * How far you see as a Shade in From the Shadows (system 43,
@@ -379,7 +382,9 @@ function ParanoiaView.start()
 		-- Whose screen this is: yours, or the watched player's, as they're
 		-- drawn.
 		local watched = Spectate.watching
-		local n = ParanoiaSim.decode((if watched then watched.holder else me):GetAttribute(ParanoiaSim.ATTRIBUTE))
+		local screen = if watched then watched.holder else me
+		local n = ParanoiaSim.decode(screen:GetAttribute(ParanoiaSim.ATTRIBUTE))
+		local deaf = ParanoiaSim.decode(screen:GetAttribute(ParanoiaSim.DEAF_ATTRIBUTE))
 		local t = if watched then render else Workspace:GetServerTimeNow()
 		local amount = if n then ParanoiaSim.darkAt(n, t) else 0
 		if n and not watched and amount > 0 and heard ~= n.from then
@@ -387,7 +392,7 @@ function ParanoiaView.start()
 			GameSounds.playNearsight()
 		end
 		ParanoiaView.dark = amount
-		SoundEngine.setDeafened(amount)
+		SoundEngine.setDeafened(if deaf then ParanoiaSim.darkAt(deaf, t) else 0)
 		local camera = Workspace.CurrentCamera
 		placeDark(if camera then camera.CFrame.Position else nil, amount, ParanoiaView.cap)
 

@@ -7,8 +7,9 @@
 -- a note on why something didn't count. It moves down under the spike's
 -- light while the spike's planted, and shrinks on a small screen. A marker
 -- shows where the step is: a column of light at a spot to reach or over the
--- spike to fetch, wherever it lies and gone while you carry it, a ring
--- under a target. A note given again shows again. A gun the step hands you
+-- spike to fetch, wherever it lies and gone while you carry it, and round
+-- the targets a ring on the floor as wide as where one downed counts (the
+-- step's radius). A note given again shows again. A gun the step hands you
 -- mid-life is drawn.
 -- For scripted checks, PlayerGui's VFTraining carries Step (the step's
 -- key, "" with none), Text (what the panel says, its lines apart by " | ")
@@ -36,8 +37,11 @@ local WIDTH, HEIGHT = 540, 118
 local FULL_AT, SMALLEST = 600, 0.6
 -- Pixels the panel moves down while the spike's planted, clear of its light.
 local UNDER_LIGHT = 40
--- How see-through a marker's ring and column are.
-local RING_CLEAR, COLUMN_CLEAR = 0.35, 0.6
+-- How see-through a marker's ring and column are, and the floor in its
+-- ring.
+local RING_CLEAR, COLUMN_CLEAR, FLOOR_CLEAR = 0.35, 0.6, 0.85
+-- The ring's bars: how many round it, and each one's width (metres).
+local BARS, BAR_WIDTH = 32, 0.12
 
 local TrainingView = {}
 
@@ -59,8 +63,34 @@ local function place(part: BasePart, at: vector, ring: boolean)
 	part.CFrame = CFrame.new(Vector3.new(at.x, at.y + height, at.z) * S) * CFrame.Angles(0, 0, math.rad(90))
 end
 
+-- A ring's edge round `part`, its floor, at `at` on the floor: bars
+-- standing end to end round a circle `radius` across from its middle.
+local function edge(part: BasePart, at: vector, radius: number)
+	local S = Units.STUDS_PER_METRE
+	local middle = Vector3.new(at.x, at.y + 0.03, at.z) * S
+	local length = 2 * radius * math.sin(math.pi / BARS) + BAR_WIDTH
+	for i = 1, BARS do
+		local a = (i - 1) / BARS * 2 * math.pi
+		local spot = middle + Vector3.new(math.cos(a), 0, math.sin(a)) * radius * S
+		local bar = Instance.new("Part")
+		bar.Name = "Edge"
+		bar.Anchored = true
+		bar.CanCollide = false
+		bar.CanQuery = false
+		bar.CanTouch = false
+		bar.CastShadow = false
+		bar.Material = Enum.Material.Neon
+		bar.Color = GOLD
+		bar.Transparency = RING_CLEAR
+		bar.Size = Vector3.new(BAR_WIDTH, 0.05, length) * S
+		-- Its length runs along its Z, turned along the circle.
+		bar.CFrame = CFrame.lookAt(spot, spot + Vector3.new(-math.sin(a), 0, math.cos(a)))
+		bar.Parent = part
+	end
+end
+
 -- The marker for a step: a column at a spot to reach or fetch, a ring
--- flat on the floor under a target; nil for none.
+-- flat on the floor round the targets; nil for none.
 local function newMarker(step: TrainingConfig.Step): BasePart?
 	local at = step.at
 	if not at then
@@ -79,8 +109,10 @@ local function newMarker(step: TrainingConfig.Step): BasePart?
 	part.Material = Enum.Material.Neon
 	part.Color = GOLD
 	if ring then
-		part.Size = Vector3.new(0.04, 1.6, 1.6) * S
-		part.Transparency = RING_CLEAR
+		local radius = step.radius or 1
+		part.Size = Vector3.new(0.04, 2 * radius, 2 * radius) * S
+		part.Transparency = FLOOR_CLEAR
+		edge(part, at, radius)
 	else
 		part.Size = Vector3.new(4, 0.7, 0.7) * S
 		part.Transparency = COLUMN_CLEAR
