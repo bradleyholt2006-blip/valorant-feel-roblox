@@ -105,8 +105,9 @@ do
 	local function reaching(s: TrainingConfig.Step): number
 		local n = 0
 		for _, d in DUMMIES do
-			-- A strafing dummy wanders up to 1.5 m either way of its spot.
-			if within(s.at :: vector, (s.radius :: number) + 1.5, d) then
+			-- A strafing dummy wanders up to 3 m to one side of its spot (0.9 m
+			-- to 2.9 m in BRINK), so each counts as that much further out.
+			if within(s.at :: vector, (s.radius :: number) + 3, d) then
 				n += 1
 			end
 		end
@@ -117,6 +118,13 @@ do
 		reaching(step("shoot")) == 1 and reaching(step("still")) == 1 and reaching(step("head")) == 1
 	)
 	check("and the rifle's either of the two at 30 m", reaching(step("rifle")) == 2)
+	local rifle = step("rifle")
+	check(
+		"the rifle's holding the strafing one wherever it's got to, 0.9 m to 2.9 m to its side",
+		within(rifle.at :: vector, rifle.radius :: number, vector.create(3.91, 0, -30))
+			and within(rifle.at :: vector, rifle.radius :: number, vector.create(5.91, 0, -30))
+			and within(rifle.at :: vector, rifle.radius :: number, vector.create(0, 0, -30))
+	)
 	check(
 		"the crouching one to shoot standing still, the one behind the cover in the head, the rifle's aiming down sights",
 		step("still").still == true and step("head").head == true and step("rifle").scoped == true
@@ -220,6 +228,10 @@ do
 		"moving as the shot went off: not yet, with a note why",
 		not TrainingRules.kill(walking, spot, { still = false, head = true, scoped = true }) and walking.note == TrainingConfig.Notes.moving
 	)
+	local before = walking.notes
+	TrainingRules.kill(walking, spot, { still = false, head = true, scoped = true })
+	check("the same note again counts again, to show it again", walking.notes == before + 1 and walking.note == TrainingConfig.Notes.moving)
+	check("another target gives no note to count", other.notes == 0)
 	check("standing still: done", TrainingRules.kill(walking, spot, { still = true, head = false, scoped = false }))
 	local body = at("head")
 	local cover = step("head").at :: vector

@@ -77,6 +77,9 @@ TrainingConfig.ON = "VFTrainingOn"
 TrainingConfig.STEP = "VFTrainingStep"
 TrainingConfig.PROGRESS = "VFTrainingProgress"
 TrainingConfig.NOTE = "VFTrainingNote"
+-- And how many notes they've been given, so the same one given again shows
+-- again.
+TrainingConfig.NOTED = "VFTrainingNoted"
 
 TrainingConfig.Params = {
 	walkSpeed = p(0.5, "estimate", "Metres a second at the least that count as walking, not standing (ours)"),
@@ -95,6 +98,8 @@ TrainingConfig.Notes = table.freeze({
 	body = "That wasn't the head: aim a little higher.",
 	hip = "Aim down sights first ({aim}).",
 	wentOff = "It went off: plant it again.",
+	-- The hint while Reyna's Devour or Dismiss is still to use (system 73).
+	soul = "{q} and {e} take a Soul Orb: down a target first.",
 })
 
 -- The buttons by name, as the keys, a gamepad (system 68) and a touch
@@ -189,8 +194,10 @@ TrainingConfig.Steps = table.freeze({
 		title = "AIM DOWN SIGHTS",
 		text = "Here's a Vandal. Aim down its sights ({aim}) for a closer look and a steadier shot, and down a target 30 m away.",
 		goal = "kill",
-		at = vector.create(1.5, 0, -30), -- between the two targets at 30 m
-		radius = 3,
+		-- Over both targets at 30 m: the still one at x 0, and the strafing one,
+		-- from x 3 out to about 6.
+		at = vector.create(3, 0, -30),
+		radius = 3.5,
 		scoped = true,
 		give = "vandal",
 	},

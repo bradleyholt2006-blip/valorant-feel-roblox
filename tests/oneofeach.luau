@@ -151,9 +151,10 @@ do
 		table.insert(agents, AgentSelect.agentOf(a, id))
 	end
 	local played = table.concat(agents, ", ")
+	local first = table.move(AgentSelect.pickable(), 1, #ids, 1, {})
 	check(
 		"a side of five on Jett, nobody picking: as the windows close, the first on the server keeps her and the rest take the first that's free",
-		played == table.concat(AgentSelect.pickable(), ", "),
+		played == table.concat(first, ", "),
 		played
 	)
 	check("one of each agent, four of them new", count(changed) == 4 and changed[1] == nil)

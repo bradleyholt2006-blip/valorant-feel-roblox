@@ -66,6 +66,11 @@
 -- a Shade, hurts him, and one at the Shade, landing once it's gone, does
 -- nothing.
 --
+-- Reyna in her Dismiss (system 73, CombatServer.intangible) is hurt by
+-- nobody's hit, and shots and swings go through her, as she is as each
+-- lands; the spike's blast and a spawn room's burn, which are nobody's,
+-- still take her.
+--
 -- Sage's walls of ice stand in the level that shots and swings are traced
 -- through, as the attacker's screen showed them (CombatServer.levelAt,
 -- system 38), and stop every bullet. A bullet or a knife that strikes one
@@ -137,6 +142,10 @@ CombatServer.spares = nil :: ((Entities.Entity, Entities.Entity?, string, string
 -- for what isn't aimed: a fire's burn, a bolt's burst). Nothing's told of a
 -- hit it takes.
 CombatServer.absorbs = nil :: ((Entities.Entity, Entities.Entity?, boolean?) -> boolean)?
+-- Whether an entity can't be hit or hurt by anyone now (Reyna's Dismiss,
+-- system 73, SoulServer): shots and swings go through it, and nothing
+-- anyone does hurts it.
+CombatServer.intangible = nil :: ((Entities.Entity) -> boolean)?
 -- The level shots and swings are traced through, as the attacker's screen
 -- showed it at `viewTime`: with Sage's walls standing then in it
 -- (BarrierServer, system 38). The level alone without.
@@ -176,7 +185,8 @@ local function damage(
 ): Health.DamageResult
 	local weapon = how.weapon
 	local absorbs = CombatServer.absorbs
-	if absorbs and absorbs(victim, attacker, shade) then
+	local intangible = CombatServer.intangible
+	if (absorbs and absorbs(victim, attacker, shade)) or (attacker and intangible and intangible(victim)) then
 		return { damage = 0, shieldDamage = 0, healthDamage = 0, killed = false }
 	end
 	local result = Health.apply(victim.health, amount, Workspace:GetServerTimeNow())
@@ -325,6 +335,28 @@ function CombatServer.mend(entity: Entities.Entity, health: number, shield: numb
 	Remotes.get().Combat:FireAllClients(event)
 end
 
+-- Health past its most for a living entity, up to `most` (Reyna's Devour,
+-- system 73), and tells clients if it changed.
+function CombatServer.overheal(entity: Entities.Entity, health: number, most: number)
+	if not Health.overheal(entity.health, health, most) then
+		return
+	end
+	local event = Entities.vitals(entity)
+	event.kind = "shield"
+	Remotes.get().Combat:FireAllClients(event)
+end
+
+-- An entity's health past its most back down to it (Reyna's overheal over,
+-- system 73), and tells clients.
+function CombatServer.trim(entity: Entities.Entity)
+	if not Health.trim(entity.health) then
+		return
+	end
+	local event = Entities.vitals(entity)
+	event.kind = "shield"
+	Remotes.get().Combat:FireAllClients(event)
+end
+
 -- Takes a living entity out of play as it is, with no hit (Phoenix's Run it
 -- Back running out, system 33, and Omen gone in his Shrouded Step, system
 -- 42): nothing hurts or heals it, and shots go through it, until it's back.
@@ -423,12 +455,14 @@ local function rewindFor(attacker: Entities.Entity, viewTime: number): (LagCompe
 	local rewound = LagCompensation.targets(history, rewind.time, function(id: number): boolean
 		local entity = Entities.get(id)
 		local protected = CombatServer.protected
+		local intangible = CombatServer.intangible
 		return id ~= attacker.id
 			and entity ~= nil
 			and entity.health.alive
 			and entity.pose() ~= nil
 			and not teammates(attacker, entity)
 			and not (protected and protected(entity))
+			and not (intangible and intangible(entity))
 	end)
 	return rewind, rewound
 end

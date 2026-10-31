@@ -52,6 +52,10 @@
 --   * Blade Storm's cast: for others, five blades circling the one who cast
 --     it through its windup (system 19). The knives themselves are a
 --     weapon, which WeaponEffects draws
+--   * Devour: only heard here, and Dismiss too, and for others, Reyna drawn
+--     see-through through its time (RemoteEntities.ghost); SoulView draws
+--     her Soul Orbs, and darkens her screen's edges in her Dismiss (system
+--     73)
 --   * Drift's glide: for others, faint rings of air left at the waist as
 --     they sink, so the air seems to rush up past them (system 20). It comes
 --     in their pose, so it's drawn as they are
@@ -246,6 +250,8 @@ local function onCast(event: any)
 		return -- a step's going: StepView's
 	elseif event.kind == "shade" or event.kind == "home" then
 		return -- a Shade's: ShadowView's
+	elseif event.kind == "dismiss" then
+		RemoteEntities.ghost(event.entity, event.at, event.at + AbilityConfig.Reyna.dismissTime.value)
 	end
 	table.insert(due, {
 		kind = event.kind,

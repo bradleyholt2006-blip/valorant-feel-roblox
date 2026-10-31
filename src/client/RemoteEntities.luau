@@ -142,6 +142,9 @@ local FLASH_COLOR = Color3.new(1, 1, 1)
 local FLASH_TIME = 0.08
 local SHADE_COLOR = Color3.fromRGB(40, 26, 64) -- a Shade (system 43)
 local SHADE_CLEAR = 0.35 -- and how see-through it is
+-- Reyna in her Dismiss, by entity id (system 73): from and until when, in
+-- snapshot time, drawn as a Shade is.
+local ghosts: { [number]: { from: number, ends: number } } = {}
 
 type Visual = {
 	model: Model,
@@ -174,6 +177,12 @@ RemoteEntities.ENTITY = "Entity"
 -- first snapshot, the server's time).
 function RemoteEntities.renderTime(): number
 	return frameTime or Workspace:GetServerTimeNow()
+end
+
+-- Has an entity drawn see-through, as a Shade is, from `from` until `ends`
+-- (snapshot time): Reyna in her Dismiss (system 73, AbilityEffects).
+function RemoteEntities.ghost(id: number, from: number, ends: number)
+	ghosts[id] = { from = from, ends = ends }
 end
 
 -- The time of the frame on screen. Inputs sample it before this frame's
@@ -537,7 +546,12 @@ local function onRender()
 			end
 			local protected = holder ~= nil and holder:GetAttribute(GunGameConfig.PROTECTED) == true
 			local material = if protected then Enum.Material.ForceField else Enum.Material.SmoothPlastic
-			local shade = pose.shade == true
+			local ghost: { from: number, ends: number }? = ghosts[id]
+			if ghost and renderTime >= ghost.ends then
+				ghosts[id] = nil
+				ghost = nil
+			end
+			local shade = pose.shade == true or (ghost ~= nil and renderTime >= ghost.from)
 			local clear = if body then 1 elseif shade then SHADE_CLEAR else 0
 			local flash = false
 			for region, part in visual.parts do

@@ -544,6 +544,13 @@ Built one system at a time:
     reloading, a Vandal aimed down its sights, a shield bought, the abilities and the ultimate, and
     the spike planted and defused. A target downed the wrong way leaves a note on why it didn't
     count - [research and design](docs/research/72-basic-training.md)
+73. **Reyna**: the sixth agent, a Duelist. An enemy she kills, or one who dies within 3 seconds
+    of her hurting them, leaves her a Soul Orb where they fell, for 3 seconds, a purple ball only
+    she sees. With one in reach, Q (Devour) takes it and heals her 50 over 2 seconds, past full
+    health up to 150 for 10 seconds; E (Dismiss) takes it instead, and for 1.5 seconds nothing
+    hurts her and she runs at up to 12 m/s, but she can't fire or cast. Others see her dark and
+    see-through in it, and bots playing her Devour when they're hurt. Leer and Empress come
+    later - [research and design](docs/research/73-reyna-soul-orbs.md)
 
 ## Running it
 
@@ -863,7 +870,8 @@ and the entry another server finds) and AFK (what counts as playing, when the ti
 warning and being taken out) and touch controls (the layout on phones' and tablets' screens, clear
 of the HUD, what a touch hits, the stick, the look drag and the buttons as keys) and Basic Training
 (each step's goal, a walk, a kill and its notes, a reload, the casts, the spike and the buttons'
-names) are pure Luau and run outside Roblox:
+names) and Reyna (who earns a Soul Orb, which is in reach, the wire, Devour's heal and its
+overheal, and Dismiss through to its end) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

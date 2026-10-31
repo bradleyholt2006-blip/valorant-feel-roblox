@@ -79,5 +79,6 @@ require("./rejoin")
 require("./afk")
 require("./touch")
 require("./training")
+require("./soulharvest")
 
 H.finish()

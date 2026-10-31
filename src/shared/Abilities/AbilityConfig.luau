@@ -23,7 +23,9 @@
 -- Cover, his Paranoia (system 41), his Shrouded Step (system 42) and his
 -- From the Shadows (system 43). Sova is the fifth (system 44), with his
 -- Recon Bolt, his Shock Bolt (system 45), his Hunter's Fury (system 46)
--- and his Owl Drone (system 47).
+-- and his Owl Drone (system 47). Reyna is the sixth (system 73), with her
+-- Devour and her Dismiss, each taking a Soul Orb an enemy she's downed
+-- leaves.
 --
 -- No requires, so it runs in Studio and in the offline tests.
 
@@ -171,6 +173,12 @@ AbilityConfig.TeamDeathmatch = {
 		owldrone = p(51, "community", TDM_WIKI .. "'s cooldowns: Sova's Owl Drone, 51 s"),
 		shockbolt = p(26, "community", TDM_WIKI .. "'s cooldowns: Sova's Shock Bolt, 26 s"),
 		reconbolt = p(48, "community", TDM_WIKI .. "'s cooldowns: Sova's Recon Bolt, 48 s"),
+		devour = p(
+			40,
+			"estimate",
+			"Ours: no source we could read gives Reyna's; between the 29 s and 54 s the wiki gives other basic abilities"
+		),
+		dismiss = p(40, "estimate", "Ours, as Devour's: each needs a Soul Orb as well as a charge"),
 	},
 	signatureStart = p(1, "community", TDM_WIKI .. ": 'Most agents start the match with one full charge of their signature ability'"),
 	headStart = p(
@@ -238,6 +246,12 @@ local SOVA_DIGNITAS = "Dignitas' Sova guide"
 local AIMLAB = "Aim Lab's Sova guide"
 local SOVA_MOBALYTICS = "Mobalytics' Sova page"
 local SOVA_DOTESPORTS = "Dot Esports' article on Sova's drone"
+local REYNA = "Liquipedia, Reyna"
+local P203 = "Patch 2.03"
+local P811 = "Patch 8.11"
+local P1202 = "Patch 12.02"
+local REYNA_PCGAMER = "PC Gamer's Reyna guide"
+local REYNA_ESPORTS = "esports.net's Reyna guide"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -460,6 +474,44 @@ AbilityConfig.Defs = {
 		weapon = "furybow",
 		description = "X readies the bow with three energy blasts for 6 s. Fire charges one, then sends it in a long line through walls, hurting and revealing enemies in it.",
 	},
+	-- Reyna's (system 73): her kit as Liquipedia lists it, Leer her
+	-- signature, bought as her others are. Her Devour and her Dismiss can be
+	-- played, each taking a Soul Orb (AbilityConfig.Reyna).
+	leer = {
+		id = "leer",
+		name = "Leer",
+		slot = AbilityConfig.C,
+		kind = "signature",
+		cost = p(250, "community", REYNA .. ": Leer, 250 credits (Patch 3.0: 200 to 250)"),
+		charges = p(2, "community", REYNA .. ": Leer, Max Charges 2"),
+		description = "C readies an eye, and fire casts it a short way ahead: any enemy who looks at it is nearsighted.",
+	},
+	devour = {
+		id = "devour",
+		name = "Devour",
+		slot = AbilityConfig.Q,
+		kind = "basic",
+		cost = p(200, "confirmed", P203 .. ": 'Cost of Devour and Dismiss charges increased 100 >>> 200'"),
+		charges = p(2, "confirmed", P203 .. ": 'Maximum Devour(Q) and Dismiss(E) charges reduced 4 >>> 2'"),
+		description = "With a Soul Orb in reach, Q takes it and heals you 50 over 2 s, past full health up to 150 for 10 s.",
+	},
+	dismiss = {
+		id = "dismiss",
+		name = "Dismiss",
+		slot = AbilityConfig.E,
+		kind = "basic",
+		cost = p(200, "confirmed", P203 .. ": 'Cost of Devour and Dismiss charges increased 100 >>> 200'"),
+		charges = p(2, "confirmed", P203 .. ": 'Maximum Devour(Q) and Dismiss(E) charges reduced 4 >>> 2'"),
+		description = "With a Soul Orb in reach, E takes it: for 1.5 s nothing hurts you and you run faster, but you can't fire or cast.",
+	},
+	empress = {
+		id = "empress",
+		name = "Empress",
+		slot = AbilityConfig.X,
+		kind = "ultimate",
+		points = p(7, "confirmed", P1202 .. ": Empress 'Ult points increased 6 >> 7'"),
+		description = "X sends you into a frenzy until you die or the round ends: you fire, draw and reload faster, and a kill heals you.",
+	},
 } :: { [string]: AbilityDef }
 
 -- The roles are Riot's: 'Duelist', on playvalorant.com's pages for Jett and
@@ -468,6 +520,7 @@ AbilityConfig.Defs = {
 -- Omen's in Patch 4.04: 'We want to increase his reliability as a
 -- Controller', and Sova's in Patch 13.00: 'We're reducing Signature
 -- Ability cooldowns for Initiators! (Sova, Fade, Skye, Breach, and KAY/O)'.
+-- Reyna's is PC Gamer's, whose guide to her has her 'the new Duelist'.
 AbilityConfig.Agents = {
 	jett = {
 		id = "jett",
@@ -501,6 +554,12 @@ AbilityConfig.Agents = {
 		role = "Initiator",
 		abilities = { "owldrone", "shockbolt", "reconbolt", "huntersfury" },
 	},
+	reyna = {
+		id = "reyna",
+		name = "Reyna",
+		role = "Duelist",
+		abilities = { "leer", "devour", "dismiss", "empress" },
+	},
 } :: { [string]: Agent }
 
 -- What each passive does, for agent select (system 29), in our words.
@@ -519,8 +578,8 @@ AbilityConfig.NO_AGENT = ""
 
 -- The agents' ids by index, and each id's index, for the wire (0 for no
 -- agent's kit).
-AbilityConfig.AgentIds = { "jett", "phoenix", "sage", "omen", "sova" }
-AbilityConfig.AgentIndex = { jett = 1, phoenix = 2, sage = 3, omen = 4, sova = 5 } :: { [string]: number }
+AbilityConfig.AgentIds = { "jett", "phoenix", "sage", "omen", "sova", "reyna" }
+AbilityConfig.AgentIndex = { jett = 1, phoenix = 2, sage = 3, omen = 4, sova = 5, reyna = 6 } :: { [string]: number }
 
 -- The ability an agent has in a slot, if any.
 function AbilityConfig.abilityOf(agent: string, slot: number): AbilityDef?
@@ -1319,6 +1378,50 @@ AbilityConfig.OwlDrone = {
 	hitText = p(2, "confirmed", P408 .. ": '[Target Hit] confirmation text now remains on screen for 2s, previously 1s'"),
 	-- How far its rotors are heard (metres).
 	heard = p(15, "estimate", "Ours: " .. SOVA_TRACKER .. ": 'Makes noise because of engine rotors.', with no distance"),
+}
+
+-- Reyna's Soul Orbs (system 73): an enemy she kills, or who dies within
+-- its time of her damaging them, leaves one where they fell, for her alone,
+-- for its time. Devour and Dismiss each take one in her reach, in her sight.
+AbilityConfig.Reyna = {
+	-- How long a Soul Orb lasts, and how long before a death her damage
+	-- counts for one.
+	orbLife = p(3, "confirmed", P1202 .. ": Soul Orbs 'Duration in world decreased from 4s >> 3s'"),
+	damaged = p(
+		3,
+		"confirmed",
+		P203
+			.. ": 'Slain enemies that Reyna has damaged in the last 3 seconds now drop Soul Orbs, even if Reyna does not land the killing shot'"
+	),
+	-- How far from her eye one can be taken (metres), with nothing solid
+	-- between, and how high over where they fell it floats.
+	reach = p(
+		15,
+		"estimate",
+		"Ours: "
+			.. REYNA
+			.. " has Devour 'consume a nearby soul orb', with no distance; "
+			.. REYNA_PCGAMER
+			.. ": 'line-of-sight of the Soul Orb'"
+	),
+	height = p(1, "estimate", "Ours: about the middle of the body that fell"),
+	-- Devour: the health it gives over its time, the most it takes her to,
+	-- and how long what's past her most lasts once it's given (Patch 12.02).
+	heal = p(50, "confirmed", P811 .. ": Devour 'Healing decreased 100 >>> 50'"),
+	healTime = p(2, "confirmed", P811 .. ": 'Full heal time reduced from 3s >>> 2s'"),
+	overheal = p(
+		150,
+		"community",
+		REYNA_PCGAMER .. ": 'her maximum health can't exceed 150' (" .. REYNA_ESPORTS .. ": 'up until 50 decayable armor')"
+	),
+	overhealTime = p(
+		10,
+		"confirmed",
+		P1202 .. ": 'Overheal applied by Devour is now temporary and lasts 10s' (from its last point given: ours)"
+	),
+	-- Dismiss: its time, and her top speed through it (metres a second).
+	dismissTime = p(1.5, "confirmed", P811 .. ": 'Total duration of Dismiss reduced from 2s >>> 1.5s'"),
+	dismissSpeed = p(12, "confirmed", P811 .. ": 'Top speed increased 9.1 meters/second >>> 12 meters/second'"),
 }
 
 -- How long after a throw the gun's back in hand, by the ability thrown (and

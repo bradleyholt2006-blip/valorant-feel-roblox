@@ -45,6 +45,9 @@ export type Context = {
 	-- The Ultimate Orbs up, by number, where each stands (system 49,
 	-- UltimateOrbs); nil for none.
 	orbs: { [number]: vector }?,
+	-- The Soul Orb of Reyna's in her reach, by its number (system 73,
+	-- SoulSim.pick), which her Devour and Dismiss would take; nil for none.
+	soul: number?,
 }
 
 local SpikeMaps = require("../Match/SpikeMaps")

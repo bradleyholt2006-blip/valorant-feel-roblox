@@ -697,13 +697,14 @@ SoundConfig.Sounds = {
 -- pieces, his Shock Bolt's bursting, and his Hunter's Fury cast, a blast of
 -- it charging, and one going, heard across the map, and his Owl Drone sent
 -- out, humming as it flies, its darts, one striking someone, their pings
--- and the drone shot down), heard as the ability curve says (systems 17
--- to 19, 30 to 33 and 36 to 47). Blade Storm's
--- knives drawn again sound as their draw does, and so does an ability put
--- in hand (Curveball's flare, Hot Hands' fireball, Blaze's flame, the
--- Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's orb),
--- which only the one drawing it hears. The orbs' tries make no sound: only
--- a heal or a return does.
+-- and the drone shot down, and Reyna's Devour, which sounds as a heal
+-- does, and her Dismiss, as Run it Back's body going does), heard as the
+-- ability curve says (systems 17 to 19, 30 to 33, 36 to 47 and 73).
+-- Blade Storm's knives drawn again sound as their draw does, and so does
+-- an ability put in hand (Curveball's flare, Hot Hands' fireball, Blaze's
+-- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's
+-- orb), which only the one drawing it hears. The orbs' tries make no
+-- sound: only a heal or a return does.
 SoundConfig.Abilities = {
 	lift = "gust",
 	dash = "dash",
@@ -756,6 +757,8 @@ SoundConfig.Abilities = {
 	darthit = "dartHit",
 	dartping = "dartPing",
 	dronebreak = "droneBreak",
+	devour = "healChime",
+	dismiss = "fizzle",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and

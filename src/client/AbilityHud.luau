@@ -17,7 +17,8 @@
 -- its map's in hand, EQUIP until it can be fired and then MAP, through its
 -- windup the seconds left, and as a Shade, SHADE (system 43); and Hunter's
 -- Fury's while its bow's in hand, EQUIP until it's drawn and then the
--- seconds left (system 46).
+-- seconds left (system 46); and Reyna's Dismiss while it runs, its note
+-- the seconds left (system 73).
 -- What can't be played yet is dimmed.
 -- It reads the local player's predicted kit (PlayerController.sim), so a
 -- cast shows on the tick it's pressed. A kit of no agent's, as deathmatch's
@@ -246,6 +247,9 @@ function AbilityHud.start()
 					end
 				elseif def and def.id == "updraft" then
 					lit = AbilitySim.lifting(kit, t)
+				elseif def and def.id == "dismiss" and AbilitySim.dismissing(kit, t) then
+					lit = true
+					note = string.format("%.1f", math.max(kit.dismissUntil - t, 0))
 				elseif def and def.id == "shroudedstep" and AbilitySim.stepping(kit, t) then
 					lit = true
 					note = "STEP"
