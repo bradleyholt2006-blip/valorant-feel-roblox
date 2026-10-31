@@ -640,27 +640,30 @@ local function reloadInHand(id: number, most: number?)
 	end
 end
 
--- The round each bot last bought its abilities' charges in (system 66), and
+-- The round each bot last bought its abilities' charges in (system 66; the
+-- mode's start too, as a mode started over begins at round 1 again), and
 -- the order its slots are bought round in.
 local chargesBought: { [number]: string } = {}
 local BUY_ORDER = { AbilityConfig.E, AbilityConfig.Q, AbilityConfig.C }
 
 -- In a buy phase of the spike rounds, each bot alive with its agent locked
--- in, its guns and shield bought, buys charges of the abilities it casts
--- (BotUtility.uses), once a round (system 66): a charge at a time round its
--- slots, from its own credits, keeping back what BotBuy.toKeep says.
+-- in for this side of the match (AgentServer.settled, so not into the last
+-- match's kit before its window opens), its guns and shield bought, buys
+-- charges of the abilities it casts (BotUtility.uses), once a round
+-- (system 66): a charge at a time round its slots, from its own credits,
+-- keeping back what BotBuy.toKeep says.
 local function botCharges(m: MatchRules.State)
 	if m.phase ~= "buy" then
 		return
 	end
-	local round = string.format("%d:%d", m.match, m.round)
+	local round = string.format("%d:%d:%d", begun, m.match, m.round)
 	local kind = MatchRules.roundKind(m.format, m.round)
 	for id in m.members do
 		local standIn = BotServer.standIn(id)
 		if not standIn or chargesBought[id] == round or not BotServer.isAlive(id) or BotServer.spawnPending(id) then
 			continue
 		end
-		if standIn:GetAttribute(AgentSelect.STATUS) == "open" then
+		if not AgentServer.settled(standIn, id) then
 			continue
 		end
 		chargesBought[id] = round
@@ -1854,9 +1857,15 @@ function Arena.start()
 	-- side's spawn spots, for the other side's bots to hunt as far as.
 	BotServer.situation = function(): BotServer.Situation?
 		local s, m, g, d, t = skirmish, match, gun, dm, tdm
+		-- A round's own number: the mode's start too, so a round of a mode
+		-- started over (its match and round back to 1) isn't taken for the
+		-- last start's, whose plan the bots would play on.
+		local function key(matchNumber: number, round: number): number
+			return (begun * 1000 + matchNumber) * 1000 + round
+		end
 		local out: BotServer.Situation
 		if s then
-			out = { arenaMap = s.map, live = s.phase == "live", round = s.match * 1000 + s.round, roles = {}, spawns = {} }
+			out = { arenaMap = s.map, live = s.phase == "live", round = key(s.match, s.round), roles = {}, spawns = {} }
 			for side = 1, Roster.SIDES do
 				local feet: { vector } = {}
 				local spots: { ArenaLayout.Spot } = if mode == "duel" then DuelMap.spots(side) else ArenaLayout.spots(side)
@@ -1866,16 +1875,16 @@ function Arena.start()
 				out.spawns[side] = feet
 			end
 		elseif g then
-			out = { arenaMap = g.map, live = g.phase == "live", round = g.match, roles = {}, spawns = {} }
+			out = { arenaMap = g.map, live = g.phase == "live", round = key(g.match, 0), roles = {}, spawns = {} }
 		elseif m then
 			local live = m.phase == "live" or m.phase == "planted"
-			out = { spikeMap = m.map, live = live, round = m.match * 1000 + m.round, roles = {}, spawns = {} }
+			out = { spikeMap = m.map, live = live, round = key(m.match, m.round), roles = {}, spawns = {} }
 			out.roles[m.attackers] = "attack"
 			out.roles[3 - m.attackers] = "defend"
 		elseif d then
-			out = { spikeMap = d.map, live = d.phase == "live", round = d.match, roles = {}, spawns = {} }
+			out = { spikeMap = d.map, live = d.phase == "live", round = key(d.match, 0), roles = {}, spawns = {} }
 		elseif t then
-			out = { spikeMap = t.map, live = t.phase == "live", round = t.match, roles = {}, spawns = {} }
+			out = { spikeMap = t.map, live = t.phase == "live", round = key(t.match, 0), roles = {}, spawns = {} }
 		else
 			return nil
 		end

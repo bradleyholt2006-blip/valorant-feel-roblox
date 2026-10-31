@@ -276,6 +276,26 @@ do
 	end
 	check("attackers guard the planted spike", guards == 5, string.format("%d of 5", guards))
 	check("defenders retake it, at the spots that watch it", retakes == 5, string.format("%d of 5", retakes))
+	-- Then not planted, as on a round's first frames before the last round's
+	-- spike has caught up: a holder in the retake's push would smoke its way
+	-- forward from spawn.
+	local carried: BotTeam.Spike = { state = "carried", at = nil, carrier = attackers[1].id, site = nil, detonateAt = 0, halfSaved = false }
+	BotTeam.think(attack, 3, true, attackers, {}, carried)
+	BotTeam.think(defend, 3, true, defenders, {}, carried)
+	local stale = 0
+	for _, m in attackers do
+		local p = BotTeam.placeOf(attack, m.id, m.feet)
+		if p and (p.role == "guard" or p.spike) then
+			stale += 1
+		end
+	end
+	for _, m in defenders do
+		local p = BotTeam.placeOf(defend, m.id, m.feet)
+		if not p or p.role ~= "hold" or p.spike then
+			stale += 1
+		end
+	end
+	check("with the spike not planted, nobody guards it or retakes it", stale == 0, string.format("%d still at it", stale))
 	local moved = BotUtility.moved(
 		{ role = "hold", phase = "hold", there = true, way = vector.one, from = vector.zero, threats = { vector.one } },
 		vector.create(10, 0, 0)

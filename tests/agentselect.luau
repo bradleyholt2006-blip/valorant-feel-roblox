@@ -319,6 +319,23 @@ do
 	check("with player 1's window gone and the new player's open", p1.status == "locked" and p1.agent == OTHER and p4.status == "open")
 end
 
+-- Settled for the side of a match (system 66: a bot's charges wait for it) ---------------------
+
+do
+	local a = AgentSelect.new()
+	local first, second = "spike:1:1:1", "spike:1:2:1"
+	AgentSelect.step(a, { 1 }, { [1] = first }, 0)
+	check("an open window isn't settled", not AgentSelect.settled(a, 1, first))
+	AgentSelect.lock(a, 1)
+	check("locked in, it is", AgentSelect.settled(a, 1, first))
+	check("but not for the next match's side on its first frame, before its window opens", not AgentSelect.settled(a, 1, second))
+	AgentSelect.step(a, { 1 }, { [1] = second }, 1)
+	check("nor while that window's open", not AgentSelect.settled(a, 1, second))
+	AgentSelect.step(a, { 1 }, { [1] = second }, 1 + TIME)
+	check("and once it closes, settled again", AgentSelect.settled(a, 1, second))
+	check("nobody's settled where nobody picks", not AgentSelect.settled(a, 1, nil) and not AgentSelect.settled(a, 2, first))
+end
+
 -- Selling back -------------------------------------------------------------------------------
 
 do

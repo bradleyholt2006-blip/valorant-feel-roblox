@@ -1400,6 +1400,15 @@ function BotTeam.think(
 		job.onto = nil
 		job.commit = nil
 	end
+	-- The spike not planted (as a round starts, before the last one's has
+	-- caught up): nobody guards it or retakes it.
+	if not (spike and spike.state == "planted") then
+		team.plantedAt = nil
+		team.plantedSeen = nil
+		team.watching = {}
+		team.retake = "gather"
+		team.defuser = nil
+	end
 	if team.side == "attack" and team.plan then
 		attack(team, now, bots, players, sightings, spike)
 	elseif team.side == "defend" and team.plan then

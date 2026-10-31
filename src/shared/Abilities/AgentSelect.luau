@@ -313,6 +313,15 @@ function AgentSelect.lock(s: State, id: number): string?
 	return if pick.agent ~= before then pick.agent else nil
 end
 
+-- Whether someone's agent is theirs for the side of a match they're on
+-- (`moment`): locked in, in a window for that side. Not before that
+-- window has opened, as on the frame a match starts, when their pick still
+-- holds the last match's.
+function AgentSelect.settled(s: State, id: number, moment: string?): boolean
+	local pick = s.picks[id]
+	return pick ~= nil and moment ~= nil and pick.status == "locked" and pick.match == moment
+end
+
 -- Someone leaves the server: their pick goes with them.
 function AgentSelect.leave(s: State, id: number)
 	s.picks[id] = nil

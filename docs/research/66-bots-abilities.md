@@ -12,8 +12,8 @@ or a hurt teammate; and Hunter's Fury goes at enemies seen a moment ago.
 
 Every throw is tried before it's thrown, flown through the level as the server will fly it, so a
 bot throws only what lands where it means it to, and keeps its flashes and mollies off its own side.
-Its hands then play the cast as a player's keys and mouse do. Each round, after its guns and shield,
-it buys charges of the abilities it casts with what it has left.
+Its hands then play the cast as a player's keys and mouse do. Each round, after its guns and shield
+and once its agent is locked in, it buys charges of the abilities it casts with what it has left.
 
 Nothing is published about bots casting Valorant's abilities, so when a bot casts is ours, set
 against what guides tell players about smokes, flashes, recon, walls and the post-plant, and against
@@ -82,7 +82,24 @@ furthest any lands from the spot it was meant for:
 | A Curveball round the corner, blinding those holding and no teammate | 4 | 0 m |
 
 A throw that isn't found from where a bot stands isn't thrown; it's tried again as the bot moves.
-The offline suite, 3894 checks, passes.
+The offline suite, 3915 checks, passes.
+
+In Studio (section 70, 31 October), one player in a Local Server played six rounds on Outpost and
+six on Wharf with the cast script running. Agent select and the ultimates were right (sections 69
+and 70: BK1, BK2), 21 minutes gave no error and no bot stuck, and the bots took 0.1 to 0.7 ms of a
+server frame on a push (BU6). Two faults showed. In round 1 the bots bought charges into the kit
+they had before agent select, which went when their agents were locked in, and then bought none for
+those agents (BU1): the buy ran on the round's first frame, before that match's window had opened,
+so it read the last match's lock, and marked the round bought. And a defending Omen smoked forward
+0.1 s into round 1 of both matches, its job a hold (BU2). The plan gives a defender holding its way
+in a retake's push only from a retake left over: a side's retake stayed until its next round even
+once the spike wasn't planted, and a mode started over, back at its match's round 1, was taken for
+the last start's round 1, the round the bots plan by counting matches and rounds but not starts. Now
+a bot buys its charges only once its agent is locked in for its side of the match
+(`AgentSelect.settled`), the round counts the mode's starts too, and a side's plan drops its retake
+and its guard whenever the spike isn't planted. Casting was sparse, 31 casts in 12 rounds for 9
+bots, no guard cast on a defuse in six planted rounds, and the bots' cost read 309 ms in the frame a
+match stopped; these are known gaps below.
 
 ## 4. Confirmed vs estimated, as implemented
 
@@ -104,7 +121,7 @@ The offline suite, 3894 checks, passes.
 | How far a throw may land from its spot | A smoke 3 m, a cloud 4 m, a molly, slow or Shock Bolt 3 m, a wall 3 m | Estimate | Ours |
 | A molly or a Shock Bolt and its own side | Lands its radius and 1.5 m clear of teammates, and of itself | Estimate | Ours |
 | Aimed | Within 1° | Estimate | Ours |
-| The charges it buys | After its guns and shield, a charge at a time round E, Q and C; keeping back the price of a Vandal and Heavy Armor unless it's a half's first round or it has a primary | Estimate | Ours, as bots save for a full buy (system 60) |
+| The charges it buys | After its guns and shield, once its agent is locked in for its side of the match, a charge at a time round E, Q and C; keeping back the price of a Vandal and Heavy Armor unless it's a half's first round or it has a primary | Estimate | Ours, as bots save for a full buy (system 60) |
 
 ## 5. Design
 
@@ -122,6 +139,10 @@ where that job has it (`BotTeam.placeOf`):
 Fetching the spike, planting it, defusing it and getting out of its blast take a bot's hands, so it
 casts nothing then. In the modes that respawn there's no plan, and a bot casts only what needs none:
 a heal, Hunter's Fury and Blade Storm.
+
+A side's plan starts over with each round, the round known by the mode's start, its match and its
+round (`Arena`), so a mode started over begins its plan afresh; and the retake and the guard last
+only while the spike is planted (`BotTeam.think`).
 
 ### The moments
 
@@ -187,9 +208,11 @@ fly, burst and hurt it as they do a player's (system 65).
 
 ### Buying charges
 
-In each buy phase of the spike rounds, once a bot is alive with its agent locked in, its guns and
-shield bought, it buys charges of the abilities it casts that cost credits, one at a time round its
-E, Q and C, from its own credits (`Arena`). It keeps back what `BotBuy.toKeep` says: nothing on a
+In each buy phase of the spike rounds, once a bot is alive with its agent locked in for its side of
+the match (`AgentServer.settled`: not on a match's first frame, before agent select has opened its
+window, nor while the window's open, as a kit changes with the agent locked in), its guns and shield
+bought, it buys charges of the abilities it casts that cost credits, one at a time round its E, Q
+and C, from its own credits (`Arena`). It keeps back what `BotBuy.toKeep` says: nothing on a
 half's first round or with a primary, else the price of a Vandal and Heavy Armor, so a bot saving
 for a full buy spends only what's past it.
 
@@ -206,12 +229,15 @@ it's tried again.
 | File | What |
 | --- | --- |
 | `src/shared/Bots/BotUtility.luau` | What a bot casts and when; every throw tried; its hands for the cast |
-| `src/shared/Bots/BotTeam.luau` | `placeOf`: where each bot is in its side's plan, its way in and the spots that hold it |
+| `src/shared/Bots/BotTeam.luau` | `placeOf`: where each bot is in its side's plan, its way in and the spots that hold it; `think` drops a retake or a guard once the spike isn't planted |
 | `src/shared/Bots/BotConfig.luau` | `Utility`, each skill's `utility`, and `CAST` |
 | `src/shared/Bots/BotBuy.luau` | `toKeep`: what a bot keeps back from its charges |
 | `src/server/BotServer.luau` | Each bot's moment, its casts within the budget, and its hands in its inputs |
-| `src/server/Arena.luau` | Bots buying their charges in a buy phase |
+| `src/shared/Abilities/AgentSelect.luau` | `settled`: an agent locked in for the side of the match someone's on |
+| `src/server/AgentServer.luau` | `settled`, for what a bot buys |
+| `src/server/Arena.luau` | Bots buying their charges in a buy phase, once settled; the round the bots plan by, counting the mode's starts |
 | `tests/botutility.luau` | The places, the choices, every throw on every map, and the hands |
+| `tests/agentselect.luau` | `settled`, before a window opens, while it's open and once it closes |
 | `docs/studio-checklist.md` | Section 70 |
 
 ## 7. Debug tools
@@ -231,7 +257,12 @@ it's tried again.
 
 ## Known gaps to check in Studio
 
-- Bots buying their charges, and casting them in a round: the moments, and how often.
+- Bots buying their charges once their agents are locked in, and casting them in a round: the
+  moments, and how often. Studio saw 31 casts in 12 rounds for 9 bots, and an attacking Sova on
+  Outpost never cast its Recon Bolt gathered in six rounds, though offline it's found from 15 of 16
+  places.
+- A guard's cast on a defuse: none came in six planted rounds.
+- A match stopping: the bots' cost (`VFBotMs`) read 309 ms in the frame it stopped.
 - Their throws in the place's real geometry, on Roblox's collisions: smokes on the spots, flashes
   round the corner, mollies, slows and walls on the way in, and none on their own side.
 - A heal, and Hunter's Fury, a molly or a Shock Bolt on a defuse.
