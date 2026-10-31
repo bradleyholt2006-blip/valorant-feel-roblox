@@ -13,7 +13,9 @@
 -- needs isn't used, and the blocks are drawn as before; nor is one until
 -- its meshes have loaded on this client, or ever if one of them can't (a
 -- mesh Roblox's moderation has blocked doesn't load for other players, and
--- a body without its mesh is all but unseen).
+-- a body without its mesh is all but unseen). A rig still arriving on this
+-- client (put back in ReplicatedStorage, say) is tried again every RETRY
+-- seconds, and given up on only after GIVE_UP tries that couldn't pose it.
 --
 -- Each bone is turned by its Transform, which Roblox applies on top of
 -- where the bone rests (its CFrame): a bone's turn from rest in the body's
@@ -83,10 +85,30 @@ export type Body = {
 	source: Model, -- the rig it was copied from
 }
 
+-- A rig not yet whole on this client is tried again this often (seconds),
+-- this many times at the most.
+local RETRY = 1
+local GIVE_UP = 10
+
 local template: Model? = nil
 local broken: { [Model]: boolean } = {}
 -- Each rig's meshes: on their way (false) or loaded (true) on this client.
 local fetched: { [Model]: boolean } = {}
+-- Each rig that couldn't be used yet: when it's tried again (os.clock),
+-- and how many tries have failed to pose it.
+local waitUntil: { [Model]: number } = {}
+local tries: { [Model]: number } = {}
+
+-- Whether a rig looks whole: its PrimaryPart and a mesh are here. One
+-- that's still arriving has neither, or not all its parts yet.
+local function whole(model: Model): boolean
+	return model.PrimaryPart ~= nil and model:FindFirstChildWhichIsA("MeshPart", true) ~= nil
+end
+
+-- A rig not usable yet: tried again in RETRY seconds.
+local function later(model: Model)
+	waitUntil[model] = os.clock() + RETRY
+end
 
 -- Loads a rig's meshes, and marks it broken if any of them doesn't load:
 -- drawn without one, a body would be missing that part of it, or all of it.
@@ -102,6 +124,12 @@ local function fetch(model: Model)
 				table.insert(parts, d)
 			end
 		end
+	end
+	if #parts == 0 then
+		-- Nothing to load yet: its meshes haven't arrived.
+		fetched[model] = nil
+		later(model)
+		return
 	end
 	local failed: { string } = {}
 	local ok, problem = pcall(function()
@@ -127,8 +155,9 @@ end
 -- meshes have loaded. One taken out of ReplicatedStorage is gone, though
 -- its folder's still about.
 function BodyView.template(): Model?
+	local now = os.clock()
 	local found = template
-	if found and found:IsDescendantOf(ReplicatedStorage) and not broken[found] then
+	if found and found:IsDescendantOf(ReplicatedStorage) and not broken[found] and (waitUntil[found] or 0) <= now then
 		return found
 	end
 	template = nil
@@ -138,7 +167,11 @@ function BodyView.template(): Model?
 	end
 	local named = folder:FindFirstChild(BodyView.DEFAULT)
 	local model = if named and named:IsA("Model") then named else folder:FindFirstChildWhichIsA("Model")
-	if not model or broken[model] then
+	if not model or broken[model] or (waitUntil[model] or 0) > now then
+		return nil
+	end
+	if not whole(model) then
+		later(model)
 		return nil
 	end
 	if fetched[model] == nil then
@@ -180,6 +213,10 @@ end
 -- A body copied from a rig, scaled to the agents' height and ready to
 -- pose; nil if it can't be posed.
 function BodyView.new(source: Model): Body?
+	-- Not again in the frame a try failed, for the next agent.
+	if broken[source] or (waitUntil[source] or 0) > os.clock() then
+		return nil
+	end
 	local model = source:Clone()
 	-- The importer's animation pieces and joints aren't used: the pose
 	-- turns the bones, and every part moves with the root part.
@@ -194,9 +231,18 @@ function BodyView.new(source: Model): Body?
 			d:Destroy()
 		end
 	end
+	-- One that can't be posed is tried again later, as it may still be
+	-- arriving, and given up on after GIVE_UP tries.
 	local function fail(): Body?
 		model:Destroy()
-		broken[source] = true
+		local tried = (tries[source] or 0) + 1
+		tries[source] = tried
+		if tried >= GIVE_UP then
+			broken[source] = true
+			warn(`[VF] Agents are drawn as blocks: the body {source.Name} can't be posed (no PrimaryPart, mesh or bones the pose needs)`)
+		else
+			later(source)
+		end
 		return nil
 	end
 	local primary = model.PrimaryPart

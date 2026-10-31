@@ -583,7 +583,10 @@ do
 				end
 				do
 					local sim = botAt(world, stage, "sova", seed)
-					local c = BotUtility.choose(momentOf(sim, push), sim.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
+					-- Its Recon Bolt cast as its side gathered.
+					local memo = BotUtility.memo()
+					memo.done["gather:reconbolt"] = true
+					local c = BotUtility.choose(momentOf(sim, push), sim.abilities, memo, EXPERT, diceOf(seed), world)
 					local found = c ~= nil and c.ability == "shockbolt"
 					local bolt = if c and found then find(play(sim, c, world), "bolt") else nil
 					local miss: number? = nil
@@ -779,6 +782,103 @@ do
 		math.abs(share - BotConfig.Skills.easy.utility.value) < 0.1,
 		string.format("%.2f of moments, its share %.2f", share, BotConfig.Skills.easy.utility.value)
 	)
+end
+
+H.section("Bots' abilities: a flash's thrower waits for its pop, and a late Recon Bolt (system 66)")
+
+do
+	-- From the Studio checks: a bot's own flash blinded it as it walked on
+	-- before the pop, and an attacking Sova that hadn't got to where its
+	-- side gathers as the push went never cast its Recon Bolt.
+	local g = groundOf("outpost")
+	local world = g.world
+	local popTime = FlareSim.popTime(DT)
+	local waited, still, quiet, own = nil :: number?, true, true, true
+	local found = false
+	local seed = 300
+	for _, site in g.plan.sites do
+		for k, e in site.entrances do
+			seed += 1
+			local push = entryOf(g, site, k, "push")
+			if found or #push.threats == 0 then
+				continue
+			end
+			local sim = botAt(world, BotNav.feet(g.nav, e.stage), "phoenix", seed)
+			local c = BotUtility.choose(momentOf(sim, push), sim.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
+			if not c or c.ability ~= "curveball" then
+				continue
+			end
+			found = true
+			local yaw, pitch = 0, 0
+			local thrownAt: number? = nil
+			local from = sim.movement.position
+			for n = 1, math.ceil((c.longest + 1) / DT) do
+				local t = (sim.movement.tick + 1) * DT
+				local h = BotUtility.hands(c, sim.abilities, sim.weapons, t, PlayerSim.eye(sim, cfg), yaw, pitch, DT)
+				yaw, pitch = h.yaw, h.pitch
+				if thrownAt then
+					still = still and h.still and vector.magnitude(sim.movement.position - from) < 0.6
+					quiet = quiet and h.buttons == 0
+					own = own and h.slot == nil
+				end
+				if h.done then
+					waited = if thrownAt then t - thrownAt else nil
+					break
+				end
+				local input = { seq = n, buttons = h.buttons, yaw = yaw, pitch = pitch, slot = h.slot or 1, viewTime = t }
+				local _, _, _, _, casts = PlayerSim.step(sim, input, cfg, world, DT)
+				if find(casts or {}, "flare") then
+					thrownAt = t
+				end
+			end
+		end
+	end
+	check(
+		"a flash's thrower stands where it threw it until it's popped, pressing nothing, its gun coming back",
+		found and waited ~= nil and waited >= popTime - 1e-6 and still and quiet and own,
+		if waited then string.format("%.3f s after the throw, the pop at %.3f s", waited, popTime) else "no throw"
+	)
+
+	-- Sova, the push gone before it got to where its side gathers: the
+	-- Recon Bolt on the way while the way in's still a way off, and not
+	-- once it's near; nor while its side gathers and it isn't there yet.
+	local late, near, early = false, true, true
+	local tried = 0
+	for _, site in g.plan.sites do
+		for k, e in site.entrances do
+			seed += 1
+			local push = entryOf(g, site, k, "push")
+			push.there = false
+			local stage = BotNav.feet(g.nav, e.stage)
+			local way = push.way :: vector
+			local door = push.door :: vector
+			if
+				#push.threats == 0
+				or vector.magnitude(stage + EYE - way) < U.reconFar.value
+				or vector.magnitude(door + EYE - way) >= U.reconFar.value
+			then
+				continue
+			end
+			tried += 1
+			local sim = botAt(world, stage, "sova", seed)
+			local c = BotUtility.choose(momentOf(sim, push), sim.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
+			late = late or (c ~= nil and c.key == "gather:reconbolt")
+			local gather = entryOf(g, site, k, "gather")
+			gather.there = false
+			local before = BotUtility.choose(momentOf(sim, gather), sim.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
+			early = early and (before == nil or before.key ~= "gather:reconbolt")
+			local close = botAt(world, door, "sova", seed)
+			local there = BotUtility.choose(momentOf(close, push), close.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
+			near = near and (there == nil or there.key ~= "gather:reconbolt")
+		end
+	end
+	check(
+		"the push gone before Sova got there, its Recon Bolt goes on the way, a way off the way in",
+		late,
+		string.format("%d ways in at least %.0f m off", tried, U.reconFar.value)
+	)
+	check("...not once it's near the way in", near)
+	check("...nor while its side gathers and it isn't there yet", early)
 end
 
 return nil

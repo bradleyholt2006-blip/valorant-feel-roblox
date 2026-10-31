@@ -121,6 +121,7 @@ local BlazeServer = require(script.Parent.BlazeServer)
 local CloudServer = require(script.Parent.CloudServer)
 local CombatServer = require(script.Parent.CombatServer)
 local Entities = require(script.Parent.Entities)
+local FlareServer = require(script.Parent.FlareServer)
 local FogServer = require(script.Parent.FogServer)
 local GroundGunsServer = require(script.Parent.GroundGunsServer)
 local MinimapServer = require(script.Parent.MinimapServer)
@@ -906,6 +907,20 @@ local function keysFor(direction: vector, yaw: number): number
 	return buttons
 end
 
+-- Where a flare its own side threw pops, if one in the air will pop in
+-- the bot's sight from `eye` (system 66): it looks away from it, as a
+-- player told of it does.
+local function flashAt(bot: Bot, eye: vector): vector?
+	for _, p in FlareServer.coming() do
+		local thrower = PlayerSimServer.entityOf(p.player)
+		local ours = p.player == bot.standIn or (thrower ~= nil and bot.side ~= nil and sideOf(thrower) == bot.side)
+		if ours and FlareSim.seen(p.position, eye, world) then
+			return p.position
+		end
+	end
+	return nil
+end
+
 -- One tick of a bot's life at server time `t`, in a frame ending at `now`.
 local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Values, w: World?)
 	local sim = bot.sim
@@ -969,6 +984,18 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 				bot.memo.nextAt = now + U.between.value
 			end
 		end
+	end
+	-- Its side's flash about to pop where it would see it: out of a fight
+	-- and a cast, it turns its back on it until it has, as fast as it
+	-- turns, so it's no more than a moment's white (FlareSim's `away`).
+	local flash = if casting or BotBrain.fighting(brain) then nil else flashAt(bot, body.eye)
+	if flash then
+		local away = BotBrain.anglesTo(body.eye, body.eye * 2 - flash)
+		local most = math.rad(P.lookSpeed.value) * DT
+		local yaw = viewYaw + math.clamp(BotBrain.wrap(away - viewYaw), -most, most)
+		local pitch = viewPitch + math.clamp(-viewPitch, -most, most)
+		brain.yaw, brain.pitch = yaw, pitch
+		act.yaw, act.pitch = yaw, pitch
 	end
 	local onto = if job and job.onto and w then job.onto + w.origin else nil
 	local toward = if onto then vector.create(onto.x - feet.x, 0, onto.z - feet.z) else nil

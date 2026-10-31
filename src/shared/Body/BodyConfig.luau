@@ -220,9 +220,9 @@ BodyConfig.Hold = {
 	pressCrouched = at(
 		0.09,
 		0.41,
-		-0.22,
+		-0.26,
 		"estimate",
-		"On the spike (its top about 0.4 m up, SpikeView), as far down as the arms reach with the head in the crouched head box"
+		"On the spike (its top about 0.4 m up, SpikeView; its casing's near edge about 0.23 m ahead of the feet), as far forward and down as the arms reach with the head in the crouched head box; at -0.22 the palms stopped 2 to 3 cm short of it (measured in Studio)"
 	),
 }
 

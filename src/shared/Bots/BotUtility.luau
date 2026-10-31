@@ -8,7 +8,8 @@
 -- against its skill's share (BotConfig's utility), and never while it
 -- fights:
 --   * gathered short of its way in, before the push (or a retake's): the
---     Recon Bolt over it, at the spots that hold it
+--     Recon Bolt over it, at the spots that hold it; and on the push, if
+--     it went before the bot got there, while it's still a way off
 --   * on the push: Dark Cover on the two spots most likely to hold its way
 --     in, a cloud on the first, Paranoia through them, a Curveball round
 --     the corner at them, a Shock Bolt or Hot Hands on the first, and
@@ -28,8 +29,10 @@
 -- BoltSim, CloudSim, ParanoiaSim, BarrierSim), so a bot throws only what
 -- lands where it means it to: a smoke on its floor, a molly on the spot, a
 -- Recon Bolt where it sees those it's for, and a flash that blinds them
--- and neither it nor a teammate. Mollies and Shock Bolts keep off its
--- teammates, and a Shock Bolt off itself. Then its hands play it as a
+-- and neither it nor a teammate where they stand, the bot waiting where it
+-- threw it until it's popped (bots on its side look away from it as it
+-- flies: BotServer). Mollies and Shock Bolts keep off its teammates, and
+-- a Shock Bolt off itself. Then its hands play it as a
 -- player's do: the ability's key, its aim eased round as the bot's view
 -- eases (BotBrain), the throw's button once it's ready and aimed (a draw
 -- held to its bars, a smoke's mark sent out to its reach), and the key let
@@ -102,8 +105,9 @@ export type Memo = {
 
 -- Where a cast is in its hands: its key pressed, its ability coming into
 -- hand, its throw (or its draw, its mark or its try), Hunter's Fury's
--- blasts, or the key let go after an instant cast.
-export type Step = "press" | "equip" | "send" | "fury" | "after"
+-- blasts, a flare thrown and not yet popped, or the key let go after an
+-- instant cast.
+export type Step = "press" | "equip" | "send" | "fury" | "pop" | "after"
 
 -- A cast, chosen for moment `key`: the ability and its slot; its aim, at
 -- `target` aimed again each tick from the eye, else along `yaw` and
@@ -491,8 +495,9 @@ end
 
 -- The Recon Bolt where its pulses reveal the most of `points`: drawn full
 -- (fast and nearly straight) at their middle, a little over it, and over
--- each, and a little higher each time, so it sticks where it sees them.
-local function recon(m: Moment, world: any, slot: number, key: string, points: { vector }): Cast?
+-- each, and through each of `through` (the way in, from outside it), and
+-- a little higher each time, so it sticks where it sees them.
+local function recon(m: Moment, world: any, slot: number, key: string, points: { vector }, through: { vector }?): Cast?
 	if #points == 0 then
 		return nil
 	end
@@ -504,6 +509,11 @@ local function recon(m: Moment, world: any, slot: number, key: string, points: {
 	local aims = { middle + UP, middle + UP * 4 }
 	for _, p in points do
 		table.insert(aims, p + UP * 1.5)
+	end
+	if through then
+		for _, p in through do
+			table.insert(aims, p)
+		end
 	end
 	local bars = RC.bars.value
 	local bestSeen, best = 0, nil :: Cast?
@@ -738,14 +748,24 @@ function BotUtility.choose(
 			end, true)
 		end
 	end
-	-- Gathered short of its way in: the Recon Bolt over it.
-	if place and role == "entry" and place.phase == "gather" and place.there and #threats > 0 then
-		add("reconbolt", "gather:reconbolt", function(slot: number): Cast?
-			return recon(m, world, slot, "gather:reconbolt", firstOf(threats, SPOTS))
-		end)
+	-- Gathered short of its way in: the Recon Bolt over it, and through
+	-- it. Not there yet as the push goes, it's cast on the way while the
+	-- way in's still a way off.
+	local way = if place then place.way else nil
+	if place and role == "entry" and #threats > 0 then
+		local gathered = place.phase == "gather" and place.there
+		local late = place.phase == "push" and way ~= nil and vector.magnitude(m.eye - way) >= U.reconFar.value
+		if gathered or late then
+			local through = if way then { way } else {}
+			if way and place.door then
+				table.insert(through, place.door + EYE)
+			end
+			add("reconbolt", "gather:reconbolt", function(slot: number): Cast?
+				return recon(m, world, slot, "gather:reconbolt", firstOf(threats, SPOTS), through)
+			end)
+		end
 	end
 	-- Going in through its way.
-	local way = if place then place.way else nil
 	if place and role == "entry" and place.phase == "push" and way and #threats > 0 then
 		local d = vector.magnitude(m.eye - way)
 		local first = threats[1]
@@ -980,8 +1000,14 @@ function BotUtility.hands(
 		end
 	elseif step == "send" then
 		if not inHand then
-			-- Thrown, sent, loosed or healed: out of hand.
-			done = true
+			-- Thrown, sent, loosed or healed: out of hand. A flare's thrower
+			-- waits where it is, its view where it threw, until it's popped:
+			-- it was thrown where its pop can't be seen from there.
+			if id == "curveball" then
+				step = "pop"
+			else
+				done = true
+			end
 		elseif id == "darkcover" then
 			-- Its mark out to its reach (fire further, alt fire nearer), then
 			-- its key again sends it.
@@ -1037,6 +1063,8 @@ function BotUtility.hands(
 		elseif bow and not c.charging and aimed and t >= weapons.equipEndTime - EPS and t >= weapons.nextFireTime - EPS then
 			edge(B.Fire)
 		end
+	elseif step == "pop" then
+		done = t - c.stepFrom >= FlareSim.popTime(dt)
 	elseif step == "after" then
 		done = true
 	end
@@ -1050,7 +1078,8 @@ function BotUtility.hands(
 	c.pressed = buttons
 	return {
 		buttons = buttons,
-		slot = if INSTANT[id] then nil else WeaponSim.ULT,
+		-- Its gun comes back as a flare it threw flies.
+		slot = if INSTANT[id] or step == "pop" then nil else WeaponSim.ULT,
 		yaw = yaw,
 		pitch = pitch,
 		still = c.target == nil and aims,
