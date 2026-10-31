@@ -1,12 +1,13 @@
 --!strict
 -- Keeps each player's career (system 67) from one session to the next, in
 -- a data store: their Competitive rank and their totals in each mode
--- (CareerRules). The arena says when a match ends (CareerServer.finished)
--- and when someone leaves a Competitive match under way
--- (CareerServer.left). Each player's part is added at once to the career
--- their screen shows, and to the store's through UpdateAsync, so it's
--- added to whatever's there, from however many servers they've played on,
--- and only once, by its id.
+-- (CareerRules). The arena says when a match ends (CareerServer.finished),
+-- whose places in it are held while they're away (CareerServer.hold,
+-- system 69), and as the server closes, who's away from a Competitive
+-- match still under way (CareerServer.left). Each player's part is added
+-- at once to the career their screen shows, and to the store's through
+-- UpdateAsync, so it's added to whatever's there, from however many
+-- servers they've played on, and only once, by its id.
 --
 -- On joining, what's kept is read, and the player's attributes say it:
 -- RankConfig's for the rank (and in Studio the hidden MMR, for checks;
@@ -16,8 +17,8 @@
 -- results out of the store, as what it holds is unknown. A write goes at
 -- most once every WRITE_GAP seconds, the data store's limit for one key,
 -- and one that fails is tried again, TRIES times in all. A player who
--- leaves is kept LINGER seconds, for the arena's word on a match they
--- left, and until what's theirs is written; the server closing writes
+-- leaves is kept LINGER seconds, or while their place in a match is held,
+-- and until what's theirs is written; the server closing writes
 -- everything still to write.
 --
 -- A place that can't use data stores (Studio, unless the place's own game
@@ -59,6 +60,7 @@ type Record = {
 	failures: number,
 	status: string,
 	off: string?, -- why this player's career can't be kept
+	held: boolean, -- their place in a match under way is held while they're away (system 69)
 }
 
 -- By UserId, players who've left included, until they're forgotten.
@@ -132,6 +134,7 @@ local function forget(r: Record)
 		r.player == nil
 		and goneAt
 		and os.clock() - goneAt >= CareerServer.LINGER
+		and not r.held
 		and not r.writing
 		and (r.off or #r.pending == 0)
 		and records[r.userId] == r
@@ -268,6 +271,7 @@ local function added(player: Player)
 		failures = 0,
 		status = "loading",
 		off = nil,
+		held = false,
 	}
 	records[player.UserId] = new
 	task.spawn(load, new)
@@ -336,8 +340,9 @@ function CareerServer.finished(match: CareerRules.Match)
 	end
 end
 
--- Someone, by their UserId, is leaving a match under way (`match` as it
--- stands, with them in it): their part, if leaving counts (CareerRules.left).
+-- Someone, by their UserId, has left a match under way and isn't back as
+-- the server closes (`match` as it stands, with them in it): their part,
+-- if leaving counts (CareerRules.left).
 function CareerServer.left(match: CareerRules.Match, id: number)
 	local r = records[id]
 	local result = if r then CareerRules.left(match, id, mmrOf, newId) else nil
@@ -345,6 +350,24 @@ function CareerServer.left(match: CareerRules.Match, id: number)
 		add(r, result)
 	end
 end
+
+-- A player's place in a match is held while they're away from it (system
+-- 69), or let go (they're back, or it's over): their record is kept for
+-- what the match's end counts for them.
+function CareerServer.hold(id: number, on: boolean)
+	local r = records[id]
+	if not r then
+		return
+	end
+	r.held = on
+	if not on then
+		forget(r)
+	end
+end
+
+-- Called as the server closes, before what's left is written: the arena's
+-- word on matches still under way (system 69). The arena sets it.
+CareerServer.beforeClose = nil :: (() -> ())?
 
 function CareerServer.start()
 	Players.PlayerAdded:Connect(added)
@@ -361,8 +384,13 @@ function CareerServer.start()
 		write(r)
 		task.delay(CareerServer.LINGER, forget, r)
 	end)
-	-- Closing: everything still to write, now, for up to 20 seconds.
+	-- Closing: the arena's word on matches under way, then everything
+	-- still to write, now, for up to 20 seconds.
 	game:BindToClose(function()
+		local before = CareerServer.beforeClose
+		if before then
+			before()
+		end
 		local deadline = os.clock() + 20
 		while os.clock() < deadline do
 			local busy = false

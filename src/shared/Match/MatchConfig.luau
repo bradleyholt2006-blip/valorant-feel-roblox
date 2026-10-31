@@ -41,6 +41,11 @@ MatchConfig.SKIP = "VFMatchSkip"
 -- rounds, ends the round being played won by that side, and clears itself
 -- (MatchRules.decide): for scripted checks of a whole match (system 67).
 MatchConfig.DECIDE = "VFMatchDecide"
+-- Workspace's attribute that, set from the server in Studio to a player's
+-- UserId, takes them out of the spike rounds' match under way as if they'd
+-- left, their place held (system 69), and clears itself: for checks of
+-- rejoining, as a Local Server's players can't come back once gone.
+MatchConfig.AWAY = "VFTestAway"
 -- The player attribute the server keeps each player's credits in, while the
 -- spike rounds are on.
 MatchConfig.CREDITS = "VFCredits"

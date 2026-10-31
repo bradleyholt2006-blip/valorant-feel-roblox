@@ -24,6 +24,12 @@
 --     plays goes straight into its match, having pressed PLAY already
 --   * the menu's counts of who plays each mode come from the same lines, as
 --     Workspace's PlayConfig.COUNTS
+--   * a place held for a player in a listed server's match under way
+--     (system 69, Arena.onHold) has an entry by their UserId in a sorted
+--     map of its own, PlayConfig.HELD, taken out as it's let go. Someone
+--     arriving on another server whose place is held where the list says
+--     is up gets the menu's RECONNECT (PlayConfig.REJOIN), which sends them
+--     back there, once, to the match
 -- Players start in the menu (Arena.menuFirst) on a live server, and in
 -- Studio if the place's PlayConfig.MENU says so as the server starts.
 --
@@ -73,6 +79,10 @@ local selfKey: string? = nil
 -- reserved it wrote it there.
 local accessCode: string? = nil
 local map: MemoryStoreSortedMap? = nil
+-- Places held in matches under way (system 69), and for each player here
+-- whose place is held on another server, that server's line.
+local heldMap: MemoryStoreSortedMap? = nil
+local rejoinTo: { [Player]: ServerList.Line } = {}
 -- Players being sent away, with the mode and how many tries so far, and
 -- when each last pressed PLAY to go.
 local sending: { [Player]: { key: string, tries: number } } = {}
@@ -240,6 +250,22 @@ local function send(player: Player, key: string, fresh: boolean): string?
 	return if ok then nil else tostring(err)
 end
 
+-- Sends a player back to the server whose match holds their place (system
+-- 69), by its line. Returns why not, if the teleport couldn't be asked for.
+local function sendBack(player: Player, line: ServerList.Line): string?
+	local options = Instance.new("TeleportOptions")
+	options:SetTeleportData({ [PlayConfig.DATA_KEY] = line.mode })
+	if line.job then
+		options.ServerInstanceId = line.job
+	elseif line.code then
+		options.ReservedServerAccessCode = line.code
+	end
+	local ok, err = pcall(function()
+		TeleportService:TeleportAsync(game.PlaceId, { player }, options)
+	end)
+	return if ok then nil else tostring(err)
+end
+
 -- One try at sending a player away, and a second to a new server if the
 -- first fails.
 local function attempt(player: Player)
@@ -257,16 +283,42 @@ local function attempt(player: Player)
 	end
 end
 
-local function onPlay(player: Player, key: any)
+local function onPlay(player: Player, key: any, rejoin: any)
 	local mode = if typeof(key) == "string" then PlayConfig.ByKey[key] else nil
 	if not mode or sending[player] then
 		return
 	end
+	-- RECONNECT to a match on another server that holds their place
+	-- (system 69): sent back there, with one try, as it's that server or
+	-- none.
+	local back = if rejoin == true then rejoinTo[player] else nil
+	if back and back.mode == key then
+		rejoinTo[player] = nil
+		player:SetAttribute(PlayConfig.REJOIN, nil)
+		local job = { key = key, tries = 2 }
+		sending[player] = job
+		tell(player, "teleporting", key)
+		task.spawn(function()
+			local why = sendBack(player, back)
+			if why and sending[player] == job then
+				sending[player] = nil
+				tell(player, "failed", why)
+			end
+		end)
+		task.delay(R.teleportWait.value, function()
+			if sending[player] == job then
+				sending[player] = nil
+				tell(player, "failed", "The teleport took too long")
+			end
+		end)
+		return
+	end
 	local own = private and game.PrivateServerOwnerId == player.UserId
 	if key == ModeServers.current() then
-		-- This server's match, with a place in it, or where nobody's sent
-		-- anywhere else; once it's full, a server of the mode with one.
-		if Arena.has(player) or not canSend or private or Arena.playing() < mode.players then
+		-- This server's match, with a place in it or one held for them, or
+		-- where nobody's sent anywhere else; once it's full, a server of
+		-- the mode with one.
+		if Arena.has(player) or Arena.holds(player) or not canSend or private or Arena.playing() < mode.players then
 			Arena.play(player)
 			due = true
 			tell(player, "joined", key)
@@ -309,13 +361,74 @@ local function arrivedFor(player: Player): string?
 	return if typeof(key) == "string" and PlayConfig.ByKey[key] then key else nil
 end
 
+-- Whether a place is held for someone arriving in a match on another
+-- server that's still up (system 69), for the menu's RECONNECT.
+local function checkHeld(player: Player)
+	local held, list = heldMap, map
+	if not held or not list then
+		return
+	end
+	local ok, value = pcall(function()
+		return held:GetAsync(tostring(player.UserId))
+	end)
+	local entry = if ok then ServerList.decodeHeld(value) else nil
+	if not entry or entry.server == selfKey then
+		return
+	end
+	local okLine, raw = pcall(function()
+		return list:GetAsync(entry.server)
+	end)
+	local line = if okLine then ServerList.decode(entry.server, raw) else nil
+	if line and ServerList.canRejoin(line, entry, os.time(), R.stale.value) and player.Parent then
+		rejoinTo[player] = line
+		player:SetAttribute(PlayConfig.REJOIN, entry.mode)
+	end
+end
+
+-- A place held for a player in this server's match (system 69), as they
+-- leave it: its entry, for another server they come back to.
+local function holdHere(id: number, key: string)
+	local held, own = heldMap, selfKey
+	if not held or not own or id <= 0 then
+		return
+	end
+	task.spawn(function()
+		local ok, err = pcall(function()
+			held:SetAsync(tostring(id), ServerList.encodeHeld({ server = own, mode = key }), R.heldFor.value)
+		end)
+		if not ok then
+			warn("[VF] Held places: couldn't write one: " .. tostring(err))
+		end
+	end)
+end
+
+-- A place held here let go (system 69): its entry out, unless it's since
+-- been written for another server's.
+local function letGo(id: number)
+	local held, own = heldMap, selfKey
+	if not held or not own or id <= 0 then
+		return
+	end
+	task.spawn(function()
+		pcall(function()
+			local key = tostring(id)
+			local entry = ServerList.decodeHeld(held:GetAsync(key))
+			if entry and entry.server == own then
+				held:RemoveAsync(key)
+			end
+		end)
+	end)
+end
+
 -- Someone arriving: a reserved server takes on the mode its first arrival
 -- says it was reserved for, and whoever pressed PLAY for this server's mode
--- joins its match.
+-- joins its match. Anyone else may have a place held elsewhere (system
+-- 69).
 local function arrive(player: Player)
 	due = true
 	local key = arrivedFor(player)
 	if not key then
+		task.spawn(checkHeld, player)
 		return
 	end
 	if reserved and not claimed then
@@ -341,12 +454,19 @@ function ModeServers.start()
 	listed = canSend and not private
 	if canSend then
 		map = MemoryStoreService:GetSortedMap(PlayConfig.LIST)
+		heldMap = MemoryStoreService:GetSortedMap(PlayConfig.HELD)
 	end
 	if listed then
 		selfKey = if reserved then ServerList.reservedKey(game.PrivateServerId) else ServerList.publicKey(game.JobId)
 	end
 	if canSend and not reserved and Workspace:GetAttribute(ArenaConfig.MODE) == nil then
 		setMode(PlayConfig.DEFAULT)
+	end
+	-- Only a listed server can be sent back to, so only its holds are
+	-- written (system 69).
+	if listed then
+		Arena.onHold = holdHere
+		Arena.onRelease = letGo
 	end
 
 	Remotes.get().Play.OnServerEvent:Connect(onPlay)
@@ -375,6 +495,7 @@ function ModeServers.start()
 	Players.PlayerRemoving:Connect(function(player)
 		sending[player] = nil
 		lastSent[player] = nil
+		rejoinTo[player] = nil
 		due = true
 	end)
 

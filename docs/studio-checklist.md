@@ -6229,6 +6229,75 @@ end
   Roblox's own controls, nor its camera, nor its button picking on Select. **Send:** what felt off,
   and the cursor.
 
+## 73. Rejoining a match
+
+From [69-rejoining.md](research/69-rejoining.md). System 69 holds the place of a player who leaves
+the spike rounds' match under way until the match ends: their record, side, credits (paid each round
+as their side is) and agent wait for them, and a bot fills in meanwhile. Coming back, the Play
+menu's PLAY reads RECONNECT, which puts them back on their side, the bot on their side giving way as
+soon as it's down or nothing's at stake. In Competitive the loss for leaving waits for the match's
+end: back in time for half its rounds, they get the match's result. A Local Server's players can't
+come back once gone, so here Workspace's `VFTestAway`, set from the server to a player's UserId,
+takes them out of the match as if they'd left. Each place held prints `[VF] place held:` in the
+server's Output, and each let go `[VF] place let go:`.
+
+Start a Local Server with 2 players, as in section 9, and set Competitive going on Outpost as in
+section 71, with its script run in the server's command bar. Run this there too: `away(name)` takes
+a player out, `show(name)` prints what the arena keeps on them, and `bots()` each bot's side and
+agent.
+
+```lua
+function away(name)
+	workspace:SetAttribute("VFTestAway", game.Players[name].UserId)
+end
+function show(name)
+	local p = game.Players[name]
+	print(name, "side", p:GetAttribute("VFArenaSide"), "line", p:GetAttribute("VFInLine"), "rejoin", p:GetAttribute("VFRejoin"),
+		"credits", p:GetAttribute("VFCredits"), "agent", p:GetAttribute("VFAgent"))
+end
+function bots()
+	for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+		print(bot.Name, bot:GetAttribute("VFArenaSide"), bot:GetAttribute("VFAgent"))
+	end
+end
+```
+
+- **RJ1 A place held.** Run `rounds(1, 2)`. In the next buy phase run `show("Player1")` and
+  `bots()`, then `away("Player1")`: the Output has `[VF] place held: -1 in competitive`, player 1's
+  character goes, and window 1's menu can be opened with M. Run `show("Player1")` again: no side,
+  and `rejoin competitive`. Within a second, `bots()` lists a new bot on player 1's side, playing
+  another agent than theirs. **Send:** the lines.
+
+- **RJ2 Back in a buy phase.** Run `rounds(2, 1)`, so player 1's away for a round, and wait for the
+  next buy phase. In window 1 press M: Competitive's card is picked, the button reads RECONNECT, and
+  the line under it `YOUR COMPETITIVE MATCH IS STILL ON: RECONNECT TO GET BACK IN`. Press RECONNECT:
+  the menu shuts and player 1 spawns at once in their side's spawn, and the Output has
+  `[VF] place let go: -1, back`. `show("Player1")` prints their side and agent as in RJ1, and their
+  credits as then plus the round's pay; their abilities on the HUD are their agent's. `bots()` lists
+  the bot that filled in gone. **Send:** the lines, and the credits before and after.
+
+- **RJ3 Back during a round.** In a buy phase run `away("Player1")`, then
+  `workspace:SetAttribute("VFMatchSkip", true)` so the round goes live, and press RECONNECT in
+  window 1: the menu shuts and player 1 is first in line (`show` prints `line 1`), watching, their
+  place still held. Run `rounds(1, 1)`: as the round ends the bot on their side leaves, the Output
+  has `[VF] place let go: -1, back`, and player 1 spawns on their side for the next round. **Send:**
+  the lines.
+
+- **RJ4 The match's end, away.** In a buy phase run `away("Player1")`, then `play(5)`: the Output's
+  `[VF] career:` line for `-1` reads `competitive lost`, and as the next match starts (after the
+  victory screen and the vote) `[VF] place let go: -1, its match ended`. **Send:** the lines.
+
+- **RJ5 The match's end, back in time.** Player 1 isn't in the new match: press PLAY in window 1 to
+  join it. Then run `rounds(1, 3)`, then in a buy phase `away("Player1")`, then `rounds(1, 1)`; in
+  the next buy phase press RECONNECT in window 1, and run `play(5)`: the `[VF] career:` line for
+  `-1` is the match's result for their side, `competitive won` on side 1. **Send:** the lines.
+
+- **RJ6 Another server (optional, on a live server).** This needs the place published and played on
+  Roblox, which is the place owner's call. Play Competitive from the Play menu, and a few rounds in,
+  close Roblox. Join the game again: the menu has Competitive picked and RECONNECT, and pressing it
+  puts you back in the match, on its server, with your record and credits. **Send:** whether
+  RECONNECT came, and where it put you.
+
 ## Results
 
 ```
@@ -6703,6 +6772,12 @@ PD5 Updraft: ___; the gust and dash: ___; the tap: ___; Blade Storm: ___; Cloudb
 PD6 Y: ___; the knife: ___; crouching: ___; the prompts: ___ ___; the spike: ___
 PD7 pings: ___; the buy menu's cursor: on / pick / off; menus: ___; map, scores: ___; takeover: ___
 PD8 what felt off: ___; the cursor: ___
+RJ1 held: ___; the bot on their side: ___, its agent: ___
+RJ2 the button and line: ___; back: ___; credits before ___, after ___; the bot gone: yes / no
+RJ3 in line: ___; back as the round ended: ___
+RJ4 the career line: ___; let go: ___
+RJ5 the career line: ___
+RJ6 RECONNECT came: yes / no; where it put you: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -7122,3 +7197,7 @@ Didn't look right (IDs and what you saw):
 | 68 | The abilities, the ultimate's chord, Y's swap and the knife, crouching, reloading, a gun picked up and the spike | PD5, PD6 |
 | 68 | Pings, the buy menu and B shutting it, Select's big map, scores and menus, and taking over a bot | PD7 |
 | 68 | Roblox's gamepad cursor, the prompts and the feel with a real controller; no warning about Roblox's default controls | PD1, PD7, PD8 |
+| 69 | A place held: the bot filling it on the player's side, the spike they carried dropped, and the line printed | RJ1 |
+| 69 | Back by RECONNECT or PLAY, with their record, credits and agent, at once in a buy phase or down until the next round, and the bot on their side giving way | RJ2, RJ3 |
+| 69 | A match's end with a player away, and with one back in time: the career lines | RJ4, RJ5 |
+| 69 | Closing the game during a match on a live server and coming back, by RECONNECT | RJ6 |

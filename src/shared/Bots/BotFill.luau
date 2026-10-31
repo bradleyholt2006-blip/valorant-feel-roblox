@@ -14,7 +14,11 @@
 -- after the match), so nobody vanishes mid-fight. In the modes that
 -- respawn, one leaves the next time it's down. The one to leave is on the
 -- side with the most bots, so a player waiting in line for a place gets
--- it on the side with fewer players; of those, the last to join.
+-- it on the side with fewer players; of those, the last to join. A player
+-- coming back to a place held for them (system 69) is first in line, and
+-- the first bot to leave is one on their side, if it has any, so they get
+-- their place back: the one that stood in for them, as it's down or once
+-- nothing's at stake.
 --
 -- No Roblox APIs here: the arena says who's playing.
 
@@ -49,8 +53,9 @@ function BotFill.calm(phase: string?): boolean
 end
 
 -- What changes: how many bots join, and which leave, by their ids, with
--- `bots` in the match and `players` players, in `phase`.
-function BotFill.plan(quota: number, players: number, bots: { Seat }, phase: string?): (number, { number })
+-- `bots` in the match and `players` players, in `phase`; the first to
+-- leave from side `prefer`, if it has a bot.
+function BotFill.plan(quota: number, players: number, bots: { Seat }, phase: string?, prefer: number?): (number, { number })
 	local want = BotFill.wanted(quota, players)
 	if #bots < want then
 		return want - #bots, {}
@@ -68,10 +73,14 @@ function BotFill.plan(quota: number, players: number, bots: { Seat }, phase: str
 	end
 	local left: { [number]: boolean } = {}
 	local out: { number } = {}
+	local served = false
 	for _ = 1, extra do
+		-- Only from the side a player's coming back to, while it has one,
+		-- until one from it has gone.
+		local only = if not served and prefer and (count[prefer] or 0) > 0 then prefer else nil
 		local best: Seat? = nil
 		for _, b in bots do
-			if left[b.id] or not (calm or not b.alive or b.side == nil) then
+			if left[b.id] or not (calm or not b.alive or b.side == nil) or (only and b.side ~= nil and b.side ~= only) then
 				continue
 			end
 			if best == nil then
@@ -102,6 +111,7 @@ function BotFill.plan(quota: number, players: number, bots: { Seat }, phase: str
 		end
 		left[chosen.id] = true
 		count[chosen.side or 0] -= 1
+		served = served or chosen.side == prefer
 		table.insert(out, chosen.id)
 	end
 	return 0, out

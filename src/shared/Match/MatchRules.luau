@@ -27,6 +27,13 @@
 -- they wait in line for a place, and the sides are evened out before each
 -- round.
 --
+-- A player who leaves a match under way (system 69) keeps their place in
+-- it for the rest of the match: their record, side and credits are held,
+-- paid each round as their side is, and joining again puts them back on
+-- their side, alive in a buy phase and down until the next round later. A
+-- side with no place for them yet has them first in line. The match's end
+-- lets the places go.
+--
 -- And the economy (system 14): each member's credits, and each side's
 -- losses in a row. Everyone starts each half on Credits.start; each round
 -- after pays, as it starts, for how the last one went: a win, a loss (more
@@ -69,6 +76,9 @@ export type State = {
 	members: { [number]: Member },
 	queue: { number }, -- who's waiting for a place (Roster)
 	joins: number,
+	-- Players who left the match under way, by id, their places held until
+	-- it ends (system 69).
+	away: { [number]: Member },
 	score: { number }, -- by side
 	match: number, -- counts the matches, from 1, so the server knows a new one has started
 	round: number, -- the round being played, or just played (0 before the first)
@@ -117,6 +127,7 @@ function MatchRules.new(format: string?, maps: { string }?, roll: MapVote.Roll?)
 		members = {},
 		queue = {},
 		joins = 0,
+		away = {},
 		score = { 0, 0 },
 		match = 1,
 		round = 0,
@@ -249,6 +260,7 @@ local function newMatch(s: State)
 	for _, m in s.members do
 		Roster.clearRecord(m)
 	end
+	table.clear(s.away)
 	table.clear(s.hurt)
 end
 
@@ -273,13 +285,23 @@ end
 -- Credits for the round about to start, s.round + 1: the half's or
 -- overtime's to start on, or the pay for the round just played, if it was
 -- played out (not when it starts again after a wait).
+--
+-- Players away (system 69) are paid as their side is: in the reference an
+-- agent stays in the match while its player's gone, and can die there.
 local function payFor(s: State)
 	local format = s.format
 	local nextRound = s.round + 1
 	local half = format.halfRounds.value
+	local everyone: { Member } = {}
+	for _, m in s.members do
+		table.insert(everyone, m)
+	end
+	for _, m in s.away do
+		table.insert(everyone, m)
+	end
 	if MatchRules.overtime(format, nextRound) or nextRound == 1 or nextRound == half + 1 then
 		local amount = if MatchRules.overtime(format, nextRound) then C.overtime.value else C.start.value
-		for _, m in s.members do
+		for _, m in everyone do
 			m.credits = amount
 		end
 		s.streak = { 0, 0 }
@@ -289,7 +311,7 @@ local function payFor(s: State)
 	if format.economy == "swiftplay" then
 		local pay = MatchRules.payout(format, s.round, 0)
 		if pay then
-			for _, m in s.members do
+			for _, m in everyone do
 				give(m, if m.side == winner then pay.won else pay.lost)
 			end
 		end
@@ -301,7 +323,7 @@ local function payFor(s: State)
 	local loser = 3 - winner
 	local pay = MatchRules.payout(format, s.round, s.streak[loser])
 	if pay then
-		for _, m in s.members do
+		for _, m in everyone do
 			give(m, if m.side == winner then pay.won elseif survivedLoss(s, m) then C.survived.value else pay.lost)
 		end
 	end
@@ -397,15 +419,37 @@ local function wait(s: State, now: number)
 	s.version += 1
 end
 
+-- Puts a player back in the place held for them (system 69): on their own
+-- side if it has room, or else the other's; with no room on either, they
+-- wait first in line. Returns them, if they're back.
+local function restore(s: State, id: number, held: Member, alive: boolean): Member?
+	local size = R.sideSize.value
+	local side = if Roster.count(s, held.side, false) < size then held.side else Roster.openSide(s, size)
+	if not side then
+		table.insert(s.queue, 1, id)
+		return nil
+	end
+	s.away[id] = nil
+	held.side = side
+	held.alive = alive
+	held.played = alive
+	held.respawnAt = nil
+	held.roundKills = 0
+	s.members[id] = held
+	return held
+end
+
 -- Puts someone on a side with a place (Roster), with Credits.start, or
--- overtime's credits in overtime. Returns who to spawn now: them, in a buy
--- phase or while waiting for an opponent, or everyone when they make the
--- numbers for a round to start. Later they're down until the next round
--- starts, and with both sides full they're in line.
+-- overtime's credits in overtime, or back in a place held for them.
+-- Returns who to spawn now: them, in a buy phase or while waiting for an
+-- opponent, or everyone when they make the numbers for a round to start.
+-- Later they're down until the next round starts, and with both sides full
+-- they're in line.
 local function admit(s: State, id: number, now: number): { number }
 	local credits = if MatchRules.overtime(s.format, s.round) then C.overtime.value else C.start.value
 	local spawnsNow = s.phase == "waiting" or s.phase == "buy"
-	local m = Roster.add(s, id, R.sideSize.value, spawnsNow, credits)
+	local held = s.away[id]
+	local m = if held then restore(s, id, held, spawnsNow) else Roster.add(s, id, R.sideSize.value, spawnsNow, credits)
 	s.version += 1
 	if not m then
 		return {}
@@ -424,13 +468,31 @@ function MatchRules.join(s: State, id: number, now: number): { number }
 	return admit(s, id, now)
 end
 
+-- Whether a match is under way: a round of it started, and it isn't over.
+function MatchRules.underWay(s: State): boolean
+	return s.round > 0 and s.phase ~= "matchOver" and s.phase ~= "vote"
+end
+
+-- Whether a place is held for someone who left the match under way.
+function MatchRules.held(s: State, id: number): boolean
+	return s.away[id] ~= nil
+end
+
 -- Someone leaves, playing or in line, with their vote if they had one. A
 -- place they leave goes to whoever's first in line, as if they'd just
--- joined. Returns who to spawn now.
-function MatchRules.leave(s: State, id: number, now: number): { number }
-	local playing = s.members[id] ~= nil
+-- joined. With `hold`, a player leaving a match under way keeps their
+-- place in it (system 69). Returns who to spawn now.
+function MatchRules.leave(s: State, id: number, now: number, hold: boolean?): { number }
+	local member = s.members[id]
+	local playing = member ~= nil
 	if not Roster.remove(s, id) then
 		return {}
+	end
+	if member and hold and MatchRules.underWay(s) then
+		member.alive = false
+		member.respawnAt = nil
+		member.left = true
+		s.away[id] = member
 	end
 	local vote = s.vote
 	if vote then
