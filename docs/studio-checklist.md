@@ -5658,8 +5658,9 @@ print(me.Character and me.Character:GetAttribute("VFSpawnKit"))
   with your own, and the last line is the body's kit, as `vandal:18:50,classic:12:36,knife:0:0,;1`,
   where the gun in hand's rounds and reserve are those in the ammo box. The kill feed has nothing
   for the bot, and on the top bar its tile is greyed and yours lit. Play the round out: in round 2
-  the bot's back. **Send:** the script's lines before and after, the `[VF] takeover:` lines, and how
-  the view and the HUD went.
+  the bot's back. Where Skirmish's one bot on your side is always down before you are, the spike
+  rounds (Competitive as in section 71) have four. **Send:** the script's lines before and after,
+  the `[VF] takeover:` lines, and how the view and the HUD went.
 
 - **BC2 The spike.** In the server's command bar, set `VFArenaOn` to false, then `VFMatchMap` to
   `outpost`, `VFArenaMode` to `spike` and `VFArenaOn` to true, as in section 65: you attack first.
@@ -6273,7 +6274,8 @@ end
   `bots()`, then `away("Player1")`: the Output has `[VF] place held: -1 in competitive`, player 1's
   character goes, and window 1's Play menu opens. Run `show("Player1")` again: no side,
   and `rejoin competitive`. Within a second, `bots()` lists a new bot on player 1's side, playing
-  another agent than theirs. **Send:** the lines.
+  another agent than theirs while one's free; with five agents a side, as now, none is, and it plays
+  theirs. **Send:** the lines.
 
 - **RJ2 Back in a buy phase.** Run `rounds(2, 1)`, so player 1's away for a round, and wait for the
   next buy phase. In window 1 press M: Competitive's card is picked, the button reads RECONNECT, and
@@ -6295,9 +6297,11 @@ end
   victory screen and the vote) `[VF] place let go: -1, its match ended`. **Send:** the lines.
 
 - **RJ5 The match's end, back in time.** Player 1 isn't in the new match: press PLAY in window 1 to
-  join it. Then run `rounds(1, 3)`, then in a buy phase `away("Player1")`, then `rounds(1, 1)`; in
-  the next buy phase press RECONNECT in window 1, and run `play(5)`: the `[VF] career:` line for
-  `-1` is the match's result for their side, `competitive won` on side 1. **Send:** the lines.
+  join it, and run `show("Player1")` for their side, `s` below (PLAY can put them on either). Then
+  run `rounds(s, 3)`, then in a buy phase `away("Player1")`, then `rounds(s, 1)`; in the next buy
+  phase press RECONNECT in window 1, and run `rounds(s, 9)`, which wins the match for their side:
+  the `[VF] career:` line for `-1` reads `competitive won`, not a leaver's loss. **Send:** the
+  lines.
 
 - **RJ6 Another server (optional, on a live server).** This needs the place published and played on
   Roblox, which is the place owner's call. Play Competitive from the Play menu, and a few rounds in,
@@ -6320,8 +6324,10 @@ else playing too. The server's Output prints `[VF] AFK: <UserId> warned` and
 Start a Local Server with 1 player, and set Competitive going on Outpost as in section 71, with its
 script run in the server's command bar, and section 73's too. In window 1's command bar run
 section 72's script, for `pad`, `let` and `set`. Then in the server's command bar run
-`workspace:SetAttribute("VFTestAfk", 15)`, and this, which prints what the server has of player 1's
-AFK:
+`workspace:SetAttribute("VFTestAfk", 15)` and `workspace:SetAttribute("VFPlayMenu", true)` (the
+server then has players pick in the Play menu first, so it opens by itself as they're taken out; a
+place may have it off, and the test's copy goes as the test ends), and this, which prints what the
+server has of player 1's AFK:
 
 ```lua
 function afk()
@@ -6346,15 +6352,16 @@ end
 
 - **AF3 Dead or between rounds.** While warned, run `workspace:SetAttribute("VFMatchDecide", 2)`: as
   the round ends the line goes, and `afk()` prints `not warned` until the next buy phase, when the
-  line's back counting on from about where it stopped. **Send:** the seconds the line read as the
-  round ended and as it came back.
+  line's back counting on from about where it stopped, with no second `[VF] AFK: -1 warned` in the
+  Output. **Send:** the seconds the line read as the round ended and as it came back.
 
 - **AF4 Taken out.** Leave window 1 alone until the count runs out: the Output has
   `[VF] AFK: -1 taken out of the match` and `[VF] place held: -1 in competitive`, player 1's
   character goes, window 1's Play menu opens with Competitive's card picked, the button reading
   RECONNECT and the line under it `TAKEN OUT FOR BEING INACTIVE: RECONNECT TO GET BACK IN`, and
-  `afk()` prints `out true`. Within a second `bots()` lists a bot on player 1's side in their place.
-  Run `set("VFTestPlay", "competitive")` in window 1, as RECONNECT: the menu shuts, the Output has
+  `afk()` prints `out true`. With nobody else in the match it waits for players and its bots go, so
+  `bots()` lists none (with two players, a bot stands in for player 1 as in RJ1). Run
+  `set("VFTestPlay", "competitive")` in window 1, as RECONNECT: the menu shuts, the Output has
   `[VF] place let go: -1, back`, and `afk()` prints `out nil`. **Send:** the lines.
 
 - **AF5 Off in Studio.** Run `workspace:SetAttribute("VFTestAfk", nil)` and leave window 1 alone

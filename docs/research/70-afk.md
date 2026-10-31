@@ -134,7 +134,8 @@ can see it.
 - `VFAfkAt` on the player: the server time they'll be taken out at, while warned and their time
   counts; `VFAfkOut`: taken out, until they press PLAY or RECONNECT.
 - PlayerGui's `VFAfk` carries `Line`, the warning shown, or "".
-- `[VF] AFK: <UserId> warned` as a player's warned, and `[VF] AFK: <UserId> taken out of the match`.
+- `[VF] AFK: <UserId> warned` as a player's warned, once however often the line comes and goes
+  with the rounds, and `[VF] AFK: <UserId> taken out of the match`.
 
 ## 8. Refinement loop
 
