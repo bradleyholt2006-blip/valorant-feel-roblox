@@ -70,6 +70,7 @@ require("./mapkit")
 require("./heights")
 require("./bots")
 require("./botspike")
+require("./botutility")
 require("./takeover")
 require("./body")
 

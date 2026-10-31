@@ -192,6 +192,12 @@ do
 		"and nothing with Heavy Armor on",
 		#BotBuy.choose(5000, { primary = "vandal", sidearm = "classic", shield = "heavy" }, false, diceOf(5)) == 0
 	)
+	check(
+		"abilities get all that's left on a half's first round or with a primary, and past a full buy while saving (system 66)",
+		BotBuy.toKeep(true, "") == 0
+			and BotBuy.toKeep(false, "vandal") == 0
+			and BotBuy.toKeep(false, "") == price("vandal") + price("heavy")
+	)
 
 	-- Never more than it has, and never a second gun for a slot it fills.
 	local within, noSecond = true, true

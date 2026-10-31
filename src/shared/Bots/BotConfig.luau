@@ -60,6 +60,9 @@ export type Skill = {
 	recoil: Param, -- the share of the gun's climb pulled back down
 	head: Param, -- the chance, each fight, of aiming at the head rather than the chest
 	dodge: boolean, -- steps aside between bursts, and stops again to fire
+	-- The chance a moment that calls for one of its agent's abilities gets
+	-- it (system 66), rolled once for each moment.
+	utility: Param,
 }
 
 local BotConfig = {}
@@ -83,6 +86,7 @@ BotConfig.Skills = {
 		recoil = p(0, "estimate", "Ours: no pull-down"),
 		head = p(0, "estimate", "Ours: the chest, always"),
 		dodge = false,
+		utility = p(0.4, "estimate", "Ours: " .. BOOTH .. "'s Easy bot has 'Poor weapon proficiency'"),
 	},
 	normal = {
 		name = "Normal",
@@ -97,6 +101,7 @@ BotConfig.Skills = {
 		recoil = p(0.3, "estimate", "Ours"),
 		head = p(0.3, "estimate", "Ours: the head now and then"),
 		dodge = false,
+		utility = p(0.7, "estimate", "Ours: " .. BOOTH .. "'s Normal bot has a 'Mix of weapon proficiencies'"),
 	},
 	hard = {
 		name = "Hard",
@@ -111,6 +116,7 @@ BotConfig.Skills = {
 		recoil = p(0.6, "estimate", "Ours"),
 		head = p(0.7, "estimate", "Ours"),
 		dodge = true,
+		utility = p(0.9, "estimate", "Ours: " .. BOOTH .. "'s Hard bot has 'Complete weapon proficiency'"),
 	},
 	expert = {
 		name = "Expert",
@@ -129,6 +135,7 @@ BotConfig.Skills = {
 		recoil = p(0.85, "estimate", "Ours"),
 		head = p(0.9, "estimate", "Ours"),
 		dodge = true,
+		utility = p(1, "estimate", "Ours: every moment"),
 	},
 } :: { [string]: Skill }
 
@@ -206,6 +213,70 @@ BotConfig.Params = {
 	blindFrom = p(0.5, "estimate", "White, 0 to 1"),
 }
 
+-- When and how a bot uses its agent's abilities (system 66, BotUtility).
+BotConfig.Utility = {
+	-- The least time between one bot's casts, so two follow one another
+	-- as a player's hands can; and how long before a cast whose throw wasn't
+	-- found is tried again, from wherever it's got to.
+	between = p(1.2, "estimate", "Seconds"),
+	retry = p(1.5, "estimate", "Seconds"),
+	-- The longest a cast may take from its key to its throw before it's
+	-- given up (its equip, the aim and the throw), and Hunter's Fury's.
+	longest = p(3, "estimate", "Seconds"),
+	furyLongest = p(7, "estimate", "Seconds: its equip and three blasts' windups"),
+	-- How long a Healing Orb in hand is tried before it's put away.
+	healTry = p(1, "estimate", "Seconds"),
+	-- Hurt and out of a fight: the health under which it heals, an ally's
+	-- under which it heals them, how near they are, and how long since an
+	-- enemy was in its sight or hurt it.
+	healFrom = p(60, "estimate", "Health, of 100"),
+	allyFrom = p(50, "estimate", "Health, of 100"),
+	allyReach = p(15, "estimate", "Metres"),
+	quiet = p(3, "estimate", "Seconds"),
+	-- Holding a way in: attackers seen this near it this recently call for
+	-- a stall.
+	stallNear = p(14, "estimate", "Metres from the way in"),
+	stallRecent = p(2.5, "estimate", "Seconds"),
+	-- Going in: how near the way in a flash, Paranoia and Blade Storm go.
+	flashNear = p(9, "estimate", "Metres: the flare pops about 6 m from where it's thrown (AbilityConfig.Curveball)"),
+	paranoiaNear = p(20, "estimate", "Metres: inside its 25 m travel (AbilityConfig.Paranoia)"),
+	stormNear = p(12, "estimate", "Metres"),
+	-- Holding: the Recon Bolt toward where attackers gather, this long into
+	-- the round, as defenders look for them early.
+	reconFrom = p(8, "estimate", "Seconds after the round goes live"),
+	reconTo = p(30, "estimate", "Seconds after the round goes live"),
+	-- Hunter's Fury on sightings this recent.
+	furyRecent = p(2, "estimate", "Seconds"),
+	-- How far from where it's meant to go a throw may land and still be
+	-- thrown: a smoke, a cloud, a molly or a slow, a Shock Bolt, a wall.
+	smokeMiss = p(3, "estimate", "Metres, across"),
+	cloudMiss = p(4, "estimate", "Metres"),
+	throwMiss = p(3, "estimate", "Metres"),
+	wallMiss = p(3, "estimate", "Metres"),
+	-- A flash worth throwing blinds those holding the way in at least this
+	-- much in all (FlareSim.strength, summed), and a teammate no more than
+	-- this.
+	flashWorth = p(0.6, "estimate", "Of the longest blind, summed over those holding"),
+	flashMate = p(0.2, "estimate", "Of the longest blind"),
+	-- How far a molly or a Shock Bolt keeps from teammates, past its radius.
+	clear = p(1.5, "estimate", "Metres"),
+	-- How finely throws are tried: the pitches, from and to, a step apart,
+	-- then a finer step round the best; and the flight's tick.
+	pitchFrom = p(-30, "estimate", "Degrees"),
+	pitchTo = p(60, "estimate", "Degrees"),
+	pitchStep = p(6, "estimate", "Degrees"),
+	fineStep = p(1.5, "estimate", "Degrees"),
+	-- A throw's flight, tried: a tick of it, which bends an arc no more than
+	-- a few millimetres from the straight sweep over it; Curveball's, finer
+	-- for its turn; and the longest it's flown for, as one that lands later
+	-- is no use.
+	flightTick = p(1 / 16, "estimate", "Seconds: eight of the game's ticks"),
+	flareTick = p(1 / 64, "estimate", "Seconds: two of the game's ticks"),
+	flight = p(3, "estimate", "Seconds"),
+	-- Aimed: the view this near the cast's aim.
+	aimed = p(1, "estimate", "Degrees"),
+}
+
 -- How many players each mode is filled to with bots, while anyone plays
 -- it: 'The server is filled with bots until there are at least bot_quota
 -- players on the server (humans + bots)' (bot_quota_mode fill, the Valve
@@ -257,6 +328,10 @@ BotConfig.ID = "Id"
 -- there, as it would tell an enemy's plan: its job's task in its side's
 -- plan (BotTeam: hold, push, follow and so on).
 BotConfig.TASK = "VFBotTask"
+-- And the last of its agent's abilities it cast (system 66), and for what:
+-- the ability and the moment ("darkcover push:darkcover:1"), as BotUtility
+-- names them.
+BotConfig.CAST = "VFBotCast"
 -- Workspace's attribute, in Studio, for checks: the milliseconds the bots
 -- take of each server frame, on average over the last second.
 BotConfig.COST = "VFBotMs"

@@ -38,6 +38,10 @@
 --     nearest couldn't get there and defuse it in time, they get out of
 --     the blast instead, keeping their guns
 --
+-- And for its agent's abilities (system 66, BotUtility): where each bot is
+-- in the plan (placeOf), going in through its way, holding one, or
+-- guarding the spike, and where its enemies would be.
+--
 -- Every bot's job is a node to walk to and a point to look at once it's
 -- there: BotMove takes it there, round walls and up stairs, and BotBrain
 -- looks and fights. Bots of a side never stand on the same spot: those
@@ -124,6 +128,7 @@ type Job = {
 	through: boolean, -- attackers: through its way in, on the push
 	site: string?, -- defenders: the site it holds
 	hold: number?, -- and which of its holds, in the order they're dealt
+	entrance: number?, -- and the entrance that hold holds, by number in the site's
 	onto: vector?,
 	commit: boolean?,
 	back: number?, -- defenders: the way back in it takes, by number, after a plant
@@ -139,8 +144,9 @@ export type Team = {
 	dice: BotConfig.Dice,
 	places: { number }, -- nodes to go from one to another of
 	enemySpawn: { number }, -- the nodes the enemy spawns on, if known
-	-- This round's plan: the attackers' site, ways in and how far along
-	-- they are; when it began and when the push goes at the latest.
+	-- This round's plan: the attackers' site (the defenders', once it's
+	-- planted: the site they retake), ways in and how far along they are;
+	-- when it began and when the push goes at the latest.
 	site: string?,
 	ways: { number },
 	phase: Phase,
@@ -169,6 +175,30 @@ export type Team = {
 	watching: { number },
 	retake: "gather" | "push",
 	defuser: number?,
+}
+
+-- Where a bot is in its side's plan (system 66), for its agent's abilities
+-- (BotUtility), in the map's frame: going in through a way (an attacker
+-- before the plant, a defender on the retake), holding one (a defender
+-- before it) or guarding the spike (an attacker after it). `phase` is how
+-- far its side has got: the attack's gather, push, take or hunt, the
+-- retake's gather or push, "hold" or "guard"; `there`, whether it's at the
+-- spot its job sends it to; `way`, head height where its way in is
+-- crossed, a few metres out, `heading` the way it goes in there, level,
+-- and `door` the floor where it comes into the site; `from`, a holder's:
+-- where the attackers gather for that way; `threats`, head
+-- height where its enemies would be, the spots that hold its way in or
+-- watch the spike; and `spike`, where it's planted.
+export type Place = {
+	role: "entry" | "hold" | "guard",
+	phase: string,
+	there: boolean,
+	way: vector?,
+	heading: vector?,
+	door: vector?,
+	from: vector?,
+	threats: { vector },
+	spike: vector?,
 }
 
 local EYE = 1.62 -- standing (MovementConfig's standEyeHeight)
@@ -428,12 +458,16 @@ local function nodeOf(team: Team, p: vector): number?
 	return BotNav.nodeAt(team.nav, p, 3)
 end
 
-local function near(team: Team, m: Member, n: number?, within: number): boolean
+local function close(team: Team, at: vector, n: number?, within: number): boolean
 	if n == nil then
 		return false
 	end
 	local p = feet(team.nav, n)
-	return (p.x - m.feet.x) ^ 2 + (p.z - m.feet.z) ^ 2 <= within * within and math.abs(p.y - m.feet.y) < 1.5
+	return (p.x - at.x) ^ 2 + (p.z - at.z) ^ 2 <= within * within and math.abs(p.y - at.y) < 1.5
+end
+
+local function near(team: Team, m: Member, n: number?, within: number): boolean
+	return close(team, m.feet, n, within)
 end
 
 -- The latest sighting within MEMORY, if any.
@@ -450,6 +484,13 @@ end
 -- Head height over node n: where to look at, there.
 local function head(nav: BotNav.Nav, n: number): vector
 	return feet(nav, n) + vector.create(0, EYE, 0)
+end
+
+-- The way an entrance is crossed going in, level, if it can be told.
+local function headingOf(nav: BotNav.Nav, e: BotSpots.Entrance): vector?
+	local d = feet(nav, e.node) - feet(nav, e.outside)
+	local level = vector.create(d.x, 0, d.z)
+	return if vector.magnitude(level) > 1e-3 then vector.normalize(level) else nil
 end
 
 -- How many spots are dealt round a place at the least, so a bot keeps
@@ -764,6 +805,7 @@ local function retake(team: Team, now: number, bots: { Member }, players: { Memb
 		return
 	end
 	local s = site :: BotSpots.Site
+	team.site = s.name
 	team.plantedSeen = team.plantedSeen or now
 	BotNav.extend(nav, outOf(nav, at), BotTeam.OUT_STEPS)
 	local left = spike.detonateAt - now
@@ -1159,6 +1201,7 @@ local function defend(team: Team, now: number, bots: { Member }, players: { Memb
 				end
 			end
 			local hold = if job.hold then order[job.hold :: number] else nil
+			job.entrance = if hold then hold.entrance else nil
 			if hold then
 				job.goal = hold.node
 				job.look = hold.aim
@@ -1252,6 +1295,80 @@ local function together(team: Team, now: number, bots: { Member }, players: { Me
 		end
 		team.jobs[m.id] = job
 	end
+end
+
+-- Where bot `id`, its feet at `at`, is in its side's plan (system 66), as
+-- Place has it: nil with no job in a spike round's plan, or one that has it
+-- fetch, plant or defuse the spike, or get out of its blast.
+function BotTeam.placeOf(team: Team, id: number, at: vector): Place?
+	local job = team.jobs[id]
+	local plan = team.plan
+	if not job or not plan or team.side == "team" then
+		return nil
+	end
+	local task = job.task
+	if task == "fetch" or task == "plant" or task == "defuse" or task == "clear" then
+		return nil
+	end
+	local nav = team.nav
+	local there = close(team, at, job.goal, BotTeam.THERE)
+	local spike = team.plantedAt
+	local threats: { vector } = {}
+	if team.side == "attack" then
+		if spike then
+			return { role = "guard", phase = "guard", there = there, threats = threats, spike = spike }
+		end
+		local site = if team.site then BotSpots.site(plan, team.site :: string) else nil
+		local entrance = if site and job.way then site.entrances[job.way :: number] else nil
+		if not site or not entrance then
+			return nil
+		end
+		for _, h in site.holds do
+			if h.entrance == job.way then
+				table.insert(threats, head(nav, h.node))
+			end
+		end
+		return {
+			role = "entry",
+			phase = team.phase :: string,
+			there = there,
+			way = entrance.aim,
+			heading = headingOf(nav, entrance),
+			door = feet(nav, entrance.node),
+			threats = threats,
+		}
+	end
+	if spike then
+		-- The retake: in through its way back, at those watching the spike.
+		local site = if team.site then BotSpots.site(plan, team.site :: string) else nil
+		local ways = if site and #site.retakes > 0 then site.retakes elseif site then site.entrances else {}
+		local entrance = if job.back then ways[job.back :: number] else nil
+		for _, n in team.watching do
+			table.insert(threats, head(nav, n))
+		end
+		return {
+			role = "entry",
+			phase = team.retake :: string,
+			there = there,
+			way = if entrance then entrance.aim else nil,
+			heading = if entrance then headingOf(nav, entrance) else nil,
+			door = if entrance then feet(nav, entrance.node) else nil,
+			threats = threats,
+			spike = spike,
+		}
+	end
+	local site = if job.site then BotSpots.site(plan, job.site :: string) else nil
+	local entrance = if site and job.entrance then site.entrances[job.entrance :: number] else nil
+	return {
+		role = "hold",
+		phase = "hold",
+		there = there and task == "hold",
+		way = if entrance then entrance.aim else nil,
+		heading = if entrance then headingOf(nav, entrance) else nil,
+		door = if entrance then feet(nav, entrance.node) else nil,
+		from = if entrance then head(nav, entrance.stage) else nil,
+		threats = threats,
+	}
 end
 
 -- What each of the side's living bots does now, by id. `live`: the round's
