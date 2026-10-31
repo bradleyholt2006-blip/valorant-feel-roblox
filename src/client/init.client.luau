@@ -47,6 +47,7 @@ local ReconView = require(script.ReconView)
 local ShockView = require(script.ShockView)
 local FuryView = require(script.FuryView)
 local DroneView = require(script.DroneView)
+local LeerView = require(script.LeerView)
 local MinimapView = require(script.MinimapView)
 local PingView = require(script.PingView)
 local ReportView = require(script.ReportView)
@@ -155,6 +156,7 @@ ReconView.start()
 ShockView.start()
 FuryView.start()
 DroneView.start()
+LeerView.start()
 -- The minimap at the top left (system 34), and the big map while Caps Lock
 -- is held: the map, your side and the enemies it sees, the spike, what's
 -- been thrown, and the sounds you make.

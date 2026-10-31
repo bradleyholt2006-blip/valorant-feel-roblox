@@ -110,24 +110,24 @@ point. Both readings are ours.
 
 | Rule | Ours | Status |
 | --- | --- | --- |
-| Reyna | A Duelist, with Leer (C, 250 credits, two charges), Devour (Q, 200, two), Dismiss (E, 200, two) and Empress (X, 7 points), and no passive. Devour and Dismiss can be played; Leer and Empress are on her card, the bar and the buy menu, `NOT YET` | Confirmed (Devour and Dismiss's costs and charges, Patch 2.03; 7 points, Patch 12.02); community (Leer's, Liquipedia; a Duelist, PC Gamer) |
+| Reyna | A Duelist, with Leer (C, 250 credits, two charges), Devour (Q, 200, two), Dismiss (E, 200, two) and Empress (X, 7 points), and no passive. Devour and Dismiss can be played, and Leer since system 74; Empress is on her card, the bar and the buy menu, `NOT YET` | Confirmed (Devour and Dismiss's costs and charges, Patch 2.03; 7 points, Patch 12.02); community (Leer's, Liquipedia; a Duelist, PC Gamer) |
 | The charges | Each its own, bought, none free each round; on the course they fill as every ability's do; in Team Deathmatch each comes back 40 s after it's spent | Confirmed (bought, two each, Patch 2.03); estimate (their own; 40 s) |
 | An orb | An enemy she kills, or who dies within 3 s of her last hurting them, by anyone or anything, leaves her one at their feet where they fell, if she's alive and the mode plays abilities; it lasts 3 s. Dummies on the course leave them too | Confirmed (3 s, Patch 12.02; 3 s of her damage, Patch 2.03); estimate (at their feet, alive, dummies) |
 | Hers alone | Only she sees her orbs and only she can take them | Estimate |
 | Its look | A purple ball 0.35 m across, 1 m over where they fell, pulsing; 0.45 m and brighter while it's the one in reach; fading over its last 0.6 s | Estimate |
 | In reach | Its middle within 15 m of her eye, with nothing of the level between; of those, the nearest, and of two as near, the lower number. Her client picks from the same numbers as the server, to the centimetre and the millisecond | Community ("nearby", Liquipedia; in sight, PC Gamer); estimate (15 m, 1 m up, the tie) |
-| The prompt | With one in reach, the keys for those with a charge, under the crosshair, named as the input in use has them (`Q DEVOUR    E DISMISS`); none through her Dismiss | Confirmed (only with charges, Patch 11.11); estimate (the look) |
+| The prompt | With one in reach, the keys for those with a charge, over the crosshair (under it until system 74), named as the input in use has them (`Q DEVOUR    E DISMISS`); none through her Dismiss | Confirmed (only with charges, Patch 11.11); estimate (the look) |
 | Devour | Q with one in reach and a charge takes it and spends the charge; the gun stays in hand. It heals 50 over 2 s, 25 a second, given in whole points every 0.1 s, past 100 up to 150. Nothing pauses it, and losing sight of the orb's spot doesn't stop it | Confirmed (50 over 2 s, Patch 8.11); community (150, PC Gamer); estimate (whole points every 0.1 s, nothing stopping it) |
 | The overheal | Health past 100, hit off as health is (a shield still takes its share first); a mend or a health pack doesn't take it away. It goes at once 10 s after the last point of her last heal, unless another's under way | Confirmed (temporary, 10 s, Patch 12.02); estimate (health; at once; from the last point) |
 | Dismiss | E with one in reach and a charge takes it and spends the charge. For 1.5 s nothing anyone does hurts her (shots go through her), though harm with nobody behind it, the spike's blast, still does; her top speed's 12 m/s whatever's in hand; her gun's put away, and she can't fire, cast, plant or defuse. As it ends, her top speed's the run speed's and her gun's drawn again | Confirmed (1.5 s, 12 m/s, Patch 8.11); community (intangible, Liquipedia; immune to damage, faster, no weapons or abilities, PC Gamer and esports.net); estimate (what still hurts, the gun drawn) |
 | Judged | Intangible on the server from the cast until it ends in her simulation, and never past 1.5 s on the server's clock, however her moves come in | Estimate |
-| Others' view | Others see her dark and see-through for its time, from the frame on their screen it started | Community ("slightly visible", esports.net; a "phantom", PC Gamer); estimate (the look) |
+| Others' view | Others see her dark and see-through for its time, her gun put away (since system 74), from the frame on their screen it started | Community ("slightly visible", esports.net; a "phantom", PC Gamer); estimate (the look) |
 | Q and E together | One orb is taken once, by Devour | Estimate |
 | Q or E without an orb or a charge | Nothing, and nothing's heard | Estimate |
 | Its sounds | Devour the Healing Orb's soft bell, Dismiss a fizzle, heard as a cast is | Estimate (ours, from free Roblox sounds) |
 | Her screen in Dismiss | Darkened, purple round its edge; E's square lit with the seconds left | Estimate |
 | Bots | A bot playing her presses Q when it's hurt and has an orb in reach and a charge, unless the spike's in its hands or it's planting or defusing; it never dismisses | Estimate |
-| Basic Training | Leer and Empress count as used, as they can't be played; while Devour or Dismiss is still to use, the progress says they take a Soul Orb | Estimate |
+| Basic Training | Empress counts as used, as it can't be played (and Leer did until system 74); while Devour or Dismiss is still to use, the progress says they take a Soul Orb | Estimate |
 
 ## 5. Design
 
@@ -189,8 +189,8 @@ point. Both readings are ours.
 
 ### Not here yet
 
-- **Leer and Empress.** On her card, the bar and the buy menu, `NOT YET`; so is Empress's free
-  Devour on a kill and invisibility in Dismiss.
+- **Empress.** On her card, the bar and the buy menu, `NOT YET`; so is Empress's free Devour on a
+  kill and invisibility in Dismiss. Leer is played since system 74 (74-leer.md).
 - **Sight after the cast.** The guides had Devour's heal stop out of sight of the orb; since
   Patch 8.11 removed Devour's time limits, ours needs sight only to take it.
 - **The overheal's look.** It shows as health past 100; there's no bar of its own, and spectators
@@ -244,7 +244,7 @@ point. Both readings are ours.
 
 ## Known gaps to check in Studio
 
-- Her card, the bar and the kit, Leer and Empress not yet.
+- Her card, the bar and the kit, Empress not yet (Leer since system 74).
 - An orb for her kill where it fell, drawn only for her, brighter in reach, gone after 3 s.
 - Devour taking the orb in reach, 50 over 2 s up to 150, and the overheal gone 10 s after.
 - Dismiss taking it: 12 m/s, no firing, the screen darkened, the gun back as it ends.

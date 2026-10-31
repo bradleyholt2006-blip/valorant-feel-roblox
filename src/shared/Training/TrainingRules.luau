@@ -179,8 +179,8 @@ function TrainingRules.cast(s: State, slot: number, kind: string): boolean
 	return TrainingRules.used(s)
 end
 
--- A slot the step asks for whose ability can't be played yet (Reyna's Leer
--- and Empress, system 73): counted as used, so it doesn't hold the step up.
+-- A slot the step asks for whose ability can't be played yet (Reyna's
+-- Empress, system 73): counted as used, so it doesn't hold the step up.
 function TrainingRules.skip(s: State, slot: number)
 	local step = TrainingRules.current(s)
 	if step.goal == "cast" and step.slots and table.find(step.slots, slot) then

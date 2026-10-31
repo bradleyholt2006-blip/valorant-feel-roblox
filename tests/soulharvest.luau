@@ -108,10 +108,10 @@ do
 	)
 	check("and in agent select", table.find(AgentSelect.pickable(), "reyna") ~= nil)
 	check(
-		"Devour and Dismiss can be played, Leer and Empress not yet",
+		"Devour, Dismiss and Leer (system 74) can be played, Empress not yet",
 		AbilitySim.playable("devour")
 			and AbilitySim.playable("dismiss")
-			and not AbilitySim.playable("leer")
+			and AbilitySim.playable("leer")
 			and not AbilitySim.playable("empress")
 	)
 	local D, M, L, X = AbilityConfig.Defs.devour, AbilityConfig.Defs.dismiss, AbilityConfig.Defs.leer, AbilityConfig.Defs.empress
@@ -150,8 +150,8 @@ do
 	check("her reach and the orb's height are ours", RY.reach.status == "estimate" and RY.height.status == "estimate")
 	local kit = AbilitySim.new("reyna")
 	check(
-		"both bought by the charge",
-		AbilitySim.canBuy(kit, "devour") and AbilitySim.canBuy(kit, "dismiss") and not AbilitySim.canBuy(kit, "leer")
+		"all three bought by the charge",
+		AbilitySim.canBuy(kit, "devour") and AbilitySim.canBuy(kit, "dismiss") and AbilitySim.canBuy(kit, "leer")
 	)
 	check("no free charge each round", kit.charges[E] == 0)
 end

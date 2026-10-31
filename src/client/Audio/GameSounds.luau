@@ -340,7 +340,8 @@ local function onTick(info: any)
 		if switched or w.equipEndTime ~= was.equipEndTime then
 			-- Switching cancels a reload, and its sound with it. The draw's
 			-- heard at once, but through Omen's teleports not till he's
-			-- there or sent back.
+			-- there or sent back, and through Reyna's Dismiss, which puts
+			-- her gun away, not till it's over and she draws it again.
 			cancelReload(ownReload)
 			ownReload = nil
 			drawPending = true
@@ -351,7 +352,8 @@ local function onTick(info: any)
 			ownReload = newReload(id, now, w.reloadEndTime - now)
 		end
 		local kit = s.abilities
-		if drawPending and not (AbilitySim.shadowing(kit, now) or AbilitySim.stepping(kit, now)) then
+		local away = AbilitySim.shadowing(kit, now) or AbilitySim.stepping(kit, now) or AbilitySim.dismissing(kit, now)
+		if drawPending and not away then
 			if sounds and SoundMath.drawHeard(drawSwitched, now - lastDrawAt) then
 				own(sounds.draw)
 				lastDrawAt = now
@@ -682,8 +684,8 @@ function GameSounds.playCast(kind: string, at: vector, id: number?, exact: boole
 	GameSounds.playWorld(sound, where, who)
 end
 
--- Your nearsight starting (Omen's Paranoia, system 41), as the dark closes
--- in (ParanoiaView).
+-- Your nearsight starting (Omen's Paranoia, system 41, or Reyna's Leer,
+-- system 74), as the dark closes in (ParanoiaView).
 function GameSounds.playNearsight()
 	ui(SoundConfig.Deafen.sound)
 end

@@ -447,6 +447,13 @@ local function abilityLines(def: AbilityConfig.AbilityDef): { string }
 		local OD = AbilityConfig.OwlDrone
 		table.insert(lines, row("Flight", string.format("%s s, %s health", num(OD.duration.value), num(OD.health.value))))
 		table.insert(lines, row("A dart", string.format("every %s s, %s pings", num(OD.dartCooldown.value), num(OD.pings.value))))
+	elseif def.id == "leer" then
+		local LE = AbilityConfig.Leer
+		table.insert(
+			lines,
+			row("Eye", string.format("%s m ahead, for %s s, %s health", num(LE.travel.value), num(LE.duration.value), num(LE.health.value)))
+		)
+		table.insert(lines, row("Opens", string.format("%s s after the cast", num(LE.windup.value))))
 	end
 	local recharge = def.recharge
 	if recharge and recharge.kind == "kills" then

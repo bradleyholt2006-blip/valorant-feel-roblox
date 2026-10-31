@@ -12,8 +12,9 @@
 -- Curveball page; community). Each is judged from where the server last had
 -- their eye and their view (PlayerSimServer.view), and nobody out of play
 -- is (a Phoenix whose body's gone in Run it Back, system 33), and nor is
--- anyone nearsighted by Omen's Paranoia (system 41) with the pop further
--- away than they see (the VALORANT Wiki's Status Effect page; community).
+-- anyone nearsighted by Omen's Paranoia (system 41) or Reyna's Leer
+-- (system 74) with the pop further away than they see (the VALORANT
+-- Wiki's Status Effect page; community).
 -- A blind is the player's `VFBlind` attribute (FlareSim.BLIND_ATTRIBUTE)
 -- until it's gone, and goes with a death or a new life, as do a thrower's
 -- flares still in the air as they start a new life, and with that body

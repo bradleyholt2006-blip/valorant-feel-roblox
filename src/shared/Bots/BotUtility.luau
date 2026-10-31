@@ -12,12 +12,12 @@
 --     it went before the bot got there, while it's still a way off
 --   * on the push: Dark Cover on the two spots most likely to hold its way
 --     in, a cloud on the first, Paranoia through them, a Curveball round
---     the corner at them, a Shock Bolt or Hot Hands on the first, and
---     Blade Storm once it's at the way in
+--     the corner at them, Leer where they'd see it, a Shock Bolt or Hot
+--     Hands on the first, and Blade Storm once it's at the way in
 --   * holding a way in: the Recon Bolt toward where the attackers gather,
 --     early in the round; and with attackers seen at the way in a moment
 --     ago, the stall: a slow, a molly, a wall, a smoke or a cloud on the
---     way in, Paranoia or a Shock Bolt at them, or Blade Storm
+--     way in, Paranoia, Leer or a Shock Bolt at them, or Blade Storm
 --   * guarding the planted spike with an enemy heard defusing it: Hunter's
 --     Fury through the walls at it, a molly or a Shock Bolt on it
 --   * anywhere: a Healing Orb on itself or a hurt teammate in reach once
@@ -26,21 +26,21 @@
 --
 -- How: every throw is tried before it's thrown, flown through the level as
 -- the server will fly it (SmokeSim, FlareSim, FireballSim, SlowSim,
--- BoltSim, CloudSim, ParanoiaSim, BarrierSim), so a bot throws only what
--- lands where it means it to: a smoke on its floor, a molly on the spot, a
--- Recon Bolt where it sees those it's for, and a flash that blinds them
--- and neither it nor a teammate where they stand, the bot waiting where it
--- threw it until it's popped (bots on its side look away from it as it
--- flies: BotServer). Mollies and Shock Bolts keep off its teammates, and
--- a Shock Bolt off itself. Then its hands play it as a
--- player's do: the ability's key, its aim eased round as the bot's view
--- eases (BotBrain), the throw's button once it's ready and aimed (a draw
--- held to its bars, a smoke's mark sent out to its reach), and the key let
--- go between presses. A throw found from where it stands is thrown from
--- there, standing still; a cast at a point (a smoke, a heal, a wall,
--- Paranoia, a blast of Hunter's Fury) is aimed again each tick as it walks.
--- One it gives up on, a fight starting or its time running out, it puts
--- away.
+-- BoltSim, CloudSim, ParanoiaSim, BarrierSim, LeerSim), so a bot throws
+-- only what lands where it means it to: a smoke on its floor, a molly on
+-- the spot, a Recon Bolt where it sees those it's for, Leer's eye short of
+-- them where they look, and a flash that blinds them and neither it nor a
+-- teammate where they stand, the bot waiting where it threw it until it's
+-- popped (bots on its side look away from it as it flies: BotServer).
+-- Mollies and Shock Bolts keep off its teammates, and a Shock Bolt off
+-- itself. Then its hands play it as a player's do: the ability's key, its
+-- aim eased round as the bot's view eases (BotBrain), the throw's button
+-- once it's ready and aimed (a draw held to its bars, a smoke's mark sent
+-- out to its reach), and the key let go between presses. A throw found
+-- from where it stands is thrown from there, standing still; a cast at a
+-- point (a smoke, a heal, a wall, Paranoia, Leer, a blast of Hunter's
+-- Fury) is aimed again each tick as it walks. One it gives up on, a fight
+-- starting or its time running out, it puts away.
 --
 -- Plain state and maths in metres; the world is MovementSim's, as the
 -- sims', so the offline tests throw through a map's own solids.
@@ -51,6 +51,7 @@ local BarrierSim = require("../Abilities/BarrierSim")
 local BoltSim = require("../Abilities/BoltSim")
 local FireballSim = require("../Abilities/FireballSim")
 local FlareSim = require("../Abilities/FlareSim")
+local LeerSim = require("../Abilities/LeerSim")
 local ShockSim = require("../Abilities/ShockSim")
 local SlowSim = require("../Abilities/SlowSim")
 local SmokeSim = require("../Abilities/SmokeSim")
@@ -168,6 +169,7 @@ local RC = AbilityConfig.ReconBolt
 local SB = AbilityConfig.ShockBolt
 local HF = AbilityConfig.HuntersFury
 local BO = AbilityConfig.BarrierOrb
+local LE = AbilityConfig.Leer
 local EPS = 1e-9
 local EYE = vector.create(0, 1.62, 0) -- standing (MovementConfig's standEyeHeight)
 local UP = vector.create(0, 1, 0)
@@ -199,6 +201,7 @@ local USES: { [string]: boolean } = {
 	barrierorb = true,
 	darkcover = true,
 	paranoia = true,
+	leer = true,
 	reconbolt = true,
 	shockbolt = true,
 	huntersfury = true,
@@ -338,6 +341,25 @@ local function paranoia(m: Moment, slot: number, key: string, point: vector): Ca
 		return nil
 	end
 	return at("paranoia", slot, key, point)
+end
+
+-- Leer at those at `points`, each looking toward `watch`: cast at the
+-- first whose eye would come to rest short of them, as far as the level
+-- lets it fly, in their view, with nothing of the level between.
+local function leer(m: Moment, world: any, slot: number, key: string, points: { vector }, watch: vector): Cast?
+	for _, point in points do
+		local d = vector.magnitude(point - m.eye)
+		local look = watch - point
+		if d <= LE.travel.value + 1 or vector.magnitude(look) < 1e-6 then
+			continue
+		end
+		local aim = (point - m.eye) / d
+		local rest = LeerSim.rest(LeerSim.cast(0, 0, 0, m.eye, aim, LeerSim.reach(world, m.eye, aim)))
+		if LeerSim.looks(rest, point, vector.normalize(look)) and clearBetween(world, rest, point) then
+			return at("leer", slot, key, point)
+		end
+	end
+	return nil
 end
 
 -- Cloudburst at `point`, straight there, if it bursts near it: at it, or at
@@ -806,6 +828,9 @@ function BotUtility.choose(
 			add("curveball", "push:curveball", function(slot: number): Cast?
 				return flash(m, world, slot, "push:curveball", way, threats)
 			end)
+			add("leer", "push:leer", function(slot: number): Cast?
+				return leer(m, world, slot, "push:leer", threats, way)
+			end)
 		end
 		add("shockbolt", "push:shockbolt", function(slot: number): Cast?
 			return shock(m, world, slot, "push:shockbolt", first - EYE + LOW)
@@ -866,6 +891,9 @@ function BotUtility.choose(
 			end)
 			add("paranoia", "stall:paranoia", function(slot: number): Cast?
 				return paranoia(m, slot, "stall:paranoia", seen)
+			end)
+			add("leer", "stall:leer", function(slot: number): Cast?
+				return leer(m, world, slot, "stall:leer", { seen }, m.eye)
 			end)
 			add("shockbolt", "stall:shockbolt", function(slot: number): Cast?
 				return shock(m, world, slot, "stall:shockbolt", seen - EYE * 0.6)

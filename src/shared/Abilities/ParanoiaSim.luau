@@ -19,8 +19,9 @@
 -- they see no further than its vision, which the minimap's sight and a
 -- flash's pop go by, and they're deafened (the VALORANT Wiki's Paranoia
 -- page: 'briefly Nearsighting and Deafening all players it touches';
--- community). It's kept as a player attribute in server time
--- (ParanoiaSim.ATTRIBUTE).
+-- community). Each is kept as a player attribute in server time
+-- (ParanoiaSim.ATTRIBUTE and DEAF_ATTRIBUTE): Reyna's Leer (system 74,
+-- LeerSim) nearsights without deafening, so the two can end apart.
 --
 -- No Roblox APIs here, so the offline tests fly it.
 
@@ -43,6 +44,8 @@ local EPS = 1e-9
 -- The player attribute each nearsight is kept in: its from, full and gone,
 -- in server time ("812.500,814.500,815.000"), unset with none.
 ParanoiaSim.ATTRIBUTE = "VFNearsight"
+-- And the one their deafening is kept in, the same way: Paranoia's alone.
+ParanoiaSim.DEAF_ATTRIBUTE = "VFDeafened"
 
 -- An orb sent from `eye` the way `aim` points.
 function ParanoiaSim.send(owner: number, id: number, eye: vector, aim: vector): Orb
@@ -88,10 +91,11 @@ function ParanoiaSim.inPath(orb: Orb, points: { vector }): boolean
 end
 
 -- A nearsight given at `now`, over `old` if any of that is left: whole for
--- its duration, then clearing over its fade. The later end wins.
-function ParanoiaSim.nearsight(old: Nearsight?, now: number): Nearsight
-	local full = now + PA.duration.value
-	local gone = full + PA.fade.value
+-- its duration, then clearing over its fade, or for `whole` seconds and
+-- over `fade` where they're given (Leer's, system 74). The later end wins.
+function ParanoiaSim.nearsight(old: Nearsight?, now: number, whole: number?, fade: number?): Nearsight
+	local full = now + (whole or PA.duration.value)
+	local gone = full + (fade or PA.fade.value)
 	if old and old.gone > now then
 		local from = if old.full > now then old.from else now
 		return { from = from, full = math.max(old.full, full), gone = math.max(old.gone, gone) }
@@ -111,7 +115,7 @@ function ParanoiaSim.darkAt(n: Nearsight, t: number): number
 end
 
 -- Whether a nearsight is whole at `t`: they see no further than its
--- vision, and are deafened.
+-- vision (and, Paranoia's, are deafened).
 function ParanoiaSim.whole(n: Nearsight?, t: number): boolean
 	return n ~= nil and t >= n.from and t < n.full
 end

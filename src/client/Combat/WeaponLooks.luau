@@ -258,6 +258,16 @@ local SHAPES: { [string]: Shape } = {
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},
+	-- Leer's eye (system 74): a violet orb the Healing Orb's size over the
+	-- open hand, its dark pupil to the front.
+	leereye = {
+		muzzle = vector.create(0, 0.07, -0.13),
+		pieces = {
+			{ size = vector.create(0.09, 0.09, 0.09), offset = vector.create(0, 0.07, -0.08), accent = true }, -- eye
+			{ size = vector.create(0.04, 0.04, 0.01), offset = vector.create(0, 0.07, -0.126) }, -- pupil
+			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
+		},
+	},
 }
 
 -- Each weapon's shape and accent colour.
@@ -300,6 +310,7 @@ local SHAPE_OF: { [string]: string } = {
 	shockbow = "bow",
 	furybow = "bow",
 	owl = "owl",
+	leereye = "leereye",
 }
 
 local ACCENT: { [string]: Color3 } = {
@@ -341,6 +352,7 @@ local ACCENT: { [string]: Color3 } = {
 	shockbow = Color3.fromRGB(235, 235, 120),
 	furybow = Color3.fromRGB(80, 235, 255),
 	owl = Color3.fromRGB(95, 175, 255),
+	leereye = Color3.fromRGB(196, 72, 236),
 }
 WeaponLooks.BODY = Color3.fromRGB(38, 40, 46)
 

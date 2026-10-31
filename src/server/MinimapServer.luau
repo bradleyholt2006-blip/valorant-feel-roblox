@@ -13,12 +13,12 @@
 -- (Entities). Nobody out of play sees or is seen (a Phoenix whose body's
 -- gone in Run it Back, system 33), nobody blinded white by a Curveball
 -- (system 30) sees, and nobody nearsighted by Omen's Paranoia (system 41)
--- sees further than its vision; while it's whole their minimap's covered
--- (the VALORANT Wiki's Status Effect page: it 'will become obscured';
--- community), and they're told nothing. In the way: the level, but not the
--- spawns' barriers, which are see-through, nor anyone's body; the clouds
--- standing (CloudServer), the walls of fire (BlazeServer) and the walls of
--- ice (BarrierServer, system 38).
+-- or Reyna's Leer (system 74) sees further than its vision; while it's
+-- whole their minimap's covered (the VALORANT Wiki's Status Effect page:
+-- it 'will become obscured'; community), and they're told nothing. In the
+-- way: the level, but not the spawns' barriers, which are see-through, nor
+-- anyone's body; the clouds standing (CloudServer), the walls of fire
+-- (BlazeServer) and the walls of ice (BarrierServer, system 38).
 --
 -- Whom Sova's Recon Bolt reveals to a side (system 44, ReconServer), or
 -- his Hunter's Fury's blasts do (system 46, FuryServer), is on its minimap
@@ -96,7 +96,8 @@ local function blinded(player: Player, now: number): boolean
 	return blind ~= nil and FlareSim.whiteAt(blind, now) >= Minimap.Params.blindSees.value
 end
 
--- A player's nearsight (Omen's Paranoia, system 41), if they have one.
+-- A player's nearsight (Omen's Paranoia, system 41, or Reyna's Leer,
+-- system 74), if they have one.
 local function nearsightOf(player: Player): ParanoiaSim.Nearsight?
 	return ParanoiaSim.decode(player:GetAttribute(ParanoiaSim.ATTRIBUTE))
 end

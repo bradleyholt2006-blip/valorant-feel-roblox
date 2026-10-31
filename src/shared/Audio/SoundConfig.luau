@@ -670,6 +670,21 @@ SoundConfig.Sounds = {
 	droneBreak = sound(0.6, 0.04, 3, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 2.6),
+	-- Leer (system 74): the eye in hand the thick whoosh, higher than any of
+	-- Omen's; cast, the thin swish slowed; opening, the heal's bell slowed
+	-- right down to a low toll; and broken, the drone's break higher still.
+	leerEquip = sound(0.45, 0.03, 2, {
+		asset(9120742716, "Whoosh Thick Quick Multiple Variations 2 (SFX)", 0.737, 0.15, 0.70),
+	}, 1.1),
+	leerCast = sound(0.6, 0.03, 3, {
+		asset(9119696677, "Swishes Thin Fast Singles Knife 4 (SFX)", 0.323, 0.22),
+	}, 0.75),
+	leerOpen = sound(0.7, 0.02, 3, {
+		asset(9126073318, "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)", 0.182, 0.09),
+	}, 0.35),
+	leerBreak = sound(0.6, 0.04, 3, {
+		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
+	}, 3),
 	-- Pings (system 52): one along the crosshair, the spike's beep sped up
 	-- to a blip; one on the map, the kill's bell sped right up, a sound of
 	-- its own ('new ping visuals and new ping sound for pings made on the
@@ -698,8 +713,9 @@ SoundConfig.Sounds = {
 -- it charging, and one going, heard across the map, and his Owl Drone sent
 -- out, humming as it flies, its darts, one striking someone, their pings
 -- and the drone shot down, and Reyna's Devour, which sounds as a heal
--- does, and her Dismiss, as Run it Back's body going does), heard as the
--- ability curve says (systems 17 to 19, 30 to 33, 36 to 47 and 73).
+-- does, her Dismiss, as Run it Back's body going does, and her Leer's eye
+-- cast, opening and shot to pieces), heard as the ability curve says
+-- (systems 17 to 19, 30 to 33, 36 to 47, 73 and 74).
 -- Blade Storm's knives drawn again sound as their draw does, and so does
 -- an ability put in hand (Curveball's flare, Hot Hands' fireball, Blaze's
 -- flame, the Healing Orb, the Slow Orb, the Barrier Orb, the Resurrection's
@@ -759,6 +775,9 @@ SoundConfig.Abilities = {
 	dronebreak = "droneBreak",
 	devour = "healChime",
 	dismiss = "fizzle",
+	leer = "leerCast",
+	leeropen = "leerOpen",
+	leerbreak = "leerBreak",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and
@@ -829,7 +848,8 @@ SoundConfig.Drift = {
 -- quieter, clearing as the nearsight clears. The VALORANT Wiki's Status
 -- Effect page has a deafened player's audio 'severely dampened'
 -- (community), with no numbers. The touch itself sounds on the UI bus,
--- which isn't muffled, so it's heard as the dark closes in.
+-- which isn't muffled, so it's heard as the dark closes in; so does Reyna's
+-- Leer's nearsight starting (system 74), which doesn't deafen.
 SoundConfig.Deafen = {
 	sound = "nearsight",
 	cutoff = p(400, "estimate", "Hz: the World and Self buses' low-pass, deafened, so little but the low end gets through"),
@@ -943,6 +963,9 @@ SoundConfig.Weapons = {
 	-- The Owl Drone (system 47): the same, its going out, its hum, its
 	-- darts, their pings and its breaking the ability's.
 	owl = { draw = "droneEquip", curve = "ability" },
+	-- Leer's eye (system 74): the same, its cast, opening and breaking the
+	-- ability's.
+	leereye = { draw = "leerEquip", curve = "ability" },
 } :: { [string]: WeaponSounds }
 
 return SoundConfig

@@ -56,6 +56,9 @@
 --     see-through through its time (RemoteEntities.ghost); SoulView draws
 --     her Soul Orbs, and darkens her screen's edges in her Dismiss (system
 --     73)
+--   * Leer: only heard here, as its eye's cast; LeerView draws the eye in
+--     flight and open, and sounds it opening and breaking, and
+--     ParanoiaView draws the nearsight it gives (system 74)
 --   * Drift's glide: for others, faint rings of air left at the waist as
 --     they sink, so the air seems to rush up past them (system 20). It comes
 --     in their pose, so it's drawn as they are
@@ -241,7 +244,7 @@ local function onCast(event: any)
 		return -- predicted already
 	end
 	if event.kind == "flight" then
-		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's, SlowView's, ParanoiaView's or ReconView's
+		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's, SlowView's, ParanoiaView's, ReconView's or LeerView's
 	elseif event.kind == "healing" then
 		return -- a heal: HealView's
 	elseif event.kind == "reviving" or event.kind == "revived" then

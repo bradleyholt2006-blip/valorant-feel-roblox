@@ -2,11 +2,11 @@
 -- Reyna's Soul Orbs on her client (system 73): her orbs as the server sends
 -- them (SoulSim.ATTRIBUTE), drawn where they float, the one in her reach
 -- brighter, each fading as its time runs out; and, with one in reach and a
--- charge to take it, the keys that would under the crosshair, named as the
+-- charge to take it, the keys that would over the crosshair, named as the
 -- input in use has them. It picks the orb in reach each frame from where
 -- her predicted eye is, as the server does from its own, and hands it to
--- her ticks (PlayerController.soul). Through her Dismiss the screen's
--- edges darken.
+-- her ticks (PlayerController.soul). Through her Dismiss the screen
+-- darkens, its edges glowing violet.
 -- For scripted checks, PlayerGui's VFSouls carries Orbs (how many she
 -- has), Reach (the number of the one in reach, -1 with none) and Prompt
 -- (what the prompt says, "" with none).
@@ -34,6 +34,10 @@ local SOUL = Color3.fromRGB(190, 70, 255)
 local SIZE, NEAR_SIZE = 0.35, 0.45 -- metres across, and the one in reach
 local FADE = 0.6 -- seconds an orb fades over as its time runs out
 local TINT = 0.82 -- how see-through the screen's darkening is in Dismiss
+local EDGE = 48 -- pixels its glow's stroke is thick, half of it on the screen
+-- Pixels above the crosshair the prompt's foot is: clear of what's under
+-- it (the reload bar, a kill's banner on a short screen).
+local ABOVE = 40
 local DT = 1 / MovementConfig.TickRate.value
 
 local SoulView = {}
@@ -77,11 +81,20 @@ function SoulView.start()
 		BackgroundColor3 = Color3.fromRGB(30, 8, 50),
 		BackgroundTransparency = 1,
 	})
+	-- Its glow: a stroke round a frame set in from the screen's edges by
+	-- half its thickness, drawn outwards over them, as one round the
+	-- whole screen is drawn off it.
+	local edge = Ui.frame(gui, {
+		Name = "DismissEdge",
+		Size = UDim2.new(1, -EDGE, 1, -EDGE),
+		Position = UDim2.fromOffset(EDGE / 2, EDGE / 2),
+		BackgroundTransparency = 1,
+	})
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = SOUL
-	stroke.Thickness = 24
+	stroke.Thickness = EDGE
 	stroke.Transparency = 1
-	stroke.Parent = tint
+	stroke.Parent = edge
 	local prompt = Ui.label(gui, {
 		Name = "Prompt",
 		Font = Enum.Font.GothamBold,
@@ -89,8 +102,8 @@ function SoulView.start()
 		TextColor3 = SOUL,
 		TextStrokeTransparency = 0.5,
 		TextXAlignment = Enum.TextXAlignment.Center,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0.5, 48),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0.5, -ABOVE),
 		Size = UDim2.fromOffset(320, 20),
 		Visible = false,
 	})

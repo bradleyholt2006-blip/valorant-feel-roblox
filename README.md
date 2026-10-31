@@ -549,8 +549,14 @@ Built one system at a time:
     she sees. With one in reach, Q (Devour) takes it and heals her 50 over 2 seconds, past full
     health up to 150 for 10 seconds; E (Dismiss) takes it instead, and for 1.5 seconds nothing
     hurts her and she runs at up to 12 m/s, but she can't fire or cast. Others see her dark and
-    see-through in it, and bots playing her Devour when they're hurt. Leer and Empress come
-    later - [research and design](docs/research/73-reyna-soul-orbs.md)
+    see-through in it, and bots playing her Devour when they're hurt. Empress comes later -
+    [research and design](docs/research/73-reyna-soul-orbs.md)
+74. **Reyna's Leer**: C readies an ethereal eye, and fire casts it 10 m along the crosshair over 0.4
+    seconds, on through walls, though a floor in its way stops it. For 2 seconds any enemy who looks
+    at it, however far off, is nearsighted until they look away, seeing no further than 7.5 m; her
+    side never are, and her enemies break it with 100 damage. Bots playing her cast it at those
+    holding a way in. Dismiss's purple edge now shows, and others no longer see her gun through it -
+    [research and design](docs/research/74-leer.md)
 
 ## Running it
 
@@ -871,7 +877,9 @@ warning and being taken out) and touch controls (the layout on phones' and table
 of the HUD, what a touch hits, the stick, the look drag and the buttons as keys) and Basic Training
 (each step's goal, a walk, a kill and its notes, a reload, the casts, the spike and the buttons'
 names) and Reyna (who earns a Soul Orb, which is in reach, the wire, Devour's heal and its
-overheal, and Dismiss through to its end) are pure Luau and run outside Roblox:
+overheal, Dismiss through to its end, and Leer's eye: its flight and where a floor stops it, who
+looks at it, the nearsight it gives, and the eye in the level shots are traced through) are pure
+Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

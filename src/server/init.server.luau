@@ -16,11 +16,12 @@
 -- the fires' burns that pause them, the Slow Orb's fields say whom the moves
 -- left slowed, Paranoia's orbs touch whoever the moves left in their way,
 -- the Recon Bolt's pulses reveal whoever the moves left in their sight,
--- Shock Bolts burst on whoever the moves left near them, and the Owl
--- Drones the moves flew are paced and looked at and their darts' pings
--- reveal whom they struck, before the minimap's spotting goes by what they
--- see and what they reveal, and by whom Hunter's Fury's blasts revealed as
--- the moves sent them.
+-- Shock Bolts burst on whoever the moves left near them, the Owl Drones
+-- the moves flew are paced and looked at and their darts' pings reveal
+-- whom they struck, and Leer's eyes nearsight whoever the moves left
+-- looking at them, before the minimap's spotting goes by what they see,
+-- what they reveal and whom they nearsight, and by whom Hunter's Fury's
+-- blasts revealed as the moves sent them.
 -- Regen Shields refill after the shots, and the minimap's spotting looks
 -- after them, so nobody they killed is seen; the fog of war's looks come
 -- after that, with what each side spots, and each player's snapshot goes
@@ -65,6 +66,7 @@ local ReconServer = require(script.ReconServer)
 local ShockServer = require(script.ShockServer)
 local FuryServer = require(script.FuryServer)
 local DroneServer = require(script.DroneServer)
+local LeerServer = require(script.LeerServer)
 local BlazeServer = require(script.BlazeServer)
 local RunItBackServer = require(script.RunItBackServer)
 local StepServer = require(script.StepServer)
@@ -105,6 +107,7 @@ FuryServer.start()
 DroneServer.start()
 ReviveServer.start()
 ParanoiaServer.start()
+LeerServer.start()
 BlazeServer.start()
 RunItBackServer.start()
 StepServer.start()
@@ -152,6 +155,7 @@ RunService.Heartbeat:Connect(function(dt)
 	ReconServer.step(now)
 	ShockServer.step(now)
 	DroneServer.step(now)
+	LeerServer.step(now)
 	GroundGunsServer.step()
 	CombatServer.step(now, dt)
 	MinimapServer.step(now)

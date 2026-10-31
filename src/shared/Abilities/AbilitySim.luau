@@ -270,7 +270,8 @@ export type State = {
 -- cast), "charge" (a blast's windup started), "blast" (a blast gone as
 -- its windup ends), "drone" (the Owl Drone sent out), "dart" (a dart shot
 -- from it), "land" (its flight over), "devour" or "dismiss" (a Soul Orb
--- taken by Reyna's Devour or Dismiss) or "solid" (Dismiss over), where the player's feet and eye
+-- taken by Reyna's Devour or Dismiss), "solid" (Dismiss over) or "leer"
+-- (her Leer's eye cast), where the player's feet and eye
 -- were (for "home", where they are back, and for a dart and a landing,
 -- the drone's middle in place of the eye), and the way it goes (the
 -- dash's way, up for a lift, the way they faced for a readied gust, for
@@ -348,6 +349,7 @@ local PLAYABLE: { [string]: boolean } = {
 	owldrone = true,
 	devour = true,
 	dismiss = true,
+	leer = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -1126,7 +1128,8 @@ end
 -- charge spent, and its cast, from `origin` (the eye) the way `aim` points.
 -- `alt` says alt fire threw it: Curveball's flare goes round to the right
 -- then, and to the left otherwise, and Hot Hands' fireball is lobbed. The
--- Slow Orb has no alt fire, nor has Paranoia's orb (system 41), nor the
+-- Slow Orb has no alt fire, nor has Paranoia's orb (system 41), nor Leer's
+-- eye (system 74), nor the
 -- Barrier Orb, whose wall goes where PlayerSim has placed it, nor Shrouded
 -- Step (system 42), whose step PlayerSim starts where it's found, nor From
 -- the Shadows (system 43), whose teleport spends the ultimate's points and
@@ -1193,6 +1196,8 @@ function AbilitySim.thrown(s: State, tick: number, t: number, feet: vector, orig
 		cast.kind = "slow"
 	elseif def.id == "paranoia" then
 		cast.kind = "paranoia"
+	elseif def.id == "leer" then
+		cast.kind = "leer"
 	elseif def.id == "barrierorb" then
 		cast.kind = "barrier"
 	elseif def.id == "shroudedstep" then
