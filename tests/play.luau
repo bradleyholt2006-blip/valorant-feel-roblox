@@ -11,6 +11,7 @@ local TeamDeathmatchConfig = require("../src/shared/Arena/TeamDeathmatchConfig")
 local MatchConfig = require("../src/shared/Match/MatchConfig")
 local PlayConfig = require("../src/shared/Match/PlayConfig")
 local ServerList = require("../src/shared/Match/ServerList")
+local TrainingConfig = require("../src/shared/Training/TrainingConfig")
 local H = require("./Harness")
 
 local check = H.check
@@ -28,7 +29,7 @@ do
 		unique = unique and not keys[mode.key] and PlayConfig.ByKey[mode.key] == mode
 		keys[mode.key] = true
 	end
-	check("eight modes, each by a key of its own", #PlayConfig.Modes == 8 and unique)
+	check("nine modes, each by a key of its own", #PlayConfig.Modes == 9 and unique)
 
 	local arenas = true
 	for _, mode in PlayConfig.Modes do
@@ -37,10 +38,12 @@ do
 		else
 			local arena = mode.arena
 			local known = arena == "skirmish" or arena == "duel" or arena == "gungame" or arena == "deathmatch" or arena == "teamdeathmatch"
+			-- Basic Training is the course's, with the arena off (system 72).
+			known = known or (arena == nil and mode.key == TrainingConfig.KEY)
 			arenas = arenas and known and mode.format == nil
 		end
 	end
-	check("each is a mode the arena plays, and the spike rounds' by their formats' keys", arenas)
+	check("each is a mode the arena plays, the spike rounds' by their formats' keys, or Basic Training, the course's", arenas)
 
 	local formats = true
 	for key in MatchConfig.Formats do
@@ -63,6 +66,12 @@ do
 		ffa = ffa and (mode.freeForAll == true) == (mode == dm)
 	end
 	check("and Deathmatch everyone for themselves, 14 of them, the one free for all", ffa)
+	local training = PlayConfig.Modes[1]
+	local solo = training.key == TrainingConfig.KEY and training.arena == nil and training.players == 1
+	for _, mode in PlayConfig.Modes do
+		solo = solo and (mode.players == 1) == (mode == training)
+	end
+	check("Basic Training first, played alone, the one mode that is (system 72)", solo)
 
 	local default = PlayConfig.ByKey[PlayConfig.DEFAULT]
 	check("a public server plays Skirmish, as the arena has from system 21", default ~= nil and default.arena == "skirmish")
@@ -88,6 +97,14 @@ do
 			and keyOf(true, "gungame", nil) == "gungame"
 			and keyOf(true, "deathmatch", "standard") == "deathmatch"
 			and keyOf(true, "teamdeathmatch", nil) == "teamdeathmatch"
+	)
+	check(
+		"Basic Training on the course, with the arena off, and never the arena's mode (system 72)",
+		keyOf(false, "skirmish", "standard", true) == TrainingConfig.KEY
+			and keyOf(nil, nil, nil, true) == TrainingConfig.KEY
+			and keyOf(true, "gungame", nil, true) == "gungame"
+			and keyOf(false, "skirmish", nil, false) == nil
+			and keyOf(true, TrainingConfig.KEY, nil) == "skirmish"
 	)
 	check(
 		"the spike rounds by their format",
@@ -256,7 +273,7 @@ do
 	local text = ServerList.formatCounts(counts, order)
 	check(
 		"as Workspace has them, in the menu's order",
-		text == "skirmish=9,duel=0,gungame=5,deathmatch=0,teamdeathmatch=0,standard=0,competitive=0,swiftplay=0",
+		text == "training=0,skirmish=9,duel=0,gungame=5,deathmatch=0,teamdeathmatch=0,standard=0,competitive=0,swiftplay=0",
 		text
 	)
 	local back = ServerList.parseCounts(text)

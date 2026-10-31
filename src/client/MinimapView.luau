@@ -1026,6 +1026,9 @@ end
 
 local function hide()
 	shownBottom = 0
+	-- The big map asked for where there's no map (MAP on the course, system
+	-- 71) isn't left to open with the next match's.
+	testBig = false
 	for _, layer in { mini, mega } do
 		if layer and layer.gui.Enabled then
 			layer.gui.Enabled = false

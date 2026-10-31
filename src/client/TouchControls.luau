@@ -118,6 +118,11 @@ local function report(text: string)
 	end
 end
 
+-- A turn to the tenth, as the report has it: never "-0.0".
+local function tenths(x: number): number
+	return math.round(x * 10) / 10 + 0
+end
+
 local function closeMenus()
 	BuyMenu.setOpen(false)
 	LoadoutMenu.setOpen(false)
@@ -481,8 +486,8 @@ local function frame(dt: number)
 				"flags=%d scoped=%s turn=%.1f,%.1f crouch=%d menu=%d size=%dx%d",
 				held,
 				if s then tostring(s.weapons.scoped) else "-",
-				counts.X,
-				counts.Y,
+				tenths(counts.X),
+				tenths(counts.Y),
 				if crouched then 1 else 0,
 				if menu then 1 else 0,
 				size.X,

@@ -160,6 +160,11 @@ local function report(text: string)
 	end
 end
 
+-- A turn to the tenth, as the report has it: never "-0.0".
+local function tenths(x: number): number
+	return math.round(x * 10) / 10 + 0
+end
+
 -- The zoom predicted for the weapon in hand, for VFPad.
 local function scopedText(): string
 	local s = PlayerController.sim
@@ -508,8 +513,8 @@ local function frame(dt: number)
 				if wanted then tostring(wanted) else "-",
 				scopedText(),
 				if focus then 1 else 0,
-				counts.X,
-				counts.Y,
+				tenths(counts.X),
+				tenths(counts.Y),
 				shown
 			)
 		)

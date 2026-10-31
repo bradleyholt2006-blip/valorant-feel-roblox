@@ -67,6 +67,7 @@ local HitRegLab = require(script.Debug.HitRegLab)
 local SoundLab = require(script.Debug.SoundLab)
 local HitboxOverlay = require(script.Debug.HitboxOverlay)
 local TestAim = require(script.Debug.TestAim)
+local TrainingView = require(script.TrainingView)
 
 -- Our HUD replaces Roblox's health bar, and number keys belong to weapons.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
@@ -178,6 +179,8 @@ AfkView.start()
 -- menus.
 Gamepad.start()
 TouchControls.start()
+-- Basic Training (system 72): the step under way, at the top of the screen.
+TrainingView.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

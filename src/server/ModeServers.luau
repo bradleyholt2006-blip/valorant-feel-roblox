@@ -15,11 +15,13 @@
 --     little after the server stops
 --   * PLAY for another mode sends you to the fullest server playing it with
 --     a place free in its match (ServerList.choose), or to a new server
---     reserved for it, with your mode in the teleport data. If the teleport
---     fails (the server filled up or closed meanwhile), a new server is
---     reserved and tried once. So does PLAY for this server's mode once its
---     match is full, rather than wait in line here; a player's own private
---     server is the exception, where friends wait for each other
+--     reserved for it, with your mode in the teleport data; always a new
+--     one for a mode played alone (Basic Training, system 72). If the
+--     teleport fails (the server filled up or closed meanwhile), a new
+--     server is reserved and tried once. So does PLAY for this server's
+--     mode once its match is full, rather than wait in line here; a
+--     player's own private server is the exception, where friends wait
+--     for each other
 --   * whoever arrives with a mode in their teleport data that this server
 --     plays goes straight into its match, having pressed PLAY already
 --   * the menu's counts of who plays each mode come from the same lines, as
@@ -57,6 +59,7 @@ local MatchConfig = require(Shared.Match.MatchConfig)
 local PlayConfig = require(Shared.Match.PlayConfig)
 local ServerList = require(Shared.Match.ServerList)
 local Remotes = require(Shared.Net.Remotes)
+local TrainingConfig = require(Shared.Training.TrainingConfig)
 
 local Arena = require(script.Parent.Arena)
 local Tuning = require(script.Parent.Tuning)
@@ -92,27 +95,37 @@ local lastSent: { [Player]: number } = {}
 local due = false
 
 -- The mode this server plays now (a key of PlayConfig.ByKey), from
--- Workspace's attributes; nil on the course.
+-- Workspace's attributes; nil on the course, with Basic Training off.
 function ModeServers.current(): string?
 	return PlayConfig.keyOf(
 		Workspace:GetAttribute(ArenaConfig.ON),
 		Workspace:GetAttribute(ArenaConfig.MODE),
-		Workspace:GetAttribute(MatchConfig.FORMAT)
+		Workspace:GetAttribute(MatchConfig.FORMAT),
+		Workspace:GetAttribute(TrainingConfig.ON)
 	)
 end
 
 -- Has the arena play a mode, as P does: the format first, so the spike
--- rounds start once, in it.
+-- rounds start once, in it. Basic Training (system 72) is the course, with
+-- the arena off: on before the arena goes off, and off once the arena's
+-- on, so that what's played changes once.
 local function setMode(key: string)
 	local mode = PlayConfig.ByKey[key]
 	if not mode then
 		return
 	end
+	local arena = mode.arena
+	if not arena then
+		Workspace:SetAttribute(TrainingConfig.ON, true)
+		Workspace:SetAttribute(ArenaConfig.ON, false)
+		return
+	end
 	if mode.format then
 		Workspace:SetAttribute(MatchConfig.FORMAT, mode.format)
 	end
-	Workspace:SetAttribute(ArenaConfig.MODE, mode.arena)
+	Workspace:SetAttribute(ArenaConfig.MODE, arena)
 	Workspace:SetAttribute(ArenaConfig.ON, true)
+	Workspace:SetAttribute(TrainingConfig.ON, false)
 end
 
 local function tell(player: Player, status: string, detail: string?)
@@ -212,7 +225,9 @@ local function send(player: Player, key: string, fresh: boolean): string?
 	local mode = PlayConfig.ByKey[key]
 	local options = Instance.new("TeleportOptions")
 	options:SetTeleportData({ [PlayConfig.DATA_KEY] = key })
-	local target = if fresh then nil else ServerList.choose(readAll() or {}, key, 1, selfKey, os.time(), R.stale.value)
+	-- A mode for one (Basic Training, system 72) always has a new server.
+	local solo = mode.players <= 1
+	local target = if fresh or solo then nil else ServerList.choose(readAll() or {}, key, 1, selfKey, os.time(), R.stale.value)
 	if target and target.job then
 		options.ServerInstanceId = target.job
 	elseif target and target.code then

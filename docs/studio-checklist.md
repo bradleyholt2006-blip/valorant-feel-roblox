@@ -6494,29 +6494,224 @@ end
 - **TC5 The column and menus.** `touch("0 0 0 0 settings", 0.1)` and `lift()`: the settings menu,
   with `Touch look` 120 under CONTROLLER AND TOUCH, the line reading `menu=1`, and only CLOSE shown
   (`buttons()` prints 1, `close`). `touch("0 0 0 0 close", 0.1)` and `lift()`: shut, and 20 again.
-  The same with `play`, then `agents`: each opens, and CLOSE shuts it. `touch("0 0 0 0 map", 0.1)`
-  and `lift()`: the big map, `gui("VFMinimap", "Big")` printing `true`, MAP's ring gold; again,
-  shut. `touch("0 0 0 0 scores", 0.1)` and `lift()`: the scoreboard stays up; again, gone. Then
-  `set("VFTestPlay", "skirmish")` and in a buy phase `touch("0 0 0 0 buy", 0.1)` and `lift()`: the
-  buy menu, `menu=1`; CLOSE shuts it. **Send:** the lines, and anything that didn't open or shut.
+  The same with `play`, then `agents`: each opens, and CLOSE shuts it. The map and the scoreboard
+  are a match's, so `set("VFTestPlay", "skirmish")` for the rest. In a buy phase,
+  `touch("0 0 0 0 buy", 0.1)` and `lift()`: the buy menu, `menu=1`; CLOSE shuts it.
+  `touch("0 0 0 0 map", 0.1)` and `lift()`: the big map, `gui("VFMinimap", "Big")` printing `true`,
+  MAP's ring gold; again, shut. `touch("0 0 0 0 scores", 0.1)` and `lift()`: the scoreboard stays
+  up; again, gone. **Send:** the lines, and anything that didn't open or shut.
 
 - **TC6 Dead.** In the spike rounds (as BC1 in section 66, or Competitive as in section 71), walk
   out at the other side and let them kill you. Watching your side's bot, the line under its name
-  reads `USE  take control` and `FIRE / AIM  switch`; `touch("0 0 0 0 fire", 0.1)` and `lift()`
-  watches the next, `aim` the last. Back on a bot you may take over, `touch("0 0 0 0 use", 0.1)` and
-  `lift()`: you're in its body, and the server's Output has the `[VF] takeover:` lines. **Send:**
-  the lines.
+  reads `USE  take control`, and while two or more of your side are alive, so there's someone to
+  switch to, `FIRE / AIM  switch`; `touch("0 0 0 0 fire", 0.1)` and `lift()` watches the next, `aim`
+  the last. Back on a bot you may take over, `touch("0 0 0 0 use", 0.1)` and `lift()`: you're in its
+  body, and the server's Output has the `[VF] takeover:` lines. **Send:** the lines.
 
-- **TC7 Planting.** In the spike rounds, attacking with the spike, stand on a site: with
-  `VFTestTouch` set the prompt reads `HOLD SPIKE TO PLANT`, and `touch("0 0 0 0 spike", 4.5)` plants
-  it; `touch(nil, 0.1)` and the prompt reads `HOLD 4 TO PLANT` again. **Send:** the prompts and the
-  plant.
+- **TC7 Planting.** In the spike rounds attacking with the spike, or on the course with
+  `set("VFTestGive", "spike")`, stand on a site (the course's A is 8 m left of the spawn and 26 m
+  behind it): with `VFTestTouch` set the prompt reads `HOLD SPIKE TO PLANT`, and
+  `touch("0 0 0 0 spike", 4.5)` plants it; `touch(nil, 0.1)` and the prompt reads `HOLD 4 TO PLANT`
+  again. **Send:** the prompts and the plant.
 
 - **TC8 A phone (Bradley).** Play on a phone or a tablet, or in Studio's device emulator (the Test
   tab's Device). Roblox's own stick and jump button are gone; the stick moves where the thumb lands
   and walks with a light push; drags turn the view and FIRE's touch aims as it fires; every button's
   in reach and big enough; CLOSE shuts each menu; and the HUD's prompts name the buttons. **Send:**
   what felt off, the sizes, and `Touch look` as you'd have it.
+
+## 76. Basic Training
+
+From [72-basic-training.md](research/72-basic-training.md). System 72 is a tutorial on the course, a
+step at a time, on a server of its own: the Play menu's first card, reading SOLO. A panel at the top
+of the screen says what the step under way asks, naming the buttons for the input in use, and a gold
+marker shows where: a column of light at a spot or the spike to fetch, a ring under a target. It
+starts on the Classic and the knife with no shield. Its steps, by the keys the local player's
+`VFTrainingStep` has for them: `move` to the sprint lane's 20 m post; `crouch` into the low tunnel;
+`jump` onto the 0.50 m box; `walk` 6 m; `shoot` the target 10 m down the range; `still`, the
+crouching target at 20 m downed standing still; `head`, the target behind the cover downed by a
+headshot; `reload`; `rifle`, a target at 30 m downed aiming down the sights of the Vandal it hands
+over; `shield`, one bought; `abilities`, C, Q and E used once each; `ultimate`; `plant`; `defuse`;
+and `done`. `VFTrainingProgress` says how far through the step you are, and `VFTrainingNote` why
+something didn't count; PlayerGui's `VFTraining` has the panel's `Text`, its lines apart by ` | `,
+and the `Note` shown. `VFTestTraining` set to a step's key moves you to it. Workspace's
+`VFTrainingOn` is true while it's played.
+
+Press Play (F5), with one player, as Jett. Set `VFTestMute` if the sound's not wanted. Run this once
+in the command bar with it on the client, then each check's lines there: `set(name, value)` sets one
+of the local player's attributes; `step()` prints the step, its progress and its note; `panel()`
+prints the panel's text and note; `walkTo(x, z, buttons, t)` holds `buttons` (1, W, if left out; 17
+walks, 33 crouches) facing the spot at `x` and `z` in metres until you're within 0.4 m of it, the
+step moves on or `t` seconds pass (8 if left out), then lets go and prints `step()`;
+`hold(buttons, t)` holds `buttons` for `t` seconds, then lets go and prints `step()`; `hop(run)`
+walks ahead for `run` seconds and jumps; and `shoot(x, z, region, moving, n)` aims at the `region`
+(`head` if left out) of the dummy nearest that spot and fires up to `n` times (8 if left out),
+holding `moving` too (nothing if left out), until the step moves on, then prints `step()`.
+`VFTestButtons`' flags are section 75's: 1 W, 4 A, 16 walking, 32 crouching, 64 jump, 128 fire, 256
+the right button, 512 reload, 1024 the spike's 4, 4096 C, 8192 Q, 16384 E and 32768 X.
+
+```lua
+me = game.Players.LocalPlayer
+local S = require(game.ReplicatedStorage.Shared.Units).STUDS_PER_METRE
+local BASE = require(game.ReplicatedStorage.Shared.Net.PlayerCodec).DUMMY_BASE
+function set(name, value)
+	me:SetAttribute(name, value)
+end
+function step()
+	print(me:GetAttribute("VFTrainingStep"), me:GetAttribute("VFTrainingProgress"), me:GetAttribute("VFTrainingNote"))
+end
+function panel()
+	local gui = me.PlayerGui.VFTraining
+	print(gui:GetAttribute("Text"), "/", gui:GetAttribute("Note"))
+end
+local function feet()
+	local root = me.Character and me.Character:FindFirstChild("HumanoidRootPart")
+	return root and root.Position / S
+end
+function walkTo(x, z, buttons, t)
+	local was = me:GetAttribute("VFTrainingStep")
+	me:SetAttribute("VFTestAimPoint", Vector3.new(x, 1.5, z))
+	me:SetAttribute("VFTestButtons", buttons or 1)
+	local start = os.clock()
+	while os.clock() - start < (t or 8) do
+		task.wait()
+		local p = feet()
+		if (p and Vector2.new(p.X - x, p.Z - z).Magnitude < 0.4) or me:GetAttribute("VFTrainingStep") ~= was then
+			break
+		end
+	end
+	me:SetAttribute("VFTestButtons", nil)
+	me:SetAttribute("VFTestAimPoint", nil)
+	task.wait(0.5)
+	step()
+end
+function hold(buttons, t)
+	me:SetAttribute("VFTestButtons", buttons)
+	task.wait(t)
+	me:SetAttribute("VFTestButtons", nil)
+	task.wait(0.5)
+	step()
+end
+function hop(run)
+	me:SetAttribute("VFTestButtons", 17)
+	task.wait(run)
+	me:SetAttribute("VFTestButtons", 81)
+	task.wait(0.4)
+	me:SetAttribute("VFTestButtons", nil)
+	task.wait(0.8)
+	step()
+end
+local function dummyAt(x, z)
+	local best, id = math.huge, nil
+	for _, m in workspace.VFDummies:GetChildren() do
+		local n = tonumber(string.match(m.Name, "^Dummy_(%d+)$"))
+		local p = if n then m:GetPivot().Position / S else nil
+		local d = if p then Vector2.new(p.X - x, p.Z - z).Magnitude else math.huge
+		if d < best then
+			best, id = d, BASE + n
+		end
+	end
+	return id
+end
+function shoot(x, z, region, moving, n)
+	local was = me:GetAttribute("VFTrainingStep")
+	me:SetAttribute("VFTestAimEntity", dummyAt(x, z))
+	me:SetAttribute("VFTestAimRegion", region or "head")
+	for _ = 1, n or 8 do
+		me:SetAttribute("VFTestButtons", (moving or 0) + 128)
+		task.wait(0.1)
+		me:SetAttribute("VFTestButtons", moving or 0)
+		task.wait(0.4)
+		if me:GetAttribute("VFTrainingStep") ~= was then
+			break
+		end
+	end
+	me:SetAttribute("VFTestButtons", nil)
+	me:SetAttribute("VFTestAimEntity", nil)
+	task.wait(0.3)
+	step()
+end
+```
+
+- **TR1 Starting.** `set("VFTestPlay", "training")`: the server's Output has
+  `[VF] Arena off: Basic Training` and `[VF] training: <your UserId> at move`, and you're back at
+  the spawn with the Classic in hand and no shield. The panel at the top reads
+  `BASIC TRAINING  1 / 14`, `MOVE` and `Move with W A S D to the marker at the end of the lane.`,
+  and a gold column of light stands at the sprint lane's 20 m post, ahead and to your right.
+  `step()` prints `move`, and
+  `print(workspace:GetAttribute("VFTrainingOn"), workspace:GetAttribute("VFArenaOn"))` prints
+  `true false`. `set("VFTestPlayMenu", true)`: the Play menu's first card is Basic Training, reading
+  SOLO, and its line at the top reads `This server plays BASIC TRAINING.`;
+  `set("VFTestPlayMenu", false)`. **Send:** the lines, and how the panel and the column look.
+
+- **TR2 Moving, crouching, jumping.** `walkTo(20, -6)`: you run to the post and it moves on to
+  `crouch`, the panel at `2 / 14` and the column at the low tunnel. `walkTo(12, 8)` stands you at
+  the tunnel's mouth, still `crouch`; `walkTo(8, 8, 33)` crouches you into it: `jump`, the column on
+  the lowest box. `walkTo(5, 8, 33)` takes you out at the far end, and `walkTo(-6, -7.6, 17)` to the
+  box. `set("VFTestYaw", 0)` faces it, and `hop(0.15)` jumps onto it: `walk`. Short of it or over
+  it, walk back in front of it and try again with a longer or shorter run. **Send:** the lines, and
+  anything that moved on before you were there.
+
+- **TR3 Walking.** `set("VFTestYaw", 180)` and `hold(1, 0.6)`: running doesn't count,
+  `walk 0 / 6 m`. `hold(17, 1)`: about `3 / 6 m`, counting on the panel's bottom line.
+  `hold(17, 1.5)`: `shoot`, and a gold ring under the target 10 m down the range. **Send:** the
+  lines.
+
+- **TR4 Shooting.** `walkTo(0, 0)` back to the spawn, then `shoot(0, -10, "body")`: the target
+  falls, and `still`, the ring under the crouching target at 20 m. `shoot(-2, -20, "head", 4, 6)`
+  fires as you strafe left: once it falls, `step()` still prints `still`, with the note
+  `You were moving as that shot went off: stop, then fire.`, red on the panel's bottom line for 5 s
+  (if it doesn't fall, again). `walkTo(0, 0)`, then `shoot(-2, -20)`: `head`, and the ring under the
+  target behind the cover. `shoot(8, -22)`: `reload`. **Send:** the lines.
+
+- **TR5 Reloading and a rifle.** `hold(512, 0.1)` (with a full magazine, `hold(128, 0.1)` first to
+  fire one), then two seconds later `step()`: `rifle`, the Vandal in your hand with `25` in its
+  magazine, and the ring between the two targets at 30 m. `shoot(1.5, -30, "head", 0, 3)` from the
+  hip: once one falls, `step()` still prints `rifle`, with the note `Aim down sights first ({aim}).`
+  and the panel's `Aim down sights first (RIGHT CLICK).` `hold(256, 0.1)` aims down the sights, and
+  `shoot(1.5, -30)`: `shield`. **Send:** the lines.
+
+- **TR6 Buying and abilities.** `set("VFTestBuy", "light")`: a Light Shield on the health bar, and
+  `abilities 0 / 3`. `hold(4096, 0.1)`: Cloudburst, `1 / 3`; `hold(8192, 0.1)`: Updraft, `2 / 3`;
+  `hold(16384, 0.1)`, and a second later `step()`: Tailwind readies, and `ultimate`.
+  `hold(32768, 0.1)`: Blade Storm, and `plant`, the column at the spike behind the spawn. **Send:**
+  the lines.
+
+- **TR7 The spike.** `walkTo(0, 4)` picks the spike up. Go onto site A, marked on the floor 8 m left
+  of the spawn and 26 m behind it (`walkTo(-8, 26)`, round its low wall if it's in the way), until
+  the prompt under the crosshair reads `HOLD 4 TO PLANT`. `set("VFTestSlot", 4)`, then
+  `hold(1024, 4.5)`: planted, and `defuse`, the panel down a little, clear of the spike's light.
+  `hold(1024, 7.5)` by the spike: defused, and `done`. The panel reads `BASIC TRAINING COMPLETE`,
+  `DONE` and
+  `That's the basics. Open the Play menu (M) for a match: Skirmish to warm up, then Unrated.`, with
+  no marker. **Send:** the lines.
+
+- **TR8 Gone off.** `set("VFTestTraining", "plant")`: `plant` again. Five seconds after the defuse a
+  new spike lies behind the spawn: plant it as in TR7, then walk away and let it go off (45 s):
+  `step()` prints `plant` with the note `It went off: plant it again.`, red on the panel for 5 s.
+  **Send:** the lines.
+
+- **TR9 The buttons' names.** `set("VFTestTraining", "crouch")`, then
+  `set("VFTestPad", "0 0 0 0 0 0")` and `panel()`:
+  `Crouch (click L3) and get into the low tunnel by the marker.` `set("VFTestPad", nil)`,
+  `set("VFTestTouch", "0 0 0 0")` and `panel()`: `Crouch (tap CROUCH) ...`.
+  `set("VFTestTouch", nil)` and `panel()`: `Crouch (hold CTRL) ...`.
+  `set("VFTestTraining", "rifle")`: the Vandal again, in your hand. **Send:** the lines.
+
+- **TR10 Leaving.** `set("VFTestPlay", "skirmish")`: the server's Output has `[VF] Arena on: ...`,
+  the panel and the marker are gone, `step()` prints `nil nil nil`, and `VFTrainingOn` reads
+  `false`. `set("VFTestPlay", "training")` again: back at `move`, `1 / 14`, on the Classic and the
+  knife. Then `require(game.ReplicatedStorage.Shared.Net.Remotes).get().Arena:FireServer("off")`, as
+  P asks for the arena off: the plain course, no panel, `VFTrainingOn` `false`. **Send:** the lines.
+
+- **TR11 A server of its own (Bradley, once the place is published).** PLAY for Basic Training on a
+  live server sends you to a new server, straight into it, at MOVE; a second player picking it at
+  the same time lands on a server of their own; and PLAY for Skirmish from there sends you to a
+  Skirmish server. **Send:** where each PLAY took you.
+
+- **TR12 The feel (Bradley).** Play it through with the keys, a controller and a phone: where a
+  step's text or marker leaves you unsure, and where a step is too easy or too hard. **Send:** what
+  to change.
 
 ## Results
 
@@ -7012,6 +7207,18 @@ TC5 the lines: ___; anything that didn't open or shut: ___
 TC6 the lines: ___; the takeover lines: ___
 TC7 the prompts: ___ / ___; planted: yes / no
 TC8 what felt off: ___; the sizes: ___; Touch look: ___
+TR1 the lines: ___; the panel and the column: ___
+TR2 the lines: ___; anything that moved on before you were there: ___
+TR3 the lines: ___
+TR4 the lines: ___
+TR5 the lines: ___
+TR6 the lines: ___
+TR7 the lines: ___
+TR8 the lines: ___
+TR9 the lines: ___
+TR10 the lines: ___
+TR11 where each PLAY took you: ___
+TR12 what to change: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -7445,3 +7652,9 @@ Didn't look right (IDs and what you saw):
 | 71 | With a menu up, only CLOSE, which shuts it | TC5 |
 | 71 | Dead: FIRE and AIM switching, and USE taking over the bot watched | TC6 |
 | 71 | On a phone: the feel, the sizes, and Roblox's own touch controls gone | TC8 |
+| 72 | PLAY for Basic Training: the course, the kit, the panel and the marker | TR1 |
+| 72 | Each step moving on once it's done, and not before; the notes | TR2, TR3, TR4, TR5, TR6, TR7 |
+| 72 | The spike gone off before the defuse, back to planting | TR8 |
+| 72 | The buttons named for a gamepad and a touch screen | TR9 |
+| 72 | Leaving it for another mode, with nothing of it left | TR10 |
+| 72 | On a live server: a new server for each player who picks it | TR11 |

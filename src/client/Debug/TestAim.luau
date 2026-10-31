@@ -60,10 +60,10 @@
 --                  itself
 --   VFTestPlayMenu true opens the Play menu as M does (system 24), false
 --                  closes it if it may close; then clears itself
---   VFTestPlay     a mode's key ("skirmish", "duel", "gungame", "deathmatch",
---                  "teamdeathmatch", "standard", "competitive" or
---                  "swiftplay"): presses PLAY for it as the Play menu's
---                  button does, then clears itself
+--   VFTestPlay     a mode's key ("training", "skirmish", "duel", "gungame",
+--                  "deathmatch", "teamdeathmatch", "standard",
+--                  "competitive" or "swiftplay"): presses PLAY for it as
+--                  the Play menu's button does, then clears itself
 --   VFTestLoadouts true opens the loadout menu as B does in Team Deathmatch
 --                  (system 27), false closes it; then clears itself
 --   VFTestPick     "stage,index" ("2,3"): picks that loadout for that stage
@@ -107,6 +107,9 @@
 --                  scores, agents, play, settings, fire2 and close;
 --                  TouchRules.parse). Clearing it gives the mouse and keys
 --                  back
+--   VFTestTraining a step's key ("plant"): moves you to that step of Basic
+--                  Training while you're in it (system 72, the Training
+--                  remote), then clears itself
 --
 -- Outside Studio this does nothing.
 
@@ -315,6 +318,11 @@ function TestAim.start(controller: any)
 		end
 		Gamepad.test = PadRules.parse(player:GetAttribute("VFTestPad"))
 		TouchControls.test = TouchRules.parse(player:GetAttribute("VFTestTouch"))
+		local training = player:GetAttribute("VFTestTraining")
+		if typeof(training) == "string" and training ~= "" then
+			player:SetAttribute("VFTestTraining", nil)
+			Remotes.get().Training:FireServer(training)
+		end
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then
 			return

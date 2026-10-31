@@ -37,6 +37,7 @@ local definitions: { [string]: string } = {
 	Hurt = "RemoteEvent", -- server -> each player, where a hit they took came from (system 54)
 	Banner = "RemoteEvent", -- server -> a killer, their kill's banner (system 55)
 	TakeOver = "RemoteEvent", -- client -> server, F watching a bot: take it over for the round (system 62)
+	Training = "RemoteEvent", -- client -> server, Basic Training: a step to go to, in Studio (system 72)
 }
 
 export type Remotes = {
@@ -65,6 +66,7 @@ export type Remotes = {
 	Hurt: RemoteEvent,
 	Banner: RemoteEvent,
 	TakeOver: RemoteEvent,
+	Training: RemoteEvent,
 }
 
 local cached: Remotes? = nil

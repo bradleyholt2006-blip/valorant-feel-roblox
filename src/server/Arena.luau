@@ -191,6 +191,12 @@
 -- and too long without playing they're warned and then taken out, their
 -- place held as for anyone who left.
 --
+-- Basic Training (system 72, TrainingServer) is played on the course, with
+-- the arena off and Workspace's VFTrainingOn (TrainingConfig.ON), a server
+-- of its own for each player who picks it: each player in the server goes
+-- through its steps, the one in it as this server's match has them
+-- (Arena.has and playing). Whatever P asks for ends it.
+--
 -- P (Studio or the place owner) moves on through the arena, the 1v1, gun
 -- game, the spike rounds in the standard format, the spike rounds in
 -- Swiftplay's, and off. So do Workspace's attributes, set from the server,
@@ -235,6 +241,7 @@ local MatchRules = require(Shared.Match.MatchRules)
 local PlayConfig = require(Shared.Match.PlayConfig)
 local Roster = require(Shared.Match.Roster)
 local SpikeMaps = require(Shared.Match.SpikeMaps)
+local TrainingConfig = require(Shared.Training.TrainingConfig)
 local PlayerSim = require(Shared.PlayerSim)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
@@ -269,6 +276,7 @@ local BannerServer = require(script.Parent.BannerServer)
 local CalloutServer = require(script.Parent.CalloutServer)
 local CareerServer = require(script.Parent.CareerServer)
 local MapDresser = require(script.Parent.MapDresser)
+local TrainingServer = require(script.Parent.TrainingServer)
 local Tuning = require(script.Parent.Tuning)
 
 local Arena = {}
@@ -1511,7 +1519,9 @@ local function begin(wanted: Mode, format: string)
 	publish()
 end
 
--- Plays what Workspace's attributes ask for, if it isn't already.
+-- Plays what Workspace's attributes ask for, if it isn't already: with
+-- the arena off, the course, and Basic Training on it (system 72) if
+-- that's on.
 local function apply()
 	local wanted: Mode? = nil
 	if Workspace:GetAttribute(ArenaConfig.ON) == true then
@@ -1529,13 +1539,16 @@ local function apply()
 			wanted = "skirmish"
 		end
 	end
+	local training = wanted == nil and Workspace:GetAttribute(TrainingConfig.ON) == true
 	local asked = Workspace:GetAttribute(MatchConfig.FORMAT)
 	local format = if typeof(asked) == "string" and MatchConfig.Formats[asked] then asked else MatchConfig.DEFAULT_FORMAT
 	local m = match
-	if wanted == mode and (wanted ~= "spike" or (m ~= nil and m.formatKey == format)) then
+	if wanted == mode and training == TrainingServer.on and (wanted ~= "spike" or (m ~= nil and m.formatKey == format)) then
 		return
 	end
 	stop()
+	-- Before the course's lives start, so that Basic Training's kit is theirs.
+	TrainingServer.setOn(training)
 	if wanted then
 		begin(wanted, format)
 		local m2, s2, g2, d2, t2 = match, skirmish, gun, dm, tdm
@@ -1556,7 +1569,7 @@ local function apply()
 		for _, player in Players:GetPlayers() do
 			spawn({ player.UserId })
 		end
-		print("[VF] Arena off")
+		print(if training then "[VF] Arena off: Basic Training" else "[VF] Arena off")
 	end
 end
 
@@ -1822,8 +1835,12 @@ function Arena.play(player: Player)
 	join(player.UserId)
 end
 
--- Whether someone is in what's played: on a side, or waiting in line.
+-- Whether someone is in what's played: on a side, or waiting in line; or
+-- going through Basic Training.
 function Arena.has(player: Player): boolean
+	if TrainingServer.on then
+		return TrainingServer.has(player)
+	end
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	local sides: Roster.Sides? = if s then s elseif m then m elseif g then g elseif d then d elseif t then t else nil
 	return sides ~= nil and (sides.members[player.UserId] ~= nil or Roster.placeInLine(sides, player.UserId) ~= nil)
@@ -1837,8 +1854,12 @@ function Arena.holds(player: Player): boolean
 end
 
 -- How many players are in what's played, on a side (not waiting in line,
--- and not the bots, which give way to them, system 60).
+-- and not the bots, which give way to them, system 60); or going through
+-- Basic Training.
 function Arena.playing(): number
+	if TrainingServer.on then
+		return TrainingServer.playing()
+	end
 	local s, m, g, d, t = skirmish, match, gun, dm, tdm
 	local members: { [number]: Roster.Member }? = if s
 		then s.members
@@ -1925,7 +1946,7 @@ function Arena.start()
 	if Workspace:GetAttribute(MatchConfig.FORMAT) == nil then
 		Workspace:SetAttribute(MatchConfig.FORMAT, MatchConfig.DEFAULT_FORMAT)
 	end
-	for _, name in { ArenaConfig.ON, ArenaConfig.MODE, MatchConfig.FORMAT } do
+	for _, name in { ArenaConfig.ON, ArenaConfig.MODE, MatchConfig.FORMAT, TrainingConfig.ON } do
 		Workspace:GetAttributeChangedSignal(name):Connect(apply)
 	end
 	Workspace:GetAttributeChangedSignal(MatchConfig.SKIP):Connect(function()
@@ -2018,7 +2039,8 @@ function Arena.start()
 	-- P asks for the next of: "skirmish", "duel", "gungame", a format of the
 	-- spike rounds, or "off" (true and false are the arena on and off). It takes
 	-- "deathmatch" and "teamdeathmatch" too, which P never asks for: the Play
-	-- menu has them.
+	-- menu has them. Each ends Basic Training (system 72), once the arena's
+	-- on, so that what's played changes once.
 	Remotes.get().Arena.OnServerEvent:Connect(function(player, asked)
 		if not Tuning.canTune(player) then
 			return
@@ -2035,7 +2057,10 @@ function Arena.start()
 			Workspace:SetAttribute(MatchConfig.FORMAT, asked)
 			Workspace:SetAttribute(ArenaConfig.MODE, "spike")
 			Workspace:SetAttribute(ArenaConfig.ON, true)
+		else
+			return
 		end
+		Workspace:SetAttribute(TrainingConfig.ON, false)
 	end)
 
 	-- Where someone's next life starts, a player's or a bot's.
