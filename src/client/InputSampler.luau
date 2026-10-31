@@ -8,7 +8,9 @@
 -- tick, which is what makes a fast semi-auto tap always fire.
 --
 -- A gamepad's flags come on top (system 68, Gamepad): held each tick as its
--- hook says, and its presses latched as a key's are.
+-- hook says, and its presses latched as a key's are. So do a touch
+-- screen's (system 71, TouchControls), while the last input was a touch,
+-- the mouse buttons being left out then: a tap's no click.
 
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -73,6 +75,11 @@ InputSampler.blockButtons = 0
 -- alt fire are the mouse buttons', blocked as they are.
 InputSampler.padSample = nil :: (() -> number)?
 InputSampler.padActive = false
+-- The touch screen's flags for each tick (TouchControls, system 71), and
+-- whether the last input was a touch. Its fire and alt fire are the mouse
+-- buttons', blocked as they are.
+InputSampler.touchSample = nil :: (() -> number)?
+InputSampler.touchActive = false
 
 local function flagFor(input: InputObject): number
 	for _, binding in InputSampler.Bindings do
@@ -91,13 +98,24 @@ function InputSampler.padPress(flags: number)
 	latched = bit32.bor(latched, flags)
 end
 
+-- Flags pressed on the touch screen, held for the next tick as a key's
+-- press is.
+function InputSampler.touchPress(flags: number)
+	latched = bit32.bor(latched, flags)
+end
+
+local function isMouse(input: InputObject): boolean
+	local kind = input.UserInputType
+	return kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.MouseButton2 or kind == Enum.UserInputType.MouseButton3
+end
+
 function InputSampler.start()
 	if started then
 		return
 	end
 	started = true
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if not processed then
+		if not processed and not (InputSampler.touchActive and isMouse(input)) then
 			latched = bit32.bor(latched, flagFor(input))
 		end
 	end)
@@ -115,21 +133,25 @@ function InputSampler.sample(): number
 		real = bit32.band(real, bit32.bnot(MOUSE_FLAGS))
 	end
 	local buttons = bit32.bor(real, InputSampler.extraButtons)
-	local pad = InputSampler.padSample
-	if pad then
-		local flags = pad()
-		if blocked then
-			flags = bit32.band(flags, bit32.bnot(MOUSE_FLAGS))
+	-- The gamepad's and the touch screen's, on top.
+	local function add(hook: (() -> number)?)
+		if hook then
+			local flags = hook()
+			if blocked then
+				flags = bit32.band(flags, bit32.bnot(MOUSE_FLAGS))
+			end
+			buttons = bit32.bor(buttons, flags)
 		end
-		buttons = bit32.bor(buttons, flags)
 	end
+	add(InputSampler.padSample)
+	add(InputSampler.touchSample)
 	for _, binding in InputSampler.Bindings do
 		if bit32.band(buttons, binding.flag) ~= 0 then
 			continue
 		end
 		local held = false
 		local keys = binding.keys
-		local mouse = if blocked then nil else binding.mouse
+		local mouse = if blocked or InputSampler.touchActive then nil else binding.mouse
 		if keys then
 			for _, key in keys do
 				held = held or UserInputService:IsKeyDown(key)

@@ -9,7 +9,7 @@
 -- Zoom, Vision Cones, and Show Map Region Names for the big map. And a
 -- gamepad's (system 68): how fast the right stick turns the view, Focus's
 -- share of that, inverting it and walking in Focus, with the buttons
--- listed.
+-- listed. And a touch screen's (system 71): how far a drag turns the view.
 --
 -- Each change applies at once and is kept for next time (ClientSettings,
 -- SettingsServer). The code box always holds the crosshair in use, so it can
@@ -44,7 +44,7 @@ SettingsMenu.setOpen = function(_open: boolean) end
 -- says what happened. For TestAim's VFTestSetting.
 SettingsMenu.enter = function(_key: string, _text: string) end
 
-local WIDTH, HEIGHT = 640, 880
+local WIDTH, HEIGHT = 640, 916
 local MARGIN = 20
 local LABEL_W = 170
 local BOX_W = 110
@@ -354,13 +354,16 @@ function SettingsMenu.start()
 	})
 
 	-- Controller -------------------------------------------------------------------
-	header(root, "CONTROLLER", 692)
+	header(root, "CONTROLLER AND TOUCH", 692)
 	numbers(714, {
 		{ key = "padLook", name = "Look speed", hint = "degrees a second" },
 		{ key = "padFocus", name = "Focus speed", hint = "of that in Focus" },
 	})
 	choice("padInvert", "Invert look", left, 750, 76, { { "1", "ON" }, { "0", "OFF" } })
 	choice("padWalk", "Walk in Focus", right, 750, 76, { { "1", "ON" }, { "0", "OFF" } })
+	numbers(786, {
+		{ key = "touchLook", name = "Touch look", hint = "degrees a drag the screen's height turns" },
+	})
 	Ui.label(root, {
 		Name = "PadHelp",
 		Text = table.concat({
@@ -372,7 +375,7 @@ function SettingsMenu.start()
 		TextColor3 = Ui.DIM,
 		TextWrapped = true,
 		LineHeight = 1.15,
-		Position = UDim2.fromOffset(MARGIN, 788),
+		Position = UDim2.fromOffset(MARGIN, 824),
 		Size = UDim2.fromOffset(WIDTH - 2 * MARGIN, 58),
 	})
 	local status = Ui.label(root, {

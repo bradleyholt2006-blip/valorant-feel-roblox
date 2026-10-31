@@ -53,6 +53,7 @@ local IndicatorView = require(script.IndicatorView)
 local KillBannerView = require(script.KillBannerView)
 local AfkView = require(script.AfkView)
 local Gamepad = require(script.Gamepad)
+local TouchControls = require(script.TouchControls)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
 local DefaultSounds = require(script.Audio.DefaultSounds)
@@ -176,6 +177,7 @@ AfkView.start()
 -- cursor in the menus, and Select for the big map, the scores and the
 -- menus.
 Gamepad.start()
+TouchControls.start()
 
 DebugHud.start(PlayerController)
 SpeedGraph.start(PlayerController)

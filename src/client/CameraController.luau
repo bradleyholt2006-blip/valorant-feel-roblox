@@ -13,6 +13,8 @@ local Workspace = game:GetService("Workspace")
 
 local PlayerSettings = require(ReplicatedStorage:WaitForChild("Shared").Settings.PlayerSettings)
 
+local InputSampler = require(script.Parent.InputSampler)
+
 local CameraController = {}
 
 CameraController.YAW_DEGREES_PER_COUNT = PlayerSettings.YAW_DEGREES_PER_COUNT
@@ -46,6 +48,10 @@ CameraController.turnScale = 1
 -- A gamepad's right stick this frame (system 68, Gamepad), in counts as the
 -- mouse's: the view, or the cursor that has the mouse, moves by both.
 CameraController.padCounts = Vector2.zero
+-- A touch screen's look drags this frame (system 71, TouchControls), in
+-- counts as the mouse's. While the last input was a touch
+-- (InputSampler.touchActive), the mouse's own movement is left out.
+CameraController.touchCounts = Vector2.zero
 
 local MAX_PITCH = math.rad(89)
 
@@ -85,7 +91,8 @@ function CameraController.updateLook()
 	UserInputService.MouseIconEnabled = false
 	-- GetMouseDelta includes Roblox's own sensitivity slider; divide it out so
 	-- our sensitivity is the only scale applied.
-	local delta = UserInputService:GetMouseDelta() / userSensitivity() + CameraController.padCounts
+	local mouse = if InputSampler.touchActive then Vector2.zero else UserInputService:GetMouseDelta() / userSensitivity()
+	local delta = mouse + CameraController.padCounts + CameraController.touchCounts
 	local mapCursor = CameraController.mapCursor
 	if mapCursor then
 		mapCursor(delta)

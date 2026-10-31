@@ -52,6 +52,8 @@ export type Settings = {
 	padFocus: number, -- Focus's share of that
 	padInvert: boolean, -- up on the stick looks down
 	padWalk: boolean, -- Walk While in Focus
+	-- A touch screen (system 71).
+	touchLook: number, -- degrees a drag the length of the screen's short side turns the view
 }
 
 local PlayerSettings = {}
@@ -82,6 +84,7 @@ PlayerSettings.DEFAULTS = table.freeze({
 	padFocus = 0.5,
 	padInvert = false,
 	padWalk = false, -- charlieintel.com's: 'Turn off Walk While in Focus lets you move quicker'
+	touchLook = 120, -- ours: a drag right across a phone held sideways turns 210 to 260 degrees
 })
 
 PlayerSettings.LIMITS = table.freeze({
@@ -92,6 +95,7 @@ PlayerSettings.LIMITS = table.freeze({
 	mapZoom = { 0.6, 1.4 },
 	padLook = { 30, 720 },
 	padFocus = { 0.1, 1 },
+	touchLook = { 30, 400 },
 })
 
 -- Show Map Region Names' choices, in the menu's order.
@@ -157,6 +161,7 @@ function PlayerSettings.sanitize(raw: any): Settings
 		padFocus = clampNumber(t.padFocus, L.padFocus, D.padFocus),
 		padInvert = switch(t.padInvert, D.padInvert),
 		padWalk = switch(t.padWalk, D.padWalk),
+		touchLook = clampNumber(t.touchLook, L.touchLook, D.touchLook),
 	}
 end
 
@@ -181,6 +186,7 @@ function PlayerSettings.toText(s: Settings): string
 		"padFocus=" .. Crosshair.number(s.padFocus),
 		"padInvert=" .. bit(s.padInvert),
 		"padWalk=" .. bit(s.padWalk),
+		"touchLook=" .. Crosshair.number(s.touchLook),
 	}, "\n")
 end
 
