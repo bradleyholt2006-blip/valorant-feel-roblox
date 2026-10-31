@@ -19,13 +19,22 @@
 -- simulation, and never past its time on the server's clock, however her
 -- moves come in.
 --
+-- In her Empress's frenzy (system 75) each orb she earns heals her at once
+-- as Devour does, the orb kept for a Dismiss and no charge spent, and
+-- clients hear it as her Devour (AbilityServer.relay); what a heal given
+-- in the frenzy takes her past her most stays, as long as she lives
+-- (Patch 12.02: 'Healing applied while in Empress is still permanent').
+-- Her player's `VFEmpress` (a bot's stand-in's) is true while she's in
+-- it, for clients to draw her by.
+--
 -- Her orbs and her heals go as she dies or a new life starts, and
 -- everyone's with a new round (SoulServer.clear, from the arena). Bots play
 -- her as players do (system 65), each known by its stand-in
 -- (PlayerSimServer.Actor).
 --
 -- In Studio, the server's Output has a `[VF] soul:` line as each orb's
--- earned, each is taken and each overheal goes, for scripted checks.
+-- earned, each is taken, each heal her Empress casts starts, and each
+-- overheal goes or is kept, for scripted checks.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -34,6 +43,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local SoulSim = require(Shared.Abilities.SoulSim)
 local RobloxSpike = require(Shared.Spike.RobloxSpike)
 
@@ -60,6 +70,8 @@ local heals: { [Actor]: { { heal: SoulSim.Heal, lot: number } } } = {}
 local dismissed: { [Actor]: number } = {}
 -- When what's past each Reyna's most goes.
 local overUntil: { [Actor]: number } = {}
+-- Those whose frenzy their attribute shows (system 75).
+local crowned: { [Actor]: boolean } = {}
 local nextId = 0
 
 local function now(): number
@@ -78,6 +90,29 @@ local function isReyna(actor: Actor?): boolean
 	return kit ~= nil and kit.agent == "reyna"
 end
 
+-- Whether a Reyna's in her Empress's frenzy now, by her simulation's clock
+-- (system 75).
+local function frenzied(actor: Actor): boolean
+	local kit = PlayerSimServer.abilitiesOf(actor)
+	local t = PlayerSimServer.timeOf(actor)
+	return kit ~= nil and t ~= nil and AbilitySim.frenzied(kit, t)
+end
+
+-- Her attribute set to show her frenzy, or not.
+local function crown(actor: Actor, on: boolean)
+	if (crowned[actor] == true) == on then
+		return
+	end
+	if on then
+		crowned[actor] = true
+	else
+		crowned[actor] = nil
+	end
+	if actor.Parent then
+		actor:SetAttribute(AbilityConfig.EMPRESS_ATTRIBUTE, if on then true else nil)
+	end
+end
+
 local function publish(actor: Actor)
 	local text = SoulSim.encode(orbs[actor] or {})
 	if told[actor] ~= text then
@@ -94,6 +129,7 @@ local function forget(actor: Actor)
 	heals[actor] = nil
 	dismissed[actor] = nil
 	overUntil[actor] = nil
+	crown(actor, false)
 	if told[actor] then
 		publish(actor)
 		told[actor] = nil
@@ -137,6 +173,36 @@ local function intangible(entity: Entities.Entity): boolean
 	return now() < ends and kit ~= nil and kit.dismissUntil > 0
 end
 
+-- Devour's heal started for a Reyna at `t`.
+local function heal(actor: Actor, t: number)
+	local list = heals[actor] or {}
+	heals[actor] = list
+	table.insert(list, { heal = SoulSim.heal(t), lot = t })
+end
+
+-- Devour cast for a Reyna by her Empress as she earns an orb (system 75):
+-- its heal, the orb kept and no charge spent, and clients told of it as
+-- of a Devour of hers, her own client too, whose simulation didn't cast it.
+local function empressDevour(actor: Actor, t: number)
+	heal(actor, t)
+	local sim = PlayerSimServer.getSim(actor)
+	local eye, look = PlayerSimServer.view(actor)
+	if not sim or not eye or not look then
+		return
+	end
+	AbilityServer.relay(actor, {
+		slot = AbilityConfig.Q,
+		ability = "devour",
+		kind = "devour",
+		tick = sim.movement.tick,
+		time = PlayerSimServer.timeOf(actor) or 0,
+		position = sim.movement.position,
+		origin = eye,
+		direction = look,
+		auto = true,
+	})
+end
+
 local function onDamage(attacker: Entities.Entity?, victim: Entities.Entity)
 	local actor = if attacker then PlayerSimServer.actorOf(attacker) else nil
 	if not actor or not attacker or not isReyna(actor) or CombatServer.teammates(attacker, victim) then
@@ -172,6 +238,10 @@ local function onKill(attacker: Entities.Entity?, victim: Entities.Entity)
 			publish(actor)
 			local why = if actor == killer then "her kill" else string.format("hurt %.1f s before", t - hurtAt)
 			trace(string.format("%s earns %d at %.2f, %.2f, %.2f (%s)", actor.Name, orb.id, orb.at.x, orb.at.y, orb.at.z, why))
+			if frenzied(actor) then
+				empressDevour(actor, t)
+				trace(string.format("%s empress devour, %d kept", actor.Name, orb.id))
+			end
 		end
 	end
 end
@@ -184,10 +254,7 @@ local function onCast(actor: Actor, cast: any)
 		trace(string.format("%s %s takes %s (%s)", actor.Name, cast.kind, tostring(cast.soul), if taken then "there" else "gone"))
 	end
 	if cast.kind == "devour" then
-		local list = heals[actor] or {}
-		heals[actor] = list
-		local t = now()
-		table.insert(list, { heal = SoulSim.heal(t), lot = t })
+		heal(actor, now())
 	elseif cast.kind == "dismiss" then
 		dismissed[actor] = now() + RY.dismissTime.value
 	elseif cast.kind == "solid" then
@@ -223,7 +290,14 @@ function SoulServer.step(t: number)
 			end
 			if done then
 				table.remove(list, i)
-				overUntil[actor] = t + RY.overhealTime.value
+				-- What it took her past her most goes its time after, but
+				-- stays given in her Empress's frenzy (system 75).
+				if frenzied(actor) then
+					overUntil[actor] = nil
+					trace(actor.Name .. " overheal kept (empress)")
+				else
+					overUntil[actor] = t + RY.overhealTime.value
+				end
 			else
 				i += 1
 			end
@@ -236,6 +310,9 @@ function SoulServer.step(t: number)
 		if t >= ends then
 			dismissed[actor] = nil
 		end
+	end
+	for _, actor in PlayerSimServer.actors() do
+		crown(actor, PlayerSimServer.isAlive(actor) and frenzied(actor))
 	end
 	for actor, ends in overUntil do
 		if t >= ends and not heals[actor] then
@@ -263,6 +340,13 @@ function SoulServer.clear()
 	table.clear(dismissed)
 	table.clear(overUntil)
 	table.clear(hurt)
+	local lit = {}
+	for actor in crowned do
+		table.insert(lit, actor)
+	end
+	for _, actor in lit do
+		crown(actor, false)
+	end
 end
 
 function SoulServer.start()

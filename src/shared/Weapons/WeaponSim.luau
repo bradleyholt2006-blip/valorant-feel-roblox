@@ -25,6 +25,13 @@
 -- ability, while it's in hand (system 30: Phoenix's Curveball flare, which
 -- PlayerSim throws), and after, while it's steered (system 32: his Blaze).
 --
+-- A buff can quicken the hands (system 75: Reyna's Empress): its rounds
+-- come `rate` times as fast, and its draws and reloads go `handling` times
+-- as fast, which PlayerSim sets each tick. Its spray climbs and settles as
+-- it would without it, recovering from when the gun could have fired again
+-- at its own rate (Patch 9.05: 'consistent recoil control that matches the
+-- default rate of fire').
+--
 -- Times are seconds of simulation time (tick * dt). 1/128 is exact in binary,
 -- so client and server compute bit-identical times.
 
@@ -67,6 +74,10 @@ export type State = {
 	-- doesn't put it away again; 0 once the input has asked for it.
 	back: number,
 	hold: number,
+	-- A buff's quickening (system 75), 1 without one: how many times as fast
+	-- rounds come, and draws and reloads go.
+	rate: number,
+	handling: number,
 }
 
 export type Shot = {
@@ -165,6 +176,8 @@ function WeaponSim.newState(loadout: { string }?, seed: number?): State
 		combo = 0,
 		back = 1,
 		hold = 0,
+		rate = 1,
+		handling = 1,
 	}
 	for slot = 1, SLOTS do
 		WeaponSim.give(s, slot, s.loadout[slot])
@@ -182,7 +195,7 @@ end
 -- Starts drawing the weapon in the equipped slot: nothing can fire, reload or
 -- scope until its equip time has passed, and the spray starts over.
 local function draw(s: State, t: number)
-	s.equipEndTime = t + WeaponConfig.get(s.loadout[s.equipped]).equipTime.value
+	s.equipEndTime = t + WeaponConfig.get(s.loadout[s.equipped]).equipTime.value / s.handling
 	s.reloadEndTime = 0 -- switching cancels a reload
 	s.scoped = 0
 	s.sprayIndex = 0
@@ -421,7 +434,7 @@ end
 
 local function startReload(s: State, def: WeaponConfig.WeaponDef, t: number)
 	local slot = s.equipped
-	s.reloadEndTime = t + WeaponSim.reloadStep(def, s.ammo[slot], s.reserve[slot])
+	s.reloadEndTime = t + WeaponSim.reloadStep(def, s.ammo[slot], s.reserve[slot]) / s.handling
 	s.scoped = 0
 	s.burstLeft = 0
 end
@@ -590,7 +603,7 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 		s.reserve[slot] -= take
 		local perRound = def.reloadPerRound
 		if perRound and s.ammo[slot] < def.magazine.value and s.reserve[slot] > 0 then
-			s.reloadEndTime += perRound.value
+			s.reloadEndTime += perRound.value / s.handling
 		else
 			s.reloadEndTime = 0
 		end
@@ -634,7 +647,7 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 			if ready and s.ammo[slot] > 0 then
 				shots = fireRound(s, def, mode, 1, t, origin, tick, input, ctx)
 				s.burstLeft -= 1
-				s.burstNext += mode.interval
+				s.burstNext += mode.interval / s.rate
 			else
 				s.burstLeft = 0
 			end
@@ -643,8 +656,11 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 		local fired = if primary then mode elseif secondary then altMode else nil
 		if fired and ready and s.ammo[slot] > 0 and t >= s.nextFireTime - EPS then
 			-- How much of the spray recovered since the gun could fire again
-			-- decides which bullet of the spray this is.
-			local factor = Accuracy.recoveryFactor(fired.accuracy, t - s.nextFireTime, dt)
+			-- decides which bullet of the spray this is: quickened, since it
+			-- could have at its own rate.
+			local gap = if fired.burstRounds > 1 then fired.burstInterval else WeaponSim.spinInterval(fired, s.spin)
+			local early = if s.rate ~= 1 then gap - gap / s.rate else 0
+			local factor = Accuracy.recoveryFactor(fired.accuracy, t - s.nextFireTime - early, dt)
 			-- Holding the trigger through the cooldown keeps the exact cadence
 			-- (shots land on ticks, the remainder carries over); otherwise the
 			-- cooldown restarts from now.
@@ -652,10 +668,10 @@ function WeaponSim.step(s: State, input: any, t: number, dt: number, origin: vec
 			shots = fireRound(s, def, fired, factor, t, origin, tick, input, ctx)
 			if fired.burstRounds > 1 then
 				s.burstLeft = fired.burstRounds - 1
-				s.burstNext = nominal + fired.interval
-				s.nextFireTime = nominal + fired.burstInterval
+				s.burstNext = nominal + fired.interval / s.rate
+				s.nextFireTime = nominal + fired.burstInterval / s.rate
 			else
-				s.nextFireTime = nominal + WeaponSim.spinInterval(fired, s.spin)
+				s.nextFireTime = nominal + WeaponSim.spinInterval(fired, s.spin) / s.rate
 			end
 		end
 	end

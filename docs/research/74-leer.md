@@ -1,13 +1,13 @@
 # System 74: Reyna's Leer
 
-Reyna's Leer (C) can now be played, the last of her abilities but Empress. C readies the eye, and
-fire casts it: it flies 10 m along the crosshair over 0.4 s, on through walls and ceilings, and
-hangs where it gets to, though a floor in its way stops it short. Then for 2 s any enemy who looks
-at it is nearsighted, seeing no further than Paranoia leaves them, while they look and a moment
-after, unless they break it first: it has 100 health. This system adds the eye in hand and its
-flight, who looks at it and what they see, the eye in the level shots are traced through and its
-breaking, how it looks and sounds, how bots cast it, and Basic Training with it. It also fixes what
-Reyna's first run in Studio found (section 5).
+Reyna's Leer (C) can now be played, the last of her abilities but Empress, which system 75 adds. C
+readies the eye, and fire casts it: it flies 10 m along the crosshair over 0.4 s, on through walls
+and ceilings, and hangs where it gets to, though a floor in its way stops it short. Then for 2 s any
+enemy who looks at it is nearsighted, seeing no further than Paranoia leaves them, while they look
+and a moment after, unless they break it first: it has 100 health. This system adds the eye in hand
+and its flight, who looks at it and what they see, the eye in the level shots are traced through and
+its breaking, how it looks and sounds, how bots cast it, and Basic Training with it. It also fixes
+what Reyna's first run in Studio found (section 5).
 
 As before, everything comes from public sources: Riot's patch notes 5.07 and 5.12, Liquipedia's
 pages on Reyna and on Patch 5.12, guides by PC Gamer, esports.net, SteelSeries, Boosting Ground and
@@ -198,7 +198,7 @@ Her checks in section 77 passed, and found these, fixed here:
 
 - **Fire and Hunter's Fury.** Since Patch 5.12 damage from abilities breaks it; here only bullets
   and knives do, as for the Recon Bolt and the Owl Drone.
-- **Empress.** On her card, the bar and the buy menu, `NOT YET`.
+- **Empress.** Played since system 75 (75-empress.md).
 - **Bots against it.** Bots don't look away from an eye or shoot it; they're nearsighted by it as by
   Paranoia.
 - **Late joiners** don't see an eye already standing.

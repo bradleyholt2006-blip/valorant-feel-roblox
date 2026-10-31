@@ -341,7 +341,8 @@ local function onTick(info: any)
 			-- Switching cancels a reload, and its sound with it. The draw's
 			-- heard at once, but through Omen's teleports not till he's
 			-- there or sent back, and through Reyna's Dismiss, which puts
-			-- her gun away, not till it's over and she draws it again.
+			-- her gun away, not till it's over and she draws it again, nor
+			-- through her Empress's activation (system 75).
 			cancelReload(ownReload)
 			ownReload = nil
 			drawPending = true
@@ -352,7 +353,10 @@ local function onTick(info: any)
 			ownReload = newReload(id, now, w.reloadEndTime - now)
 		end
 		local kit = s.abilities
-		local away = AbilitySim.shadowing(kit, now) or AbilitySim.stepping(kit, now) or AbilitySim.dismissing(kit, now)
+		local away = AbilitySim.shadowing(kit, now)
+			or AbilitySim.stepping(kit, now)
+			or AbilitySim.dismissing(kit, now)
+			or AbilitySim.crowning(kit, now)
 		if drawPending and not away then
 			if sounds and SoundMath.drawHeard(drawSwitched, now - lastDrawAt) then
 				own(sounds.draw)

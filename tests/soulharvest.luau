@@ -108,11 +108,8 @@ do
 	)
 	check("and in agent select", table.find(AgentSelect.pickable(), "reyna") ~= nil)
 	check(
-		"Devour, Dismiss and Leer (system 74) can be played, Empress not yet",
-		AbilitySim.playable("devour")
-			and AbilitySim.playable("dismiss")
-			and AbilitySim.playable("leer")
-			and not AbilitySim.playable("empress")
+		"Devour, Dismiss, Leer (system 74) and Empress (system 75) can be played",
+		AbilitySim.playable("devour") and AbilitySim.playable("dismiss") and AbilitySim.playable("leer") and AbilitySim.playable("empress")
 	)
 	local D, M, L, X = AbilityConfig.Defs.devour, AbilityConfig.Defs.dismiss, AbilityConfig.Defs.leer, AbilityConfig.Defs.empress
 	local costs = D.cost and M.cost and L.cost

@@ -259,12 +259,13 @@ local SHAPES: { [string]: Shape } = {
 		},
 	},
 	-- Leer's eye (system 74): a violet orb the Healing Orb's size over the
-	-- open hand, its dark pupil to the front.
+	-- open hand, its dark pupil turned to her, as the eye cast turns it to
+	-- whoever watches it (system 75: on its far side, it was never seen).
 	leereye = {
 		muzzle = vector.create(0, 0.07, -0.13),
 		pieces = {
 			{ size = vector.create(0.09, 0.09, 0.09), offset = vector.create(0, 0.07, -0.08), accent = true }, -- eye
-			{ size = vector.create(0.04, 0.04, 0.01), offset = vector.create(0, 0.07, -0.126) }, -- pupil
+			{ size = vector.create(0.04, 0.04, 0.01), offset = vector.create(0, 0.07, -0.034) }, -- pupil
 			{ size = vector.create(0.06, 0.02, 0.08), offset = vector.create(0, -0.005, -0.06) }, -- hand
 		},
 	},

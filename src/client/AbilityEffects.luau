@@ -59,6 +59,12 @@
 --   * Leer: only heard here, as its eye's cast; LeerView draws the eye in
 --     flight and open, and sounds it opening and breaking, and
 --     ParanoiaView draws the nearsight it gives (system 74)
+--   * Empress: only heard here, as it's cast, and so is each Devour it
+--     casts for her as she earns an orb, which her own client hears from
+--     the server too; through it her Dismiss hides her from her enemies
+--     (RemoteEntities.ghost), the frenzy's glow about her is
+--     RemoteEntities', and SoulView darkens her screen's edges in violet
+--     (system 75)
 --   * Drift's glide: for others, faint rings of air left at the waist as
 --     they sink, so the air seems to rush up past them (system 20). It comes
 --     in their pose, so it's drawn as they are
@@ -241,7 +247,12 @@ local function onCast(event: any)
 		return
 	end
 	if event.entity == PlayerController.entityId then
-		return -- predicted already
+		-- Predicted already, but for a Devour her Empress cast for her as
+		-- she earned an orb (system 75), which only the server knows of.
+		if event.auto == true then
+			GameSounds.playCast(event.kind, Units.toMetres(event.position))
+		end
+		return
 	end
 	if event.kind == "flight" then
 		return -- a throw on its way: CloudView's, FlareView's, FireView's, BlazeView's, SlowView's, ParanoiaView's, ReconView's or LeerView's
@@ -254,7 +265,7 @@ local function onCast(event: any)
 	elseif event.kind == "shade" or event.kind == "home" then
 		return -- a Shade's: ShadowView's
 	elseif event.kind == "dismiss" then
-		RemoteEntities.ghost(event.entity, event.at, event.at + AbilityConfig.Reyna.dismissTime.value)
+		RemoteEntities.ghost(event.entity, event.at, event.at + AbilityConfig.Reyna.dismissTime.value, event.hidden == true)
 	end
 	table.insert(due, {
 		kind = event.kind,

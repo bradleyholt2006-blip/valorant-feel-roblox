@@ -175,14 +175,15 @@ local function holdCFrame(sim: PlayerSim.State, frameDt: number): (CFrame, boole
 	kick *= math.exp(-frameDt * 18)
 	flick *= math.exp(-frameDt * 12)
 
-	-- Drawing: comes up from below over the equip time.
-	local equipLeft = math.clamp((w.equipEndTime - t) / math.max(def.equipTime.value, 1e-3), 0, 1)
+	-- Drawing: comes up from below over the equip time, quickened as the
+	-- hands are (system 75: Reyna's Empress).
+	local equipLeft = math.clamp((w.equipEndTime - t) / math.max(def.equipTime.value / w.handling, 1e-3), 0, 1)
 	-- Reloading: dips and rolls for the middle of the reload, or of each
 	-- round for a gun that loads a round at a time.
 	local reloadDip = 0
 	if w.reloadEndTime > 0 then
 		local slot = w.equipped
-		local step = WeaponSim.reloadStep(def, w.ammo[slot], w.reserve[slot])
+		local step = WeaponSim.reloadStep(def, w.ammo[slot], w.reserve[slot]) / w.handling
 		local progress = 1 - math.clamp((w.reloadEndTime - t) / math.max(step, 1e-3), 0, 1)
 		reloadDip = if def.reloadPerRound then 0.6 + 0.4 * math.sin(progress * math.pi) else math.sin(progress * math.pi)
 	end

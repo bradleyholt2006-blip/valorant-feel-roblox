@@ -117,11 +117,11 @@ target downed by the step's spot but not as it asks leaves a note: moving as the
 the head, or not aimed down sights. The spike gone off while it's to be defused is back to planting,
 with a note. A step that gives a weapon (the Vandal) puts it in its slot as it starts and in each
 life during it, if it isn't there already. A gun run dry, magazine and reserve, is given again full,
-so nobody's held up for rounds. An ability the kit can't play yet (Reyna's Empress, system 73, and
-her Leer until system 74) counts as used, and while her Devour or Dismiss is still to use, the
-step's progress ends with a hint that each takes a Soul Orb. The step under way, how far through it
-the player is (the metres walked, the abilities used, and that hint) and the note go on the player
-as attributes, with a count of the notes given, so the same note given again shows again.
+so nobody's held up for rounds. An ability the kit can't play yet (as Reyna's Leer and Empress
+couldn't until systems 74 and 75) counts as used, and while her Devour or Dismiss is still to use,
+the step's progress ends with a hint that each takes a Soul Orb. The step under way, how far through
+it the player is (the metres walked, the abilities used, and that hint) and the note go on the
+player as attributes, with a count of the notes given, so the same note given again shows again.
 
 ### On the client
 

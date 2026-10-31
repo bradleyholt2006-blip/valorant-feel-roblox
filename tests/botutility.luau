@@ -568,6 +568,8 @@ do
 				-- one looking at the way in sees it.
 				do
 					local sim = botAt(world, stage, "reyna", seed)
+					-- Her points spent, as Empress comes first at the way in.
+					sim.abilities.points = 0
 					local c = BotUtility.choose(momentOf(sim, push), sim.abilities, BotUtility.memo(), EXPERT, diceOf(seed), world)
 					local found = c ~= nil and c.ability == "leer"
 					local cast = if c and found then find(play(sim, c, world), "leer") else nil

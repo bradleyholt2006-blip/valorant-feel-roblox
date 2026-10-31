@@ -281,9 +281,10 @@ local function currentPose(r: Record): PlayerCodec.Pose
 	local m, w, kit = r.sim.movement, r.sim.weapons, r.sim.abilities
 	local t = m.tick * DT
 	local body = AbilitySim.droning(kit) or math.abs(kit.landAt - t) < 1e-9
-	-- Defusing, taking an Ultimate Orb (system 49), flying the Owl Drone or
-	-- through Reyna's Dismiss (system 73), the weapon is put away.
-	local away = SpikeSim.stowed(r.sim.spike) or AbilitySim.droning(kit) or AbilitySim.dismissing(kit, t)
+	-- Defusing, taking an Ultimate Orb (system 49), flying the Owl Drone,
+	-- through Reyna's Dismiss (system 73) or her Empress's activation
+	-- (system 75), the weapon is put away.
+	local away = SpikeSim.stowed(r.sim.spike) or AbilitySim.droning(kit) or AbilitySim.dismissing(kit, t) or AbilitySim.crowning(kit, t)
 	return {
 		id = r.entity.id,
 		position = m.position,

@@ -212,9 +212,9 @@ end
 
 local ACK_SIZE = 4 -- seq
 	+ 4 + 8 * 3 + 8 * 3 + 4 * 3 + 1 + 8 + 4 + 4 -- movement
-	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 -- weapons
+	+ SLOTS + SLOTS + 2 * SLOTS + 1 + 8 * 3 + 1 + 1 + 8 + 8 + 4 + 4 + 8 + 1 + 1 + 8 + 8 + 1 + 2 + 2 -- weapons
 	+ 1 + 8 + 8 + 1 + 1 -- the spike's plant or defuse, or an Ultimate Orb taken
-	+ 1 + 3 + 3 + 10 + 8 * 28 + 4 * 18 -- the ability kit
+	+ 1 + 3 + 3 + 10 + 8 * 29 + 4 * 18 -- the ability kit
 	+ 4 + 8 -- tag
 
 local function ago(tick: number, past: number): number
@@ -276,6 +276,10 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	w8(c, w.combo)
 	w8(c, w.back)
 	w8(c, w.hold)
+	-- A buff's quickening (system 75), in hundredths: the frenzy's are whole
+	-- hundredths, so they come back exactly.
+	w8(c, math.clamp(math.round(w.rate * 100), 0, 255))
+	w8(c, math.clamp(math.round(w.handling * 100), 0, 255))
 
 	local k = s.spike
 	w8(c, k.channel)
@@ -339,6 +343,7 @@ function PlayerCodec.encodeAck(seq: number, s: any): buffer
 	wf64(c, a.bodyYaw)
 	wf64(c, a.bodyPitch)
 	wf64(c, a.dismissUntil)
+	wf64(c, a.empressAt)
 	-- Exact: a vector's components are single precision.
 	for _, v in { a.mark, a.stepTo, a.shadowFrom, a.shadowTo, a.dronePos, a.droneVel } do
 		wf32(c, v.x)
@@ -414,6 +419,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local combo = r8(c)
 	local back = r8(c)
 	local hold = r8(c)
+	local rate = r8(c) / 100
+	local handling = r8(c) / 100
 	local weapons = {
 		loadout = loadout,
 		ammo = ammo,
@@ -437,6 +444,8 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		combo = combo,
 		back = back,
 		hold = hold,
+		rate = rate,
+		handling = handling,
 	}
 
 	local channel = r8(c)
@@ -497,6 +506,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 	local bodyYaw = rf64(c)
 	local bodyPitch = rf64(c)
 	local dismissUntil = rf64(c)
+	local empressAt = rf64(c)
 	local function point(): vector
 		local x = rf32(c)
 		local y = rf32(c)
@@ -561,6 +571,7 @@ function PlayerCodec.decodeAck(b: buffer): (number, any)
 		bodyYaw = bodyYaw,
 		bodyPitch = bodyPitch,
 		dismissUntil = dismissUntil,
+		empressAt = empressAt,
 	}
 
 	local tagUntilTick = r32(c)
