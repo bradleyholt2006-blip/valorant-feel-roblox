@@ -503,6 +503,13 @@ Built one system at a time:
     the level before it's thrown, so it lands where the bot means it to and keeps off its own side,
     and bots buy their charges with what's left after their guns -
     [research and design](docs/research/66-bots-abilities.md)
+67. **Competitive ranks and careers**: after five placement matches Competitive gives each player
+    a rank from Iron 1 to Ascendant 3, then each win gains RR and each loss loses it by Riot's
+    published rules: 100 RR promotes, a loss at 0 RR demotes, rank shields guard a rank's first
+    tier, and Immortal 2, Immortal 3 and Radiant come by RR. A hidden MMR sets how much each match
+    is worth, and bots count at their skill's. Every mode keeps each player's record, saved with the
+    rank in a data store, and the Play menu and Competitive's victory screen show them -
+    [research and design](docs/research/67-competitive-ranks.md)
 
 ## Running it
 

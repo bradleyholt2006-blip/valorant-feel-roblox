@@ -170,6 +170,11 @@
 -- carried is theirs (SpikeServer.botTaken), and its next life's on the
 -- starting kit.
 --
+-- Every match played to its end counts in the careers of the players in it
+-- (system 67, CareerServer): their part in it as the rules ended it, by
+-- its mode, and in Competitive their rank. Leaving a Competitive match
+-- under way is a loss.
+--
 -- P (Studio or the place owner) moves on through the arena, the 1v1, gun
 -- game, the spike rounds in the standard format, the spike rounds in
 -- Swiftplay's, and off. So do Workspace's attributes, set from the server,
@@ -206,6 +211,7 @@ local BotBuy = require(Shared.Bots.BotBuy)
 local BotConfig = require(Shared.Bots.BotConfig)
 local BotFill = require(Shared.Bots.BotFill)
 local BotUtility = require(Shared.Bots.BotUtility)
+local CareerRules = require(Shared.Career.CareerRules)
 local MapVote = require(Shared.Match.MapVote)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
@@ -243,6 +249,7 @@ local OrbServer = require(script.Parent.OrbServer)
 local ReportServer = require(script.Parent.ReportServer)
 local BannerServer = require(script.Parent.BannerServer)
 local CalloutServer = require(script.Parent.CalloutServer)
+local CareerServer = require(script.Parent.CareerServer)
 local MapDresser = require(script.Parent.MapDresser)
 local Tuning = require(script.Parent.Tuning)
 
@@ -345,6 +352,8 @@ local packModels: { [number]: Model } = {}
 local seenMatch, seenRound = 0, 0
 local livedMatch, livedRound = 0, 0
 local endedMatch, endedRound = 0, 0
+-- The last match counted in everyone's careers (system 67), by its key.
+local counted: string? = nil
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -1145,6 +1154,43 @@ local function leave(id: number)
 	spawn(ids)
 end
 
+-- What's played as the careers have it (system 67, CareerRules): its mode,
+-- how it stands and everyone in it, bots and all; nil with nothing played.
+local function standing(): CareerRules.Match?
+	local s, m, g, d, t = skirmish, match, gun, dm, tdm
+	local sides: Roster.Sides? = if s then s elseif m then m elseif g then g elseif d then d elseif t then t else nil
+	local key = if sides and mode then PlayConfig.keyOf(true, mode, if m then m.formatKey else nil) else nil
+	if not sides or not key then
+		return nil
+	end
+	local players: { [number]: CareerRules.Player } = {}
+	for id, member in sides.members do
+		players[id] = {
+			side = member.side,
+			kills = member.kills,
+			deaths = member.deaths,
+			assists = member.assists,
+			score = member.score,
+			rounds = member.rounds,
+			bot = BotServer.has(id),
+		}
+	end
+	local state = s or m
+	return {
+		mode = key,
+		winner = if state
+			then state.matchWinner
+			elseif g then g.matchWinner
+			elseif d and d.winner then DeathmatchRules.sideOf(d, d.winner)
+			elseif t then t.matchWinner
+			else nil,
+		score = if state then table.clone(state.score) else { 0, 0 },
+		rounds = if state then state.round else 0,
+		winScore = if m then m.format.winScore.value elseif s then s.winScore else 0,
+		players = players,
+	}
+end
+
 -- Bots in what's played (system 60): as many joining as fill it up to the
 -- mode's quota with the players in it, on a side or in line, and leaving as
 -- BotFill says, as players would; none at all with Workspace's VFBots
@@ -1686,6 +1732,18 @@ function Arena.step(time: number)
 	else
 		return
 	end
+	-- A match over (system 67): everyone's part in it, for their careers, as
+	-- the rules ended it, before any bot gives way.
+	local phase = if s then s.phase elseif m then m.phase elseif g then g.phase elseif d then d.phase elseif t then t.phase else nil
+	if phase == "matchOver" then
+		local number = if s then s.match elseif m then m.match elseif g then g.match elseif d then d.match elseif t then t.match else 0
+		local key = string.format("%d:%d", begun, number)
+		local ended = if counted ~= key then standing() else nil
+		counted = key
+		if ended then
+			CareerServer.finished(ended)
+		end
+	end
 	fill()
 	publish()
 	roundStarted()
@@ -1729,6 +1787,20 @@ function Arena.start()
 			TeamDeathmatchRules.skip(t, now())
 		end
 		publish()
+	end)
+	-- The spike rounds' round under way to the side named, for scripted
+	-- checks of a whole match (system 67).
+	Workspace:GetAttributeChangedSignal(MatchConfig.DECIDE):Connect(function()
+		local side = Workspace:GetAttribute(MatchConfig.DECIDE)
+		if side == nil then
+			return
+		end
+		Workspace:SetAttribute(MatchConfig.DECIDE, nil)
+		local m = match
+		if m and (side == 1 or side == 2) then
+			MatchRules.decide(m, side, now())
+			publish()
+		end
 	end)
 	-- F watching a bot on their side, down: take it over (system 62).
 	Remotes.get().TakeOver.OnServerEvent:Connect(function(player, bot)
@@ -2164,6 +2236,15 @@ function Arena.start()
 		killedWith[id] = nil
 		chosen[player] = nil
 		diedAt[id] = nil
+		-- Leaving a Competitive match under way (system 67): a loss, as it
+		-- stands.
+		local m = match
+		if m and m.formatKey == CareerRules.RANKED and m.phase ~= "matchOver" and m.phase ~= "vote" then
+			local stands = standing()
+			if stands then
+				CareerServer.left(stands, id)
+			end
+		end
 		leave(id)
 	end)
 
