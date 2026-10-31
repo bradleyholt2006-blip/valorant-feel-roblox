@@ -89,6 +89,14 @@
 --   VFTestReport   "toggle" shows or hides the combat report as N does
 --                  (system 53), and "details" opens or shuts its details
 --                  as mouse 3 does; then clears itself
+--   VFTestPad      a gamepad held as given, while set (system 68): the
+--                  left stick's x and y, the right's, the left trigger and
+--                  the right, then the names of the buttons held, all
+--                  apart by spaces ("0 1 0 0 0 1 a lb": running ahead,
+--                  firing and jumping with LB held; the names are a, b, x,
+--                  y, lb, rb, lt, rt, l3, r3, up, down, left, right and
+--                  select; PadRules.parse). Clearing it gives the mouse
+--                  and keys back
 --
 -- Outside Studio this does nothing.
 
@@ -99,6 +107,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilitySim = require(Shared.Abilities.AbilitySim)
 local Hitboxes = require(Shared.Combat.Hitboxes)
+local PadRules = require(Shared.Input.PadRules)
 local PlayerSim = require(Shared.PlayerSim)
 local Units = require(Shared.Units)
 local Remotes = require(Shared.Net.Remotes)
@@ -119,6 +128,7 @@ local PingView = require(script.Parent.Parent.PingView)
 local ReportView = require(script.Parent.Parent.ReportView)
 local RemoteEntities = require(script.Parent.Parent.RemoteEntities)
 local Spectate = require(script.Parent.Parent.Spectate)
+local Gamepad = require(script.Parent.Parent.Gamepad)
 
 local TestAim = {}
 
@@ -291,6 +301,7 @@ function TestAim.start(controller: any)
 			player:SetAttribute("VFTestReport", nil)
 			ReportView.test(report)
 		end
+		Gamepad.test = PadRules.parse(player:GetAttribute("VFTestPad"))
 		local sim: PlayerSim.State? = controller.sim
 		if not sim then
 			return

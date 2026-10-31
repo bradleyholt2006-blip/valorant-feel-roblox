@@ -25,6 +25,8 @@
 --     (MinimapView, PingView.shown); and each with its sound, the map's its
 --     own (GameSounds.playPing). An enemy's is in the enemies' colour, the
 --     spike's in the spike's, and the rest in yours or your side's
+-- A gamepad's D-pad Up is Z, and its right stick moves the wheel's pick
+-- and the map's cursor as the mouse does (system 68, Gamepad).
 -- For scripted checks, PlayerGui's VFPings carries Shown (the markers on
 -- screen, each as its word and how far away it is: "HERE 12m, ENEMY 30m"),
 -- Left (the pings left, whole), Wheel ("" while it's shut, "open", or the
@@ -377,6 +379,28 @@ function PingView.test(what: string)
 	end
 end
 
+-- Z pressed, or a gamepad's D-pad Up (system 68, Gamepad): a ping as it's
+-- let go, or held long enough, the wheel.
+function PingView.press()
+	zDown = if zFree() then os.clock() else nil
+end
+
+-- Z let go: the option picked on the wheel pinged, if there's a ping left,
+-- or a tap's ping along the crosshair.
+function PingView.release()
+	local down = zDown
+	zDown = nil
+	if wheelOpen then
+		local picked = if Pings.left(budget, os.clock()) >= 1 then Pings.pick(pickX, pickY) else nil
+		shutWheel()
+		if picked then
+			pingLook(picked)
+		end
+	elseif down and os.clock() - down < P.hold.value then
+		pingLook(nil)
+	end
+end
+
 function PingView.start()
 	local gui = Ui.screen("VFPings", 13, Enum.ScreenInsets.None)
 	local wheel = newWheel()
@@ -387,7 +411,7 @@ function PingView.start()
 			return
 		end
 		if input.KeyCode == Enum.KeyCode.Z then
-			zDown = if zFree() then os.clock() else nil
+			PingView.press()
 		elseif input.UserInputType == Enum.UserInputType.MouseButton2 and wheelOpen then
 			-- Put away with nothing pinged.
 			shutWheel()
@@ -397,19 +421,8 @@ function PingView.start()
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
-		if input.KeyCode ~= Enum.KeyCode.Z then
-			return
-		end
-		local down = zDown
-		zDown = nil
-		if wheelOpen then
-			local picked = if Pings.left(budget, os.clock()) >= 1 then Pings.pick(pickX, pickY) else nil
-			shutWheel()
-			if picked then
-				pingLook(picked)
-			end
-		elseif down and os.clock() - down < P.hold.value then
-			pingLook(nil)
+		if input.KeyCode == Enum.KeyCode.Z then
+			PingView.release()
 		end
 	end)
 

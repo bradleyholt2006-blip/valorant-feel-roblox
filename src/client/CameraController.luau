@@ -43,6 +43,9 @@ CameraController.mapCursor = nil :: ((Vector2) -> ())?
 -- How fast the view turns, as a share of its usual: less while a blast of
 -- Sova's Hunter's Fury charges (system 46, FuryView).
 CameraController.turnScale = 1
+-- A gamepad's right stick this frame (system 68, Gamepad), in counts as the
+-- mouse's: the view, or the cursor that has the mouse, moves by both.
+CameraController.padCounts = Vector2.zero
 
 local MAX_PITCH = math.rad(89)
 
@@ -82,7 +85,7 @@ function CameraController.updateLook()
 	UserInputService.MouseIconEnabled = false
 	-- GetMouseDelta includes Roblox's own sensitivity slider; divide it out so
 	-- our sensitivity is the only scale applied.
-	local delta = UserInputService:GetMouseDelta() / userSensitivity()
+	local delta = UserInputService:GetMouseDelta() / userSensitivity() + CameraController.padCounts
 	local mapCursor = CameraController.mapCursor
 	if mapCursor then
 		mapCursor(delta)

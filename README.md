@@ -510,6 +510,14 @@ Built one system at a time:
     is worth, and bots count at their skill's. Every mode keeps each player's record, saved with the
     rank in a data store, and the Play menu and Competitive's victory screen show them -
     [research and design](docs/research/67-competitive-ranks.md)
+68. **A controller**: a gamepad plays the game on the console version's layout. RT fires, LT held
+    is Focus (the view turning slower) or a sniper's scope and LT with RS aims down sights, the
+    bumpers and B cast the abilities and both bumpers the ultimate, Y swaps guns and held draws the
+    knife, the D-pad pings, drops, draws the spike and opens the buy menu, and Select opens the big
+    map, the scoreboard and the menus. In a menu the pad drives Roblox's gamepad cursor and B shuts
+    it, the prompts name the pad's buttons while it's in use, and the settings menu sets the look
+    speed, Focus's share of it, inverting it and walking in Focus -
+    [research and design](docs/research/68-controller.md)
 
 ## Running it
 
@@ -576,6 +584,13 @@ O settings: sensitivity, scoped multiplier, mouse DPI (only for the cm/360 it sh
 crosshair code (Enter takes a box's value; DEFAULT puts back the reference's own crosshair) and
 the minimap's: Rotate or Fixed, the same way round or by side, kept centred, its size and zoom,
 the vision cones, and when the big map names its places.
+Controller: the left stick moves (tilted a little, it walks) and the right looks, RT fires, LT held
+is Focus or a sniper's scope and LT with RS aims down sights, A jumps, X reloads, L3 crouches until
+it's pressed again, RS is F, LB, RB and B are Q, E and C and both bumpers X, Y swaps guns (held, the
+knife), D-pad Up is Z, Left G, Down 4 and Right B, and Select the big map (held, the scoreboard;
+with D-pad Up, Left, Right or Down, M, T, O or N). In a menu the pad drives Roblox's gamepad cursor
+and B shuts it; while you're down, RT and LT switch whom you watch. O's settings menu has the
+controller's look speed, Focus's share of it, Invert look and Walk in Focus.
 Look: V turns it off and on again (lighting, vignette and outlines), to compare with the place's
 own lighting; I cycles the enemy outline colour.
 Arena: P moves on through the arena, gun game, the spike rounds, Swiftplay and off (Studio or
@@ -812,8 +827,11 @@ map together) and bots playing for the spike (who goes for it, a bot's hands pla
 it, an attack on every map and a retake of every site, and getting out of the blast) and taking over
 a bot (who may and when, what it changes in the round and its callouts, and the body's kit from the
 server to the client) and agents' bodies (the kit's skeleton, the head in the head box, planted
-feet, the hands on what they hold, a jump, a reload, a plant and a draw, and no pops) are pure Luau
-and run outside Roblox:
+feet, the hands on what they hold, a jump, a reload, a plant and a draw, and no pops) and bots'
+abilities (what each casts when, and where its throws land on each map) and Competitive's ranks
+(placements, RR, promotions, demotions and shields, the MMR, and each player's record) and a
+controller (the sticks as keys and turns, the bumpers' chord, taps and holds, LT's role and the zoom
+it wants, and the presses that bring a scope to it) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau
