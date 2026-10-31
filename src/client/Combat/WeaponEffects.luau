@@ -520,10 +520,14 @@ local function updateConfirms()
 end
 
 -- Someone else's round: a tracer for each bullet (unless their gun is
--- suppressed and they're on the other side) and the holes it made.
+-- suppressed and they're on the other side), the holes it made, and their
+-- body's gun kicking.
 local function onShotFx(fx: any)
 	if typeof(fx) ~= "table" or typeof(fx.from) ~= "Vector3" or typeof(fx.to) ~= "table" then
 		return
+	end
+	if typeof(fx.shooter) == "number" then
+		RemoteEntities.fired(fx.shooter)
 	end
 	local def = WeaponConfig.get(if typeof(fx.weapon) == "string" then fx.weapon else "knife")
 	local class: WeaponConfig.PenetrationClass = def.penetration

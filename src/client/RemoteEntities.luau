@@ -16,11 +16,13 @@
 -- Other players and bots (system 60, what's known of each is its
 -- stand-in's, Who) are drawn as an agent's body (BodyView, system 63) when
 -- there's one in ReplicatedStorage whose meshes have loaded here, posed
--- from their snapshots with its head in the head box; their blocks stay on
--- the hitboxes, unseen. Without one they're drawn as the dummies are, in
--- red. Their Roblox avatar is hidden on this client: it is shorter than the
--- hitboxes (a default avatar stands 1.43 m against the boxes' 1.75 m), so a
--- shot at its head would hit the body.
+-- from their snapshots with its head in the head box (only while it's on
+-- the screen, and kicking as they fire); their blocks stay on the hitboxes,
+-- unseen. Without one they're drawn as the dummies are, in red, and a body
+-- taken out of ReplicatedStorage while they're drawn goes with it. Their
+-- Roblox avatar is hidden on this client: it is shorter than the hitboxes
+-- (a default avatar stands 1.43 m against the boxes' 1.75 m), so a shot at
+-- its head would hit the body.
 --
 -- Over each is a label, their name and health, which shows through walls
 -- but for an enemy's (another side's): through a wall it would say where an
@@ -152,6 +154,12 @@ type Visual = {
 }
 local visuals: { [number]: Visual } = {}
 local dummyFolder: Folder? = nil
+-- When each entity last fired, os.clock() (WeaponEffects tells us).
+local shots: { [number]: number } = {}
+-- How far out from its feet a body reaches, for whether any of it is on
+-- the screen: a sphere round its middle (metres).
+local BODY_MIDDLE = Vector3.new(0, 0.9 * Units.STUDS_PER_METRE, 0)
+local BODY_REACH = 1.3 * Units.STUDS_PER_METRE
 -- In Studio, what the bodies cost: Workspace's BodyView.COST, on this
 -- client, has the milliseconds they take of each frame, on average over
 -- the last second.
@@ -433,6 +441,26 @@ local function watchPlayer(player: Player)
 	end
 end
 
+-- That an entity fired (a round of theirs the server sent): its body's gun
+-- kicks.
+function RemoteEntities.fired(id: number)
+	shots[id] = os.clock()
+end
+
+-- Whether a sphere (studs) is in the camera's view, any of it.
+local function inView(camera: Camera, centre: Vector3, radius: number): boolean
+	local at = camera.CFrame:PointToObjectSpace(centre)
+	if at.Z > radius then
+		return false -- behind
+	end
+	local size = camera.ViewportSize
+	local tanY = math.tan(math.rad(camera.FieldOfView) / 2)
+	local tanX = tanY * size.X / math.max(size.Y, 1)
+	-- How far outside each side's plane it is (ahead is -Z).
+	local nx, ny = math.sqrt(1 + tanX * tanX), math.sqrt(1 + tanY * tanY)
+	return (math.abs(at.X) + at.Z * tanX) / nx <= radius and (math.abs(at.Y) + at.Z * tanY) / ny <= radius
+end
+
 -- Lights up the region of a dummy or player the server says was hit.
 function RemoteEntities.flashRegion(id: number, region: string)
 	local visual = visuals[id]
@@ -457,6 +485,8 @@ local function onRender()
 	frameTime = InterpClock.advance(RemoteEntities.clock, now)
 	local renderTime = RemoteEntities.renderTime()
 	local mySide = Players.LocalPlayer:GetAttribute(ArenaConfig.SIDE)
+	local template = BodyView.template()
+	local camera = Workspace.CurrentCamera
 	for id in histories do
 		local present = RemoteEntities.isPresent(id)
 		local pose = if present then RemoteEntities.sample(id, renderTime) else nil
@@ -477,6 +507,7 @@ local function onRender()
 			-- They left.
 			histories[id] = nil
 			meters[id] = nil
+			shots[id] = nil
 			local gone = visuals[id]
 			if gone then
 				gone.model:Destroy()
@@ -489,10 +520,15 @@ local function onRender()
 		visual.model.Parent = if pose and id ~= RemoteEntities.viewing then folderFor(id) else nil
 		if pose then
 			RemoteEntities.placeBoxes(visual.parts, pose)
-			-- A player's or a bot's body, once there's one to draw.
+			-- A player's or a bot's body, once there's one to draw; the body
+			-- goes if its rig does, or another's drawn instead.
 			local body = visual.body
+			if body and body.source ~= template then
+				BodyView.destroy(body)
+				body = nil
+				visual.body = nil
+			end
 			if not body and not isDummy(id) then
-				local template = BodyView.template()
 				body = if template then BodyView.new(template) else nil
 				if body then
 					body.model.Parent = visual.model
@@ -517,7 +553,9 @@ local function onRender()
 			end
 			if body then
 				local started = os.clock()
-				BodyView.update(body, pose, now)
+				local shot = shots[id]
+				local seen = camera ~= nil and inView(camera, Units.toStuds(pose.position) + BODY_MIDDLE, BODY_REACH)
+				BodyView.update(body, pose, now, if shot then now - shot else nil, not seen)
 				BodyView.paint(body, flash, shade, protected)
 				bodySpent += os.clock() - started
 			end

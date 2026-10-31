@@ -3,8 +3,9 @@
 -- out from the poses the snapshots carry as they're drawn: how fast and
 -- which way it's moving in its own space, how far through its stride it
 -- is, whether it's in the air or just landed, reloading, planting or
--- gliding, and since when it's held what it holds. BodyPose turns it into
--- the body's pose.
+-- gliding, how its gun kicks as it fires, and since when it's held what it
+-- holds; standing, where each foot stands as it turns on the spot, and its
+-- steps round after the turn. BodyPose turns it into the body's pose.
 --
 -- The stride's length and the strides a second are matched to the speed
 -- (a stride's length times strides a second is the speed, as in Johansen's
@@ -28,8 +29,10 @@ export type Input = {
 	hold: Hold,
 	foregrip: vector?, -- where a long gun's left hand goes, gun space (BodyView, from its look)
 	reloading: boolean,
+	reloadLength: number?, -- seconds the gun's reload takes (WeaponConfig), for the left hand's trip
 	channel: number, -- 1 planting, 2 defusing, 3 taking an orb, 0 none
 	gliding: boolean,
+	sinceShot: number?, -- seconds since it last fired, if it has
 }
 
 export type State = {
@@ -46,7 +49,7 @@ export type State = {
 	time: number,
 	velocity: vector, -- body space, level, m/s
 	turn: number, -- radians a second, + to the left
-	travel: vector, -- what the legs step at: velocity and turning on the spot
+	travel: vector, -- what the legs step at: the velocity
 	direction: vector, -- body space, level, unit: the way the legs step
 	backward: boolean, -- stepping backward (the hips turn the other way)
 	moving: number, -- 0..1, how much the legs step
@@ -61,11 +64,25 @@ export type State = {
 	land: number, -- 1 just landed, to 0
 	reload: number, -- 0..1
 	reloadTime: number,
+	reloadLength: number,
+	reloadShare: number, -- 0..1 through the left hand's trip, over the reload's length
 	reloading: boolean,
+	kick: number, -- 0..1, the last shot's kick
 	plant: number, -- 0..1 planting or defusing
 	orb: number, -- 0..1 taking an orb
 	glide: number, -- 0..1
 	draw: number, -- seconds holding what it holds
+	-- Standing, each foot's turn from the way the body faces (left, right;
+	-- + to the left) and how far it's up, stepping round.
+	feet: { number },
+	footLift: { number },
+	-- Working: the way each foot faces, world yaw; how far through a step
+	-- round it is (-1 for none) and the way it faced as it set off; and the
+	-- foot to follow the one that's just stepped (0 for none).
+	footYaw: { number },
+	footStep: { number },
+	footFrom: { number },
+	footFollow: number,
 }
 
 local BodyMotion = {}
@@ -162,12 +179,90 @@ function BodyMotion.new(): State
 		land = 0,
 		reload = 0,
 		reloadTime = 0,
+		reloadLength = BodyConfig.Hold.reloadCycle.value,
+		reloadShare = 0,
 		reloading = false,
+		kick = 0,
 		plant = 0,
 		orb = 0,
 		glide = 0,
 		draw = math.huge,
+		feet = { 0, 0 },
+		footLift = { 0, 0 },
+		footYaw = { 0, 0 },
+		footStep = { -1, -1 },
+		footFrom = { 0, 0 },
+		footFollow = 0,
 	}
+end
+
+-- Standing, each foot stays where it stands as the body turns on the spot,
+-- until the body's turned far enough from it, and then steps round after
+-- it: the foot on the side it turns toward first, the other following.
+-- Moving or in the air, the feet come round with the body.
+local function turnFeet(s: State, yaw: number, grounded: boolean, dt: number)
+	local G = BodyConfig.Gait
+	local yaws, steps, from = s.footYaw, s.footStep, s.footFrom
+	if s.moving > 0.5 or not grounded then
+		for k = 1, 2 do
+			if steps[k] >= 0 then
+				yaws[k] = from[k] + wrap(yaw - from[k]) * steps[k]
+				steps[k] = -1
+			end
+			yaws[k] = yaw - wrap(yaw - yaws[k]) * math.exp(-8 * dt)
+		end
+		s.footFollow = 0
+	else
+		for k = 1, 2 do
+			if steps[k] >= 0 then
+				steps[k] += dt / G.turnStepTime.value
+				if steps[k] >= 1 then
+					steps[k] = -1
+					yaws[k] = yaw
+					s.footFollow = 3 - k
+				end
+			end
+		end
+		if steps[1] < 0 and steps[2] < 0 then
+			local lags = { wrap(yaw - yaws[1]), wrap(yaw - yaws[2]) }
+			local first = if lags[1] + lags[2] > 0 then 1 else 2
+			local follow = s.footFollow
+			s.footFollow = 0
+			local k = 0
+			if follow > 0 and math.abs(lags[follow]) > G.turnFollow.value then
+				k = follow
+			elseif math.abs(lags[first]) > G.turnStepAt.value then
+				k = first
+			elseif math.abs(lags[3 - first]) > G.turnStepAt.value then
+				k = 3 - first
+			end
+			if k > 0 then
+				steps[k], from[k] = 0, yaws[k]
+			end
+		end
+		-- Turned past the most, a foot turns where it stands.
+		local most = G.turnMost.value
+		for k = 1, 2 do
+			if steps[k] < 0 then
+				local lag = wrap(yaw - yaws[k])
+				if math.abs(lag) > most then
+					yaws[k] = yaw - math.sign(lag) * most
+				end
+			end
+		end
+	end
+	for k = 1, 2 do
+		local step = steps[k]
+		local facing = yaws[k]
+		local lift = 0
+		if step >= 0 then
+			local e = step * step * (3 - 2 * step)
+			facing = from[k] + wrap(yaw - from[k]) * e
+			lift = G.turnLift.value * math.sin(math.pi * step)
+		end
+		s.feet[k] = wrap(facing - yaw)
+		s.footLift[k] = lift
+	end
 end
 
 -- Moves the state on by dt seconds to a new frame's input.
@@ -184,6 +279,7 @@ function BodyMotion.step(s: State, input: Input, dt: number)
 		s.hold = input.hold
 		s.previous = input.hold
 		s.air = if input.grounded then 0 else 1
+		s.footYaw = { input.yaw, input.yaw }
 		dt = 0
 	end
 	dt = math.clamp(dt, 0, 0.1)
@@ -198,12 +294,9 @@ function BodyMotion.step(s: State, input: Input, dt: number)
 	end
 	s.time += dt
 
-	-- What the legs step at: the body's speed, and turning on the spot
-	-- shuffles them sideways (the planted feet would otherwise twist).
-	local spin = vector.create(-s.turn * G.turnStep.value, 0, 0)
-	local speed = vector.magnitude(s.velocity)
-	local stillness = math.clamp(1 - speed / 1.5, 0, 1)
-	s.travel = s.velocity + spin * stillness
+	-- What the legs step at: the body's speed (turning on the spot, the feet
+	-- step round after the turn, below).
+	s.travel = s.velocity
 	local pace = vector.magnitude(s.travel)
 	if pace > 0.05 then
 		s.direction = s.travel / pace
@@ -223,13 +316,16 @@ function BodyMotion.step(s: State, input: Input, dt: number)
 		s.backward = true
 	end
 	local folded = if s.backward then wrap(angle + math.pi) else angle
-	local hipTarget = -math.clamp(folded * G.hipTurn.value, -G.hipTurnMax.value, G.hipTurnMax.value) * s.moving
+	turnFeet(s, input.yaw, input.grounded, dt)
+	-- Standing, the hips turn part way toward the feet.
+	local standing = G.hipFollow.value * (s.feet[1] + s.feet[2]) / 2
+	local hipTarget = -math.clamp(folded * G.hipTurn.value, -G.hipTurnMax.value, G.hipTurnMax.value) * s.moving + standing * (1 - s.moving)
 	s.hipYaw = approach(s.hipYaw, hipTarget, dt, 0.15)
 
 	-- Off the ground and back on it.
 	if input.grounded then
-		if s.airTime > 0.25 then
-			s.land = math.clamp(s.airTime / 0.7, 0.35, 1)
+		if s.airTime > G.landFrom.value then
+			s.land = math.clamp(s.airTime / G.landLongest.value, 0, 1)
 		end
 		s.airTime = 0
 		s.air = approach(s.air, 0, dt, 0.05)
@@ -242,11 +338,16 @@ function BodyMotion.step(s: State, input: Input, dt: number)
 	-- Reloading, planting, gliding, drawing.
 	if input.reloading and not s.reloading then
 		s.reloadTime = 0
+		s.reloadShare = 0
 	end
 	s.reloading = input.reloading
+	s.reloadLength = input.reloadLength or BodyConfig.Hold.reloadCycle.value
 	if input.reloading then
 		s.reloadTime += dt
+		s.reloadShare = math.min(s.reloadShare + dt / math.max(s.reloadLength, 0.1), 1)
 	end
+	local since = input.sinceShot
+	s.kick = if since and since >= 0 then math.exp(-since / BodyConfig.Hold.kickTime.value) else 0
 	s.reload = approach(s.reload, if input.reloading then 1 else 0, dt, 0.1)
 	s.plant = approach(s.plant, if input.channel == 1 or input.channel == 2 then 1 else 0, dt, 0.25)
 	s.orb = approach(s.orb, if input.channel == 3 then 1 else 0, dt, 0.15)
