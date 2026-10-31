@@ -36,6 +36,7 @@ AfkServer.takeOut = nil :: ((player: Player) -> ())?
 type Record = {
 	clock: AfkRules.Clock,
 	shownAt: number?, -- the MatchConfig.AFK_AT last set, if it is
+	told: boolean, -- the warning printed, until the clock's no longer warned
 }
 
 local records: { [Player]: Record } = {}
@@ -81,6 +82,9 @@ function AfkServer.step(now: number, dt: number)
 	for player, r in records do
 		local s: AfkRules.State = if state and warnAfter then state(player) else "off"
 		local due = AfkRules.step(r.clock, dt, s, warnAfter or 0, outAfter)
+		if not r.clock.warned then
+			r.told = false
+		end
 		if due == "out" then
 			show(player, r, nil)
 			player:SetAttribute(MatchConfig.AFK_OUT, true)
@@ -89,7 +93,10 @@ function AfkServer.step(now: number, dt: number)
 				takeOut(player)
 			end
 		elseif r.clock.warned and s == "count" then
-			if not r.shownAt then
+			-- Once a warning: not again as it shows afresh after a round's
+			-- break.
+			if not r.told then
+				r.told = true
 				print(string.format("[VF] AFK: %d warned", player.UserId))
 			end
 			show(player, r, r.shownAt or now + AfkRules.left(r.clock, warnAfter or 0, outAfter))
@@ -106,7 +113,7 @@ end
 
 function AfkServer.start()
 	local function added(player: Player)
-		records[player] = { clock = AfkRules.new(), shownAt = nil }
+		records[player] = { clock = AfkRules.new(), shownAt = nil, told = false }
 	end
 	Players.PlayerAdded:Connect(added)
 	for _, player in Players:GetPlayers() do

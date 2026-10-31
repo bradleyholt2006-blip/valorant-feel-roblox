@@ -56,7 +56,7 @@ a line in Studio. Coming back from another server needs a live server, as Studio
 | What's held | Kills, deaths, assists, combat score and rounds, side, credits and agent | Estimate | Ours: the reference's agent stays in the match (Patch 6.01), and so, here, do its record and credits |
 | Credits while away | Paid each round as the side is: a win, a loss and its streak, the half's and overtime's starts; no kills, and never a loss survived | Estimate | Ours, as for an agent standing in the spawn |
 | While away | A bot fills the place, by system 60's quota | Estimate | Ours: the reference plays a player down, "with uneven teams" |
-| The agent | Kept, and no teammate can lock it in while they're away | Estimate | Ours |
+| The agent | Kept, and no teammate can lock it in while they're away; the bot standing in plays another while one's free, else theirs (with five agents a side, as now, none is) | Estimate | Ours |
 | Coming back | On their side, alive in a buy phase and else down until the next round; with both sides full, first in line until a place opens, the bot on their side the first to leave, as it's down or nothing's at stake | Estimate | Ours |
 | Competitive | Away at the match's end, or back too late to have played half its rounds: a loss, as leaving was (system 67), if they'd played a round; back in time: the match's result | Estimate | Ours; the reference: going AFK "will affect your RR" |
 | Other modes | Away at the end, or back too late: nothing, as leaving counts nothing in them | Estimate | Ours |
