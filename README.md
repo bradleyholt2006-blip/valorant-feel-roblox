@@ -525,6 +525,11 @@ Built one system at a time:
     on another, and the bot on their side gives way. In Competitive the loss for leaving waits for
     the match's end: back in time, they get the match's result -
     [research and design](docs/research/69-rejoining.md)
+70. **AFK**: a player alive in a round of a spike rounds' match who plays at nothing for 90 seconds
+    is warned, a red line counting down across the top of the screen, and 30 seconds later taken
+    out of the match, their place held as for anyone who leaves: a bot stands in, and the Play
+    menu opens on RECONNECT saying why. Any key, look, weapon, buy or ping takes the warning back;
+    dead or between rounds the time stops - [research and design](docs/research/70-afk.md)
 
 ## Running it
 
@@ -838,9 +843,10 @@ feet, the hands on what they hold, a jump, a reload, a plant and a draw, and no 
 abilities (what each casts when, and where its throws land on each map) and Competitive's ranks
 (placements, RR, promotions, demotions and shields, the MMR, and each player's record) and a
 controller (the sticks as keys and turns, the bumpers' chord, taps and holds, LT's role and the zoom
-it wants, and the presses that bring a scope to it) and rejoining a match (the place held and paid,
-the player back on their side, the bot that gives way, what the career counts and the entry another
-server finds) are pure Luau and run outside Roblox:
+it wants, and the presses and the zoom let go that bring a scope to it) and rejoining a match (the
+place held and paid, the player back on their side, the bot that gives way, what the career counts
+and the entry another server finds) and AFK (what counts as playing, when the time counts, the
+warning and being taken out) are pure Luau and run outside Roblox:
 
 ```
 luau tests/run.luau

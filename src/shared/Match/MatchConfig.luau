@@ -46,6 +46,15 @@ MatchConfig.DECIDE = "VFMatchDecide"
 -- left, their place held (system 69), and clears itself: for checks of
 -- rejoining, as a Local Server's players can't come back once gone.
 MatchConfig.AWAY = "VFTestAway"
+-- AFK (system 70): the player attribute that, while they're warned, has the
+-- server time they'll be taken out of the match at unless they play, and
+-- the one that says they were, until they're back in a match.
+MatchConfig.AFK_AT = "VFAfkAt"
+MatchConfig.AFK_OUT = "VFAfkOut"
+-- And Workspace's attribute that, set in Studio to a number of seconds, has
+-- a player warned after that long without playing, AFK being off in Studio
+-- without it (a check's players often stand idle).
+MatchConfig.TEST_AFK = "VFTestAfk"
 -- The player attribute the server keeps each player's credits in, while the
 -- spike rounds are on.
 MatchConfig.CREDITS = "VFCredits"
@@ -200,6 +209,18 @@ MatchConfig.Swiftplay = {
 	[3] = { all = p(4250, "community", SWIFTPLAY .. ": Round 3, '+4250'") },
 	[4] = { all = p(4250, "community", SWIFTPLAY .. ": Round 4, '+4250'") },
 } :: { [number]: { all: Param, won: Param? } }
+
+-- AFK (system 70): a player in the spike rounds' match under way who's
+-- alive in a round and plays at nothing for `warnAfter` seconds is warned,
+-- and taken out of the match `outAfter` seconds later if they still don't,
+-- their place held for them (system 69). A look counts if it turns the
+-- view more than `turn` radians.
+local AFK_POST = "An x.com post, seen only as a search listing (x.com can't be read here), likely of the mobile version"
+MatchConfig.Afk = {
+	warnAfter = p(90, "community", AFK_POST .. ": 'If you're AFK for 90 seconds, you'll receive this warning'"),
+	outAfter = p(30, "community", AFK_POST .. ": 'You will be kicked in 30 seconds for inactivity'"),
+	turn = p(0.002, "estimate", "About a tenth of a degree, over the wire's rounding of the aim (PlayerCodec) and any jitter"),
+}
 
 -- The combat score (system 16), each round's, which the scoreboard shows
 -- averaged over the rounds played (ACS): a point for each point of damage

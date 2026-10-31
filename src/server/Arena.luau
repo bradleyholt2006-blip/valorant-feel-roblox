@@ -186,6 +186,11 @@
 -- another server (Arena.onHold and onRelease). In Studio, Workspace's
 -- VFTestAway takes a player out as if they'd left.
 --
+-- A player in it who stops playing is AFK (system 70, AfkServer): alive in
+-- one of its rounds, with someone else playing in it, their time counts,
+-- and too long without playing they're warned and then taken out, their
+-- place held as for anyone who left.
+--
 -- P (Studio or the place owner) moves on through the arena, the 1v1, gun
 -- game, the spike rounds in the standard format, the spike rounds in
 -- Swiftplay's, and off. So do Workspace's attributes, set from the server,
@@ -207,6 +212,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AgentSelect = require(Shared.Abilities.AgentSelect)
 local AbilitySim = require(Shared.Abilities.AbilitySim)
+local AfkRules = require(Shared.Match.AfkRules)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local ArenaRules = require(Shared.Arena.ArenaRules)
@@ -254,6 +260,7 @@ local DroneServer = require(script.Parent.DroneServer)
 local ReviveServer = require(script.Parent.ReviveServer)
 local CloudServer = require(script.Parent.CloudServer)
 local AbilityServer = require(script.Parent.AbilityServer)
+local AfkServer = require(script.Parent.AfkServer)
 local AgentServer = require(script.Parent.AgentServer)
 local PickupsServer = require(script.Parent.PickupsServer)
 local OrbServer = require(script.Parent.OrbServer)
@@ -1811,6 +1818,7 @@ function Arena.play(player: Player)
 	chosen[player] = true
 	player:SetAttribute(PlayConfig.PLAYING, true)
 	player:SetAttribute(PlayConfig.REJOIN, nil)
+	AfkServer.back(player)
 	join(player.UserId)
 end
 
@@ -2165,6 +2173,29 @@ function Arena.start()
 		local m = match
 		return m ~= nil and MatchRules.held(m, id)
 	end
+	-- AFK (system 70): a player's time counts alive in a round of the spike
+	-- rounds' match under way, with someone else playing in it (a check in
+	-- Studio aside), and stops while they're dead or between rounds; taken
+	-- out, they're out as if they'd left.
+	AfkServer.state = function(player: Player): AfkRules.State
+		local m, id = match, player.UserId
+		if not m or not MatchRules.underWay(m) or not m.members[id] then
+			return "off"
+		end
+		local others = AfkServer.testing()
+		for other in m.members do
+			if others then
+				break
+			end
+			others = other ~= id and not BotServer.has(other) and Players:GetPlayerByUserId(other) ~= nil
+		end
+		if not others then
+			return "off"
+		end
+		local inRound = m.phase == "buy" or m.phase == "live" or m.phase == "planted"
+		return if inRound and PlayerSimServer.isAlive(player) then "count" else "pause"
+	end
+	AfkServer.takeOut = takeOut
 	AgentServer.swapsNow = function(_: Instance, id: number): boolean
 		local s, m, t = skirmish, match, tdm
 		local phase: string? = if s then s.phase elseif m then m.phase elseif t then t.phase elseif mode then "" else nil
