@@ -252,45 +252,72 @@ do
 		end
 		return s
 	end
-	-- Ticks pressing alt fire as PadRules.pulse says, until the zoom is
-	-- `wanted`: the presses it took (nil past 20 ticks), and whether each
-	-- came a tick after the last let go.
-	local function bring(s: PlayerSim.State, wanted: number): (number?, boolean)
+	-- Ticks pressing alt fire and letting the zoom go as PadRules.pulse
+	-- says, until the zoom is `wanted` and nothing's pressed: the ticks it
+	-- took to get there (nil past 20), the presses, whether each came a tick
+	-- after the last let go, and the levels the zoom passed through on the
+	-- way, as a set.
+	local function bring(s: PlayerSim.State, wanted: number): (number?, number, boolean, { [number]: boolean })
 		local def = PlayerSim.def(s)
 		local levels = if def.ads then #def.ads.zoom else 0
 		local pressed = false
 		local presses, apart = 0, true
-		for _ = 1, 20 do
+		local passed: { [number]: boolean } = {}
+		local reached: number? = if s.weapons.scoped == wanted then 0 else nil
+		for tick = 1, 20 do
 			if s.weapons.scoped == wanted and not pressed then
-				return presses, apart
+				return reached, presses, apart, passed
 			end
 			local was = pressed
-			pressed = PadRules.pulse(wanted, s.weapons.scoped, levels, pressed)
+			local off
+			pressed, off = PadRules.pulse(wanted, s.weapons.scoped, levels, pressed)
 			if pressed then
 				presses += 1
 				apart = apart and not was
 			end
-			PlayerSim.step(s, input(if pressed then B.AltFire else 0, s.weapons.equipped), cfg, floor, DT)
+			local buttons = bit32.bor(if pressed then B.AltFire else 0, if off then B.Unzoom else 0)
+			PlayerSim.step(s, input(buttons, s.weapons.equipped), cfg, floor, DT)
+			if s.weapons.scoped ~= wanted then
+				passed[s.weapons.scoped] = true
+			elseif not reached then
+				reached = tick
+			end
 		end
-		return nil, apart
+		return nil, presses, apart, passed
 	end
 	local op = holding("operator")
-	local presses = bring(op, 1)
+	local _, presses = bring(op, 1)
 	check("the Operator scoped with one press", presses == 1 and op.weapons.scoped == 1)
-	local apart
-	presses, apart = bring(op, 0)
-	check("and back out with two, a tick apart (its second zoom on the way)", presses == 2 and apart and op.weapons.scoped == 0)
+	local ticks, passed
+	ticks, presses, _, passed = bring(op, 0)
+	check(
+		"and out at once as LT's let go, the zoom let go and nothing pressed: no second zoom on the way",
+		ticks == 1 and presses == 0 and op.weapons.scoped == 0 and next(passed) == nil
+	)
 	bring(op, 1)
-	presses = bring(op, 2)
-	check("from its first zoom to its second, one", presses == 1 and op.weapons.scoped == 2)
-	presses = bring(op, 0)
-	check("and out of its second, one", presses == 1 and op.weapons.scoped == 0)
+	_, presses = bring(op, 2)
+	check("from its first zoom to its second, one press", presses == 1 and op.weapons.scoped == 2)
+	ticks, presses, _, passed = bring(op, 1)
+	check(
+		"and back to its first (RS again) in a tick, the zoom let go and one press: never out of the scope",
+		ticks == 1 and presses == 1 and op.weapons.scoped == 1 and next(passed) == nil
+	)
+	bring(op, 2)
+	ticks = bring(op, 0)
+	check("and out of its second at once", ticks == 1 and op.weapons.scoped == 0)
 	local vandal = holding("vandal")
-	presses = bring(vandal, 1)
-	local back = bring(vandal, 0)
-	check("a rifle's sights: one press in and one out", presses == 1 and back == 1 and vandal.weapons.scoped == 0)
-	check("nothing pressed with no zoom to have", not PadRules.pulse(1, 0, 0, false))
-	check("nor for a level the weapon hasn't", not PadRules.pulse(3, 0, 2, false))
+	local _, inPresses = bring(vandal, 1)
+	local back, outPresses = bring(vandal, 0)
+	check(
+		"a rifle's sights: one press in, and out at once",
+		inPresses == 1 and back == 1 and outPresses == 0 and vandal.weapons.scoped == 0
+	)
+	local press, off = PadRules.pulse(1, 0, 0, false)
+	check("nothing pressed with no zoom to have", not press and not off)
+	press, off = PadRules.pulse(3, 0, 2, false)
+	check("nor for a level the weapon hasn't", not press and not off)
+	press, off = PadRules.pulse(1, 2, 2, true)
+	check("going down with alt fire pressed the tick before: the zoom let go, and the press a tick later", off and not press)
 end
 
 -- Y's swap ------------------------------------------------------------------------------------

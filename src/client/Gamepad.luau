@@ -12,8 +12,9 @@
 --     the cursor that has the mouse: the ping wheel's pick, the big map's
 --     cursor, From the Shadows' map's
 --   * LT drives the zoom by pressing alt fire a tick at a time until the
---     predicted zoom is the one wanted (PadRules.pulse), so a sniper's
---     scope is held as LT is, and the server sees the same presses
+--     predicted zoom is the one wanted, and letting the zoom go to come
+--     down (PadRules.pulse), so a sniper's scope is held as LT is, and the
+--     server sees the same presses
 --   * Y, the D-pad and RS do what their keys do: draw a slot
 --     (PlayerController.selectSlot), ping (PingView, held for the wheel),
 --     take a gun off the ground (GroundGunsView), and dead, take over the
@@ -515,17 +516,21 @@ local function frame(dt: number)
 	end
 end
 
--- The pad's flags for one tick: this frame's, with alt fire pressed when
--- the zoom isn't yet the one LT wants.
+-- The pad's flags for one tick: this frame's, with alt fire pressed or the
+-- zoom let go when it isn't yet the one LT wants.
 local function sample(): number
 	local buttons = held
 	local s = PlayerController.sim
 	local want = wanted
 	if want ~= nil and s then
 		local def = PlayerSim.def(s)
-		pulsed = PadRules.pulse(want, s.weapons.scoped, if def.ads then #def.ads.zoom else 0, pulsed)
+		local off
+		pulsed, off = PadRules.pulse(want, s.weapons.scoped, if def.ads then #def.ads.zoom else 0, pulsed)
 		if pulsed then
 			buttons = bit32.bor(buttons, B.AltFire)
+		end
+		if off then
+			buttons = bit32.bor(buttons, B.Unzoom)
 		end
 	else
 		pulsed = false

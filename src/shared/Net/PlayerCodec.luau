@@ -117,9 +117,12 @@ local INPUT_SIZE = 19
 -- A place on the map takes the slot byte's top bit and two floats after.
 local POINT_FLAG = 128
 local POINT_SIZE = 8
--- The seventeenth button (F's, system 49) takes the slot byte's next bit.
+-- The seventeenth button (F's, system 49) takes the slot byte's next bit,
+-- and the eighteenth (the pad's zoom let go, system 68) the one after.
 local HIGH_BUTTON = 65536
 local HIGH_FLAG = 64
+local HIGHER_BUTTON = 131072
+local HIGHER_FLAG = 32
 -- Further from the place's middle than any map goes, metres.
 local POINT_MOST = 1e6
 local MAX_INPUTS_PER_PACKET = 256
@@ -142,9 +145,10 @@ function PlayerCodec.encodeInputs(inputs: { WireInput }, first: number, last: nu
 		local input = inputs[i]
 		local point = input.point
 		local high = bit32.band(input.buttons, HIGH_BUTTON) ~= 0
+		local higher = bit32.band(input.buttons, HIGHER_BUTTON) ~= 0
 		w32(c, input.seq)
 		w16(c, bit32.band(input.buttons, HIGH_BUTTON - 1))
-		w8(c, input.slot + (if point then POINT_FLAG else 0) + (if high then HIGH_FLAG else 0))
+		w8(c, input.slot + (if point then POINT_FLAG else 0) + (if high then HIGH_FLAG else 0) + (if higher then HIGHER_FLAG else 0))
 		w16(c, packAngle(input.yaw))
 		wi16(c, packPitch(input.pitch))
 		wf64(c, input.viewTime)
@@ -177,9 +181,12 @@ function PlayerCodec.decodeInputs(b: any): { WireInput }?
 		local yaw = unpackAngle(r16(c))
 		local pitch = ri16(c) / 10000
 		local viewTime = rf64(c)
-		local slot = bit32.band(slotByte, HIGH_FLAG - 1)
+		local slot = bit32.band(slotByte, HIGHER_FLAG - 1)
 		if bit32.band(slotByte, HIGH_FLAG) ~= 0 then
 			buttons += HIGH_BUTTON
+		end
+		if bit32.band(slotByte, HIGHER_FLAG) ~= 0 then
+			buttons += HIGHER_BUTTON
 		end
 		if slot < 1 or slot > SLOTS or viewTime ~= viewTime then
 			return nil

@@ -315,12 +315,20 @@ function PadRules.aim(
 	return nil, false, lt, false
 end
 
--- Whether to press alt fire this tick, to bring the zoom from `scoped` to
--- `wanted`, with `levels` levels: each press goes up one, and past the last
--- back to none (WeaponSim), and a press counts as it comes, so presses are
--- a tick apart (`pressedLast`, the last tick's).
-function PadRules.pulse(wanted: number, scoped: number, levels: number, pressedLast: boolean): boolean
-	return levels > 0 and wanted ~= scoped and wanted >= 0 and wanted <= levels and not pressedLast
+-- What to press this tick to bring the zoom from `scoped` to `wanted`, with
+-- `levels` levels: alt fire, each press going up one (WeaponSim), counted
+-- as it comes, so presses are a tick apart (`pressedLast`, the last
+-- tick's); and going down, the zoom let go (Buttons.Unzoom), which takes it
+-- straight off first, so a scope let go never passes through its second
+-- zoom, nor its second zoom through none on the way back to its first.
+-- Returns whether to press alt fire, and whether to let the zoom go.
+function PadRules.pulse(wanted: number, scoped: number, levels: number, pressedLast: boolean): (boolean, boolean)
+	if levels <= 0 or wanted == scoped or wanted < 0 or wanted > levels then
+		return false, false
+	elseif wanted < scoped then
+		return wanted > 0 and not pressedLast, true
+	end
+	return not pressedLast, false
 end
 
 -- The slot Y tapped draws, with `equipped` in hand: the sidearm from the

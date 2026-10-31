@@ -38,8 +38,8 @@ primagames.com's, the fullest of the three.
 
 ## 3. What can be measured, and how
 
-The rules are plain functions, checked offline: `tests/pad.luau` has 77 checks, the scope's driven
-on the weapons' own zoom through `PlayerSim`, and the suite's 4073 pass. In Studio (section 72 of
+The rules are plain functions, checked offline: `tests/pad.luau` has 79 checks, the scope's driven
+on the weapons' own zoom through `PlayerSim`, and the suite's 4112 pass. In Studio (section 72 of
 the checklist) `VFTestPad` stands in for a pad, so the checks need no controller, and the player's
 `VFPad` says what the pad's doing each frame. A real controller is needed for Roblox's own cursor in
 the menus and for the stick's feel.
@@ -108,8 +108,11 @@ LT is let go
 
 PlayerSim zooms by alt fire, one press a level and past the last back to none. To hold a zoom as LT
 is, the pad presses alt fire a tick at a time until the predicted zoom is the one wanted
-(`PadRules.pulse`), and the server, sent the same presses, zooms the same. Out of the Operator's
-first zoom that's two presses, through its second for a tick.
+(`PadRules.pulse`), and the server, sent the same presses, zooms the same. Going down, the pad lets
+the zoom go instead (`Unzoom`, an input button of its own, the eighteenth, in the slot byte), which
+takes it straight off, as letting go of a held scope does: the Operator's first zoom goes out with
+no tick of its second, which two presses showed for a frame (measured in Studio), and from its
+second back to its first the zoom's let go and pressed in one tick, never out of the scope.
 
 ### Abilities and the ultimate
 
@@ -174,7 +177,8 @@ which reads the pad whatever those bind.
 | File | What |
 | --- | --- |
 | `src/shared/Input/PadConfig.luau` | The pad's numbers, with their sources |
-| `src/shared/Input/PadRules.luau` | The sticks as keys and turns, the bumpers' chord, taps and holds, LT's role and the zoom it wants, alt fire's presses for it, Y's swap, the text for `VFTestPad` |
+| `src/shared/Input/PadRules.luau` | The sticks as keys and turns, the bumpers' chord, taps and holds, LT's role and the zoom it wants, alt fire's presses and the zoom let go for it, Y's swap, the text for `VFTestPad` |
+| `src/shared/Movement/MovementSim.luau`, `src/shared/Net/PlayerCodec.luau`, `src/shared/Weapons/WeaponSim.luau` | `Buttons.Unzoom`, carried in the input's slot byte, and the zoom it lets go |
 | `src/client/Gamepad.luau` | Reads the pad each frame and plays it: flags, the turn, the D-pad, Y, Select, the menus and the gamepad cursor |
 | `src/client/InputSampler.luau` | `padSample`, `padPress` and `padActive` |
 | `src/client/CameraController.luau` | `padCounts`, added to the mouse's |
@@ -184,7 +188,7 @@ which reads the pad whatever those bind.
 | `src/client/PlayerController.luau` | The Input Action System's InputContexts switched off |
 | `src/shared/Settings/PlayerSettings.luau`, `src/client/ClientSettings.luau`, `src/client/SettingsMenu.luau` | `padLook`, `padFocus`, `padInvert` and `padWalk`, and the CONTROLLER section |
 | `src/client/Debug/TestAim.luau` | `VFTestPad` |
-| `tests/pad.luau` | 77 checks; `tests/settings.luau` 2 more |
+| `tests/pad.luau` | 79 checks; `tests/settings.luau` 2 more |
 | `docs/studio-checklist.md` | Section 72 |
 
 ## 7. Debug tools
@@ -192,9 +196,10 @@ which reads the pad whatever those bind.
 - `VFTestPad` on the player, in Studio: a pad held as given, the left stick's x and y, the right's,
 the triggers, then the buttons held (`0 1 0 0 0 1 a lb`), until it's cleared.
 - `VFPad` on the player, in Studio, set by the client: `off`, or the pad's flags, the zoom LT wants
-and the zoom predicted, Focus, the turn in counts, and how a menu's buttons are picked: `on` with
-Roblox's gamepad cursor on, `pick` with one picked for the D-pad, else `off` (`flags=129 zoom=-
-scoped=0 focus=0 turn=12.5,0.0 cursor=off`).
+and the zoom predicted, Focus, the turn in counts (the cursor's move while the ping wheel or a map
+has the right stick), and how a menu's buttons are picked: `on` with Roblox's gamepad cursor on,
+`pick` with one picked for the D-pad, else `off` (`flags=129 zoom=- scoped=0 focus=0
+turn=12.5,0.0 cursor=off`).
 - `VFTestSetting` takes `padLook`, `padFocus`, `padInvert` and `padWalk` (`padInvert=1`).
 
 ## 8. Refinement loop

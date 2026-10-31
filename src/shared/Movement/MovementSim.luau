@@ -89,6 +89,10 @@ local Buttons = {
 	-- Orb, and defuses the spike as Use does. The seventeenth button, which
 	-- the input's slot byte carries (PlayerCodec).
 	Interact = 65536,
+	-- The pad's LT let go (system 68): the zoom straight off at any level,
+	-- as letting go of a held scope does (WeaponSim). The eighteenth
+	-- button, which the slot byte carries too.
+	Unzoom = 131072,
 }
 
 -- What an ability under way does to one tick of movement (system 17,
