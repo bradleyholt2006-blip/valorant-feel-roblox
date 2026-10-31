@@ -73,15 +73,17 @@ export type Events = {
 local SpikeServer = {}
 
 -- Called with each plant and defuse that counts, and who made it (system
--- 17: the ultimate's points).
-SpikeServer.objectiveListeners = {} :: { (Player, "planted" | "defused") -> () }
+-- 17: the ultimate's points): a player, or a bot's stand-in (system 65).
+SpikeServer.objectiveListeners = {} :: { (Instance, "planted" | "defused") -> () }
 
 -- The bots (system 61, BotServer): their ids in the rules, whether one's
--- still there, its simulation, life and side, whether it means to pick
--- the spike up, and putting the spike in its fourth slot or taking it out.
+-- still there, its stand-in, its simulation, life and side, whether it
+-- means to pick the spike up, and putting the spike in its fourth slot or
+-- taking it out.
 export type Bots = {
 	ids: () -> { number },
 	has: (id: number) -> boolean,
+	standIn: (id: number) -> Configuration?,
 	sim: (id: number) -> PlayerSim.State?,
 	alive: (id: number) -> boolean,
 	side: (id: number) -> number?,
@@ -302,10 +304,11 @@ local function setLayout(name: string?)
 	end
 end
 
--- The plant or the defuse that counts, to whoever hears of who made it
--- (a player: bots have no ultimate to earn).
+-- The plant or the defuse that counts, to whoever hears of who made it: a
+-- player, or a bot's stand-in (system 65).
 local function made(id: number, kind: "planted" | "defused")
-	local player = playerOf(id)
+	local bots = SpikeServer.bots
+	local player: Instance? = playerOf(id) or (if bots then bots.standIn(id) else nil)
 	if player then
 		for _, listener in SpikeServer.objectiveListeners do
 			listener(player, kind)

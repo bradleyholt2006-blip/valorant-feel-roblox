@@ -20,6 +20,11 @@
 -- last agent's kit this buy phase is sold back (ShopServer.refundCharges).
 -- Each player's pick goes to clients as player attributes (AgentSelect's),
 -- so teammates see what they select.
+-- Bots pick too (system 65), after every player, on their stand-ins: each
+-- selects an agent nobody on its side has locked in or selected yet, at
+-- random, and selects again if a teammate takes it, and what it's
+-- selected is locked in as its window closes, a player's first where
+-- they close at once on one agent.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,35 +35,75 @@ local AgentSelect = require(Shared.Abilities.AgentSelect)
 local Remotes = require(Shared.Net.Remotes)
 
 local AbilityServer = require(script.Parent.AbilityServer)
+local BotServer = require(script.Parent.BotServer)
 local ShopServer = require(script.Parent.ShopServer)
 
 local AgentServer = {}
 
--- Where a player is for picking (AgentSelect.moment), as Arena has it; until
+-- Where a player or a bot is for picking (AgentSelect.moment), as Arena has
+-- it, by what carries their attributes and their id in the rules; until
 -- it's set, everywhere is free.
-AgentServer.momentOf = nil :: ((player: Player) -> string?)?
--- Whether an agent locked in now goes on a player's kit at once
+AgentServer.momentOf = nil :: ((holder: Instance, id: number) -> string?)?
+-- Whether an agent locked in now goes on a player's or a bot's kit at once
 -- (AgentSelect.swapsNow), as Arena has it, or with their next life; until
 -- it's set, at once.
-AgentServer.swapsNow = nil :: ((player: Player) -> boolean)?
+AgentServer.swapsNow = nil :: ((holder: Instance, id: number) -> boolean)?
 
 local state = AgentSelect.new()
 -- What each player's attributes say, all in one.
-local shown: { [Player]: string } = {}
+local shown: { [Instance]: string } = {}
+-- The bots picking last step, and the side of a match each one last
+-- picked at random for.
+local botIds: { [number]: Instance } = {}
+local botPicked: { [number]: string } = {}
+local dice = Random.new()
 
 -- The agent a player now plays, on their kit: at once where it can go on,
 -- what they'd bought into the last agent's this buy phase sold back, or
 -- with their next life.
-local function apply(player: Player, agent: string, time: number)
+local function apply(player: Instance, id: number, agent: string, time: number)
 	local swaps = AgentServer.swapsNow
-	if AbilityServer.choose(player, agent, time, swaps == nil or swaps(player)) then
+	if AbilityServer.choose(player, agent, time, swaps == nil or swaps(player, id)) and player:IsA("Player") then
 		ShopServer.refundCharges(player)
 	end
 end
 
+-- A bot's selection while it can pick (system 65): kept while no teammate
+-- has the agent, locked in or selected (a player picking before it, or a
+-- bot), and otherwise one nobody on its side has, at random, as it is
+-- the first time it picks for a side of a match. Where an agent locked in
+-- is theirs at once, it's locked in at once. Returns the agent it plays,
+-- if that's changed.
+local function botSelect(id: number): string?
+	local pick = AgentSelect.pickOf(state, id)
+	if pick.status ~= "open" and pick.status ~= "free" then
+		return nil
+	end
+	local claimed = AgentSelect.taken(state, id)
+	for other, mate in state.picks do
+		if other ~= id and mate.match == pick.match and (mate.status == "open" or mate.status == "locked") then
+			claimed[mate.selected] = true
+		end
+	end
+	local key = pick.match or AgentSelect.FREE
+	if botPicked[id] ~= key or claimed[pick.selected] then
+		local free: { string } = {}
+		for _, agent in state.agents do
+			if not claimed[agent] then
+				table.insert(free, agent)
+			end
+		end
+		if #free > 0 then
+			AgentSelect.select(state, id, free[dice:NextInteger(1, #free)])
+		end
+		botPicked[id] = key
+	end
+	return if pick.status == "free" then AgentSelect.lock(state, id) else nil
+end
+
 -- Tells clients a player's pick, when it's changed.
-local function publish(player: Player)
-	local pick = AgentSelect.pickOf(state, player.UserId)
+local function publish(player: Instance, id: number)
+	local pick = AgentSelect.pickOf(state, id)
 	local open = pick.status == "open"
 	local picking = open or pick.status == "free"
 	local text = string.format(
@@ -85,10 +130,10 @@ local function onPick(player: Player, action: any, agent: any)
 	elseif action == "lock" then
 		local changed = AgentSelect.lock(state, player.UserId)
 		if changed then
-			apply(player, changed, Workspace:GetServerTimeNow())
+			apply(player, player.UserId, changed, Workspace:GetServerTimeNow())
 		end
 	end
-	publish(player)
+	publish(player, player.UserId)
 end
 
 -- Once a server frame, after the arena's rounds have moved on: every pick
@@ -97,26 +142,51 @@ end
 -- locked in as one closes put on their kit.
 function AgentServer.step(time: number)
 	local momentOf = AgentServer.momentOf
-	local players = Players:GetPlayers()
 	local ids: { number } = {}
-	local moments: { [number]: string? } = {}
-	for _, player in players do
+	local holders: { [number]: Instance } = {}
+	for _, player in Players:GetPlayers() do
 		table.insert(ids, player.UserId)
-		moments[player.UserId] = if momentOf then momentOf(player) else AgentSelect.FREE
+		holders[player.UserId] = player
+	end
+	-- The bots after every player (system 65), and the picks of those gone
+	-- with them.
+	local bots: { [number]: Instance } = {}
+	for _, id in BotServer.ids() do
+		local standIn = BotServer.standIn(id)
+		if standIn then
+			table.insert(ids, id)
+			holders[id] = standIn
+			bots[id] = standIn
+		end
+	end
+	for id, standIn in botIds do
+		if bots[id] ~= standIn then
+			AgentSelect.leave(state, id)
+			botPicked[id] = nil
+			shown[standIn] = nil
+		end
+	end
+	botIds = bots
+	local moments: { [number]: string? } = {}
+	for _, id in ids do
+		moments[id] = if momentOf then momentOf(holders[id], id) else AgentSelect.FREE
 	end
 	local changed = AgentSelect.step(state, ids, moments, time)
-	for _, player in players do
-		local agent = changed[player.UserId]
-		if agent then
-			apply(player, agent, time)
+	for _, id in ids do
+		if bots[id] then
+			changed[id] = botSelect(id) or changed[id]
 		end
-		publish(player)
+		local agent = changed[id]
+		if agent then
+			apply(holders[id], id, agent, time)
+		end
+		publish(holders[id], id)
 	end
 end
 
 function AgentServer.start()
 	Remotes.get().AgentPick.OnServerEvent:Connect(onPick)
-	Players.PlayerRemoving:Connect(function(player)
+	Players.PlayerRemoving:Connect(function(player: Player)
 		AgentSelect.leave(state, player.UserId)
 		shown[player] = nil
 	end)

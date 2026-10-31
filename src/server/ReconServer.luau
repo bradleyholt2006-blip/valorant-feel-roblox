@@ -72,7 +72,7 @@ local world = RobloxWorld.new()
 -- health, how many pulses it's given, and whether its owner's been told
 -- it's stuck.
 type Kept = {
-	player: Player,
+	player: PlayerSimServer.Actor,
 	side: number?,
 	stuck: BoltSim.Stuck,
 	health: number,
@@ -88,7 +88,7 @@ local bolts: { BoltSim.Stuck } = {}
 -- when (server time).
 local revealedTo: { [number]: { [number]: number } } = {}
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: PlayerSimServer.Actor, cast: AbilitySim.Cast)
 	if cast.kind ~= "bolt" or cast.ability ~= "reconbolt" then
 		return
 	end
@@ -138,9 +138,9 @@ local function onCast(player: Player, cast: AbilitySim.Cast)
 	Remotes.get().Ability:FireAllClients(event)
 end
 
--- Whom a bolt of `k`'s can reveal: everyone alive and spawned, players in
--- play on another side than its owner's and the dummies, on none; with no
--- sides, everyone but its owner. Each one's entity id and the points of
+-- Whom a bolt of `k`'s can reveal: everyone alive and spawned, players and
+-- bots in play on another side than its owner's and the dummies, on none;
+-- with no sides, everyone but its owner. Each one's entity id and the points of
 -- them that count, and by id the pose the snapshots show.
 local function targetsFor(k: Kept): ({ BoltSim.Target }, { [number]: PlayerCodec.Pose })
 	local out: { BoltSim.Target } = {}
@@ -149,12 +149,12 @@ local function targetsFor(k: Kept): ({ BoltSim.Target }, { [number]: PlayerCodec
 		if id == k.stuck.owner or not entity.health.alive then
 			continue
 		end
-		local player = entity.player
-		if player then
-			if not PlayerSimServer.inPlay(player) then
+		local actor = PlayerSimServer.actorOf(entity)
+		if actor then
+			if not PlayerSimServer.inPlay(actor) then
 				continue
 			end
-			if k.side ~= nil and player:GetAttribute(ArenaConfig.SIDE) == k.side then
+			if k.side ~= nil and actor:GetAttribute(ArenaConfig.SIDE) == k.side then
 				continue
 			end
 		end

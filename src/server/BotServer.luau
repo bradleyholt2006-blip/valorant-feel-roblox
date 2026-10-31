@@ -50,6 +50,15 @@
 -- Workspace's VFBotSkill attribute names the skill they play at
 -- (BotConfig.Skills), from each one's next life.
 --
+-- Each plays an agent's kit as a player does (system 65): its stand-in is
+-- an actor to PlayerSimServer and the ability servers as a player is, and
+-- this answers for it there (PlayerSimServer.bots). Its kit carries from
+-- one life to the next, what it casts goes to castListeners and
+-- tickListeners, its deaths and lives to the ability servers too, and a
+-- flash's blind or Paranoia's nearsight on it (its stand-in's attributes)
+-- hides from its looks what it hides from a player's eyes: everything, at
+-- a blind's whitest, and anyone past the nearsight's range.
+--
 -- For checks in Studio, and only there, as it would tell an enemy's plan:
 -- each stand-in carries its bot's task in its side's plan
 -- (BotConfig.TASK), and the Output has a line each time a bot's been
@@ -86,6 +95,9 @@ local MovePacer = require(Shared.Net.MovePacer)
 local PlayerCodec = require(Shared.Net.PlayerCodec)
 local Remotes = require(Shared.Net.Remotes)
 local PlayerSim = require(Shared.PlayerSim)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
+local FlareSim = require(Shared.Abilities.FlareSim)
+local ParanoiaSim = require(Shared.Abilities.ParanoiaSim)
 local Spike = require(Shared.Spike.Spike)
 local SpikeSim = require(Shared.Spike.SpikeSim)
 local Accuracy = require(Shared.Weapons.Accuracy)
@@ -205,6 +217,7 @@ BotServer.situation = nil :: (() -> Situation?)?
 
 local bots: { [number]: Bot } = {} -- by id in the rules
 local byEntity: { [number]: Bot } = {}
+local byStandIn: { [Instance]: Bot } = {}
 local order: { Bot } = {} -- by number, the order their ticks run in
 local world = RobloxWorld.new()
 local seeds = Random.new()
@@ -288,7 +301,8 @@ local function currentPose(bot: Bot): PlayerCodec.Pose
 		crouchAlpha = m.crouchAlpha,
 		grounded = m.grounded,
 		alive = true,
-		quiet = StepTracker.isQuiet(bot.buttons, m.crouched),
+		-- A dash makes no steps (system 17).
+		quiet = StepTracker.isQuiet(bot.buttons, m.crouched) or AbilitySim.dashing(bot.sim.abilities, m.tick * DT),
 		reloading = WeaponSim.isReloading(w),
 		weapon = WeaponConfig.IndexOf[w.loadout[w.equipped]] or 0,
 		channel = 0,
@@ -318,6 +332,9 @@ local function died(bot: Bot, attacker: Entities.Entity?)
 	for _, listener in BotServer.deathListeners do
 		listener(bot.id, killer)
 	end
+	for _, listener in PlayerSimServer.botDeathListeners do
+		listener(bot.standIn, killer)
+	end
 	-- And the spike it carried, or the half of a defuse it reached.
 	SpikeServer.botDied(bot.id)
 end
@@ -326,7 +343,11 @@ end
 -- out of the world started over.
 local function place(bot: Bot, feet: vector, yaw: number, loadout: { string }?)
 	bot.spawnFeet = feet
+	local kit = bot.sim.abilities
 	bot.sim = PlayerSim.new(feet, loadout, seeds:NextInteger(0, 2 ^ 31 - 1))
+	-- Its ability kit is kept from one life to the next, as a player's is.
+	bot.sim.abilities = AbilitySim.copy(kit)
+	AbilitySim.settle(bot.sim.abilities)
 	bot.entity.sim = bot.sim
 	bot.yaw, bot.pitch = yaw, 0
 	bot.buttons = 0
@@ -375,6 +396,9 @@ local function startLife(bot: Bot)
 	Remotes.get().Combat:FireAllClients(event)
 	for _, listener in BotServer.spawnListeners do
 		listener(bot.id)
+	end
+	for _, listener in PlayerSimServer.botSpawnListeners do
+		listener(bot.standIn)
 	end
 end
 
@@ -517,9 +541,14 @@ local function everyone(): { Seen }
 	return out
 end
 
--- A look at every enemy: those near its view are looked for in the level.
+-- A look at every enemy: those near its view are looked for in the level,
+-- but none while a flash has it blinded, and none past Paranoia's range
+-- while it's nearsighted (system 65).
 local function look(bot: Bot, now: number, seen: { Seen }, o: Sight.Occluders, cfg: MovementConfig.Values)
 	local eye = PlayerSim.eye(bot.sim, cfg)
+	local blind = FlareSim.decode(bot.standIn:GetAttribute(FlareSim.BLIND_ATTRIBUTE))
+	local blinded = blind ~= nil and FlareSim.whiteAt(blind, now) >= P.blindFrom.value
+	local range = ParanoiaSim.range(ParanoiaSim.decode(bot.standIn:GetAttribute(ParanoiaSim.ATTRIBUTE)), now)
 	local targets: { BotBrain.Target } = {}
 	for _, s in seen do
 		if s.side == bot.side or s.id == bot.entity.id then
@@ -528,7 +557,8 @@ local function look(bot: Bot, now: number, seen: { Seen }, o: Sight.Occluders, c
 		local chest = s.points[2] or s.points[1]
 		local yaw = BotBrain.anglesTo(eye, chest)
 		local visible = false
-		if math.abs(BotBrain.wrap(yaw - bot.yaw)) <= NEAR_VIEW then
+		local near = range == nil or vector.magnitude(chest - eye) <= range
+		if not blinded and near and math.abs(BotBrain.wrap(yaw - bot.yaw)) <= NEAR_VIEW then
 			for _, point in s.points do
 				if not Sight.hidden(eye, point, o) then
 					visible = true
@@ -865,10 +895,11 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	bot.buttons = buttons
 	bot.yaw, bot.pitch = act.yaw, act.pitch
 	bot.seq += 1
-	local input = { seq = bot.seq, buttons = buttons, yaw = act.yaw, pitch = act.pitch, slot = bot.slot, viewTime = now }
+	local input: PlayerCodec.WireInput =
+		{ seq = bot.seq, buttons = buttons, yaw = act.yaw, pitch = act.pitch, slot = bot.slot, viewTime = now }
 	local fieldsOf = PlayerSimServer.fields
 	local wallsAt = PlayerSimServer.barriers
-	local shots, swing, spikeAct = PlayerSim.step(
+	local shots, swing, spikeAct, _, casts = PlayerSim.step(
 		sim,
 		input,
 		cfg,
@@ -886,6 +917,18 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 		for _, listener in BotServer.fireListeners do
 			listener(bot.id)
 		end
+	end
+	-- What it cast, to the ability servers, as a player's casts go (system
+	-- 65), and the tick, for those that fly what it threw on its ticks.
+	if casts then
+		for _, cast in casts do
+			for _, listener in PlayerSimServer.castListeners do
+				listener(bot.standIn, cast)
+			end
+		end
+	end
+	for _, listener in PlayerSimServer.tickListeners do
+		listener(bot.standIn, input, casts)
 	end
 	if shots then
 		CombatServer.onVolley(bot.entity, shots, now)
@@ -972,6 +1015,7 @@ function BotServer.add(): number
 	}
 	bots[id] = bot
 	byEntity[entity.id] = bot
+	byStandIn[standIn] = bot
 	Entities.add(entity)
 	sortOrder()
 	return id
@@ -985,6 +1029,7 @@ function BotServer.remove(id: number)
 	end
 	bots[id] = nil
 	byEntity[bot.entity.id] = nil
+	byStandIn[bot.standIn] = nil
 	Entities.remove(bot.entity.id)
 	FogServer.forget(bot.entity.id)
 	bot.standIn:Destroy()
@@ -1281,10 +1326,52 @@ function BotServer.start()
 	end
 	-- Bots on no Roblox team: the sides the arena put them on.
 	CombatServer.sideOf = sideOf
+	-- And they cast abilities and are reached by them as players are (system
+	-- 65), each known by its stand-in.
+	PlayerSimServer.bots = {
+		list = function(): { Instance }
+			local out: { Instance } = {}
+			for _, bot in order do
+				table.insert(out, bot.standIn)
+			end
+			return out
+		end,
+		actorOf = function(entity: Entities.Entity): Instance?
+			local bot = byEntity[entity.id]
+			return if bot then bot.standIn else nil
+		end,
+		entityOf = function(standIn: Instance): Entities.Entity?
+			local bot = byStandIn[standIn]
+			return if bot then bot.entity else nil
+		end,
+		getSim = function(standIn: Instance): PlayerSim.State?
+			local bot = byStandIn[standIn]
+			return if bot then bot.sim else nil
+		end,
+		view = function(standIn: Instance): (vector?, vector?)
+			local bot = byStandIn[standIn]
+			if not bot or not bot.alive then
+				return nil, nil
+			end
+			return PlayerSim.eye(bot.sim, Tuning.config()), Accuracy.aim(bot.yaw, bot.pitch)
+		end,
+		isAlive = function(standIn: Instance): boolean
+			local bot = byStandIn[standIn]
+			return bot ~= nil and bot.alive
+		end,
+		moved = function(standIn: Instance)
+			local bot = byStandIn[standIn]
+			if bot then
+				MovePacer.reset(bot.pacer)
+				bot.shown = nil
+			end
+		end,
+	}
 	-- And they play for the spike (system 61).
 	SpikeServer.bots = {
 		ids = BotServer.ids,
 		has = BotServer.has,
+		standIn = BotServer.standIn,
 		sim = BotServer.getSim,
 		alive = BotServer.isAlive,
 		side = BotServer.side,

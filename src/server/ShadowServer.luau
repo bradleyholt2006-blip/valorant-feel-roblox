@@ -145,7 +145,12 @@ end
 function ShadowServer.start()
 	CombatServer.absorbs = absorbs
 	PlayerSimServer.pointCheck = onMap
-	table.insert(PlayerSimServer.castListeners, onCast)
+	-- Bots don't play From the Shadows yet (system 65).
+	table.insert(PlayerSimServer.castListeners, function(actor: PlayerSimServer.Actor, cast: AbilitySim.Cast)
+		if actor:IsA("Player") then
+			onCast(actor, cast)
+		end
+	end)
 end
 
 return ShadowServer

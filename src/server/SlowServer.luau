@@ -42,13 +42,13 @@ local DT = 1 / MovementConfig.TickRate.value
 local world = RobloxWorld.new()
 
 -- A field in play: whose, and whether its thrower's been told it burst.
-type Kept = { player: Player, field: SlowSim.Field, burst: boolean }
+type Kept = { player: PlayerSimServer.Actor, field: SlowSim.Field, burst: boolean }
 
 local kept: { Kept } = {}
 local fields: { SlowSim.Field } = {}
 local shown: { [Player]: boolean } = {}
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: PlayerSimServer.Actor, cast: AbilitySim.Cast)
 	if cast.kind ~= "slow" then
 		return
 	end

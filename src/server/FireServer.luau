@@ -24,7 +24,9 @@
 -- (Arena), which every client is told of ("out"). The thrower's last
 -- burst is their `VFLastFire` attribute (FireSim.LAST_ATTRIBUTE, the floor
 -- under it, in metres), which scripted checks read, as their last wall's
--- far end is their `VFLastWall` (BlazeSim.LAST_ATTRIBUTE).
+-- far end is their `VFLastWall` (BlazeSim.LAST_ATTRIBUTE). Bots throw and
+-- burn as players do (system 65), each known by its stand-in
+-- (PlayerSimServer.Actor).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,6 +60,8 @@ local IF = AbilityConfig.InnerFire
 local HEAL = IF.heal.value
 local world = RobloxWorld.new()
 
+type Actor = PlayerSimServer.Actor
+
 -- A fire: from when until when it burns (server time), whether feet stand
 -- in it (`inside`, its edge pushed out by `pad`), the health a second it
 -- takes from an enemy and an ally's share of that, as which weapon for the
@@ -79,7 +83,7 @@ export type Spec = {
 -- it owes each entity standing in it by id, whether its thrower has
 -- touched it yet, and whether it has started.
 type Fire = {
-	player: Player,
+	player: Actor,
 	entity: Entities.Entity,
 	spec: Spec,
 	owed: { [number]: FireSim.Owed },
@@ -89,17 +93,17 @@ type Fire = {
 
 -- A heal Inner Fire has under way: whose, since when, a point how often,
 -- and what's given.
-type Heal = { player: Player, entity: Entities.Entity, from: number, every: number, given: number, last: number }
+type Heal = { player: Actor, entity: Entities.Entity, from: number, every: number, given: number, last: number }
 
 local fires: { Fire } = {}
 local heals: { Heal } = {}
 
 -- A fire of `player`'s (their `entity`), burning as `spec` says.
-function FireServer.light(player: Player, entity: Entities.Entity, spec: Spec)
+function FireServer.light(player: Actor, entity: Entities.Entity, spec: Spec)
 	table.insert(fires, { player = player, entity = entity, spec = spec, owed = {}, touched = false, burst = false })
 end
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: Actor, cast: AbilitySim.Cast)
 	if cast.kind ~= "fireball" then
 		return
 	end
@@ -274,7 +278,7 @@ function FireServer.clear()
 end
 
 -- A player's heals over (a death or a new life).
-local function stopHeals(player: Player)
+local function stopHeals(player: Actor)
 	for i = #heals, 1, -1 do
 		if heals[i].player == player then
 			table.remove(heals, i)
@@ -286,6 +290,8 @@ function FireServer.start()
 	table.insert(PlayerSimServer.castListeners, onCast)
 	table.insert(PlayerSimServer.deathListeners, stopHeals)
 	table.insert(PlayerSimServer.spawnListeners, stopHeals)
+	table.insert(PlayerSimServer.botDeathListeners, stopHeals)
+	table.insert(PlayerSimServer.botSpawnListeners, stopHeals)
 	Players.PlayerRemoving:Connect(function(player)
 		stopHeals(player)
 		for i = #fires, 1, -1 do

@@ -64,6 +64,11 @@
 -- writes it), which scripted checks read, and so is each kit's ultimate
 -- (AbilityConfig.ULT_ATTRIBUTE, as Glance.ultimate writes it), which
 -- everyone's top bar and scoreboard read (system 51).
+-- Bots play their agents' kits as players do (system 65), each known by
+-- its stand-in (PlayerSimServer.Actor), which carries those attributes:
+-- the arena starts their rounds and their kits as it does a player's, and
+-- their lives, deaths, kills, plants and defuses do here what a player's
+-- do.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -86,6 +91,8 @@ local SpikeServer = require(script.Parent.SpikeServer)
 local FogServer = require(script.Parent.FogServer)
 
 local AbilityServer = {}
+
+type Actor = PlayerSimServer.Actor
 
 -- Whether charges are bought (the spike rounds). Without, every life
 -- starts with every charge.
@@ -123,22 +130,22 @@ export type CastEvent = {
 local EVERYONE: { [string]: boolean } = { mark = true, rise = true, shadows = true }
 
 -- Since when each kit has been short of a charge with nothing under way.
-local shortSince: { [Player]: number } = {}
-local shown: { [Player]: string } = {}
+local shortSince: { [Actor]: number } = {}
+local shown: { [Actor]: string } = {}
 -- Each player's ultimate as last told (system 51).
-local shownUlt: { [Player]: string } = {}
+local shownUlt: { [Actor]: string } = {}
 -- With a mode's own kit: when each kit's C, Q and E next have a charge back
 -- (server time, 0 for none coming), and what its attribute says of them.
-local due: { [Player]: { number } } = {}
-local shownDue: { [Player]: string? } = {}
+local due: { [Actor]: { number } } = {}
+local shownDue: { [Actor]: string? } = {}
 -- Each player's own agent, as they last picked it (system 29).
-local chosen: { [Player]: string } = {}
+local chosen: { [Actor]: string } = {}
 -- In the spike rounds, the points each player's deaths this round have
 -- earned, paid as the next starts (system 50).
-local owed: { [Player]: number } = {}
+local owed: { [Actor]: number } = {}
 
 -- Changes a player's kit, if they're playing, and sends them the change.
-local function change(player: Player, apply: (AbilitySim.State) -> ())
+local function change(player: Actor, apply: (AbilitySim.State) -> ())
 	local kit = PlayerSimServer.abilitiesOf(player)
 	if kit then
 		apply(kit)
@@ -156,7 +163,7 @@ local function needOf(agent: string): number
 end
 
 -- The agent whose kit a player's lives have: the mode's, or their own.
-function AbilityServer.agentOf(player: Player): string
+function AbilityServer.agentOf(player: Actor): string
 	return AbilityServer.agent or chosen[player] or AbilityConfig.DEFAULT_AGENT
 end
 
@@ -188,7 +195,7 @@ end
 -- As a round of the spike rounds starts, of the kind MatchRules.roundKind
 -- says, in Swiftplay or not: the kit's round, and the ultimate's points for
 -- it, with what last round's deaths are owed (system 50).
-function AbilityServer.roundStarted(player: Player, kind: AbilitySim.RoundKind, swiftplay: boolean)
+function AbilityServer.roundStarted(player: Actor, kind: AbilitySim.RoundKind, swiftplay: boolean)
 	local debt = owed[player] or 0
 	owed[player] = nil
 	change(player, function(kit)
@@ -204,7 +211,7 @@ function AbilityServer.roundStarted(player: Player, kind: AbilitySim.RoundKind, 
 end
 
 -- A new kit, as the spike rounds or the course start: the agent's.
-function AbilityServer.reset(player: Player)
+function AbilityServer.reset(player: Actor)
 	due[player] = nil
 	owed[player] = nil
 	change(player, function(kit)
@@ -218,7 +225,7 @@ end
 -- mode played starts: with a mode's own kit (Team Deathmatch's), no points,
 -- the signature's full charges, and every charge short of its most that far
 -- towards coming back.
-local function startOver(player: Player, kit: AbilitySim.State, now: number)
+local function startOver(player: Actor, kit: AbilitySim.State, now: number)
 	local rules = AbilityServer.rules
 	kit.agent = AbilityServer.agentOf(player)
 	kit.need = needOf(kit.agent)
@@ -244,7 +251,7 @@ end
 
 -- A mode's own kit starting over at `now`, as a match of it starts (Team
 -- Deathmatch's).
-function AbilityServer.fresh(player: Player, now: number)
+function AbilityServer.fresh(player: Actor, now: number)
 	change(player, function(kit)
 		startOver(player, kit, now)
 	end)
@@ -254,7 +261,7 @@ end
 -- nothing of the last agent's: in Team Deathmatch as a match of it starts,
 -- in gun game none, and elsewhere as a new match does, with every charge
 -- where nothing's bought (and on the course the ultimate's points too).
-local function newAgent(player: Player, kit: AbilitySim.State, now: number)
+local function newAgent(player: Actor, kit: AbilitySim.State, now: number)
 	due[player] = nil
 	local points = kit.points
 	startOver(player, kit, now)
@@ -271,7 +278,7 @@ end
 
 -- A player's own agent, picked (AgentServer): their kit's from their next
 -- life, or with `atOnce` now. Returns whether their kit has changed now.
-function AbilityServer.choose(player: Player, agent: string, now: number, atOnce: boolean): boolean
+function AbilityServer.choose(player: Actor, agent: string, now: number, atOnce: boolean): boolean
 	chosen[player] = agent
 	local kit = PlayerSimServer.abilitiesOf(player)
 	if not atOnce or not kit or kit.agent == AbilityServer.agentOf(player) then
@@ -283,7 +290,7 @@ function AbilityServer.choose(player: Player, agent: string, now: number, atOnce
 end
 
 -- Ultimate points for a player (Team Deathmatch's Ultimate Orbs, system 28).
-function AbilityServer.addPoints(player: Player, amount: number)
+function AbilityServer.addPoints(player: Actor, amount: number)
 	change(player, function(kit)
 		AbilitySim.addPoints(kit, amount)
 	end)
@@ -292,7 +299,7 @@ end
 -- A kit's abilities recharging at `now`: each slot short of what it's had
 -- this round (AbilitySim.rechargeTo: never a charge that wasn't bought) has
 -- a charge back once its time's up, and its next on the way.
-local function recharge(player: Player, kit: AbilitySim.State, now: number)
+local function recharge(player: Actor, kit: AbilitySim.State, now: number)
 	local coming = due[player]
 	if not coming then
 		coming = { 0, 0, 0 }
@@ -318,14 +325,14 @@ local function recharge(player: Player, kit: AbilitySim.State, now: number)
 end
 
 -- Whether a charge of the ability `id` can be bought into a player's kit.
-function AbilityServer.canBuy(player: Player, id: string): boolean
+function AbilityServer.canBuy(player: Actor, id: string): boolean
 	local kit = PlayerSimServer.abilitiesOf(player)
 	return kit ~= nil and AbilitySim.canBuy(kit, id)
 end
 
 -- A charge of the ability `id` bought into a player's kit, or sold back
 -- out of it; false if it can't be.
-function AbilityServer.buy(player: Player, id: string): boolean
+function AbilityServer.buy(player: Actor, id: string): boolean
 	local kit = PlayerSimServer.abilitiesOf(player)
 	if not kit or not AbilitySim.buy(kit, id) then
 		return false
@@ -334,7 +341,7 @@ function AbilityServer.buy(player: Player, id: string): boolean
 	return true
 end
 
-function AbilityServer.sell(player: Player, id: string): boolean
+function AbilityServer.sell(player: Actor, id: string): boolean
 	local kit = PlayerSimServer.abilitiesOf(player)
 	if not kit or not AbilitySim.sell(kit, id) then
 		return false
@@ -347,7 +354,7 @@ end
 -- them, the recharge, and each kit told to clients, with Drift's glide and
 -- when its charges come back.
 function AbilityServer.step(now: number)
-	for _, player in Players:GetPlayers() do
+	for _, player in PlayerSimServer.actors() do
 		local kit = PlayerSimServer.abilitiesOf(player)
 		if not kit then
 			continue
@@ -391,7 +398,7 @@ function AbilityServer.step(now: number)
 end
 
 function AbilityServer.start()
-	table.insert(PlayerSimServer.castListeners, function(player: Player, cast: AbilitySim.Cast)
+	table.insert(PlayerSimServer.castListeners, function(player: Actor, cast: AbilitySim.Cast)
 		local entity = PlayerSimServer.entityOf(player)
 		if
 			not entity
@@ -446,7 +453,7 @@ function AbilityServer.start()
 	-- Skirmish starts with every charge, and on the course with the
 	-- ultimate's points full; in gun game and deathmatch, with none. A mode's
 	-- own kit carries on from the last life.
-	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
+	local function newLife(player: Actor)
 		change(player, function(kit)
 			if kit.agent ~= AbilityServer.agentOf(player) then
 				newAgent(player, kit, Workspace:GetServerTimeNow())
@@ -458,12 +465,18 @@ function AbilityServer.start()
 				AbilitySim.fill(kit, AbilityServer.refill)
 			end
 		end)
-	end)
+	end
+	table.insert(PlayerSimServer.spawnListeners, newLife)
+	table.insert(PlayerSimServer.botSpawnListeners, newLife)
 	-- A teammate's death is no kill: no point, nor a charge back (system 50,
 	-- as a kill's credits, MatchRules.died).
 	table.insert(CombatServer.killListeners, function(attacker, victim, weapon, mode)
-		local by = if attacker then attacker.player else nil
-		local sim = if by and by ~= victim.player and not CombatServer.allies(by, victim.player) then PlayerSimServer.getSim(by) else nil
+		local by = if attacker
+				and attacker ~= victim
+				and not CombatServer.teammates(attacker, victim)
+			then PlayerSimServer.actorOf(attacker)
+			else nil
+		local sim = if by then PlayerSimServer.getSim(by) else nil
 		local rules = AbilityServer.rules
 		if by and sim and not AbilityServer.off then
 			PlayerSim.killedWith(sim, weapon, mode, if rules then rules.kill.value else nil)
@@ -474,7 +487,7 @@ function AbilityServer.start()
 	-- a non-enemy player will no longer grant ultimate points'), a bot's too
 	-- (system 60), and in the spike rounds it waits for the next round
 	-- (system 50).
-	table.insert(PlayerSimServer.deathListeners, function(player: Player, _, by: Entities.Entity?)
+	local function died(player: Actor, by: Entities.Entity?)
 		local rules = AbilityServer.rules
 		local later = AbilityServer.economy
 		local me = PlayerSimServer.entityOf(player)
@@ -489,8 +502,12 @@ function AbilityServer.start()
 				AbilitySim.died(kit, if later or not earned then 0 elseif rules then rules.death.value else nil)
 			end
 		end)
+	end
+	table.insert(PlayerSimServer.deathListeners, function(player: Player, _, by: Entities.Entity?)
+		died(player, by)
 	end)
-	table.insert(SpikeServer.objectiveListeners, function(player: Player, kind: "planted" | "defused")
+	table.insert(PlayerSimServer.botDeathListeners, died)
+	table.insert(SpikeServer.objectiveListeners, function(player: Actor, kind: "planted" | "defused")
 		local points = AbilityConfig.Points
 		change(player, function(kit)
 			AbilitySim.addPoints(kit, if kind == "planted" then points.plant.value else points.defuse.value)

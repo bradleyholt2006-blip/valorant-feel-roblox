@@ -488,6 +488,12 @@ Built one system at a time:
     spots, each room's door and its barrier, the bots' way round and the minimap are all read from
     its parts, so it can be rebuilt in Studio with no change in code. A bot plays whoever's alone,
     and there's no map vote - [research and design](docs/research/64-duel.md)
+65. **Bots' agents**: each bot plays an agent, picked in the agent select window as a player picks,
+    one nobody on its side has and never what a player has selected, and the top bar and the
+    scoreboard show it with its ultimate. Its kit is a player's, kept from one life to the next, and
+    every ability treats a bot as a player: a flash blinds it, Paranoia nearsights it, a Healing Orb
+    heals an allied bot, and a Recon Bolt or Hunter's Fury leaves bots on its own side be -
+    [research and design](docs/research/65-bots-agents.md)
 
 ## Running it
 
@@ -623,7 +629,8 @@ spike rounds. `VFInLine` is a player's place in line while both sides are full. 
 fill what's played up to its number of players unless Workspace's `VFBots` is false, at the skill
 `VFBotSkill` names (`easy`, `normal`, `hard` or `expert`), each with a stand-in in
 ReplicatedStorage's `VFBots`: a Configuration named after it (`BOT Ash`), with its `Entity` and `Id`
-and the attributes the arena keeps on a player, and in Studio its job in its side's plan as
+and the attributes the arena keeps on a player, among them its agent and its kit as a player's
+(system 65), which the top bar and the scoreboard read, and in Studio its job in its side's plan as
 `VFBotTask`. In Studio, Workspace's `VFBotMs` has the milliseconds the bots take of each server
 frame, and the Output has a line each time a bot's been stuck. Other players and bots are drawn as
 the body in ReplicatedStorage's `VFBodies` (system 63), and in Studio a client's Workspace
@@ -649,7 +656,7 @@ of a player's last Blaze wall is their `VFLastWall` attribute (metres), and `Wor
 holds each wall's run on its way and each wall as models. Where a player last cast Run it Back is
 their `VFLastMark` attribute (metres), and `Workspace.VFRunItBack` holds each mark as a model, its
 `Entity` attribute whose it is. Whom a player last healed with the Healing Orb is their `VFLastHeal`
-attribute (the healed player's name). Where a player's last Slow Orb burst is their `VFLastSlow`
+attribute (a player's or bot's name). Where a player's last Slow Orb burst is their `VFLastSlow`
 attribute (the floor under it, in metres), whether their last tick was slowed their `VFSlowed`, and
 `Workspace.VFSlows` holds each orb in the air, each burst and each field of ice. Where a player's
 last Dark Cover smoke went is their `VFLastSmoke` attribute (the floor under its mark, in metres),

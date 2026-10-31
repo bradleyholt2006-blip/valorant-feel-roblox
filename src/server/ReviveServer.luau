@@ -340,7 +340,12 @@ function ReviveServer.start()
 	table.insert(CombatServer.killListeners, function(_, victim)
 		lay(victim)
 	end)
-	table.insert(PlayerSimServer.tickListeners, onTick)
+	-- Bots don't play the Resurrection yet (system 65).
+	table.insert(PlayerSimServer.tickListeners, function(actor: PlayerSimServer.Actor, input: any, casts: { AbilitySim.Cast }?)
+		if actor:IsA("Player") then
+			onTick(actor, input, casts)
+		end
+	end)
 	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
 		local entity = PlayerSimServer.entityOf(player)
 		local f = if entity then fallen[entity.id] else nil

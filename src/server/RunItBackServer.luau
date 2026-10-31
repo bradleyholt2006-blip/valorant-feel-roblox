@@ -149,7 +149,12 @@ end
 
 function RunItBackServer.start()
 	CombatServer.spares = spares
-	table.insert(PlayerSimServer.castListeners, onCast)
+	-- Bots don't play Run it Back yet (system 65).
+	table.insert(PlayerSimServer.castListeners, function(actor: PlayerSimServer.Actor, cast: AbilitySim.Cast)
+		if actor:IsA("Player") then
+			onCast(actor, cast)
+		end
+	end)
 	table.insert(PlayerSimServer.deathListeners, forget)
 	table.insert(PlayerSimServer.spawnListeners, forget)
 	Players.PlayerRemoving:Connect(forget)

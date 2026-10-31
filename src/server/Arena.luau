@@ -673,8 +673,9 @@ local function spawn(ids: { number })
 		elseif t then
 			kit, shield = TeamDeathmatchRules.kitOf(t, id)
 			TeamDeathmatchRules.armed(t, id)
-			if TeamDeathmatchRules.startsOver(t, id) and player then
-				AbilityServer.fresh(player, now())
+			local holder = holderOf(id)
+			if TeamDeathmatchRules.startsOver(t, id) and holder then
+				AbilityServer.fresh(holder, now())
 			end
 		end
 		if kit then
@@ -996,9 +997,10 @@ local function roundStarted()
 			kitMatch[id] = m.match
 			startingKit(id)
 		end
-		local player = playerFor(id)
-		if player then
-			AbilityServer.roundStarted(player, kind, swiftplay)
+		-- A bot's kit too (system 65).
+		local holder = holderOf(id)
+		if holder then
+			AbilityServer.roundStarted(holder, kind, swiftplay)
 		end
 	end
 end
@@ -1841,20 +1843,20 @@ function Arena.start()
 	-- Where each player is for picking an agent, by the side they're on
 	-- (system 48), and whether one locked in goes on their kit at once
 	-- (system 29).
-	AgentServer.momentOf = function(player: Player): string?
+	AgentServer.momentOf = function(_: Instance, id: number): string?
 		local s, m, t = skirmish, match, tdm
 		local sides: Roster.Sides? = if s then s elseif m then m elseif t then t else nil
 		local phase: string = if s then s.phase elseif m then m.phase elseif t then t.phase else ""
 		local number = if s then s.match elseif m then m.match elseif t then t.match else 0
-		local side = if sides then Roster.sideOf(sides, player.UserId) else nil
+		local side = if sides then Roster.sideOf(sides, id) else nil
 		return AgentSelect.moment(mode, phase, number, begun, side)
 	end
-	AgentServer.swapsNow = function(player: Player): boolean
+	AgentServer.swapsNow = function(_: Instance, id: number): boolean
 		local s, m, t = skirmish, match, tdm
 		local phase: string? = if s then s.phase elseif m then m.phase elseif t then t.phase elseif mode then "" else nil
-		local sim = if PlayerSimServer.isAlive(player) then PlayerSimServer.getSim(player) else nil
+		local sim = if isAlive(id) then getSim(id) else nil
 		local feet = if t and sim then sim.movement.position - SpikeMaps.Maps[t.map].origin else nil
-		local ownRoom = t ~= nil and feet ~= nil and TeamDeathmatchRules.roomOf(t, player.UserId, feet) == "own"
+		local ownRoom = t ~= nil and feet ~= nil and TeamDeathmatchRules.roomOf(t, id, feet) == "own"
 		return AgentSelect.swapsNow(phase, sim ~= nil, ownRoom)
 	end
 	-- Deathmatch sells its guns alone.
@@ -2036,8 +2038,9 @@ function Arena.start()
 		end
 	end)
 	local ATTACK = bit32.bor(PlayerSim.Buttons.Fire, PlayerSim.Buttons.AltFire)
-	table.insert(PlayerSimServer.tickListeners, function(player: Player, input: PlayerCodec.WireInput)
-		if bit32.btest(input.buttons, ATTACK) then
+	-- A bot's fire comes as its own (BotServer.fireListeners, below).
+	table.insert(PlayerSimServer.tickListeners, function(player: PlayerSimServer.Actor, input: PlayerCodec.WireInput)
+		if player:IsA("Player") and bit32.btest(input.buttons, ATTACK) then
 			fired(player.UserId)
 		end
 	end)

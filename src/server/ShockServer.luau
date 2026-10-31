@@ -52,7 +52,7 @@ local world = RobloxWorld.new()
 -- loosed on, where it bursts, the way the surface there faces, and when
 -- (server time).
 type Due = {
-	player: Player,
+	player: PlayerSimServer.Actor,
 	owner: number,
 	id: number,
 	point: vector,
@@ -62,7 +62,7 @@ type Due = {
 
 local due: { Due } = {}
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: PlayerSimServer.Actor, cast: AbilitySim.Cast)
 	if cast.kind ~= "bolt" or cast.ability ~= "shockbolt" then
 		return
 	end

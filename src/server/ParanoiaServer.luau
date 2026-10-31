@@ -18,7 +18,9 @@
 -- (MinimapServer), and a flash popping further away doesn't blind them
 -- (FlareServer). Whom the thrower's last orb touched is their
 -- `VFLastParanoia` attribute once it's flown (their names, in the order it
--- touched them, "" for nobody), which scripted checks read.
+-- touched them, "" for nobody), which scripted checks read. Bots send orbs
+-- and are nearsighted by them as players are (system 65), each known by
+-- its stand-in (PlayerSimServer.Actor), which carries its `VFNearsight`.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -38,11 +40,13 @@ local ParanoiaServer = {}
 
 ParanoiaServer.LAST_ATTRIBUTE = "VFLastParanoia"
 
+type Actor = PlayerSimServer.Actor
+
 -- An orb in flight: whose, sent when (server time), how far into its
 -- flight it's been looked along (seconds), and whom it's touched, by
 -- entity id, and their names in order.
 type Flying = {
-	player: Player,
+	player: Actor,
 	orb: ParanoiaSim.Orb,
 	at: number,
 	looked: number,
@@ -52,9 +56,9 @@ type Flying = {
 
 local flying: { Flying } = {}
 -- Each player's nearsight, while any of it is left.
-local nearsights: { [Player]: ParanoiaSim.Nearsight } = {}
+local nearsights: { [Actor]: ParanoiaSim.Nearsight } = {}
 
-local function setNearsight(player: Player, n: ParanoiaSim.Nearsight?)
+local function setNearsight(player: Actor, n: ParanoiaSim.Nearsight?)
 	if n then
 		nearsights[player] = n
 		player:SetAttribute(ParanoiaSim.ATTRIBUTE, ParanoiaSim.encode(n))
@@ -64,7 +68,7 @@ local function setNearsight(player: Player, n: ParanoiaSim.Nearsight?)
 	end
 end
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: Actor, cast: AbilitySim.Cast)
 	if cast.kind ~= "paranoia" then
 		return
 	end
@@ -112,16 +116,16 @@ local function fly(f: Flying, now: number)
 		end
 		f.touched[id] = true
 		table.insert(f.names, entity.name)
-		local player = entity.player
-		if player then
-			setNearsight(player, ParanoiaSim.nearsight(nearsights[player], now))
+		local actor = PlayerSimServer.actorOf(entity)
+		if actor then
+			setNearsight(actor, ParanoiaSim.nearsight(nearsights[actor], now))
 		end
 	end
 end
 
 -- A player's nearsight gone, if they have one: with a death, a new life,
 -- and a Phoenix's body gone in Run it Back (system 33).
-local function clear(player: Player)
+local function clear(player: Actor)
 	if nearsights[player] then
 		setNearsight(player, nil)
 	end
@@ -153,14 +157,17 @@ end
 function ParanoiaServer.start()
 	table.insert(PlayerSimServer.castListeners, onCast)
 	table.insert(PlayerSimServer.deathListeners, clear)
-	table.insert(PlayerSimServer.spawnListeners, function(player: Player)
+	local function newLife(player: Actor)
 		clear(player)
 		for i = #flying, 1, -1 do
 			if flying[i].player == player then
 				table.remove(flying, i)
 			end
 		end
-	end)
+	end
+	table.insert(PlayerSimServer.spawnListeners, newLife)
+	table.insert(PlayerSimServer.botDeathListeners, clear)
+	table.insert(PlayerSimServer.botSpawnListeners, newLife)
 	Players.PlayerRemoving:Connect(function(player)
 		nearsights[player] = nil
 	end)

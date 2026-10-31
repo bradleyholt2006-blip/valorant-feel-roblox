@@ -49,8 +49,8 @@ local HF = AbilityConfig.HuntersFury
 
 -- Whom a blast of `owner`'s (an entity id) can catch, with its owner on
 -- `side` (nil with none): everyone alive and spawned but its owner, players
--- in play on another side and the dummies; with no sides, everyone but its
--- owner. Each one as FurySim sees them, and by id the pose the snapshots
+-- and bots in play on another side and the dummies; with no sides, everyone
+-- but its owner. Each one as FurySim sees them, and by id the pose the snapshots
 -- show.
 local function targetsFor(owner: number, side: number?): ({ FurySim.Target }, { [number]: PlayerCodec.Pose })
 	local out: { FurySim.Target } = {}
@@ -59,12 +59,12 @@ local function targetsFor(owner: number, side: number?): ({ FurySim.Target }, { 
 		if id == owner or not entity.health.alive then
 			continue
 		end
-		local player = entity.player
-		if player then
-			if not (PlayerSimServer.inPlay(player) and PlayerSimServer.isAlive(player)) then
+		local actor = PlayerSimServer.actorOf(entity)
+		if actor then
+			if not (PlayerSimServer.inPlay(actor) and PlayerSimServer.isAlive(actor)) then
 				continue
 			end
-			if side ~= nil and player:GetAttribute(ArenaConfig.SIDE) == side then
+			if side ~= nil and actor:GetAttribute(ArenaConfig.SIDE) == side then
 				continue
 			end
 		end
@@ -88,7 +88,7 @@ local function held(): boolean
 	return phase == "buy" or phase == "pregame"
 end
 
-local function onCast(player: Player, cast: AbilitySim.Cast)
+local function onCast(player: PlayerSimServer.Actor, cast: AbilitySim.Cast)
 	if cast.kind ~= "blast" or cast.ability ~= "huntersfury" then
 		return
 	end

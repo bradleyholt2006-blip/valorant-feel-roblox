@@ -19,7 +19,9 @@
 -- Ability remote's "healing", with the healer and the target, the fog of
 -- war's way, system 35), and every client as it's over ("healed"), so each
 -- draws its glow. The healer's `VFLastHeal` attribute is the name of the
--- player it healed, which scripted checks read.
+-- player it healed, which scripted checks read. Bots heal and are healed
+-- as players are (system 65), each known by its stand-in
+-- (PlayerSimServer.Actor).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -86,13 +88,12 @@ local function aimedAt(healer: Entities.Entity, cast: AbilitySim.Cast, viewTime:
 end
 
 -- A heal of `healer`'s (`player`'s) on `target` starting, from `cast`.
-local function start(player: Player, healer: Entities.Entity, target: Entities.Entity, cast: AbilitySim.Cast)
+local function start(player: PlayerSimServer.Actor, healer: Entities.Entity, target: Entities.Entity, cast: AbilitySim.Cast)
 	local now = Workspace:GetServerTimeNow()
 	local total = if target == healer then HO.selfHeal.value else HO.allyHeal.value
 	table.insert(heals, { heal = HealSim.new(target.id, healer.id, total, now), lot = now })
-	local by = target.player
-	if by then
-		player:SetAttribute(HealServer.LAST_ATTRIBUTE, by.Name)
+	if target.kind ~= "dummy" then
+		player:SetAttribute(HealServer.LAST_ATTRIBUTE, target.name)
 	end
 	local event = {
 		entity = healer.id,
@@ -113,7 +114,7 @@ end
 
 -- A try of the orb in `player`'s simulation, with the viewTime of the
 -- input it came in: judged, and if it heals, the heal under way.
-local function try(player: Player, cast: AbilitySim.Cast, viewTime: number)
+local function try(player: PlayerSimServer.Actor, cast: AbilitySim.Cast, viewTime: number)
 	local healer = PlayerSimServer.entityOf(player)
 	local sim = PlayerSimServer.getSim(player)
 	if not healer or not sim or not healer.health.alive or not PlayerSimServer.inPlay(player) then
@@ -139,7 +140,7 @@ local function try(player: Player, cast: AbilitySim.Cast, viewTime: number)
 	start(player, healer, target, cast)
 end
 
-local function onTick(player: Player, input: any, casts: { AbilitySim.Cast }?)
+local function onTick(player: PlayerSimServer.Actor, input: any, casts: { AbilitySim.Cast }?)
 	if not casts then
 		return
 	end
@@ -188,7 +189,7 @@ function HealServer.clear()
 end
 
 -- The heals on a player over (a death or a new life).
-local function stopOn(player: Player)
+local function stopOn(player: PlayerSimServer.Actor)
 	local entity = PlayerSimServer.entityOf(player)
 	if not entity then
 		return
@@ -205,6 +206,8 @@ function HealServer.start()
 	table.insert(PlayerSimServer.tickListeners, onTick)
 	table.insert(PlayerSimServer.deathListeners, stopOn)
 	table.insert(PlayerSimServer.spawnListeners, stopOn)
+	table.insert(PlayerSimServer.botDeathListeners, stopOn)
+	table.insert(PlayerSimServer.botSpawnListeners, stopOn)
 end
 
 return HealServer
