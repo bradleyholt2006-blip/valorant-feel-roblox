@@ -242,9 +242,19 @@ BotConfig.Utility = {
 	paranoiaNear = p(20, "estimate", "Metres: inside its 25 m travel (AbilityConfig.Paranoia)"),
 	stormNear = p(12, "estimate", "Metres"),
 	-- The Recon Bolt over the way in, not yet cast as the push goes (it
-	-- hadn't got to where its side gathers): cast on the way, while it's
-	-- this far or further from the way in.
-	reconFar = p(5, "estimate", "Metres from the way in: about as far as its side gathers, 5 to 8 m on the maps (BotSpots)"),
+	-- hadn't got to where its side gathers, or fetched the spike): cast on
+	-- the way, while it's this far or further from the way in, tried again
+	-- this soon, and only where it sees its way in.
+	reconFar = p(
+		2.5,
+		"estimate",
+		"Metres from the way in: just short of it, as on some ways a throw's only found from 7 m in (Outpost's A, the second way, 6.5 m): 4 m to walk, more than a think's at a run"
+	),
+	reconRetry = p(
+		0.25,
+		"estimate",
+		"Seconds: under a think (Params.think), so each on the way tries again; only in sight of the way in, as a try that finds no throw costs about a millisecond"
+	),
 	-- Holding: the Recon Bolt toward where attackers gather, this long into
 	-- the round, as defenders look for them early.
 	reconFrom = p(8, "estimate", "Seconds after the round goes live"),

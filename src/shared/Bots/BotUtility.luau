@@ -691,7 +691,7 @@ local function firstOf(list: { vector }, most: number): { vector }
 	return out
 end
 
-type Option = { id: string, key: string, again: boolean, solve: (slot: number) -> Cast? }
+type Option = { id: string, key: string, again: boolean, retry: number?, solve: (slot: number) -> Cast? }
 
 -- What to cast now, and how: the first, by priority, of the casts the
 -- moment calls for that its kit has a charge of (or the points), that it
@@ -715,8 +715,8 @@ function BotUtility.choose(
 		return nil
 	end
 	local options: { Option } = {}
-	local function add(id: string, key: string, solve: (slot: number) -> Cast?, again: boolean?)
-		table.insert(options, { id = id, key = key, again = again == true, solve = solve })
+	local function add(id: string, key: string, solve: (slot: number) -> Cast?, again: boolean?, retry: number?)
+		table.insert(options, { id = id, key = key, again = again == true, retry = retry, solve = solve })
 	end
 	local place = m.place
 	local role = if place then place.role else "none"
@@ -749,8 +749,9 @@ function BotUtility.choose(
 		end
 	end
 	-- Gathered short of its way in: the Recon Bolt over it, and through
-	-- it. Not there yet as the push goes, it's cast on the way while the
-	-- way in's still a way off.
+	-- it. Not there yet as the push goes (it fetched the spike, say), it's
+	-- cast on the way while the way in's still a way off, tried again soon,
+	-- from where it sees the way in, as it walks on.
 	local way = if place then place.way else nil
 	if place and role == "entry" and #threats > 0 then
 		local gathered = place.phase == "gather" and place.there
@@ -761,8 +762,11 @@ function BotUtility.choose(
 				table.insert(through, place.door + EYE)
 			end
 			add("reconbolt", "gather:reconbolt", function(slot: number): Cast?
+				if not gathered and way and not clearBetween(world, m.eye, way) then
+					return nil
+				end
 				return recon(m, world, slot, "gather:reconbolt", firstOf(threats, SPOTS), through)
-			end)
+			end, false, if gathered then nil else U.reconRetry.value)
 		end
 	end
 	-- Going in through its way.
@@ -911,7 +915,7 @@ function BotUtility.choose(
 			end
 			return c
 		end
-		memo.retry[o.key] = m.now + U.retry.value
+		memo.retry[o.key] = m.now + (o.retry or U.retry.value)
 		if deadline and os.clock() > deadline then
 			return nil
 		end

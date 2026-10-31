@@ -133,6 +133,13 @@ posed was given up on for good. Now a rig without its PrimaryPart or a mesh yet 
 meshes aren't counted loaded with none there, and one that can't be posed is tried again every
 second, given up on only after ten tries, with a warning in the Output.
 
+A third run (31 October, with those changes) had the bots drawn as blocks once the rig was taken out
+of ReplicatedStorage and as bodies again once it was put back. A crouched defuse's hands hovered
+beside the spike's raised cap, not on it: the knuckles were 0.11 to 0.13 m from its middle and 0.46
+to 0.48 m up, level with the cap's top (0.475 m up, 0.07 m in radius), with the hands 0.09 m either
+side. They now go 0.05 m either side, onto the cap's rim, and 0.42 m up, a centimetre higher, as
+at 0.41 m the arms would stretch past their length to reach that far in.
+
 ## 4. Confirmed vs estimated, as implemented
 
 | What | Value | Status | Source |
@@ -156,7 +163,7 @@ second, given up on only after ten tries, with a warning in the Output.
 | The hips standing | Half way from the aim toward the feet | Estimate | Ours |
 | A shot's kick | The muzzle 0.1 radians up and the gun 0.025 m back, settling to a third in 0.07 s | Estimate | Ours |
 | A landing | The head and hips down 0.06 m after 0.6 s in the air, less after a shorter fall, none under 0.15 s, back up over 0.3 s | Estimate | The head's middle stays in its box |
-| Planting or defusing | Both hands at 0.95 m standing, 0.41 m up and 0.26 m ahead crouched | Estimate | As far as the arms reach with the head in its box; at 0.22 m the palms stopped 2 to 3 cm short of the spike in Studio |
+| Planting or defusing | Both hands at 0.95 m standing, 0.09 m either side; crouched, 0.42 m up, 0.26 m ahead and 0.05 m either side | Estimate | As far as the arms reach with the head in its box; at 0.22 m ahead the palms stopped 2 to 3 cm short of the spike in Studio, and at 0.09 m either side the knuckles were beside its raised cap, level with its top |
 | A body off the screen | Moved with its entity, not posed | Estimate | Ours: posing it is most of what a body costs |
 | A bone's `Transform` | Applied on top of its rest, not replicated | Confirmed | Roblox's `Bone` |
 | A rig's leaf bones | Off when exporting from Blender; the kit's FBX has them, and they're harmless | Confirmed (Roblox) | Roblox's export requirements |
@@ -327,7 +334,6 @@ flick; and no joint jumping 15 cm in a frame whatever the body does next.
 - The turn on the spot, a shot's kick, a landing, a long gun's reload and a crouched defuse as they
   look now, a bot's plant and defuse, and the bodies' cost looking away from them.
 - Some joints outside their own boxes in extreme poses, by up to 0.15 m (section 3).
-- The bodies coming back once the rig's put back in ReplicatedStorage, and a crouched defuse's palms
-  on the spike.
+- A crouched defuse's hands on the spike's raised cap, at its near rim (section 3).
 
 Section 67 of the [Studio checklist](../studio-checklist.md) covers these.

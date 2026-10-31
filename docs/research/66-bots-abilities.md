@@ -123,6 +123,21 @@ bot not there as the push goes casts it on the way, while it's 5 m or more from 
 as far as its side gathers, 5 to 8 m on the maps), its bolt tried through the way in and its door
 as well as over the spots. A guard still cast nothing on two defuses; that stays a known gap.
 
+A third run (31 October, with those fixes) had a Curveball's thrower stand where it threw from the
+throw to the pop, 0.00 m, the bots with it facing 167 to 180 degrees away from the pop, a teammate
+white for 0.23 s at the most and the thrower never, and the bots at 0.39 ms of a frame live, 0.68 ms
+at the most (BU2, BU6). The attacking Sova cast its Recon Bolt once in six rounds, late, as its
+side's push went. In the five others it fetched the spike, came from the spawn with it after its
+side had taken the site, and had the job of planting it, which gave it no place in the plan to cast
+from. Walked in at a run from the spawn, a late Sova's stretch of the way with a throw, while it's 5
+m or more off the way in, is as little as 1.4 m (Outpost's A, the second way), under a think's walk,
+and a throw not found was tried again 1.5 s later, three thinks on. Now the carrier on its way to
+plant goes in through its way as the push did, while it's short of the site; and the late Recon Bolt
+goes until it's 2.5 m off the way in, tried again each think, and only in sight of the way in, as a
+try that finds no throw costs about a millisecond. Walked in from the spawn on every map, it's cast
+on 15 of the 16 ways in it's cast on from where its side gathers; the walk into Foundry's A by the
+second way never sees a spot for it. 4076 checks pass.
+
 ## 4. Confirmed vs estimated, as implemented
 
 | What | Value | Status | Source |
@@ -130,11 +145,11 @@ as well as over the spots. A guard still cast nothing on two defuses; that stays
 | What bots cast | Cloudburst, Blade Storm, Hot Hands, Curveball, the Healing, Slow and Barrier Orbs, Dark Cover, Paranoia, the Recon and Shock Bolts, and Hunter's Fury | Estimate | Ours: what goes at a spot, a person or a way in. Updraft, Tailwind, Blaze, Shrouded Step, From the Shadows, the Owl Drone, Resurrection and Run it Back wait |
 | How often a moment gets its cast | Easy 0.4, Normal 0.7, Hard 0.9, Expert 1; each moment rolled once a life | Estimate | Ours, on Booth's "Poor weapon proficiency" to "Complete weapon proficiency" |
 | The least time between one bot's casts | 1.2 s | Estimate | Ours |
-| A throw not found, tried again | 1.5 s later | Estimate | Ours |
+| A throw not found, tried again | 1.5 s later; the late Recon Bolt each think, in sight of the way in | Estimate | Ours: on some ways a throw's found for under a think's walk |
 | The longest from the key to the throw | 3 s; Hunter's Fury 7 s | Estimate | Ours |
 | A heal | Itself at 60 health or less, or the most hurt teammate within 15 m at 50 or less, once no enemy has hurt it or been in its sight for 3 s | Estimate | Ours |
 | The Recon Bolt from a hold | 8 to 30 s into the round | Estimate | Ours: defenders look for the attackers early |
-| The Recon Bolt going in | Gathered short of the way in; or, not there as the push goes, on the way while 5 m or more from the way in | Estimate | Ours: about as far as a side gathers, 5 to 8 m on the maps |
+| The Recon Bolt going in | Gathered short of the way in; or, not there as the push goes, or carrying the spike in after it, on the way while 2.5 m or more from the way in | Estimate | Ours: on some ways a throw's only found from 7 m in (Outpost's A, the second way, 6.5 m) |
 | A stall | Attackers seen within 14 m of its way in, in the last 2.5 s | Estimate | Ours, for "stalling on defense" (Mobalytics) |
 | Smokes on the push | On the two spots most likely to hold the way in, within 3 m | Estimate | Ours, for "smoking chokepoints during executes" (Mobalytics) |
 | A Curveball | Within 9 m of the way in; popping out of the thrower's sight, blinding those holding at least 0.6 of the longest blind between them, and no teammate more than 0.2; the thrower stands where it threw it until the pop, and bots on its side turn their backs on it | Estimate | Ours: it pops about 6 m from where it's thrown (system 30); players turn from their side's flashes as they're called |
@@ -159,9 +174,11 @@ where that job has it (`BotTeam.placeOf`):
 - **Holding** (a hold): a defender at its way in, with where the attackers come from beyond it.
 - **Guarding** (a guard): an attacker after the plant, with the spike.
 
-Fetching the spike, planting it, defusing it and getting out of its blast take a bot's hands, so it
-casts nothing then. In the modes that respawn there's no plan, and a bot casts only what needs none:
-a heal, Hunter's Fury and Blade Storm.
+Fetching the spike, planting it on the site, defusing it and getting out of its blast take a bot's
+hands, so it casts nothing then; the carrier on its way to plant, short of the site still (it
+fetched the spike, and its side's push went without it), goes in through its way as the push did. In
+the modes that respawn there's no plan, and a bot casts only what needs none: a heal, Hunter's Fury
+and Blade Storm.
 
 A side's plan starts over with each round, the round known by the mode's start, its match and its
 round (`Arena`), so a mode started over begins its plan afresh; and the retake and the guard last
@@ -170,7 +187,8 @@ only while the spike is planted (`BotTeam.think`).
 ### The moments
 
 - **Gathered, before the push** (or a retake's): the Recon Bolt over its way in, at the spots that
-  hold it; not there yet as the push goes, on the way, while it's 5 m or more from the way in.
+  hold it; not there yet as the push goes, or carrying the spike in after it, on the way, while
+  it's 2.5 m or more from the way in.
 - **On the push**: Dark Cover on the two spots most likely to hold its way in; a cloud on the first,
   or on its sight of the way in; Paranoia through them from 20 m; a Curveball round the corner at
   them from 9 m; a Shock Bolt or Hot Hands on the first; and Blade Storm once it's within 12 m.
@@ -216,7 +234,8 @@ with, before it's thrown, and one that lands where it's meant to is kept:
 A throw found from where the bot stands is thrown from there, the bot standing still for it; a
 smoke, a heal, a wall, Paranoia and Hunter's Fury go at a point, so they're aimed again each tick
 and cast on the move. A throw that isn't found isn't thrown, and is tried again 1.5 s later from
-wherever the bot has got to.
+wherever the bot has got to; the late Recon Bolt is tried again at each think, but only in sight of
+the way in.
 
 ### Its hands
 
@@ -262,8 +281,8 @@ it's tried again.
 | File | What |
 | --- | --- |
 | `src/shared/Bots/BotUtility.luau` | What a bot casts and when; every throw tried; its hands for the cast |
-| `src/shared/Bots/BotTeam.luau` | `placeOf`: where each bot is in its side's plan, its way in and the spots that hold it; `think` drops a retake or a guard once the spike isn't planted |
-| `src/shared/Bots/BotConfig.luau` | `Utility`, each skill's `utility`, and `CAST` |
+| `src/shared/Bots/BotTeam.luau` | `placeOf`: where each bot is in its side's plan, its way in and the spots that hold it, and the carrier's on its way to plant; `think` drops a retake or a guard once the spike isn't planted |
+| `src/shared/Bots/BotConfig.luau` | `Utility` (with `reconFar` and `reconRetry` for the late Recon Bolt), each skill's `utility`, and `CAST` |
 | `src/shared/Bots/BotBuy.luau` | `toKeep`: what a bot keeps back from its charges |
 | `src/server/BotServer.luau` | Each bot's moment, its casts within the budget, and its hands in its inputs; turning its back on its side's flares |
 | `src/server/FlareServer.luau` | `coming`: the flares in the air, whose and where and when each pops |
@@ -293,8 +312,8 @@ it's tried again.
 
 - Bots casting in a round: the moments, and how often. The first run saw 31 casts in 12 rounds for
   9 bots; the second, with the charges bought, saw the push's casts come 7 to 9 s into each round.
-- An attacking Sova's Recon Bolt, now cast on the way if the push goes before it's gathered: none
-  came in thirteen attacking rounds over the two runs before.
+- An attacking Sova's Recon Bolt on the way in, late or carrying the spike: in the third run it came
+  once in six rounds, late, and never from the carrier.
 - A Curveball's own side: the thrower now waits for the pop and its side's bots turn away; in the
   second run, before that, teammates and a thrower were whited out.
 - A guard's cast on a defuse: none came in six planted rounds, nor on two defuses in the second run.
