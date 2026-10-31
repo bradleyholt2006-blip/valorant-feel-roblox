@@ -6271,7 +6271,7 @@ end
 
 - **RJ1 A place held.** Run `rounds(1, 2)`. In the next buy phase run `show("Player1")` and
   `bots()`, then `away("Player1")`: the Output has `[VF] place held: -1 in competitive`, player 1's
-  character goes, and window 1's menu can be opened with M. Run `show("Player1")` again: no side,
+  character goes, and window 1's Play menu opens. Run `show("Player1")` again: no side,
   and `rejoin competitive`. Within a second, `bots()` lists a new bot on player 1's side, playing
   another agent than theirs. **Send:** the lines.
 
@@ -6304,6 +6304,61 @@ end
   close Roblox. Join the game again: the menu has Competitive picked and RECONNECT, and pressing it
   puts you back in the match, on its server, with your record and credits. **Send:** whether
   RECONNECT came, and where it put you.
+
+## 74. AFK
+
+From [70-afk.md](research/70-afk.md). System 70 warns a player who stops playing in the spike
+rounds' match under way: alive in a round, 90 seconds without playing at anything (a key pressed or
+let go, a look, a weapon asked for, a buy or a ping) brings a red line across the top of the screen
+counting down from 30, and if they still don't play they're taken out of the match, their place held
+as for anyone who leaves (section 73): a bot stands in, and their Play menu opens on RECONNECT with
+a line saying why. Dead or between rounds the time stops. AFK's off in Studio unless Workspace's
+`VFTestAfk`, set from the server, has the seconds to warn after, and with it AFK counts with nobody
+else playing too. The server's Output prints `[VF] AFK: <UserId> warned` and
+`[VF] AFK: <UserId> taken out of the match`.
+
+Start a Local Server with 1 player, and set Competitive going on Outpost as in section 71, with its
+script run in the server's command bar, and section 73's too. In window 1's command bar run
+section 72's script, for `pad`, `let` and `set`. Then in the server's command bar run
+`workspace:SetAttribute("VFTestAfk", 15)`, and this, which prints what the server has of player 1's
+AFK:
+
+```lua
+function afk()
+	local p = game.Players.Player1
+	local at = p:GetAttribute("VFAfkAt")
+	local left = if at then string.format("out in %.1f", at - workspace:GetServerTimeNow()) else "not warned"
+	print("afk", left, "out", p:GetAttribute("VFAfkOut"))
+end
+```
+
+- **AF1 Warned.** In a buy phase, leave window 1 alone: about 15 s on, the Output has
+  `[VF] AFK: -1 warned`, window 1 has `INACTIVE: PLAY, OR YOU'RE TAKEN OUT OF THE MATCH IN 30` in
+  red across the top, counting down, and `afk()` prints `out in` about 30. **Send:** the lines, and
+  the seconds from the buy phase's start to the warning.
+
+- **AF2 Playing takes it back.** While warned, run `pad("0 1 0 0 0 0", 0.2)` and `let()` in
+  window 1: the line goes at once, and `afk()` prints `not warned`. Wait for the warning again, then
+  `set("VFTestPitch", -10)`: the line goes again; `set("VFTestPitch", nil)`. In the next buy phase,
+  once warned, `set("VFTestBuy", "ghost")`: the line goes. Then `pad("0 0 0 0 0 0 l3", 0.1)` and
+  `let()` to crouch, and leave it: the warning comes 15 s on though the crouch is held, and the same
+  again stands you up and takes it back. **Send:** the lines.
+
+- **AF3 Dead or between rounds.** While warned, run `workspace:SetAttribute("VFMatchDecide", 2)`: as
+  the round ends the line goes, and `afk()` prints `not warned` until the next buy phase, when the
+  line's back counting on from about where it stopped. **Send:** the seconds the line read as the
+  round ended and as it came back.
+
+- **AF4 Taken out.** Leave window 1 alone until the count runs out: the Output has
+  `[VF] AFK: -1 taken out of the match` and `[VF] place held: -1 in competitive`, player 1's
+  character goes, window 1's Play menu opens with Competitive's card picked, the button reading
+  RECONNECT and the line under it `TAKEN OUT FOR BEING INACTIVE: RECONNECT TO GET BACK IN`, and
+  `afk()` prints `out true`. Within a second `bots()` lists a bot on player 1's side in their place.
+  Run `set("VFTestPlay", "competitive")` in window 1, as RECONNECT: the menu shuts, the Output has
+  `[VF] place let go: -1, back`, and `afk()` prints `out nil`. **Send:** the lines.
+
+- **AF5 Off in Studio.** Run `workspace:SetAttribute("VFTestAfk", nil)` and leave window 1 alone
+  through a whole round: no warning, and no `[VF] AFK:` line. **Send:** whether a warning came.
 
 ## Results
 
@@ -6786,6 +6841,11 @@ RJ3 in line: ___; back as the round ended: ___
 RJ4 the career line: ___; let go: ___
 RJ5 the career line: ___
 RJ6 RECONNECT came: yes / no; where it put you: ___
+AF1 warned: ___; the line: ___; seconds to the warning: ___
+AF2 a move: ___; a look: ___; a buy: ___; the crouch held: ___
+AF3 as the round ended: ___; as it came back: ___
+AF4 taken out: ___; the menu and line: ___; the bot: ___; back: ___
+AF5 a warning: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -7209,3 +7269,7 @@ Didn't look right (IDs and what you saw):
 | 69 | Back by RECONNECT or PLAY, with their record, credits and agent, at once in a buy phase or down until the next round, and the bot on their side giving way | RJ2, RJ3 |
 | 69 | A match's end with a player away, and with one back in time: the career lines | RJ4, RJ5 |
 | 69 | Closing the game during a match on a live server and coming back, by RECONNECT | RJ6 |
+| 70 | Standing still alive in a round: the warning at the time set, counting down, and gone at a key, a look or a buy | AF1, AF2 |
+| 70 | Dead, or between rounds: the time stopping and going on | AF3 |
+| 70 | Taken out: the Output's line, the place held and the bot on their side, the menu opening with RECONNECT and the line saying why, and back by RECONNECT | AF4 |
+| 70 | No warning with nobody else playing, without `VFTestAfk` | AF5 |

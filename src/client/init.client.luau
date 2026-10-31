@@ -51,6 +51,7 @@ local PingView = require(script.PingView)
 local ReportView = require(script.ReportView)
 local IndicatorView = require(script.IndicatorView)
 local KillBannerView = require(script.KillBannerView)
+local AfkView = require(script.AfkView)
 local Gamepad = require(script.Gamepad)
 local BlindView = require(script.BlindView)
 local GameSounds = require(script.Audio.GameSounds)
@@ -168,6 +169,9 @@ IndicatorView.start()
 -- The kill banner (system 55): each kill of yours, low in the middle with
 -- the kill sound, counted through the round or the life.
 KillBannerView.start()
+-- AFK (system 70): the warning that you've stopped playing, counting down to
+-- being taken out of the match.
+AfkView.start()
 -- A gamepad (system 68): the console version's layout, Roblox's gamepad
 -- cursor in the menus, and Select for the big map, the scores and the
 -- menus.

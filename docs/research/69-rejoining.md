@@ -120,7 +120,9 @@ the match.
 With `VFRejoin` set, by the arena for a place held on this server or by `ModeServers` for one on
 another, the Play menu picks that mode as it comes, PLAY reads RECONNECT, and the line under it says
 the match is still on. Pressing it sends the Play remote the mode with `true`; PLAY for that mode is
-always RECONNECT.
+always RECONNECT. Taken out of the match while still in the server, as by `VFTestAway` or for being
+AFK (system 70, [70-afk.md](70-afk.md)), the menu opens by itself on a server that has players pick
+first.
 
 ### In Studio
 
@@ -135,7 +137,6 @@ leaver's is.
 - The remake vote, as a bot fills the place.
 - A held player on the scoreboard, shown as away.
 - The ultimate's points and the charges bought, which go with the player.
-- AFK: a player in the match who stops playing (the next system).
 
 ## 6. Implementation map
 

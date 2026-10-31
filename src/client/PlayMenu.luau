@@ -19,6 +19,9 @@
 -- With a place held for you in a match under way (system 69), here or on
 -- another server, its mode is picked and PLAY reads RECONNECT: pressed, it
 -- puts you back in that match, sent back to its server if it's another.
+-- Taken out of a match while you're still here (for being AFK, system 70,
+-- your MatchConfig.AFK_OUT, or Studio's VFTestAway), the menu opens, on a
+-- server that has you pick first, and says why.
 --
 -- Everything comes from attributes: Workspace's PlayConfig.COUNTS and what
 -- the arena plays (ArenaConfig.ON and MODE, MatchConfig.FORMAT), and your
@@ -318,6 +321,16 @@ function PlayMenu.start()
 		press(selected)
 	end)
 
+	-- Taken out of what's played here, while still here: pick again.
+	local wasPlaying = me:GetAttribute(PlayConfig.PLAYING) == true
+	me:GetAttributeChangedSignal(PlayConfig.PLAYING):Connect(function()
+		local playing = me:GetAttribute(PlayConfig.PLAYING) == true
+		if wasPlaying and not playing then
+			played = false
+		end
+		wasPlaying = playing
+	end)
+
 	Remotes.get().Play.OnClientEvent:Connect(function(answer: any, detail: any)
 		local mode = if typeof(detail) == "string" then PlayConfig.ByKey[detail] else nil
 		if answer == "joined" or answer == "switched" then
@@ -402,7 +415,9 @@ function PlayMenu.start()
 		playButton.BackgroundTransparency = if busy then 0.5 else 0
 		local heldMode = if held then PlayConfig.ByKey[held] else nil
 		if note == "" and heldMode and not busy then
-			status.Text = string.format("YOUR %s MATCH IS STILL ON: RECONNECT TO GET BACK IN", string.upper(heldMode.name))
+			status.Text = if me:GetAttribute(MatchConfig.AFK_OUT) == true
+				then "TAKEN OUT FOR BEING INACTIVE: RECONNECT TO GET BACK IN"
+				else string.format("YOUR %s MATCH IS STILL ON: RECONNECT TO GET BACK IN", string.upper(heldMode.name))
 			status.TextColor3 = GOLD
 		else
 			status.Text = note

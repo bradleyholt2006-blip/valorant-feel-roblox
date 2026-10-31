@@ -76,5 +76,6 @@ require("./body")
 require("./rank")
 require("./pad")
 require("./rejoin")
+require("./afk")
 
 H.finish()

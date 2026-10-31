@@ -26,8 +26,9 @@
 -- after that, with what each side spots, and each player's snapshot goes
 -- by them. The arena's rounds move on last, so a round that ends in this
 -- frame's shots respawns its players after the frame's snapshot, and agent
--- select after them, as the rounds have it. The combat reports that changed
--- in the frame go out at its end.
+-- select after them, as the rounds have it, and the AFK clocks after the
+-- rounds, by the phase they leave. The combat reports that changed in the
+-- frame go out at its end.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -50,6 +51,7 @@ local SpikeServer = require(script.SpikeServer)
 local GroundGunsServer = require(script.GroundGunsServer)
 local AbilityServer = require(script.AbilityServer)
 local AgentServer = require(script.AgentServer)
+local AfkServer = require(script.AfkServer)
 local CloudServer = require(script.CloudServer)
 local FlareServer = require(script.FlareServer)
 local FireServer = require(script.FireServer)
@@ -85,6 +87,7 @@ PlayerSimServer.start(CombatServer.onVolley, CombatServer.onSwing)
 ShopServer.start()
 AbilityServer.start()
 AgentServer.start()
+AfkServer.start()
 CloudServer.start()
 FlareServer.start()
 FireServer.start()
@@ -150,6 +153,7 @@ RunService.Heartbeat:Connect(function(dt)
 	FogServer.step(now)
 	Replication.step(now)
 	Arena.step(now)
+	AfkServer.step(now, dt)
 	AgentServer.step(now)
 	ReportServer.step(now)
 end)
