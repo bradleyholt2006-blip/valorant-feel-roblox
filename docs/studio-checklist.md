@@ -5807,7 +5807,7 @@ one in the agent select window after every player, one nobody on its side has lo
 and its kit is a player's, kept from one life to the next. Every ability treats a bot as a player: a
 flash blinds it and Paranoia nearsights it, and while it's blinded or nearsighted it doesn't see
 you; a Healing Orb heals an allied bot; a Recon Bolt and Hunter's Fury leave bots on the caster's
-side be. Bots don't cast yet (system 66).
+side be. Their casting is system 66's (section 70).
 
 Start a Local Server with 1 player, as in section 9. This script, for the server's command bar,
 prints each bot: side, agent, what it's selected, where its pick stands, its kit, its ultimate, and
@@ -5855,6 +5855,91 @@ end
   other side's are both in its sight: `VFLastRecon` on you has only the other side's names. Once X's
   full, cast Hunter's Fury (X, then click) through your bot at the other side's: `VFFuryHits` has
   only theirs. **Send:** the three printed lines.
+
+## 70. Bots' abilities
+
+From [66-bots-abilities.md](research/66-bots-abilities.md). System 66 has each bot cast its agent's
+abilities when a player on that agent would: attackers look over a site with the Recon Bolt before
+they push, then smoke, flash, burn or shock the spots that hold their way in; defenders look for the
+attackers early, and stall a way in that attackers have just shown at; a bot guarding the planted
+spike answers a defuse; and a bot on Sage heals itself and hurt teammates once it's quiet. Every
+throw is flown through the level first, so it lands where the bot means it to and keeps off its own
+side. In each buy phase of the spike rounds, after its guns and shield, a bot buys charges of the
+abilities it casts. In Studio each bot's `VFBotCast` names the last ability it cast and for what,
+as `darkcover push:darkcover:1`: the ability, then the moment (`gather`, `push`, `hold`, `stall`,
+`defuse`, `heal`, `fury` or `storm`).
+
+Start a Local Server with 1 player, as in section 9, and set the spike rounds going on Outpost from
+the server's command bar, as in BT1: `VFMatchMap` `outpost`, `VFArenaMode` `spike`, then
+`VFArenaOn` true. You attack in the first half. Stay back and watch the bots unless a check says
+otherwise. This script, for the server's command bar, prints each cast as a bot starts it, for 4
+minutes: the seconds since it was run, the bot, its side (`A` attacking, `D` defending), its agent,
+its job and the cast. A cast made again straight after (a second heal) doesn't print again.
+
+```lua
+local started = os.clock()
+local connections = {}
+local function watch(bot)
+	table.insert(connections, bot:GetAttributeChangedSignal("VFBotCast"):Connect(function()
+		local attackers = workspace.VFArena:GetAttribute("Attackers")
+		local side = if bot:GetAttribute("VFArenaSide") == attackers then "A" else "D"
+		local when = string.format("%5.1f", os.clock() - started)
+		print(when, bot.Name, side, bot:GetAttribute("VFAgent"), bot:GetAttribute("VFBotTask"), bot:GetAttribute("VFBotCast"))
+	end))
+end
+for _, bot in game.ReplicatedStorage.VFBots:GetChildren() do
+	watch(bot)
+end
+table.insert(connections, game.ReplicatedStorage.VFBots.ChildAdded:Connect(watch))
+task.delay(240, function()
+	for _, connection in connections do
+		connection:Disconnect()
+	end
+	print("done")
+end)
+```
+
+- **BU1 Charges.** 5 s into round 1's buy phase, run section 69's script: each bot's `VFKit` has
+  charges past its free one where its agent has an ability it casts that it could pay for (Jett's
+  `C`, Phoenix's `Q` or a second `E`, Sage's `C` or `Q`, Omen's `Q` or a second `E`, Sova's `Q`).
+  Set `VFMatchSkip` to true, let round 1 play out, and run it again 5 s into round 2's buy phase: a
+  bot that bought a primary has spent what was left on charges, and one saving for a full buy has
+  bought none. **Send:** the script's lines in each buy phase.
+
+- **BU2 The push.** Run the cast script as round 3's buy phase ends, and stay in your spawn while
+  the attacking bots go. A Sova among them prints `gather:reconbolt` as they gather short of the
+  site, and the rest print `push:` casts as they go in (`push:darkcover:1`, `push:cloudburst`,
+  `push:curveball`, `push:hothands` and so on); the defenders print `hold:reconbolt` 8 to 30 s into
+  the round. Then follow the attackers at a distance as they go in: Dark Cover and a cloud land on
+  the spots inside their way in, not in the open short of it, and a Curveball pops round the corner,
+  not in front of them. Run section 69's script straight after a flash: no attacker's `VFBlind` has
+  anything more than a trace. **Send:** the cast script's lines, and what the smokes and flashes
+  looked like.
+
+- **BU3 A stall.** In a later round, go ahead of the attacking bots to a way into a site, step out
+  where its defenders see you for a second, and step back out of sight. Within a few seconds a slow,
+  a molly, a wall, a smoke or a cloud lands at that way in (whichever the defenders there have), and
+  the cast script prints a defender's `stall:` cast. **Send:** what came, and how long after you
+  showed.
+
+- **BU4 The defuse.** Let rounds play out with the spike planted, staying back: as a defending bot
+  starts its defuse, a guarding attacker with one prints `defuse:huntersfury`, `defuse:hothands` or
+  `defuse:shockbolt`, and the defuser is hurt or stops. The defenders print `push:` casts as they
+  retake. **Send:** the guards' lines and what happened to the defuser.
+
+- **BU5 A heal.** Set `VFArenaOn` to false, `VFArenaMode` to `skirmish` and `VFArenaOn` to true,
+  and again until a bot of the other side is on Sage (section 69's script). Run the cast script,
+  hurt that bot to about half its health without killing it, and get out of its sight: within about
+  5 s the script prints `healingorb heal` for it, and in the server's command bar, with its name as
+  the script printed it,
+  `print(game.ReplicatedStorage.VFBots["<its name>"]:GetAttribute("VFLastHeal"))` prints its own
+  name, `BOT` and all. **Send:** the lines.
+
+- **BU6 What they cost.** Set `VFMatchMap` to `wharf`, `VFArenaMode` to `spike`, `VFArenaOn` to
+  false and then true. In a live round with nine bots, as the attackers push, run
+  `print(workspace:GetAttribute("VFBotMs"))` a few times: well under the frame's 16.7, and near
+  BT8's. The Output has no errors or warnings from the bots. **Send:** the numbers, and whether any
+  bot's throw hit its own side in any of these checks.
 
 ## Results
 
@@ -6310,6 +6395,12 @@ BK1 before the window closed: ___; after: ___; the scoreboard and the top bar: _
 BK2 after round 1: ___; after round 2: ___
 BK3 shot while blinded: yes / no; VFBlind: ___; the nearsighted bots shot from about ___ m
 BK4 VFLastHeal: ___; VFLastRecon: ___; VFFuryHits: ___
+BU1 round 1's VFKit lines: ___; round 2's: ___
+BU2 the casts: ___; the smokes and flashes: ___
+BU3 what came, and how long after: ___
+BU4 the guards' casts: ___; the defuser: ___
+BU5 the heal's lines: ___
+BU6 VFBotMs on a push: ___; a throw on its own side: yes / no
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6715,3 +6806,8 @@ Didn't look right (IDs and what you saw):
 | 65 | A bot's kit: its signature's free charge, and points for kills and deaths | BK2 |
 | 65 | A flash blinding a bot and Paranoia nearsighting it in the place's real geometry, and what it sees meanwhile | BK3 |
 | 65 | A Healing Orb healing an allied bot; a Recon Bolt and Hunter's Fury leaving allied bots be | BK4 |
+| 66 | Bots buying their charges in a buy phase, after their guns, and saving for a full buy | BU1 |
+| 66 | Bots casting in a round: the moments, and how often | BU2, BU3, BU4 |
+| 66 | Their throws in the place's real geometry, on Roblox's collisions: smokes on the spots, flashes round the corner, mollies, slows and walls on the way in, and none on their own side | BU2, BU3, BU6 |
+| 66 | A heal; Hunter's Fury, a molly or a Shock Bolt on a defuse | BU4, BU5 |
+| 66 | What the casts cost the server | BU6 |

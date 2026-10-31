@@ -190,6 +190,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 local AgentSelect = require(Shared.Abilities.AgentSelect)
+local AbilitySim = require(Shared.Abilities.AbilitySim)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local ArenaLayout = require(Shared.Arena.ArenaLayout)
 local ArenaRules = require(Shared.Arena.ArenaRules)
@@ -204,6 +205,7 @@ local TeamDeathmatchRules = require(Shared.Arena.TeamDeathmatchRules)
 local BotBuy = require(Shared.Bots.BotBuy)
 local BotConfig = require(Shared.Bots.BotConfig)
 local BotFill = require(Shared.Bots.BotFill)
+local BotUtility = require(Shared.Bots.BotUtility)
 local MapVote = require(Shared.Match.MapVote)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
@@ -635,6 +637,57 @@ local function reloadInHand(id: number, most: number?)
 		PlayerSimServer.reloadInHand(player, most)
 	else
 		BotServer.reloadInHand(id, most)
+	end
+end
+
+-- The round each bot last bought its abilities' charges in (system 66), and
+-- the order its slots are bought round in.
+local chargesBought: { [number]: string } = {}
+local BUY_ORDER = { AbilityConfig.E, AbilityConfig.Q, AbilityConfig.C }
+
+-- In a buy phase of the spike rounds, each bot alive with its agent locked
+-- in, its guns and shield bought, buys charges of the abilities it casts
+-- (BotUtility.uses), once a round (system 66): a charge at a time round its
+-- slots, from its own credits, keeping back what BotBuy.toKeep says.
+local function botCharges(m: MatchRules.State)
+	if m.phase ~= "buy" then
+		return
+	end
+	local round = string.format("%d:%d", m.match, m.round)
+	local kind = MatchRules.roundKind(m.format, m.round)
+	for id in m.members do
+		local standIn = BotServer.standIn(id)
+		if not standIn or chargesBought[id] == round or not BotServer.isAlive(id) or BotServer.spawnPending(id) then
+			continue
+		end
+		if standIn:GetAttribute(AgentSelect.STATUS) == "open" then
+			continue
+		end
+		chargesBought[id] = round
+		local kit = PlayerSimServer.abilitiesOf(standIn)
+		if not kit then
+			continue
+		end
+		local keep = BotBuy.toKeep(kind == "match" or kind == "half", BotServer.holding(id, 1) or "")
+		local bought = true
+		while bought do
+			bought = false
+			for _, slot in BUY_ORDER do
+				local def = AbilitySim.def(kit, slot)
+				local cost = if def and def.cost then def.cost.value else nil
+				if
+					def
+					and cost
+					and BotUtility.uses(def.id)
+					and AbilityServer.canBuy(standIn, def.id)
+					and (MatchRules.credits(m, id) or 0) - cost >= keep
+					and MatchRules.spend(m, id, cost)
+				then
+					AbilityServer.buy(standIn, def.id)
+					bought = true
+				end
+			end
+		end
 	end
 end
 
@@ -1636,6 +1689,9 @@ function Arena.step(time: number)
 	roundLive()
 	roundEnded()
 	spawn(ids)
+	if m then
+		botCharges(m)
+	end
 end
 
 function Arena.start()

@@ -12,7 +12,9 @@
 --   * with less, it saves, keeping the Classic, for a full buy later
 --
 -- Which rounds to save and which to spend is the buyer's own here, not its
--- side's.
+-- side's. What's left goes on its agent's abilities (system 66, toKeep):
+-- all of it on a half's first round or once it holds a primary, and what's
+-- past a full buy's worth while it's saving for one.
 
 local BotConfig = require("./BotConfig")
 local WeaponConfig = require("../Weapons/WeaponConfig")
@@ -79,6 +81,16 @@ function BotBuy.choose(credits: number, has: Has, first: boolean, dice: BotConfi
 		end
 	end
 	return out
+end
+
+-- The credits a bot keeps back from its abilities' charges, its guns and
+-- shield bought (system 66): none on a half's first round (`first`) or
+-- with a primary in hand, and a full buy's worth while it's saving.
+function BotBuy.toKeep(first: boolean, primary: string): number
+	if first or primary ~= "" then
+		return 0
+	end
+	return price("vandal") + price("heavy")
 end
 
 return BotBuy

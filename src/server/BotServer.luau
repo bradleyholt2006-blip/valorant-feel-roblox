@@ -59,10 +59,21 @@
 -- hides from its looks what it hides from a player's eyes: everything, at
 -- a blind's whitest, and anyone past the nearsight's range.
 --
+-- And it casts them as a player would (system 66, BotUtility): each time
+-- its side's plan is gone over, a bot that isn't fighting or casting is
+-- told the moment, where it is in the plan (BotTeam.placeOf), what its
+-- side has seen, its teammates and any defuse it hears, and given what
+-- that calls for, a throw tried through the level first, a few
+-- milliseconds of each think at most; then each tick its hands play the
+-- cast, its view on its aim, the gun left alone, standing still for a
+-- throw found from where it stands. A fight, or its hands going to the
+-- spike, puts it away.
+--
 -- For checks in Studio, and only there, as it would tell an enemy's plan:
 -- each stand-in carries its bot's task in its side's plan
--- (BotConfig.TASK), and the Output has a line each time a bot's been
--- stuck long enough to plan its way again, and where. Workspace's
+-- (BotConfig.TASK) and the last ability it cast, for what (BotConfig.CAST),
+-- and the Output has a line each time a bot's been stuck long enough to
+-- plan its way again, and where. Workspace's
 -- BotConfig.COST has how long the bots take of each server frame.
 
 local Players = game:GetService("Players")
@@ -84,6 +95,7 @@ local BotSpike = require(Shared.Bots.BotSpike)
 local BotSpots = require(Shared.Bots.BotSpots)
 local BotTakeover = require(Shared.Bots.BotTakeover)
 local BotTeam = require(Shared.Bots.BotTeam)
+local BotUtility = require(Shared.Bots.BotUtility)
 local FogOfWar = require(Shared.Combat.FogOfWar)
 local Health = require(Shared.Combat.Health)
 local Sight = require(Shared.Combat.Sight)
@@ -125,6 +137,10 @@ local LOOK_AHEAD = 6 -- metres along its way a bot looks as it walks
 local NEAR_VIEW = math.rad(75) -- radians either side of its view an enemy's looked for in the level
 local SLASH_EXTRA = 0.3 -- metres past a slash's reach a bot with a knife starts it
 local SCOPE_FROM = 8 -- metres: a sniper rifle's scoped for a fight further than this
+-- Seconds of a think its bots' casts may take (system 66): no more bots are
+-- told the moment once this is spent, as trying a throw flies it.
+local CAST_BUDGET = 0.002
+local CHEST = vector.create(0, 1.2, 0) -- metres over the feet
 -- Metres: how near the spot its job sends it to a bot is there, for a plant;
 -- and how near the point it's to step onto it walks straight at it, and
 -- how near that's on it.
@@ -136,6 +152,7 @@ local STUDIO = RunService:IsStudio()
 
 local B = PlayerSim.Buttons
 local P = BotConfig.Params
+local U = BotConfig.Utility
 
 export type SpawnPoint = { feet: vector, yaw: number }
 
@@ -197,10 +214,18 @@ type Bot = {
 	glances: { [string]: vector }, -- spots in sight now, in the place
 	dice: BotConfig.Dice,
 	stuckSeen: number, -- how often its walk's been stuck, as last told
+	-- Its agent's abilities (system 66): the cast under way, and what it's
+	-- cast this life.
+	cast: BotUtility.Cast?,
+	memo: BotUtility.Memo,
 }
 
 -- Someone alive on a side, as this frame's looks see them.
 type Seen = { id: number, side: number, points: { vector }, velocity: vector }
+
+-- Someone alive on a side, for its bots' casts (system 66): their entity
+-- id, eye, chest and health, and whether they're defusing the spike.
+type Mate = { id: number, eye: vector, chest: vector, health: number, defusing: boolean }
 
 local BotServer = {}
 
@@ -231,6 +256,8 @@ local building: { [string]: boolean } = {}
 local teams: { [number]: BotTeam.Team } = {}
 local teamRound: { [number]: number } = {}
 local thinkAt = 0
+-- The bot (by its place in order) the next think's casts start from.
+local castFrom = 1
 -- In Studio, the time the bots have taken of the server's frames since
 -- spentSince, over how many.
 local spent, frames, spentSince = 0, 0, 0
@@ -326,6 +353,7 @@ end
 local function died(bot: Bot, attacker: Entities.Entity?)
 	bot.alive = false
 	bot.shown = nil
+	bot.cast = nil
 	-- In the spike rounds its gun drops where it falls, as a player's does.
 	GroundGunsServer.botDied(bot.sim, bot.yaw)
 	local killer = if attacker and attacker ~= bot.entity then attacker else nil
@@ -389,6 +417,8 @@ local function startLife(bot: Bot)
 	end
 	bot.brain.skill = skill()
 	bot.order = nil
+	bot.cast = nil
+	bot.memo = BotUtility.memo()
 	place(bot, point.feet + vector.create(0, 0.05, 0), point.yaw, loadout)
 	bot.alive = true
 	local event = Entities.vitals(bot.entity)
@@ -618,10 +648,126 @@ local function spikeIn(w: World): BotTeam.Spike?
 	}
 end
 
--- Each side's plan, gone over: its bots' jobs.
+-- Someone alive on a side, for its bots' casts.
+local function mateOf(entity: Entities.Entity, sim: PlayerSim.State, cfg: MovementConfig.Values, defusing: boolean): Mate
+	return {
+		id = entity.id,
+		eye = PlayerSim.eye(sim, cfg),
+		chest = sim.movement.position + CHEST,
+		health = entity.health.health,
+		defusing = defusing,
+	}
+end
+
+-- What a bot on `side` knows for its casts (system 66), in the place's
+-- frame: where it is in its side's plan, how long the round's been live,
+-- what its side has seen lately (`sightings`, in the map's frame), its
+-- teammates (`crew`, every side's), and the spike being defused by an
+-- enemy, if it's planted and is.
+local function momentOf(
+	bot: Bot,
+	now: number,
+	w: World,
+	side: number,
+	crew: { [number]: { Mate } },
+	sightings: { [number]: { BotTeam.Sighting } },
+	spike: BotTeam.Spike?,
+	cfg: MovementConfig.Values
+): BotUtility.Moment
+	local sim = bot.sim
+	local feet = sim.movement.position
+	local team = teams[side]
+	local place = if team then BotTeam.placeOf(team, bot.entity.id, feet - w.origin) else nil
+	local brain = bot.brain
+	local last = brain.hurtAt
+	for _, k in brain.known do
+		last = math.max(last, k.seen)
+	end
+	local allies: { BotUtility.Ally } = {}
+	local mates: { vector } = {}
+	local defuse: vector? = nil
+	local planted = if spike and spike.state == "planted" then spike.at else nil
+	for other, list in crew do
+		for _, mate in list do
+			if other ~= side then
+				if mate.defusing and planted then
+					defuse = planted + w.origin
+				end
+			elseif mate.id ~= bot.entity.id then
+				table.insert(mates, mate.eye)
+				table.insert(allies, { id = mate.id, chest = mate.chest, health = mate.health })
+			end
+		end
+	end
+	local seen: { BotTeam.Sighting } = {}
+	local known: { BotTeam.Sighting } = sightings[side] or {}
+	for _, sighting in known do
+		table.insert(seen, { at = sighting.at + w.origin, time = sighting.time })
+	end
+	local began = if team then team.began else nil
+	return {
+		now = now,
+		clock = (sim.movement.tick + 1) * DT,
+		place = if place then BotUtility.moved(place, w.origin) else nil,
+		live = if began then now - began else 0,
+		feet = feet,
+		eye = PlayerSim.eye(sim, cfg),
+		health = bot.entity.health.health,
+		fighting = BotBrain.fighting(brain),
+		quiet = now - last,
+		sightings = seen,
+		defuse = defuse,
+		allies = allies,
+		mates = mates,
+	}
+end
+
+-- Their agents' abilities (system 66): each bot alive that isn't casting,
+-- in turn from where the last think left off, is told the moment and given
+-- what it calls for, until this think has spent CAST_BUDGET on them (a bot
+-- that runs past it tries the rest of its throws the next).
+local function casts(
+	now: number,
+	s: Situation,
+	w: World,
+	crew: { [number]: { Mate } },
+	sightings: { [number]: { BotTeam.Sighting } },
+	spike: BotTeam.Spike?
+)
+	local count = #order
+	if not s.live or count == 0 then
+		return
+	end
+	local started = os.clock()
+	local cfg = Tuning.config()
+	for k = 0, count - 1 do
+		local index = (castFrom + k - 1) % count + 1
+		local bot = order[index]
+		local side = bot.side
+		if bot.alive and side ~= nil and bot.cast == nil and now >= bot.memo.nextAt then
+			local m = momentOf(bot, now, w, side, crew, sightings, spike, cfg)
+			local cast = BotUtility.choose(m, bot.sim.abilities, bot.memo, bot.brain.skill, bot.dice, world, started + CAST_BUDGET)
+			if cast then
+				bot.cast = cast
+				if STUDIO then
+					bot.standIn:SetAttribute(BotConfig.CAST, cast.ability .. " " .. cast.key)
+				end
+			end
+		end
+		if os.clock() - started > CAST_BUDGET then
+			castFrom = index % count + 1
+			return
+		end
+	end
+	castFrom = castFrom % count + 1
+end
+
+-- Each side's plan, gone over: its bots' jobs, and what they cast.
 local function think(now: number, s: Situation, w: World)
 	local members: { [number]: { BotTeam.Member } } = {}
 	local sightings: { [number]: { BotTeam.Sighting } } = {}
+	local crew: { [number]: { Mate } } = {}
+	local cfg = Tuning.config()
 	local spike = spikeIn(w)
 	for _, bot in order do
 		local side = bot.side
@@ -634,10 +780,10 @@ local function think(now: number, s: Situation, w: World)
 			continue
 		end
 		local sim = bot.sim
-		table.insert(
-			list,
-			{ id = bot.entity.id, bot = true, alive = true, feet = sim.movement.position - w.origin, defusing = defusing(sim) }
-		)
+		local progress = defusing(sim)
+		table.insert(list, { id = bot.entity.id, bot = true, alive = true, feet = sim.movement.position - w.origin, defusing = progress })
+		crew[side] = crew[side] or {}
+		table.insert(crew[side], mateOf(bot.entity, sim, cfg, progress ~= nil))
 		local seen = sightings[side] or {}
 		sightings[side] = seen
 		for _, k in bot.brain.known do
@@ -652,10 +798,11 @@ local function think(now: number, s: Situation, w: World)
 		local sim = if list and PlayerSimServer.inPlay(player) then PlayerSimServer.getSim(player) else nil
 		local entity = PlayerSimServer.entityOf(player)
 		if list and sim and entity then
-			table.insert(
-				list,
-				{ id = entity.id, bot = false, alive = true, feet = sim.movement.position - w.origin, defusing = defusing(sim) }
-			)
+			local progress = defusing(sim)
+			table.insert(list, { id = entity.id, bot = false, alive = true, feet = sim.movement.position - w.origin, defusing = progress })
+			local mates = crew[side :: number] or {}
+			crew[side :: number] = mates
+			table.insert(mates, mateOf(entity, sim, cfg, progress ~= nil))
 		end
 	end
 	for side in teams do
@@ -703,6 +850,7 @@ local function think(now: number, s: Situation, w: World)
 			end
 		end
 	end
+	casts(now, s, w, crew, sightings, spike)
 end
 
 -- Ticks -----------------------------------------------------------------------------------
@@ -780,6 +928,8 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 		equipped = if slot == main then 1 else slot,
 	}
 	local brain = bot.brain
+	-- The view before its mind's tick, which a cast's aim eases on from.
+	local viewYaw, viewPitch = brain.yaw, brain.pitch
 	local act = BotBrain.tick(brain, body, DT, lookPoint(bot, w), bot.glances)
 	local feet = sim.movement.position
 	local mover = bot.mover
@@ -796,6 +946,26 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 			there = vector.magnitude(vector.create(spot.x - feet.x, 0, spot.z - feet.z)) <= THERE and math.abs(spot.y - feet.y) < 1
 		end
 		hands = BotSpike.hands(job, there, sim, objective, (sim.movement.tick + 1) * DT, body.eye, BotBrain.fighting(brain))
+	end
+	-- Its agent's ability being cast (system 66): given up as a fight starts
+	-- or its hands go to the spike, else its hands for it, its view on the
+	-- cast's aim.
+	local casting: BotUtility.Hands? = nil
+	local current = bot.cast
+	if current then
+		if (BotBrain.fighting(brain) and current.step ~= "after") or hands.quiet then
+			bot.cast = nil
+			bot.memo.nextAt = now + U.between.value
+		else
+			local h = BotUtility.hands(current, sim.abilities, wpn, (sim.movement.tick + 1) * DT, body.eye, viewYaw, viewPitch, DT)
+			brain.yaw, brain.pitch = h.yaw, h.pitch
+			act.yaw, act.pitch = h.yaw, h.pitch
+			casting = h
+			if h.done then
+				bot.cast = nil
+				bot.memo.nextAt = now + U.between.value
+			end
+		end
 	end
 	local onto = if job and job.onto and w then job.onto + w.origin else nil
 	local toward = if onto then vector.create(onto.x - feet.x, 0, onto.z - feet.z) else nil
@@ -823,6 +993,11 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 		end
 	elseif hands.still then
 		-- Planting or defusing: it stands where it is.
+		if mover then
+			BotMove.hold(mover)
+		end
+	elseif casting and casting.still then
+		-- A throw found from where it stands, thrown from there.
 		if mover then
 			BotMove.hold(mover)
 		end
@@ -854,10 +1029,14 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 		end
 	end
 	-- With the spike in hand or a plant or a defuse under way, the gun's
-	-- left alone: fire with the spike in hand would plant it.
-	local quiet = hands.quiet
+	-- left alone: fire with the spike in hand would plant it. So it is
+	-- while a cast's hands have the buttons.
+	local quiet = hands.quiet or casting ~= nil
 	if hands.use then
 		buttons += B.Use
+	end
+	if casting then
+		buttons += casting.buttons
 	end
 	if act.crouch and not quiet then
 		buttons += B.Crouch
@@ -895,8 +1074,14 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 	bot.buttons = buttons
 	bot.yaw, bot.pitch = act.yaw, act.pitch
 	bot.seq += 1
-	local input: PlayerCodec.WireInput =
-		{ seq = bot.seq, buttons = buttons, yaw = act.yaw, pitch = act.pitch, slot = bot.slot, viewTime = now }
+	local input: PlayerCodec.WireInput = {
+		seq = bot.seq,
+		buttons = buttons,
+		yaw = act.yaw,
+		pitch = act.pitch,
+		slot = if casting and casting.slot then casting.slot else bot.slot,
+		viewTime = now,
+	}
 	local fieldsOf = PlayerSimServer.fields
 	local wallsAt = PlayerSimServer.barriers
 	local shots, swing, spikeAct, _, casts = PlayerSim.step(
@@ -1012,6 +1197,8 @@ function BotServer.add(): number
 		glances = {},
 		dice = dice,
 		stuckSeen = 0,
+		cast = nil,
+		memo = BotUtility.memo(),
 	}
 	bots[id] = bot
 	byEntity[entity.id] = bot
@@ -1186,6 +1373,7 @@ function BotServer.takeOut(id: number): PlayerSimServer.Body?
 	bot.alive = false
 	bot.shown = nil
 	bot.order = nil
+	bot.cast = nil
 	-- Nothing hurts, heals or counts it until its next life.
 	bot.entity.health.alive = false
 	for slot = 1, 2 do

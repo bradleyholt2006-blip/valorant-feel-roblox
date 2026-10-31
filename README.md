@@ -494,6 +494,15 @@ Built one system at a time:
     every ability treats a bot as a player: a flash blinds it, Paranoia nearsights it, a Healing Orb
     heals an allied bot, and a Recon Bolt or Hunter's Fury leaves bots on its own side be -
     [research and design](docs/research/65-bots-agents.md)
+66. **Bots' abilities**: each bot casts its agent's abilities when a player on that agent would.
+    Attackers look over a site with the Recon Bolt before they push, then smoke the spots that hold
+    their way in, flash round the corner at them, and burn or shock them out; defenders look for
+    the attackers early, then slow, burn, wall or smoke a way in that attackers have just shown at.
+    A bot guarding the planted spike answers a defuse with Hunter's Fury, a molly or a Shock Bolt,
+    and a bot on Sage heals itself and hurt teammates once it's quiet. Every throw is flown through
+    the level before it's thrown, so it lands where the bot means it to and keeps off its own side,
+    and bots buy their charges with what's left after their guns -
+    [research and design](docs/research/66-bots-abilities.md)
 
 ## Running it
 
