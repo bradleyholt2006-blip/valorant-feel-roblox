@@ -73,5 +73,6 @@ require("./botspike")
 require("./botutility")
 require("./takeover")
 require("./body")
+require("./rank")
 
 H.finish()

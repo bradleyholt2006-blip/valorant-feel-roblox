@@ -12,9 +12,14 @@
 -- on as the server started. While it's up the mouse moves a cursor, and
 -- behind it is whoever Spectate watches.
 --
+-- Each card also has your own record in its mode (system 67): matches won
+-- and lost and kills a death, and on Competitive's your rank, or the
+-- placements played.
+--
 -- Everything comes from attributes: Workspace's PlayConfig.COUNTS and what
 -- the arena plays (ArenaConfig.ON and MODE, MatchConfig.FORMAT), and your
--- own PlayConfig.PLAYING; and from the Play remote, what came of a press.
+-- own PlayConfig.PLAYING, CareerRules.ATTRIBUTE and RankConfig's; and from
+-- the Play remote, what came of a press.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,6 +30,9 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
+local CareerRules = require(Shared.Career.CareerRules)
+local RankConfig = require(Shared.Career.RankConfig)
+local RankRules = require(Shared.Career.RankRules)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local PlayConfig = require(Shared.Match.PlayConfig)
 local ServerList = require(Shared.Match.ServerList)
@@ -46,7 +54,7 @@ PlayMenu.setOpen = function(_open: boolean) end
 -- card picked (and TestAim's VFTestPlay). Set up by PlayMenu.start.
 PlayMenu.play = function(_key: string) end
 
-local CARD_W, CARD_H = 168, 196
+local CARD_W, CARD_H = 168, 214
 local GAP = 12
 local MARGIN = 24
 local TOP = 84
@@ -64,7 +72,7 @@ local TILE_HOVER = Color3.fromRGB(48, 52, 64)
 local GOLD = Color3.fromRGB(230, 200, 120)
 local INK = Color3.fromRGB(20, 20, 24)
 
-type Card = { key: string, button: TextButton, stroke: UIStroke, here: TextLabel, count: TextLabel }
+type Card = { key: string, button: TextButton, stroke: UIStroke, here: TextLabel, count: TextLabel, you: TextLabel }
 
 local me = Players.LocalPlayer
 
@@ -193,6 +201,17 @@ function PlayMenu.start()
 			Position = UDim2.fromOffset(12, 102),
 			Size = UDim2.fromOffset(CARD_W - 24, 60),
 		})
+		-- Your record in the mode, or your rank, shrinking to fit.
+		local you = Ui.label(button, {
+			Font = Enum.Font.GothamBold,
+			TextScaled = true,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Position = UDim2.fromOffset(8, CARD_H - 48),
+			Size = UDim2.fromOffset(CARD_W - 16, 16),
+		})
+		local small = Instance.new("UITextSizeConstraint")
+		small.MaxTextSize = 12
+		small.Parent = you
 		local players = Ui.label(button, {
 			Font = Enum.Font.GothamBold,
 			TextSize = 14,
@@ -211,7 +230,7 @@ function PlayMenu.start()
 		button.MouseButton1Click:Connect(function()
 			selected = mode.key
 		end)
-		table.insert(cards, { key = mode.key, button = button, stroke = stroke, here = tag, count = players })
+		table.insert(cards, { key = mode.key, button = button, stroke = stroke, here = tag, count = players, you = you })
 	end
 
 	local playButton = Instance.new("TextButton")
@@ -243,6 +262,9 @@ function PlayMenu.start()
 	-- (your PlayConfig.PLAYING says so too, but may arrive after it).
 	local played = false
 	local holdUntil = if arrivedFor() then os.clock() + ARRIVAL_WAIT else 0
+	-- Your totals, as last read from your CareerRules.ATTRIBUTE.
+	local careerText: any = nil
+	local career: { [string]: CareerRules.Totals } = {}
 
 	-- Whether you've yet to press PLAY on a server that has you pick first.
 	local function mustPick(): boolean
@@ -332,7 +354,21 @@ function PlayMenu.start()
 				else "   PLAY another mode and you go to a server playing it"
 		hint.Text = if mustPick() then "" else "M  close"
 		local counts = ServerList.parseCounts(Workspace:GetAttribute(PlayConfig.COUNTS))
+		local text = me:GetAttribute(CareerRules.ATTRIBUTE)
+		if text ~= careerText then
+			careerText = text
+			career = CareerRules.fromText(text)
+		end
+		local tier = me:GetAttribute(RankConfig.TIER)
 		for _, card in cards do
+			local totals = career[card.key]
+			if card.key == CareerRules.RANKED and typeof(tier) == "number" then
+				card.you.Text = RankRules.line(tier, me:GetAttribute(RankConfig.RR) or 0, me:GetAttribute(RankConfig.GAMES) or 0)
+				card.you.TextColor3 = if tier > 0 then GOLD else Ui.DIM
+			else
+				card.you.Text = if totals then CareerRules.summary(totals) else ""
+				card.you.TextColor3 = Ui.DIM
+			end
 			local n = counts[card.key] or 0
 			card.count.Text = if n > 0 then string.format("%d PLAYING", n) else "NOBODY YET"
 			card.count.TextColor3 = if n > 0 then GOLD else Ui.DIM

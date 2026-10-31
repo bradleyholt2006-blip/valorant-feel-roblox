@@ -37,6 +37,10 @@ MatchConfig.MAP = "VFMatchMap"
 -- ArenaRules.skip): for scripted checks, which would otherwise wait out
 -- every buy phase and round.
 MatchConfig.SKIP = "VFMatchSkip"
+-- Workspace's attribute that, set from the server to 1 or 2 in the spike
+-- rounds, ends the round being played won by that side, and clears itself
+-- (MatchRules.decide): for scripted checks of a whole match (system 67).
+MatchConfig.DECIDE = "VFMatchDecide"
 -- The player attribute the server keeps each player's credits in, while the
 -- spike rounds are on.
 MatchConfig.CREDITS = "VFCredits"

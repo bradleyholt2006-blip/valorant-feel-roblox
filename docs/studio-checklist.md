@@ -5966,6 +5966,97 @@ end)
   BT8's. The Output has no errors or warnings from the bots. **Send:** the numbers, and whether any
   bot's throw hit its own side in any of these checks.
 
+## 71. Ranks and careers
+
+From [67-competitive-ranks.md](research/67-competitive-ranks.md). System 67 ranks Competitive's
+players as the reference does: five placement matches, then RR won and lost each match, promotions,
+demotions and rank shields, by a hidden MMR. Every mode keeps each player's record, saved with the
+rank in a data store. Each player's `VFRankTier` (0 while placing; 9 is Silver 3 and 10 Gold 1),
+`VFRankRR`, `VFRankGames`, `VFRankShields`, `VFRankLast` and `VFRankNote` say their rank and what
+the last match did to it, and in Studio `VFRankMmr` their MMR; each result prints a `[VF] career:`
+line in the server's Output. Studio can't use the data store unless the place lets it use API
+services, so the career lasts the session and `VFCareerStatus` says why; only RK6 needs the store.
+
+Start a Local Server with 2 players, as in section 9. In the server's command bar set Competitive
+going on Outpost: `VFMatchMap` `outpost`, `VFMatchFormat` `competitive`, `VFArenaMode` `spike`, then
+`VFArenaOn` true. Each player's side is their `VFArenaSide`. Run this script in the server's command
+bar first, then each check's lines on their own: `play(n)` plays the match under way (or the next,
+from a victory screen) to its end in a few seconds, side 1 winning 13 to `n` (`VFMatchDecide` gives
+each round to a side), and `rounds(side, n)` gives the next `n` rounds to a side.
+
+```lua
+local arena = workspace.VFArena
+local function step(side)
+	local phase = arena:GetAttribute("Phase")
+	if phase == "buy" or phase == "live" then
+		workspace:SetAttribute("VFMatchDecide", side)
+		return true
+	elseif phase == "roundOver" or phase == "vote" then
+		workspace:SetAttribute("VFMatchSkip", true)
+	end
+	return false
+end
+function play(n)
+	task.spawn(function()
+		while arena:GetAttribute("Phase") == "matchOver" do
+			workspace:SetAttribute("VFMatchSkip", true)
+			task.wait(0.3)
+		end
+		while arena:GetAttribute("Phase") ~= "matchOver" do
+			step(if (arena:GetAttribute("Score2") or 0) < n then 2 else 1)
+			task.wait(0.3)
+		end
+		print("over", arena:GetAttribute("Score1"), arena:GetAttribute("Score2"))
+	end)
+end
+function rounds(side, n)
+	task.spawn(function()
+		while n > 0 do
+			if step(side) then
+				n -= 1
+			end
+			task.wait(0.3)
+		end
+		print("done", arena:GetAttribute("Score1"), arena:GetAttribute("Score2"))
+	end)
+end
+```
+
+- **RK1 Placements.** Run `play(5)` and wait for the victory screen, five times. After each, the
+  Output has a `[VF] career:` line for each player, `competitive won` for side 1's and `competitive
+  lost` for side 2's, and each player's victory screen has `PLACEMENT 1 OF 5` under the time left,
+  then 2, and so on. After the fifth it reads `PLACED` with a tier and `50 RR`, in green, and
+  `VFRankTier` is from 1 to 21: side 1's player higher than side 2's. **Send:** the Output's lines,
+  and the tier each was placed in.
+
+- **RK2 What a match is worth.** Run `play(11)`: side 1's player's victory screen has their tier,
+  their RR and the RR it was worth, `(+10)` to `(+50)`, or reads `PROMOTED`, and side 2's a loss
+  of 30 at most, `(-30)`. Then run `play(0)`: side 1's player gains more than for the 13-11, and
+  side 2's loses more. **Send:** the four lines.
+
+- **RK3 Promotions, demotions and shields.** Run `play(5)` until side 1's player reads `PROMOTED`
+  (their `VFRankRR` 10 or more) and side 2's has gone down to 0 RR and then reads `DEMOTED`
+  (`VFRankRR` 70 or more), or `A SHIELD KEPT THE RANK` if they're in a Tier 1 (a tier whose number
+  is 4, 7, 10, 13, 16 or 19) entered by a promotion or a demotion. **Send:** those lines and the
+  matches it took.
+
+- **RK4 The Play menu.** Press M as each player: Competitive's card has their tier and RR in gold,
+  and every other card's line is empty. Close it, and in the server's command bar set
+  `VFMatchFormat` to `swiftplay`, `VFArenaOn` to false and back to true, and run `play(2)`. Press M
+  again: Swiftplay's card reads `1W 0L` and a K/D for side 1's player, and `0W 1L` for side 2's;
+  Competitive's still has the rank. **Send:** what the cards say.
+
+- **RK5 Leaving.** Set `VFMatchFormat` to `competitive`, `VFArenaOn` to false and back to true, and
+  run `rounds(1, 3)`. Then close side 2's player's window: as they go, the Output has a `[VF]
+  career:` line for them, `competitive lost` and the RR it cost. Run `play(5)`: the line for the
+  match's end is side 1's player's alone. **Send:** both lines.
+
+- **RK6 Kept (optional, with the place's data stores on).** This needs a live server, or the place's
+  Studio access to API services (Game Settings, Security), which is the place owner's call. Play a
+  Competitive match to its end with `play(5)`, wait for `VFCareerStatus` to read `saved`, stop, and
+  start again: `VFCareerStatus` reads `loaded`, and the rank, `VFRankGames` and the Play menu's
+  lines are as they were. **Send:** the attributes before and after.
+
 ## Results
 
 ```
@@ -6426,6 +6517,12 @@ BU3 what came, and how long after: ___
 BU4 the guards' casts: ___; the defuser: ___
 BU5 the heal's lines: ___
 BU6 VFBotMs on a push: ___; a throw on its own side: yes / no
+RK1 the lines after each match: ___; placed: side 1's player ___, side 2's ___
+RK2 the 13-11: ___ ___; the 13-0: ___ ___
+RK3 the promotion: ___; the demotion or shield: ___; matches it took: ___
+RK4 Competitive's card: ___; Swiftplay's: side 1's ___, side 2's ___
+RK5 the leaver's line: ___; the match's end: ___
+RK6 before: ___; after: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -6836,3 +6933,7 @@ Didn't look right (IDs and what you saw):
 | 66 | Their throws in the place's real geometry, on Roblox's collisions: smokes on the spots, flashes round the corner, mollies, slows and walls on the way in, and none on their own side | BU2, BU3, BU6 |
 | 66 | A heal; Hunter's Fury, a molly or a Shock Bolt on a defuse | BU4, BU5 |
 | 66 | What the casts cost the server | BU6 |
+| 67 | Placements, what a match is worth, a promotion and a demotion or a shield, on the victory screen | RK1, RK2, RK3 |
+| 67 | Each mode's record and Competitive's rank on the Play menu | RK4 |
+| 67 | Leaving Competitive under way counted as a loss | RK5 |
+| 67 | The data store: a career kept from one session to the next | RK6 |

@@ -582,6 +582,16 @@ function MatchRules.skip(s: State, now: number)
 	end
 end
 
+-- Ends the round being played, its buy phase too, won by `side` as if it
+-- had eliminated the other (Workspace's MatchConfig.DECIDE): for scripted
+-- checks of a whole match (system 67), which skipping can't finish where
+-- overtime is won by two, as the defenders win every round skipped.
+function MatchRules.decide(s: State, side: number, now: number)
+	if inRound(s) then
+		endRound(s, side, "eliminated", now)
+	end
+end
+
 -- Moves the clock on. Returns who to spawn now.
 function MatchRules.step(s: State, now: number): { number }
 	if s.phase == "waiting" then

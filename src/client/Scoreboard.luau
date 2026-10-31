@@ -30,6 +30,12 @@
 -- Team Deathmatch (system 27) has no rounds, so its combat score is the
 -- match's, under SCORE, and a match it ends level is a DRAW.
 --
+-- Competitive's victory screen (system 67) has your rank under the time
+-- left, from the attributes the server keeps (RankConfig): the RR the match
+-- was worth, and a promotion, a demotion, a shield used or the placement,
+-- or the placements played so far. Nothing if the match didn't count for
+-- you (you played too little of it).
+--
 -- Each row also has the player's agent, in a box in their side's colour as
 -- their tile on the top bar has it (system 51, Glance.badge), and under ULT
 -- their ultimate, both sides' alike, as the reference's has it: how far
@@ -58,6 +64,9 @@ local Glance = require(Shared.Abilities.Glance)
 local ArenaConfig = require(Shared.Arena.ArenaConfig)
 local DeathmatchConfig = require(Shared.Arena.DeathmatchConfig)
 local GunGameConfig = require(Shared.Arena.GunGameConfig)
+local CareerRules = require(Shared.Career.CareerRules)
+local RankConfig = require(Shared.Career.RankConfig)
+local RankRules = require(Shared.Career.RankRules)
 local MatchConfig = require(Shared.Match.MatchConfig)
 local MatchRules = require(Shared.Match.MatchRules)
 local VisualConfig = require(Shared.Visuals.VisualConfig)
@@ -282,6 +291,16 @@ function Scoreboard.start()
 		TextStrokeTransparency = 0.5,
 		Visible = false,
 	})
+	-- Your rank, under that, in Competitive.
+	local rankLine = Ui.label(panel, {
+		Size = UDim2.new(1, 0, 0, 22),
+		Position = UDim2.new(0, 0, 1, 32),
+		Font = Enum.Font.GothamBold,
+		TextSize = 16,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextStrokeTransparency = 0.5,
+		Visible = false,
+	})
 	local titles: { [string]: TextLabel } = {}
 	for _, column in COLUMNS do
 		titles[column.key] = Ui.label(panel, {
@@ -369,7 +388,25 @@ function Scoreboard.start()
 			-- then the next match.
 			local coming = if phase == "matchOver" and arena:GetAttribute("MapVote") == true then "MAP VOTE" else "NEXT MATCH"
 			footer.Text = string.format("%s IN %d", coming, math.ceil(left))
+			local tier, last = me:GetAttribute(RankConfig.TIER), me:GetAttribute(RankConfig.LAST)
+			rankLine.Visible = playing and formatKey == CareerRules.RANKED and typeof(tier) == "number" and typeof(last) == "number"
+			if rankLine.Visible then
+				local note = me:GetAttribute(RankConfig.NOTE)
+				rankLine.Text = RankRules.verdict(
+					tier,
+					me:GetAttribute(RankConfig.RR) or 0,
+					me:GetAttribute(RankConfig.GAMES) or 0,
+					me:GetAttribute(RankConfig.SHIELDS) or 0,
+					last,
+					if typeof(note) == "string" then note else nil
+				)
+				rankLine.TextColor3 = if note == "promoted" or note == "placed"
+					then Ui.GOOD
+					elseif note == "demoted" then Ui.BAD
+					else Ui.TEXT
+			end
 		else
+			rankLine.Visible = false
 			local name = if gunGame
 				then "GUN GAME"
 				elseif deathmatch then string.format("DEATHMATCH   FIRST TO %d", arena:GetAttribute("WinScore") or 0)
