@@ -685,6 +685,11 @@ SoundConfig.Sounds = {
 	leerBreak = sound(0.6, 0.04, 3, {
 		asset(9126083958, "Synth Thunder Cracks Individual Explosion Booms 4 (SFX)", 0.414, 0.08, 0.408),
 	}, 3),
+	-- Empress (system 75): cast, the transporter's swell slowed right down,
+	-- as her frenzy wells up.
+	empressCast = sound(0.9, 0.02, 3, {
+		asset(9116227010, "Laser Blasts Transporter Elements 4 (SFX)", 0.677, 0.09, 0.591),
+	}, 0.55),
 	-- Pings (system 52): one along the crosshair, the spike's beep sped up
 	-- to a blip; one on the map, the kill's bell sped right up, a sound of
 	-- its own ('new ping visuals and new ping sound for pings made on the
@@ -778,6 +783,7 @@ SoundConfig.Abilities = {
 	leer = "leerCast",
 	leeropen = "leerOpen",
 	leerbreak = "leerBreak",
+	empress = "empressCast",
 } :: { [string]: string }
 
 -- The casts heard on a curve of their own, by AbilitySim.Cast's kind, and

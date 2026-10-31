@@ -47,7 +47,10 @@
 -- A player whose spawn protection is on in gun game (system 23) is drawn as
 -- a force field, since shots go through them. An Omen who's a Shade in From
 -- the Shadows (system 43, his pose's shade) is drawn dark and see-through
--- (ours: the reference's Shade is a shadowy figure of him).
+-- (ours: the reference's Shade is a shadowy figure of him), and so is a
+-- Reyna in her Dismiss (system 73), but in her Empress's frenzy (system
+-- 75) her enemies don't see her at all, nor the name over her; through the
+-- frenzy she's drawn with a violet glow about her.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -69,6 +72,7 @@ local Hitboxes = require(Shared.Combat.Hitboxes)
 local Health = require(Shared.Combat.Health)
 local ShotResolver = require(Shared.Combat.ShotResolver)
 local WeaponConfig = require(Shared.Weapons.WeaponConfig)
+local AbilityConfig = require(Shared.Abilities.AbilityConfig)
 
 local BodyView = require(script.Parent.BodyView)
 local NetSim = require(script.Parent.NetSim)
@@ -143,8 +147,10 @@ local FLASH_TIME = 0.08
 local SHADE_COLOR = Color3.fromRGB(40, 26, 64) -- a Shade (system 43)
 local SHADE_CLEAR = 0.35 -- and how see-through it is
 -- Reyna in her Dismiss, by entity id (system 73): from and until when, in
--- snapshot time, drawn as a Shade is.
-local ghosts: { [number]: { from: number, ends: number } } = {}
+-- snapshot time, drawn as a Shade is, and whether her enemies don't see her
+-- at all (in her Empress's frenzy, system 75).
+type Ghost = { from: number, ends: number, hidden: boolean }
+local ghosts: { [number]: Ghost } = {}
 
 type Visual = {
 	model: Model,
@@ -180,9 +186,11 @@ function RemoteEntities.renderTime(): number
 end
 
 -- Has an entity drawn see-through, as a Shade is, from `from` until `ends`
--- (snapshot time): Reyna in her Dismiss (system 73, AbilityEffects).
-function RemoteEntities.ghost(id: number, from: number, ends: number)
-	ghosts[id] = { from = from, ends = ends }
+-- (snapshot time): Reyna in her Dismiss (system 73, AbilityEffects); with
+-- `hidden`, not drawn at all but by her side (in her Empress's frenzy,
+-- system 75).
+function RemoteEntities.ghost(id: number, from: number, ends: number, hidden: boolean?)
+	ghosts[id] = { from = from, ends = ends, hidden = hidden == true }
 end
 
 -- The time of the frame on screen. Inputs sample it before this frame's
@@ -546,13 +554,18 @@ local function onRender()
 			end
 			local protected = holder ~= nil and holder:GetAttribute(GunGameConfig.PROTECTED) == true
 			local material = if protected then Enum.Material.ForceField else Enum.Material.SmoothPlastic
-			local ghost: { from: number, ends: number }? = ghosts[id]
+			local ghost: Ghost? = ghosts[id]
 			if ghost and renderTime >= ghost.ends then
 				ghosts[id] = nil
 				ghost = nil
 			end
-			local shade = pose.shade == true or (ghost ~= nil and renderTime >= ghost.from)
-			local clear = if body then 1 elseif shade then SHADE_CLEAR else 0
+			local ghosted = ghost ~= nil and renderTime >= ghost.from
+			local shade = pose.shade == true or ghosted
+			local theirSide = if holder then holder:GetAttribute(ArenaConfig.SIDE) else nil
+			local ally = typeof(mySide) == "number" and theirSide == mySide
+			local hidden = ghosted and ghost ~= nil and ghost.hidden and not ally
+			local frenzy = holder ~= nil and holder:GetAttribute(AbilityConfig.EMPRESS_ATTRIBUTE) == true
+			local clear = if body or hidden then 1 elseif shade then SHADE_CLEAR else 0
 			local flash = false
 			for region, part in visual.parts do
 				local lit = (visual.flashUntil[region] or 0) > now
@@ -570,17 +583,19 @@ local function onRender()
 				local shot = shots[id]
 				local seen = camera ~= nil and inView(camera, Units.toStuds(pose.position) + BODY_MIDDLE, BODY_REACH)
 				BodyView.update(body, pose, now, if shot then now - shot else nil, not seen)
-				BodyView.paint(body, flash, shade, protected)
+				BodyView.paint(body, flash, shade, protected, hidden, frenzy)
 				bodySpent += os.clock() - started
 			end
 			local hp = RemoteEntities.healthOf(id)
 			local health = string.format("%d + %d", RemoteEntities.points(hp.health), RemoteEntities.points(hp.shield))
 			local name = if player then player.DisplayName elseif bot then bot.Name else nil
 			visual.label.Text = if name then name .. "  " .. health else health
-			local theirSide = if holder then holder:GetAttribute(ArenaConfig.SIDE) else nil
 			local enemy = typeof(mySide) == "number" and typeof(theirSide) == "number" and theirSide ~= mySide
 			if visual.billboard.AlwaysOnTop == enemy then
 				visual.billboard.AlwaysOnTop = not enemy
+			end
+			if visual.billboard.Enabled == hidden then
+				visual.billboard.Enabled = not hidden
 			end
 		end
 		-- Keep the hidden character where the blocks are, for anything that

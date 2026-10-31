@@ -6,7 +6,9 @@
 -- input in use has them. It picks the orb in reach each frame from where
 -- her predicted eye is, as the server does from its own, and hands it to
 -- her ticks (PlayerController.soul). Through her Dismiss the screen
--- darkens, its edges glowing violet.
+-- darkens, its edges glowing violet. In her Empress's frenzy (system 75)
+-- the edges glow faintly, rising through its activation, and the prompt
+-- has Dismiss alone, charge or none, as Devour's cast for her.
 -- For scripted checks, PlayerGui's VFSouls carries Orbs (how many she
 -- has), Reach (the number of the one in reach, -1 with none) and Prompt
 -- (what the prompt says, "" with none).
@@ -35,6 +37,7 @@ local SIZE, NEAR_SIZE = 0.35, 0.45 -- metres across, and the one in reach
 local FADE = 0.6 -- seconds an orb fades over as its time runs out
 local TINT = 0.82 -- how see-through the screen's darkening is in Dismiss
 local EDGE = 48 -- pixels its glow's stroke is thick, half of it on the screen
+local FRENZY_EDGE = 0.75 -- how see-through the glow is in Empress's frenzy
 -- Pixels above the crosshair the prompt's foot is: clear of what's under
 -- it (the reload bar, a kill's banner on a short screen).
 local ABOVE = 40
@@ -161,10 +164,12 @@ function SoulView.start()
 		local text = ""
 		if kit and current and not AbilitySim.dismissing(kit, t) then
 			local words = {}
+			local frenzy = AbilitySim.frenzied(kit, t)
 			for _, id in { "devour", "dismiss" } do
 				local slot = AbilitySim.slotOf(kit, id)
 				local def = if slot then AbilitySim.def(kit, slot) else nil
-				if slot and def and kit.charges[slot] > 0 then
+				local can = slot ~= nil and (if frenzy then id == "dismiss" else kit.charges[slot] > 0)
+				if slot and def and can then
 					local key = "{" .. string.lower(AbilityConfig.KEYS[slot]) .. "}"
 					table.insert(words, key .. " " .. string.upper(def.name))
 				end
@@ -177,8 +182,14 @@ function SoulView.start()
 			gui:SetAttribute("Prompt", text)
 		end
 		local dismissing = kit ~= nil and AbilitySim.dismissing(kit, t)
+		local crown = 0
+		if kit and AbilitySim.frenzied(kit, t) then
+			crown = 1
+		elseif kit and AbilitySim.crowning(kit, t) then
+			crown = 1 - (kit.empressAt - t) / AbilityConfig.Reyna.empressActivation.value
+		end
 		tint.BackgroundTransparency = if dismissing then TINT else 1
-		stroke.Transparency = if dismissing then 0.4 else 1
+		stroke.Transparency = if dismissing then 0.4 else 1 - (1 - FRENZY_EDGE) * crown
 	end)
 end
 

@@ -114,7 +114,9 @@ AbilityServer.REFILL_DELAY = 1.5
 -- its ultimate points and costs, and abilities that recharge over time.
 AbilityServer.rules = nil :: AbilityConfig.ModeKit?
 
--- What a cast tells clients.
+-- What a cast tells clients: a Dismiss's whether it hides her (Reyna's
+-- Empress, system 75), and a Devour's whether her Empress cast it for
+-- her, which her own client hasn't heard yet.
 export type CastEvent = {
 	entity: number,
 	ability: string,
@@ -122,6 +124,8 @@ export type CastEvent = {
 	at: number, -- server time
 	position: Vector3, -- studs: the caster's feet
 	direction: Vector3, -- a unit vector
+	hidden: boolean?,
+	auto: boolean?,
 }
 
 -- The casts every client is told of: Run it Back's mark, a flame on the
@@ -397,58 +401,65 @@ function AbilityServer.step(now: number)
 	end
 end
 
-function AbilityServer.start()
-	table.insert(PlayerSimServer.castListeners, function(player: Actor, cast: AbilitySim.Cast)
-		local entity = PlayerSimServer.entityOf(player)
-		if
-			not entity
-			or cast.kind == "draw"
-			or cast.kind == "equip"
-			or cast.kind == "heal"
-			or cast.kind == "selfheal"
-			or cast.kind == "barrier"
-			or cast.kind == "vanish"
-			or cast.kind == "shade"
-			or cast.kind == "home"
-			or cast.kind == "blast"
-			or cast.kind == "dart"
-			or cast.kind == "land"
-			or cast.kind == "solid"
-		then
-			return
-		end
-		local event: CastEvent = {
-			entity = entity.id,
-			ability = cast.ability,
-			kind = cast.kind,
-			at = Workspace:GetServerTimeNow(),
-			position = Units.toStuds(cast.position),
-			direction = Units.asVector3(cast.direction),
-		}
-		local remote = Remotes.get().Ability
-		if EVERYONE[cast.kind] then
-			remote:FireAllClients(event)
-			return
-		end
-		if cast.kind == "smoke" then
-			local side = player:GetAttribute(ArenaConfig.SIDE)
-			for _, other in Players:GetPlayers() do
-				if other == player or (side ~= nil and other:GetAttribute(ArenaConfig.SIDE) == side) then
-					remote:FireClient(other, event)
-				end
-			end
-			return
-		end
-		local edge = if cast.kind == "arrive"
-			then FogOfWar.Edges.arrive
-			elseif cast.kind == "form" then FogOfWar.Edges.shade
-			else FogOfWar.Edges.cast
+-- Tells clients of a cast: those who'd hear it, or everyone for those
+-- every client is told of, or the caster's side for a smoke. A Devour
+-- Reyna's Empress casts for her (system 75, SoulServer) goes the same way.
+function AbilityServer.relay(player: Actor, cast: AbilitySim.Cast)
+	local entity = PlayerSimServer.entityOf(player)
+	if
+		not entity
+		or cast.kind == "draw"
+		or cast.kind == "equip"
+		or cast.kind == "heal"
+		or cast.kind == "selfheal"
+		or cast.kind == "barrier"
+		or cast.kind == "vanish"
+		or cast.kind == "shade"
+		or cast.kind == "home"
+		or cast.kind == "blast"
+		or cast.kind == "dart"
+		or cast.kind == "land"
+		or cast.kind == "solid"
+	then
+		return
+	end
+	local event: CastEvent = {
+		entity = entity.id,
+		ability = cast.ability,
+		kind = cast.kind,
+		at = Workspace:GetServerTimeNow(),
+		position = Units.toStuds(cast.position),
+		direction = Units.asVector3(cast.direction),
+		hidden = cast.hidden,
+		auto = cast.auto,
+	}
+	local remote = Remotes.get().Ability
+	if EVERYONE[cast.kind] then
+		remote:FireAllClients(event)
+		return
+	end
+	if cast.kind == "smoke" then
+		local side = player:GetAttribute(ArenaConfig.SIDE)
 		for _, other in Players:GetPlayers() do
-			if FogServer.hears(other, cast.position, edge, entity.id) then
+			if other == player or (side ~= nil and other:GetAttribute(ArenaConfig.SIDE) == side) then
 				remote:FireClient(other, event)
 			end
 		end
-	end)
+		return
+	end
+	local edge = if cast.kind == "arrive"
+		then FogOfWar.Edges.arrive
+		elseif cast.kind == "form" then FogOfWar.Edges.shade
+		else FogOfWar.Edges.cast
+	for _, other in Players:GetPlayers() do
+		if FogServer.hears(other, cast.position, edge, entity.id) then
+			remote:FireClient(other, event)
+		end
+	end
+end
+
+function AbilityServer.start()
+	table.insert(PlayerSimServer.castListeners, AbilityServer.relay)
 	-- Every life is the agent's, another agent's kit starting over (one
 	-- picked while it couldn't be had at once), and on the course and in
 	-- Skirmish starts with every charge, and on the course with the

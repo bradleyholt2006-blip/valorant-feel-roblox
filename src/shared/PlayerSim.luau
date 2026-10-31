@@ -19,7 +19,9 @@
 -- marked (system 43), and the Owl Drone puts its own in hand (system 47),
 -- whose fire sends the drone out, holding him where he is while the input
 -- flies it, and Reyna's Dismiss puts the gun away and has her run faster
--- through its time, firing nothing (system 73). A Slow Orb's field slows
+-- through its time, firing nothing (system 73), and her Empress puts it
+-- away through its activation, and then quickens her guns through its
+-- frenzy (system 75). A Slow Orb's field slows
 -- whoever starts a tick in it
 -- (SlowSim), from the fields each step's given, and a Barrier Orb's wall
 -- stands in the world everything in the tick goes through
@@ -357,6 +359,11 @@ function PlayerSim.step(
 	-- gun in hand, once nothing is under way.
 	local t = (s.movement.tick + 1) * dt
 	local kit = s.abilities
+	-- Reyna's Empress (system 75): through its frenzy her guns fire, draw and
+	-- reload faster.
+	local frenzy = AbilitySim.frenzied(kit, t)
+	s.weapons.rate = if frenzy then AbilityConfig.Reyna.empressFire.value else 1
+	s.weapons.handling = if frenzy then AbilityConfig.Reyna.empressHandling.value else 1
 	if AbilitySim.reviving(kit, t) then
 		revived(s, input, cfg, world, dt, t)
 		return nil, nil, nil, nil, nil
@@ -479,7 +486,8 @@ function PlayerSim.step(
 	-- Fury's puts its bow in hand, drawn over its equip (system 46).
 	-- The Owl Drone's goes as it's sent out (system 47, below). Reyna's
 	-- Dismiss puts away what's in the fifth slot, and the gun through its
-	-- time, and the gun's drawn again as it's over (system 73).
+	-- time, and the gun's drawn again as it's over (system 73); her
+	-- Empress, the same through its activation (system 75).
 	if casts then
 		for _, cast in casts do
 			if cast.kind == "throw" then
@@ -511,11 +519,12 @@ function PlayerSim.step(
 					WeaponSim.putAway(s.weapons, t)
 				end
 				WeaponSim.stow(s.weapons, t, AbilityConfig.RunItBack.activation.value)
-			elseif cast.kind == "dismiss" then
+			elseif cast.kind == "dismiss" or cast.kind == "empress" then
 				if s.weapons.loadout[WeaponSim.ULT] ~= "" then
 					WeaponSim.putAway(s.weapons, t)
 				end
-				WeaponSim.stow(s.weapons, t, AbilityConfig.Reyna.dismissTime.value)
+				local R = AbilityConfig.Reyna
+				WeaponSim.stow(s.weapons, t, if cast.kind == "dismiss" then R.dismissTime.value else R.empressActivation.value)
 			elseif cast.kind == "solid" then
 				WeaponSim.redraw(s.weapons, t)
 			end

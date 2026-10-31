@@ -13,16 +13,20 @@
 --   * on the push: Dark Cover on the two spots most likely to hold its way
 --     in, a cloud on the first, Paranoia through them, a Curveball round
 --     the corner at them, Leer where they'd see it, a Shock Bolt or Hot
---     Hands on the first, and Blade Storm once it's at the way in
+--     Hands on the first, and Blade Storm or Empress once it's at the way
+--     in
 --   * holding a way in: the Recon Bolt toward where the attackers gather,
 --     early in the round; and with attackers seen at the way in a moment
 --     ago, the stall: a slow, a molly, a wall, a smoke or a cloud on the
---     way in, Paranoia, Leer or a Shock Bolt at them, or Blade Storm
+--     way in, Paranoia, Leer or a Shock Bolt at them, or Blade Storm or
+--     Empress
 --   * guarding the planted spike with an enemy heard defusing it: Hunter's
 --     Fury through the walls at it, a molly or a Shock Bolt on it
 --   * anywhere: a Healing Orb on itself or a hurt teammate in reach once
 --     no enemy's been about for a while, and Hunter's Fury at enemies its
---     side saw a moment ago
+--     side saw a moment ago; and in the modes that respawn, Blade Storm or
+--     Empress with an enemy seen near
+-- Empress's frenzy lasts the life, and the others are cast through it.
 --
 -- How: every throw is tried before it's thrown, flown through the level as
 -- the server will fly it (SmokeSim, FlareSim, FireballSim, SlowSim,
@@ -205,10 +209,11 @@ local USES: { [string]: boolean } = {
 	reconbolt = true,
 	shockbolt = true,
 	huntersfury = true,
+	empress = true,
 }
 
 -- Casts at once on the key, nothing in hand.
-local INSTANT: { [string]: boolean } = { cloudburst = true, bladestorm = true }
+local INSTANT: { [string]: boolean } = { cloudburst = true, bladestorm = true, empress = true }
 
 -- Whether bots cast ability `id`, and so buy its charges.
 function BotUtility.uses(id: string): boolean
@@ -733,7 +738,8 @@ function BotUtility.choose(
 	if m.fighting or m.now < memo.nextAt or kit.holding ~= 0 or kit.steering ~= 0 then
 		return nil
 	end
-	if AbilitySim.busy(kit, m.clock) or AbilitySim.ultimateOn(kit) or AbilitySim.charging(kit, m.clock) then
+	local ultimate = AbilitySim.ultimateOn(kit) and not AbilitySim.frenzied(kit, m.clock)
+	if AbilitySim.busy(kit, m.clock) or ultimate or AbilitySim.charging(kit, m.clock) then
 		return nil
 	end
 	local options: { Option } = {}
@@ -798,6 +804,9 @@ function BotUtility.choose(
 		if d <= U.stormNear.value then
 			add("bladestorm", "push:bladestorm", function(slot: number): Cast?
 				return new("bladestorm", slot, "push:bladestorm")
+			end)
+			add("empress", "push:empress", function(slot: number): Cast?
+				return new("empress", slot, "push:empress")
 			end)
 		end
 		for k = 1, math.min(2, #threats) do
@@ -901,10 +910,13 @@ function BotUtility.choose(
 			add("bladestorm", "stall:bladestorm", function(slot: number): Cast?
 				return new("bladestorm", slot, "stall:bladestorm")
 			end)
+			add("empress", "stall:empress", function(slot: number): Cast?
+				return new("empress", slot, "stall:empress")
+			end)
 		end
 	end
 	-- Anywhere: Hunter's Fury at enemies seen a moment ago; and with no plan
-	-- (the modes that respawn), Blade Storm with one seen near.
+	-- (the modes that respawn), Blade Storm or Empress with one seen near.
 	local recent: { vector } = {}
 	for _, s in m.sightings do
 		if m.now - s.time <= U.furyRecent.value then
@@ -919,6 +931,9 @@ function BotUtility.choose(
 	if role == "none" and seenNear(m, m.eye, U.stormNear.value, U.stallRecent.value) then
 		add("bladestorm", "storm", function(slot: number): Cast?
 			return new("bladestorm", slot, "storm")
+		end)
+		add("empress", "empress", function(slot: number): Cast?
+			return new("empress", slot, "empress")
 		end)
 	end
 	for _, o in options do
@@ -979,9 +994,9 @@ function BotUtility.hands(
 	end
 	local id = c.ability
 	local key = AbilitySim.BUTTONS[c.slot]
-	-- The aim: at its target from the eye, else as found. Blade Storm and a
-	-- heal on itself need none; a blast of Hunter's Fury charging turns
-	-- the view slowly, as it turns a player's (system 46).
+	-- The aim: at its target from the eye, else as found. Blade Storm,
+	-- Empress and a heal on itself need none; a blast of Hunter's Fury
+	-- charging turns the view slowly, as it turns a player's (system 46).
 	local aims = not INSTANT[id] or id == "cloudburst"
 	if id == "healingorb" and c.alt then
 		aims = false

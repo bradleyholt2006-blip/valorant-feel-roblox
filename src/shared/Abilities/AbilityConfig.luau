@@ -86,6 +86,10 @@ AbilityConfig.RECHARGE_ATTRIBUTE = "VFRecharge"
 -- the top bar and the scoreboard (system 51), as Glance.ultimate writes it:
 -- its points and what it needs ("3/8"), or "" with none.
 AbilityConfig.ULT_ATTRIBUTE = "VFUlt"
+-- And the one that's true while a Reyna's in her Empress's frenzy (system
+-- 75), on her player or a bot's stand-in, for everyone's client to draw her
+-- by.
+AbilityConfig.EMPRESS_ATTRIBUTE = "VFEmpress"
 
 local SHACKNEWS = "Shacknews' default key bindings"
 AbilityConfig.KeySources = {
@@ -257,6 +261,8 @@ local P507 = "Patch 5.07"
 local REYNA_BOOSTING = "Boosting Ground's Reyna guide"
 local REYNA_TRACKER = "valoranttracker.org, Reyna"
 local REYNA_STEELSERIES = "SteelSeries' Reyna guide"
+local P109 = "Patch 1.09"
+local REYNA_SPIKE = "THESPIKE.GG's Reyna page"
 
 AbilityConfig.Defs = {
 	cloudburst = {
@@ -481,8 +487,8 @@ AbilityConfig.Defs = {
 	},
 	-- Reyna's (system 73): her kit as Liquipedia lists it, Leer her
 	-- signature, bought as her others are. Her Devour and her Dismiss can be
-	-- played, each taking a Soul Orb (AbilityConfig.Reyna), and her Leer
-	-- (system 74).
+	-- played, each taking a Soul Orb (AbilityConfig.Reyna), her Leer (system
+	-- 74) and her Empress (system 75).
 	leer = {
 		id = "leer",
 		name = "Leer",
@@ -517,7 +523,7 @@ AbilityConfig.Defs = {
 		slot = AbilityConfig.X,
 		kind = "ultimate",
 		points = p(7, "confirmed", P1202 .. ": Empress 'Ult points increased 6 >> 7'"),
-		description = "X sends you into a frenzy until you die or the round ends: you fire, draw and reload faster, and a kill heals you.",
+		description = "X sends you into a frenzy until you die or the round ends: you fire, draw and reload faster, kills heal you, and Dismiss hides you.",
 	},
 } :: { [string]: AbilityDef }
 
@@ -1429,6 +1435,25 @@ AbilityConfig.Reyna = {
 	-- Dismiss: its time, and her top speed through it (metres a second).
 	dismissTime = p(1.5, "confirmed", P811 .. ": 'Total duration of Dismiss reduced from 2s >>> 1.5s'"),
 	dismissSpeed = p(12, "confirmed", P811 .. ": 'Top speed increased 9.1 meters/second >>> 12 meters/second'"),
+	-- Empress (system 75): from X until her frenzy starts, her gun put away
+	-- meanwhile; then, until she dies or the round ends (Patch 8.11: 'Empress
+	-- no longer has a timer and is permanent until Reyna is killed or the
+	-- round ends.'), how many times faster her guns fire, and draw and
+	-- reload. Its spray climbs and settles as it would without it (Patch
+	-- 9.05, WeaponSim), each orb she earns heals her as Devour does, the orb
+	-- kept and no charge spent, and what that takes her past 100 stays
+	-- (Patch 12.02: 'Healing applied while in Empress is still permanent'),
+	-- and Dismiss spends no charge and hides her (SoulServer).
+	empressActivation = p(1, "community", REYNA_SPIKE .. ": Empress 'Cast time: 1 second' (the gun put away meanwhile: ours)"),
+	empressFire = p(1.15, "confirmed", P109 .. ": Empress 'Fire rate bonus decreased from 25% >>> 15%'"),
+	empressHandling = p(
+		1.25,
+		"community",
+		REYNA_ESPORTS
+			.. ": 'increased gun equip and reload speed by 25%' ("
+			.. REYNA_SPIKE
+			.. ": '+25% each to Equip speed, Reload speed, and Recovery speed'; the recovery's left out, Patch 9.05)"
+	),
 }
 
 -- Reyna's Leer (system 74): C puts the eye in hand (WeaponConfig's leereye,

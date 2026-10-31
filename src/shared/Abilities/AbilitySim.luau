@@ -127,7 +127,13 @@
 -- Dismiss starts at once, in place of an ability in hand: through its time
 -- she can't fire, cast, plant or defuse, and runs faster (PlayerSim), and
 -- as it ends ("solid") she keeps no more than the run speed, her gun
--- drawn again.
+-- drawn again. Her Empress (X, system 75) spends the ultimate's points
+-- once they're full (an "empress" cast), in place of an ability in hand,
+-- and its activation puts her gun away (PlayerSim), nothing else casting
+-- meanwhile; as it ends her frenzy starts, and lasts until she dies or the
+-- round ends: her guns fire, draw and reload faster (PlayerSim), Devour's
+-- cast for her as she earns an orb (SoulServer), so Q does nothing, and
+-- Dismiss spends no charge and hides her.
 --
 -- The server changes the kit between ticks, as it does a loadout: charges
 -- bought and sold, the signature's free charge each round, ultimate points
@@ -252,6 +258,9 @@ export type State = {
 	bodyPitch: number,
 	-- Reyna's Dismiss (system 73): when it ends, 0 when it isn't under way.
 	dismissUntil: number,
+	-- Her Empress (system 75): when its frenzy starts, its activation over,
+	-- 0 when it isn't under way.
+	empressAt: number,
 }
 
 -- A cast, for the server to tell others of (its sound and look): "lift",
@@ -270,8 +279,9 @@ export type State = {
 -- cast), "charge" (a blast's windup started), "blast" (a blast gone as
 -- its windup ends), "drone" (the Owl Drone sent out), "dart" (a dart shot
 -- from it), "land" (its flight over), "devour" or "dismiss" (a Soul Orb
--- taken by Reyna's Devour or Dismiss), "solid" (Dismiss over) or "leer"
--- (her Leer's eye cast), where the player's feet and eye
+-- taken by Reyna's Devour or Dismiss), "solid" (Dismiss over), "leer"
+-- (her Leer's eye cast) or "empress" (her Empress cast), where the
+-- player's feet and eye
 -- were (for "home", where they are back, and for a dart and a landing,
 -- the drone's middle in place of the eye), and the way it goes (the
 -- dash's way, up for a lift, the way they faced for a readied gust, for
@@ -281,7 +291,9 @@ export type State = {
 -- it goes, a smoke's how far its mark was and where it goes, a step's, his
 -- going's, a teleport's and a Shade's, where it takes him (a "home", where
 -- the Shade was), and a bolt's the bars its draw filled and the bounces it
--- was given, and a Soul Orb's taking which orb it took.
+-- was given, a Soul Orb's taking which orb it took, and a Dismiss in
+-- Empress's frenzy that it hides her. The server casts Devour for her in
+-- the frenzy too (`auto`), as she earns an orb (SoulServer).
 export type Cast = {
 	slot: number,
 	ability: string,
@@ -300,6 +312,8 @@ export type Cast = {
 	bars: number?, -- a bolt's: the bars its draw filled, 0 to 3
 	bounces: number?, -- and the bounces it was given, 0 to 2
 	soul: number?, -- a Soul Orb's taking: the orb it took, by its number
+	hidden: boolean?, -- a Dismiss's: in Empress's frenzy, so unseen (system 75)
+	auto: boolean?, -- a Devour's: cast for her by her Empress as she earned an orb (system 75)
 }
 
 local AbilitySim = {}
@@ -350,6 +364,7 @@ local PLAYABLE: { [string]: boolean } = {
 	devour = true,
 	dismiss = true,
 	leer = true,
+	empress = true,
 }
 
 function AbilitySim.playable(id: string): boolean
@@ -429,6 +444,7 @@ function AbilitySim.new(agent: string?): State
 		bodyYaw = 0,
 		bodyPitch = 0,
 		dismissUntil = 0,
+		empressAt = 0,
 	}
 	AbilitySim.newHalf(s)
 	return s
@@ -489,8 +505,8 @@ end
 -- Shadows, or Hunter's Fury and a blast's knockback), an ability in hand,
 -- a wall being bent, a return from the Resurrection, a step (Shrouded
 -- Step), a bolt drawn and its bounces (the Recon Bolt), the Owl Drone's
--- flight and what's left of it, Reyna's Dismiss; and the Barrier
--- Orb's targeter is across the view again
+-- flight and what's left of it, Reyna's Dismiss and her Empress; and the
+-- Barrier Orb's targeter is across the view again
 -- (the VALORANT Wiki has it across the view when it's first equipped in a
 -- round). Nothing carries into a new life or a new round.
 function AbilitySim.settle(s: State)
@@ -514,6 +530,7 @@ function AbilitySim.settle(s: State)
 	s.dronePos, s.droneVel = ZERO, ZERO
 	s.bodyYaw, s.bodyPitch = 0, 0
 	s.dismissUntil = 0
+	s.empressAt = 0
 end
 
 -- A new match: nothing but the signature's free charges, and no points.
@@ -579,10 +596,11 @@ local function ultimatePlayable(s: State): boolean
 end
 
 -- Whether the ultimate's under way: Blade Storm's knives carried, Run it
--- Back running or bringing him back, From the Shadows taking him, or
--- Hunter's Fury's bow in hand.
+-- Back running or bringing him back, From the Shadows taking him,
+-- Hunter's Fury's bow in hand, or Reyna's Empress, in its activation or
+-- its frenzy.
 function AbilitySim.ultimateOn(s: State): boolean
-	return s.storm or s.backUntil > 0 or s.returnAt > 0 or s.shadowAt > 0 or s.furyUntil > 0
+	return s.storm or s.backUntil > 0 or s.returnAt > 0 or s.shadowAt > 0 or s.furyUntil > 0 or s.empressAt > 0
 end
 
 -- Every charge the kit can hold, for the course and Skirmish, where nothing
@@ -614,7 +632,8 @@ function AbilitySim.full(s: State, ultimate: boolean?): boolean
 end
 
 -- Whether anything's under way at `t`: a readied window, a lift, a dash, a
--- step, a teleport, a drone's flight or Reyna's Dismiss.
+-- step, a teleport, a drone's flight, Reyna's Dismiss or her Empress's
+-- activation.
 function AbilitySim.busy(s: State, t: number): boolean
 	return t < s.readyUntil - EPS
 		or t < s.liftUntil - EPS
@@ -623,6 +642,7 @@ function AbilitySim.busy(s: State, t: number): boolean
 		or AbilitySim.shadowing(s, t)
 		or AbilitySim.droning(s)
 		or AbilitySim.dismissing(s, t)
+		or AbilitySim.crowning(s, t)
 end
 
 -- Ultimate points, up to what the ultimate needs.
@@ -729,7 +749,8 @@ end
 -- to it, "bend" while a wall is being bent (Blaze), "turn" while the
 -- Barrier Orb's targeter is turned from across the view, "revived" while a
 -- life the Resurrection brought back is held, "dismiss 1.2" while Reyna's
--- Dismiss runs, the seconds it has left, and "glide" while `gliding` (the
+-- Dismiss runs, the seconds it has left, "crown" through her Empress's
+-- activation and "frenzy" once it's on, and "glide" while `gliding` (the
 -- movement's, for Drift).
 function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	local parts = {}
@@ -798,6 +819,11 @@ function AbilitySim.summary(s: State, t: number, gliding: boolean?): string
 	if AbilitySim.dismissing(s, t) then
 		table.insert(parts, string.format("dismiss %.1f", math.max(s.dismissUntil - t, 0)))
 	end
+	if AbilitySim.crowning(s, t) then
+		table.insert(parts, "crown")
+	elseif AbilitySim.frenzied(s, t) then
+		table.insert(parts, "frenzy")
+	end
 	if AbilitySim.ready(s, t) then
 		table.insert(parts, "ready")
 	elseif t < s.readyUntil - EPS then
@@ -820,6 +846,24 @@ end
 -- Whether Reyna's Dismiss is under way at `t` (system 73).
 function AbilitySim.dismissing(s: State, t: number): boolean
 	return t < s.dismissUntil - EPS
+end
+
+-- Whether Reyna's Empress is in its activation at `t` (system 75): cast,
+-- its frenzy not yet started.
+function AbilitySim.crowning(s: State, t: number): boolean
+	return s.empressAt > 0 and t < s.empressAt - EPS
+end
+
+-- Whether Reyna's in Empress's frenzy at `t` (system 75).
+function AbilitySim.frenzied(s: State, t: number): boolean
+	return s.empressAt > 0 and t >= s.empressAt - EPS
+end
+
+-- Whether Reyna's unseen by her enemies at `t` (system 75): in a Dismiss in
+-- her Empress's frenzy. Nothing casts through its activation, so any
+-- Dismiss under way in the frenzy was cast in it.
+function AbilitySim.unseen(s: State, t: number): boolean
+	return AbilitySim.dismissing(s, t) and AbilitySim.frenzied(s, t)
 end
 
 -- Whether a readied window is open at `t`.
@@ -1468,7 +1512,8 @@ end
 -- One tick at time `t`, before movement: casts what's been pressed, from
 -- `feet` and `eye` where the last tick left them. `rooted` says a plant or
 -- a defuse holds the player, and nothing casts then; nor does anything
--- during a dash, Run it Back's activation or Dismiss. `soul` is the Soul
+-- during a dash, Run it Back's activation, Dismiss or Empress's
+-- activation. `soul` is the Soul
 -- Orb in Reyna's reach, if any (system 73). Returns what this tick does to
 -- movement, and the casts that started, if any.
 function AbilitySim.step(
@@ -1546,7 +1591,12 @@ function AbilitySim.step(
 			direction = Accuracy.aim(input.yaw, input.pitch),
 		})
 	end
-	local free = not rooted and not AbilitySim.dashing(s, t) and not AbilitySim.marking(s, t) and not AbilitySim.dismissing(s, t)
+	local free = not rooted
+		and not AbilitySim.dashing(s, t)
+		and not AbilitySim.marking(s, t)
+		and not AbilitySim.dismissing(s, t)
+		and not AbilitySim.crowning(s, t)
+	local frenzy = AbilitySim.frenzied(s, t)
 	if pressed ~= 0 and free then
 		for slot = C, X do
 			if bit32.band(pressed, AbilitySim.BUTTONS[slot]) == 0 then
@@ -1653,11 +1703,36 @@ function AbilitySim.step(
 					origin = eye,
 					direction = aim,
 				})
-			elseif (id == "devour" or id == "dismiss") and s.charges[slot] > 0 and soul ~= nil then
+			elseif id == "empress" and AbilitySim.charged(s) and not AbilitySim.ultimateOn(s) then
+				-- The points spent and its activation started (system 75), in
+				-- place of an ability in hand and of a wall being bent, which
+				-- runs straight on. PlayerSim puts the gun away for it.
+				s.points = 0
+				s.empressAt = t + RY.empressActivation.value
+				s.holding = 0
+				s.steering, s.steerUntil = 0, 0
+				started({
+					slot = slot,
+					ability = id,
+					kind = id,
+					tick = tick,
+					time = t,
+					position = feet,
+					origin = eye,
+					direction = facing(input.yaw),
+				})
+			elseif
+				soul ~= nil
+				and ((id == "devour" and not frenzy and s.charges[slot] > 0) or (id == "dismiss" and (frenzy or s.charges[slot] > 0)))
+			then
 				-- The Soul Orb in reach taken (system 73), one a tick, and its
 				-- charge spent; Dismiss's time starts, in place of an ability
-				-- in hand, and nothing else casts in it.
-				s.charges[slot] -= 1
+				-- in hand, and nothing else casts in it. In Empress's frenzy
+				-- (system 75) Devour's cast for her as she earns an orb, so Q
+				-- takes none, and Dismiss spends no charge and hides her.
+				if not frenzy then
+					s.charges[slot] -= 1
+				end
 				local aim = Accuracy.aim(input.yaw, input.pitch)
 				started({
 					slot = slot,
@@ -1669,6 +1744,7 @@ function AbilitySim.step(
 					origin = eye,
 					direction = aim,
 					soul = soul,
+					hidden = if id == "dismiss" and frenzy then true else nil,
 				})
 				soul = nil
 				if id == "dismiss" then

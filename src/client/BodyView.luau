@@ -53,6 +53,12 @@ BodyView.COST = "VFBodyMs"
 local FLASH_COLOUR = Color3.new(1, 1, 1)
 local SHADE_COLOUR = Color3.fromRGB(40, 26, 64)
 local SHADE_CLEAR = 0.35
+-- Reyna's Empress frenzy's glow about her (system 75): its name in the
+-- body's model, colour, and how faint its fill and its edge are. It's hid
+-- behind walls, as she is.
+local GLOW = "EmpressGlow"
+local GLOW_COLOUR = Color3.fromRGB(176, 84, 255)
+local GLOW_FILL, GLOW_EDGE = 0.85, 0.25
 
 -- A bone turned less than this since it was last written isn't written
 -- again (radians; a millimetre at a forearm's length).
@@ -471,9 +477,15 @@ function BodyView.update(body: Body, pose: PlayerCodec.Pose, now: number, sinceS
 end
 
 -- Draws a body lit up (hit), as a Shade (system 43), as a force field
--- (spawn protection in gun game, system 23), or as it is.
-function BodyView.paint(body: Body, flash: boolean, shade: boolean, field: boolean)
-	local key = (if flash then "f" else "") .. (if shade then "s" else "") .. (if field then "p" else "")
+-- (spawn protection in gun game, system 23), or as it is; not at all while
+-- `hidden` (Reyna in a Dismiss in her Empress's frenzy, to her enemies,
+-- system 75), and with a violet glow about it through her `frenzy`.
+function BodyView.paint(body: Body, flash: boolean, shade: boolean, field: boolean, hidden: boolean?, frenzy: boolean?)
+	local key = (if flash then "f" else "")
+		.. (if shade then "s" else "")
+		.. (if field then "p" else "")
+		.. (if hidden then "h" else "")
+		.. (if frenzy then "e" else "")
 	if key == body.look then
 		return
 	end
@@ -485,7 +497,20 @@ function BodyView.paint(body: Body, flash: boolean, shade: boolean, field: boole
 		end
 		part.Color = if flash then FLASH_COLOUR elseif shade then SHADE_COLOUR else plain.colour
 		part.Material = if field then Enum.Material.ForceField else plain.material
-		part.Transparency = if shade then math.max(plain.transparency, SHADE_CLEAR) else plain.transparency
+		part.Transparency = if hidden then 1 elseif shade then math.max(plain.transparency, SHADE_CLEAR) else plain.transparency
+	end
+	local glow = body.model:FindFirstChild(GLOW) :: Highlight?
+	if frenzy and not hidden and not glow then
+		local made = Instance.new("Highlight")
+		made.Name = GLOW
+		made.DepthMode = Enum.HighlightDepthMode.Occluded
+		made.FillColor = GLOW_COLOUR
+		made.OutlineColor = GLOW_COLOUR
+		made.FillTransparency = GLOW_FILL
+		made.OutlineTransparency = GLOW_EDGE
+		made.Parent = body.model
+	elseif glow and (hidden or not frenzy) then
+		glow:Destroy()
 	end
 end
 

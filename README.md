@@ -549,7 +549,7 @@ Built one system at a time:
     she sees. With one in reach, Q (Devour) takes it and heals her 50 over 2 seconds, past full
     health up to 150 for 10 seconds; E (Dismiss) takes it instead, and for 1.5 seconds nothing
     hurts her and she runs at up to 12 m/s, but she can't fire or cast. Others see her dark and
-    see-through in it, and bots playing her Devour when they're hurt. Empress comes later -
+    see-through in it, and bots playing her Devour when they're hurt -
     [research and design](docs/research/73-reyna-soul-orbs.md)
 74. **Reyna's Leer**: C readies an ethereal eye, and fire casts it 10 m along the crosshair over 0.4
     seconds, on through walls, though a floor in its way stops it. For 2 seconds any enemy who looks
@@ -557,6 +557,14 @@ Built one system at a time:
     side never are, and her enemies break it with 100 damage. Bots playing her cast it at those
     holding a way in. Dismiss's purple edge now shows, and others no longer see her gun through it -
     [research and design](docs/research/74-leer.md)
+75. **Reyna's Empress**: X, with its 7 points, sends her into a frenzy after a 1 second activation,
+    until she dies or the round ends: her rounds come 15% faster and her draws and reloads 25%
+    faster, though each spray climbs as it would without it. Each Soul Orb she earns heals her at
+    once as Devour does, the orb kept, and what that takes her past 100 stays; Dismiss costs no
+    charge and hides her from her enemies, bots too. She glows violet through it, and bots playing
+    her cast it going in, holding a way in and with an enemy near. Leer's eye in hand now shows its
+    pupil, and the reload and draw bars keep up with quicker hands -
+    [research and design](docs/research/75-empress.md)
 
 ## Running it
 

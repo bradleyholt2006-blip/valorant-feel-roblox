@@ -7,8 +7,10 @@
 -- the drone's own bars are DroneView's. Low health reads red, and so does
 -- a gun's magazine running low (system 54, Indicators; Patch 0.49: 'New low
 -- health and low ammo visuals'); the gui's `LowHealth` and `LowAmmo`
--- attributes say so, for scripted checks, and its `Health` is the health
--- shown, past 100 with Reyna's overheal (system 73).
+-- attributes say so, for scripted checks, its `Health` is the health
+-- shown, past 100 with Reyna's overheal (system 73), and its `Ammo` the
+-- magazine shown (-1 with none). The reload and draw bars keep up with a
+-- buff's quicker hands (system 75: Reyna's Empress).
 --
 -- Hit markers and damage numbers only ever come from the server's verdict,
 -- never from the client's guess, so they show what actually counted.
@@ -246,6 +248,7 @@ function CombatHud.start()
 
 		local zoom = 1
 		local lowAmmo = false
+		local magazine = -1
 		if sim then
 			local w = sim.weapons
 			local def = PlayerSim.def(sim)
@@ -265,6 +268,9 @@ function CombatHud.start()
 				and not def.ultimate
 				and Indicators.lowAmmo(w.ammo[slot], def.magazine.value)
 			ammoText.TextColor3 = if lowAmmo then KILL_COLOR else Ui.TEXT
+			if def.fireMode ~= "none" and not ability then
+				magazine = w.ammo[slot]
+			end
 			local key = if def.ultimate then "X" elseif ability then AbilityConfig.KEYS[ability.slot] else tostring(slot)
 			weaponText.Text = string.format("%s   [%s]", def.name, key)
 			if w.scoped > 0 and def.ads then
@@ -274,14 +280,15 @@ function CombatHud.start()
 			local t = sim.movement.tick * DT
 			local fill, label = nil, ""
 			if w.reloadEndTime > 0 then
-				-- This step of the reload: the whole of it, or one round.
-				local step = WeaponSim.reloadStep(def, w.ammo[slot], w.reserve[slot])
+				-- This step of the reload: the whole of it, or one round,
+				-- quickened as the hands are.
+				local step = WeaponSim.reloadStep(def, w.ammo[slot], w.reserve[slot]) / w.handling
 				fill = 1 - math.clamp((w.reloadEndTime - t) / math.max(step, 1e-3), 0, 1)
 				label = "reloading"
 			elseif t < w.equipEndTime then
 				if w.equipEndTime ~= drawEnds then
 					drawEnds = w.equipEndTime
-					drawLength = math.max(def.equipTime.value, w.equipEndTime - t)
+					drawLength = math.max(def.equipTime.value / w.handling, w.equipEndTime - t)
 				end
 				fill = 1 - math.clamp((w.equipEndTime - t) / math.max(drawLength, 1e-3), 0, 1)
 				label = "drawing"
@@ -294,6 +301,7 @@ function CombatHud.start()
 		end
 
 		gui:SetAttribute("LowAmmo", lowAmmo)
+		gui:SetAttribute("Ammo", magazine)
 
 		-- Scope: square view in the middle of the screen.
 		local scoped = zoom >= 2 and alive

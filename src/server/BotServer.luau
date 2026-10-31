@@ -58,7 +58,8 @@
 -- flash's blind or a nearsight on it, Paranoia's or Leer's (its
 -- stand-in's attributes), hides from its looks what it hides from a
 -- player's eyes: everything, at a blind's whitest, and anyone past the
--- nearsight's range.
+-- nearsight's range. A Reyna in a Dismiss in her Empress's frenzy is
+-- hidden from its looks too, as from her enemies' eyes (system 75).
 --
 -- And it casts them as a player would (system 66, BotUtility): each time
 -- its side's plan is gone over, a bot that isn't fighting or casting is
@@ -222,8 +223,10 @@ type Bot = {
 	memo: BotUtility.Memo,
 }
 
--- Someone alive on a side, as this frame's looks see them.
-type Seen = { id: number, side: number, points: { vector }, velocity: vector }
+-- Someone alive on a side, as this frame's looks see them, and whether
+-- they're unseen by their enemies (Reyna's Dismiss in her Empress's frenzy,
+-- system 75).
+type Seen = { id: number, side: number, points: { vector }, velocity: vector, hidden: boolean }
 
 -- Someone alive on a side, for its bots' casts (system 66): their entity
 -- id, eye, chest and health, and whether they're defusing the spike.
@@ -322,9 +325,11 @@ end
 -- The bot's pose as the simulation has it now.
 local function currentPose(bot: Bot): PlayerCodec.Pose
 	local m, w = bot.sim.movement, bot.sim.weapons
-	-- Planting, defusing and its weapon put away for a defuse or through
-	-- Dismiss, as a player's (PlayerSimServer), so it's drawn doing them.
-	local away = SpikeSim.stowed(bot.sim.spike) or AbilitySim.dismissing(bot.sim.abilities, m.tick * DT)
+	-- Planting, defusing and its weapon put away for a defuse, through
+	-- Dismiss or through Empress's activation, as a player's
+	-- (PlayerSimServer), so it's drawn doing them.
+	local kit, t = bot.sim.abilities, m.tick * DT
+	local away = SpikeSim.stowed(bot.sim.spike) or AbilitySim.dismissing(kit, t) or AbilitySim.crowning(kit, t)
 	return {
 		id = bot.entity.id,
 		position = m.position,
@@ -568,18 +573,22 @@ local function everyone(): { Seen }
 		local pose = if side then entity.pose() else nil
 		if side and pose then
 			local sim = entity.sim
-			table.insert(
-				out,
-				{ id = id, side = side, points = Sight.points(pose), velocity = if sim then sim.movement.velocity else vector.zero }
-			)
+			table.insert(out, {
+				id = id,
+				side = side,
+				points = Sight.points(pose),
+				velocity = if sim then sim.movement.velocity else vector.zero,
+				hidden = sim ~= nil and AbilitySim.unseen(sim.abilities, sim.movement.tick * DT),
+			})
 		end
 	end
 	return out
 end
 
 -- A look at every enemy: those near its view are looked for in the level,
--- but none while a flash has it blinded, and none past the nearsight's
--- range while it's nearsighted, by Paranoia or Leer (systems 65 and 74).
+-- but none while a flash has it blinded, none past the nearsight's range
+-- while it's nearsighted, by Paranoia or Leer (systems 65 and 74), and
+-- never a Reyna in a Dismiss in her Empress's frenzy (system 75).
 local function look(bot: Bot, now: number, seen: { Seen }, o: Sight.Occluders, cfg: MovementConfig.Values)
 	local eye = PlayerSim.eye(bot.sim, cfg)
 	local blind = FlareSim.decode(bot.standIn:GetAttribute(FlareSim.BLIND_ATTRIBUTE))
@@ -594,7 +603,7 @@ local function look(bot: Bot, now: number, seen: { Seen }, o: Sight.Occluders, c
 		local yaw = BotBrain.anglesTo(eye, chest)
 		local visible = false
 		local near = range == nil or vector.magnitude(chest - eye) <= range
-		if not blinded and near and math.abs(BotBrain.wrap(yaw - bot.yaw)) <= NEAR_VIEW then
+		if not blinded and near and not s.hidden and math.abs(BotBrain.wrap(yaw - bot.yaw)) <= NEAR_VIEW then
 			for _, point in s.points do
 				if not Sight.hidden(eye, point, o) then
 					visible = true
@@ -1075,12 +1084,14 @@ local function drive(bot: Bot, t: number, now: number, cfg: MovementConfig.Value
 		buttons += B.Crouch
 	end
 	-- Reyna's Devour (system 73): hurt, with a Soul Orb in reach and a
-	-- charge, it takes the orb, a press as soon as it's there. It leaves
-	-- Dismiss alone, as a fight would want its gun.
+	-- charge, it takes the orb, a press as soon as it's there, but for in
+	-- Empress's frenzy, which casts it for it (system 75). It leaves Dismiss
+	-- alone, as a fight would want its gun.
 	local kit = sim.abilities
 	local devour = AbilitySim.slotOf(kit, "devour")
 	local h = bot.entity.health
-	if soulful and soulful.soul and devour and kit.charges[devour] > 0 and h.health < h.maxHealth and not hands.quiet then
+	local hurt = h.health < h.maxHealth and not AbilitySim.frenzied(kit, sim.movement.tick * DT)
+	if soulful and soulful.soul and devour and kit.charges[devour] > 0 and hurt and not hands.quiet then
 		buttons += AbilitySim.BUTTONS[devour]
 	end
 	if act.fire and not quiet then

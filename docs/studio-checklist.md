@@ -6725,19 +6725,18 @@ end
 
 From [73-reyna-soul-orbs.md](research/73-reyna-soul-orbs.md). System 73 adds Reyna, a Duelist and
 the sixth agent, with her Devour (Q) and Dismiss (E) to play; Leer (C) is played since system 74
-(section 78), and Empress (X) is on her card, the bar and the buy menu, `NOT YET`. An enemy she
-kills, or who dies within 3 s of her last hurting them, whoever killed them, leaves her a Soul Orb
-where they fell, for 3 s: a purple ball 1 m up that only she sees. Dummies on the course leave them
-too. With one within 15 m of her eye and in sight, Q takes it and heals her 50 over 2 s, past 100 up
-to 150, and what's past 100 goes 10 s after the heal's last point. E takes it instead, and for 1.5 s
-nothing hurts her and she runs at up to 12 m/s, but she can't fire, cast, plant or defuse, and her
-gun comes back as it ends. Your `VFSouls` attribute lists your orbs, each as its number, where it
-fell (metres) and when it goes, apart by `;`. PlayerGui's `VFSouls` carries `Orbs` (how many),
-`Reach` (the number of the one in reach, -1 for none) and `Prompt` (the keys over the crosshair,
-empty for none); `VFCombatHud`'s `Health` is the health the HUD shows; and Workspace's `VFSouls`
-holds the balls (`VFSoulOrb`). In Studio the server's Output has a `[VF] soul:` line as each orb's
-earned (saying whether by her kill or her damage, and how long before), each is taken and each
-overheal goes.
+(section 78), and Empress (X) since system 75 (section 79). An enemy she kills, or who dies within 3
+s of her last hurting them, whoever killed them, leaves her a Soul Orb where they fell, for 3 s: a
+purple ball 1 m up that only she sees. Dummies on the course leave them too. With one within 15 m of
+her eye and in sight, Q takes it and heals her 50 over 2 s, past 100 up to 150, and what's past 100
+goes 10 s after the heal's last point. E takes it instead, and for 1.5 s nothing hurts her and she
+runs at up to 12 m/s, but she can't fire, cast, plant or defuse, and her gun comes back as it ends.
+Your `VFSouls` attribute lists your orbs, each as its number, where it fell (metres) and when it
+goes, apart by `;`. PlayerGui's `VFSouls` carries `Orbs` (how many), `Reach` (the number of the one
+in reach, -1 for none) and `Prompt` (the keys over the crosshair, empty for none); `VFCombatHud`'s
+`Health` is the health the HUD shows; and Workspace's `VFSouls` holds the balls (`VFSoulOrb`). In
+Studio the server's Output has a `[VF] soul:` line as each orb's earned (saying whether by her kill
+or her damage, and how long before), each is taken and each overheal goes.
 
 Press Play (F5), with one player, and pick Reyna: press T, click REYNA's card and PICK REYNA (or set
 `VFTestAgents` to true, `VFTestAgent` to `reyna`, then `VFTestAgent` to `lock`). Set `VFTestMute` if
@@ -6817,10 +6816,9 @@ end
   `With a Soul Orb in reach, Q takes it and heals you 50 over 2 s, past full health up to 150 for 10 s.`,
   and E DISMISS lit,
   `With a Soul Orb in reach, E takes it: for 1.5 s nothing hurts you and you run faster, but you can't fire or cast.`;
-  C LEER is lit too (section 78), and X EMPRESS reads `NOT YET`. Click PICK REYNA: the button reads
+  C LEER and X EMPRESS are lit too (sections 78 and 79). Click PICK REYNA: the button reads
   `PLAYING REYNA`, and `VFAgent` reads `reyna`. Close it with T. `souls()` prints `nil 0 -1` and an
-  empty prompt, then `C2/2 Q2/2 E2/2 X0/7 100`: Empress can't be played, so the course doesn't fill
-  its points. **Send:** the lines, and how her card looks.
+  empty prompt, then `C2/2 Q2/2 E2/2 X7/7 100`. **Send:** the lines, and how her card looks.
 
 - **RY2 A Soul Orb.** `down(4294901761)`: Dummy 1 falls, the server's Output has
   `[VF] soul: <your name> earns 1 at 0.00, 0.00, -10.00 (her kill)` (or near those numbers), and a
@@ -6886,10 +6884,11 @@ side of player 1, where each sees the other, and window 1 runs this section's sc
   `set("VFTestTraining", "abilities")`: `step()` prints `abilities` and
   `0 / 3   {q} and {e} take a Soul Orb: down a target first.`, and `panel()` has
   `0 / 3   Q and E take a Soul Orb: down a target first.` `hold(4096, 0.1)`, then a second later
-  `hold(128, 0.1)`: Leer's eye flies, and `1 / 3`, the hint still there. With the Classic,
-  `down(4294901761)` (two headshots) and `press(8192)`: `2 / 3`, the hint still there. Once
-  Dummy 1's back, `down(4294901761)` and `press(16384)`: `plant`, past `ultimate` at once, as
-  Empress can't be played yet either. **Send:** the lines.
+  `hold(128, 0.1)`: Leer's eye flies, and `1 / 3`, the hint still there. Once the eye's gone, 2.4 s
+  after it flew (it opens in front of Dummy 1's head, and would take the first shots), with the
+  Classic, `down(4294901761)` (two headshots) and `press(8192)`: `2 / 3`, the hint still there. Once
+  Dummy 1's back, `down(4294901761)` and `press(16384)`: `ultimate`. `hold(32768, 0.1)`: Empress's
+  swell, and `plant`. **Send:** the lines.
 
 - **RY8 Bots playing her.** Stop the game and start a Local Server with 1 player. In the server's
   command bar, set `VFArenaMode` to `teamdeathmatch` and `VFArenaOn` to true: Team Deathmatch plays
@@ -6970,14 +6969,14 @@ end
 
 - **LR1 Her kit.** In agent select (T), REYNA's card has C LEER lit now, with
   `C readies an eye. Fire casts it 10 m ahead, through walls: for 2 s any enemy who looks at it is nearsighted, unless they shoot it.`,
-  and X EMPRESS still reads `NOT YET`. Close it with T. `eye()` prints `0 nil nil`, then `nil nil`
+  and X EMPRESS is lit too (section 79). Close it with T. `eye()` prints `0 nil nil`, then `nil nil`
   and a `VFKit` that starts `C2/2 Q2/2 E2/2`. **Send:** the lines.
 - **LR2 In hand.** Open the Sound Lab (F2 four times), and keep it open to LR5. `press(4096)`: a
   quick whoosh, logged as `leerEquip`, `yours`; the Vandal goes, and an open hand comes up holding a
-  violet eye with a dark pupil. C's square lights, with `EQUIP` under it for 0.8 s; the HUD reads
-  `Leer   [C]`, with no ammo; and `VFKit` ends in `equip`. `press(256)`: nothing's cast or heard.
-  `press(4096)` again: the Vandal's back, and `VFKit` still reads `C2/2`, nothing spent. **Send:** a
-  screenshot of it in hand.
+  violet eye, its dark pupil turned to you (on its far side, unseen, until system 75). C's square
+  lights, with `EQUIP` under it for 0.8 s; the HUD reads `Leer   [C]`, with no ammo; and `VFKit`
+  ends in `equip`. `press(256)`: nothing's cast or heard. `press(4096)` again: the Vandal's back,
+  and `VFKit` still reads `C2/2`, nothing spent. **Send:** a screenshot of it in hand.
 - **LR3 Down the lane.** `set("VFTestYaw", 10)`, turning you a little left so it stops clear of
   Dummy 1, then `leer()`: a slowed swish, logged as `leerCast`, `yours`, and a small, dim violet
   ball flies out from your view, growing and brightening, and stops about 10 m away as a low toll's
@@ -6996,9 +6995,9 @@ end
   feet, about `0.00, 0.25, 0.00`. Set `VFTestPitch` back to 0. **Send:** the lines.
 - **LR5 Shooting it.** `set("VFTestYaw", 10)`, `leer()`, then at once `shoot(3)`: it prints `60`,
   `20` and `0`, 40 a Vandal bullet, and on the third the eye bursts in a violet flash with a sharp
-  crack, logged as `leerBreak`, `yours`; `eye()` then prints `0` eyes and `0` health. On the course
-  her own shots break it, so it can be tried alone. Set `VFTestYaw` back to 0, and press F2 to close
-  the Sound Lab. **Send:** the lines.
+  crack at the eye, logged as `leerBreak` with your name and how far off it is; `eye()` then prints
+  `0` eyes and `0` health. On the course her own shots break it, so it can be tried alone. Set
+  `VFTestYaw` back to 0, and press F2 to close the Sound Lab. **Send:** the lines.
 
 Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
 REYNA in window 1. Everyone on the course is everyone else's enemy. Run this section's script in
@@ -7028,8 +7027,9 @@ window 2 hears a slowed tone, logged as `nearsight`, and its screen goes dark pa
 player 1, 15 m off, is gone in it, while the eye still shows. Its script prints `looking`, a
 nearsight, `nil` and `true`: no deafening, nothing muffled. Turned away, it clears within about 0.7
 s: `away nil`. Turned back while the eye's still open, it's dark again: `back` and a nearsight.
-Window 1's own `VFNearsight` stays `nil`, and once the eye's gone, window 1's `eye()` has `Player2`
-as its `VFLastLeered`. **Send:** both windows' lines, and a screenshot of window 2 while it's dark.
+Window 1's own `VFNearsight` stays `nil`, and a second after the eye's gone (late shots still count
+till then), window 1's `eye()` has `Player2` as its `VFLastLeered`. **Send:** both windows' lines,
+and a screenshot of window 2 while it's dark.
 - **LR7 Shot by an enemy.** In window 2, run this: it waits for an eye, then fires three single
   shots into it.
 
@@ -7060,13 +7060,13 @@ comes up by itself: pick REYNA and LOCK IN in window 1, and LOCK IN in windows 2
 section's script in window 1. In Skirmish each life starts with every charge.
 
 - **LR8 Her side.** Once the round is live, players 2 and 3 stand side by side, 2 m apart, about 15
-  m in front of player 1 in the open, both facing player 1. In window 1, face the gap between them
-  and `leer()`: the eye opens about 5 m short of them, and window 2 goes dark past 7.5 m, its
-  `VFNearsight` set, while window 3 stays clear, its `VFNearsight` `nil`. Once the eye's gone,
-  window 1's `VFLastLeered` reads `Player2`. Run LR7's script in window 3, then `leer()` in window 1
-  again: player 3's shots go into the eye and do nothing, `100` three times, and it stands. Then run
-  the script in window 2, and `leer()` in window 1 once more: it falls by each hit's damage and
-  bursts at `0`. **Send:** the lines.
+  m in front of player 1 in the open, both facing player 1. Run LR7's script in window 3. In
+  window 1, face the gap between them and `leer()`: the eye opens about 5 m short of them, and
+  window 2 goes dark past 7.5 m, its `VFNearsight` set, while window 3 stays clear, its
+  `VFNearsight` `nil`; player 3's shots go into the eye and do nothing, `100` three times, and it
+  stands its full time. A second after it's gone, window 1's `VFLastLeered` reads `Player2`. Then
+  run the script in window 2, and `leer()` in window 1 again, her second charge: it falls by each
+  hit's damage and bursts at `0`. **Send:** the lines.
 
 Then the bots: stop the game, start a Local Server with 1 player, and set the spike rounds going on
 Outpost as in section 70 (`VFMatchMap` `outpost`, `VFArenaMode` `spike`, then `VFArenaOn` true), and
@@ -7074,15 +7074,176 @@ run section 70's script in the server's command bar.
 
 - **LR9 Bots casting it.** Let it play for 4 minutes, staying back to watch. Each side leaves one
   agent out, so there's usually a bot on Reyna on each side. The script prints a Reyna bot's
-  `leer push:leer:<n>` now and then as its side attacks, and `leer stall:leer:<n>` holding a way in
-  with attackers just seen there; the eyes fly and open where those it's for would see them, and
-  Workspace's `VFLeer` `Eyes` counts them on your screen as they show. With one opened in your view
-  by a bot on the other side, your screen goes dark past 7.5 m as in LR6. That bot's `VFLastLeered`,
-  in `ReplicatedStorage.VFBots`, names whom its last eye nearsighted. **Send:** the script's leer
+  `leer push:leer` now and then as its side attacks or retakes, and, less often, `leer stall:leer`
+  holding a way in with attackers just seen there (a cast the same as that bot's last doesn't print
+  again); the eyes fly and open where those it's for would see them, and Workspace's `VFLeer` `Eyes`
+  counts them on your screen as they show. With one opened in your view by a bot on the other side,
+  your screen goes dark past 7.5 m as in LR6. That bot's `VFLastLeered`, in
+  `ReplicatedStorage.VFBots`, names whom its last eye nearsighted. **Send:** the script's leer
   lines, and any `VFLastLeered` that names someone.
 - **LR10 The feel (Bradley).** Play her with Leer on the course and against bots: whether the eye's
   easy to place, whether its cone (looked at from 50 degrees off) and how long the nearsight lingers
   feel right, and whether it's too easy or too hard to shoot. **Send:** what to change.
+
+## 79. Reyna's Empress
+
+From [75-empress.md](research/75-empress.md). System 75 has Reyna's Empress (X) played: with its 7
+points, X spends them, and 1 s later her frenzy starts, her gun away meanwhile and nothing cast or
+fired. It lasts until she dies or the round ends. Through it her guns fire 15% faster and draw and
+reload 25% faster, each spray climbing and settling as it would without it; each Soul Orb she earns
+heals her at once as Devour does (50 over 2 s), the orb kept and no charge spent, and Q does
+nothing; what a heal finished in it takes her past 100 stays; and Dismiss spends no charge and hides
+her from her enemies, players and bots, while her side sees her dark and see-through as ever. On the
+course, with no sides, nobody else sees her in it. Everyone sees her with a faint violet glow
+through the frenzy, and her own screen's edges glow violet. Anyone's `VFEmpress` is true while
+they're in the frenzy, and `VFKit` reads `crown` through the activation and `frenzy` after;
+`VFCombatHud`'s `Ammo` is the magazine it shows (-1 with none). In Studio the server's Output has
+`[VF] soul: <name> empress devour, <n> kept` as each orb she earns in the frenzy heals her, and
+`[VF] soul: <name> overheal kept (empress)` as such a heal finishes past 100.
+
+Press Play (F5), with one player, and pick Reyna as in section 77. Set `VFTestMute` if the sound's
+not wanted. Run section 77's script once in the command bar with it on the client, then this one,
+then each check's lines there: `kit()` prints `VFKit`, `VFEmpress`, the health and the prompt over
+the crosshair; `empress()` presses X and prints `kit()` at once, 0.5 s on and 1.2 s on; `spray(t)`
+holds fire for `t` seconds and prints how many rounds went; `reload()` presses R and prints how long
+the magazine takes to fill; and `draw(slot)` draws that slot with fire held and prints how long it
+is till its first round, for an automatic gun. On the course the ultimate's points fill 1.5 s after
+they're spent, as a spent charge comes back, but not while the frenzy's on, which only a death ends
+there. Start each check 1.2 m left of the spawn facing down the lane, as in section 77, with the
+Vandal in hand.
+
+```lua
+me = game.Players.LocalPlayer
+hud = me.PlayerGui.VFCombatHud
+function kit()
+	local prompt = me.PlayerGui.VFSouls:GetAttribute("Prompt")
+	print(me:GetAttribute("VFKit"), me:GetAttribute("VFEmpress"), hud:GetAttribute("Health"), prompt)
+end
+function empress()
+	press(32768)
+	kit()
+	task.wait(0.5)
+	kit()
+	task.wait(0.7)
+	kit()
+end
+function spray(t)
+	local from = hud:GetAttribute("Ammo")
+	set("VFTestButtons", 128)
+	task.wait(t)
+	set("VFTestButtons", nil)
+	task.wait(0.1)
+	print(from - hud:GetAttribute("Ammo"), "rounds")
+end
+function reload()
+	local t0 = os.clock()
+	press(512)
+	repeat task.wait() until hud:GetAttribute("Ammo") == 25
+	print(string.format("%.2f s", os.clock() - t0))
+end
+function draw(slot)
+	local before = hud:GetAttribute("Ammo")
+	local t0 = os.clock()
+	set("VFTestSlot", slot)
+	repeat task.wait() until hud:GetAttribute("Ammo") ~= before
+	local from = hud:GetAttribute("Ammo")
+	set("VFTestButtons", 128)
+	repeat task.wait() until hud:GetAttribute("Ammo") ~= from
+	set("VFTestButtons", nil)
+	set("VFTestSlot", nil)
+	print(string.format("%.2f s", os.clock() - t0))
+end
+```
+
+- **EM1 Her kit.** In agent select (T), REYNA's card has X EMPRESS lit now, with
+  `X sends you into a frenzy until you die or the round ends: you fire, draw and reload faster, kills heal you, and Dismiss hides you.`,
+  and nothing on it reads `NOT YET`. Close it with T. `kit()` prints `C2/2 Q2/2 E2/2 X7/7`, `nil`,
+  `100` and an empty prompt: the course fills Empress's points now, and X's square on the ability
+  bar has its seven pips lit gold. **Send:** the lines, and how her card looks.
+- **EM2 The gun as ever.** Before the cast: `spray(2)` prints about `20 rounds`, and then `reload()`
+  about `2.50 s`. `set("VFTestSlot", 2)`, and once the Classic's up, `set("VFTestSlot", nil)` and
+  `draw(1)`: about `1.00 s`, the Vandal's draw, with a round fired at its end. **Send:** the lines.
+- **EM3 The cast.** Open the Sound Lab (F2 four times), and keep it open to EM6. `empress()`: a
+  slow, swelling hum, logged as `empressCast`, `yours`; the Vandal goes; X's square lights, its note
+  `WINDUP`, dim; and the screen's edges begin to glow a faint violet. It prints
+  `C2/2 Q2/2 E2/2 X0/7 crown`, `nil` and `100`, the same 0.5 s on, and 1.2 s on
+  `C2/2 Q2/2 E2/2 X0/7 frenzy` and `true`. As the activation ends, 1 s after the press, the Vandal's
+  back with its draw heard, X's square stays lit, its note `FRENZY`, Q's note reads `AUTO` and E's
+  `FREE`, and the edges' glow holds. `press(32768)` again: nothing, and `kit()` the same.
+  `press(4096)`: Leer in hand, the eye's dark pupil turned to you now (section 78's fix);
+  `press(4096)` again puts it away. **Send:** the lines, a screenshot of the screen in the frenzy,
+  and one of the eye in hand.
+- **EM4 Faster.** `reload()`: about `2.00 s` (EM2's draw left 24 rounds). `spray(2)`: about
+  `23 rounds`, against EM2's 20, the crosshair's kick no bigger. `reload()` again: about `2.00 s`.
+  `set("VFTestSlot", 2)`, and once the Classic's up, `set("VFTestSlot", nil)` and `draw(1)`: about
+  `0.80 s`. `kit()` still reads `frenzy`. **Send:** the lines.
+- **EM5 Devour, cast for you.** `down(4294901761)`: Dummy 1 falls, and the server's Output has
+  `[VF] soul: <your name> earns <n> at 0.00, 0.01, -10.00 (her kill)`, then straight after
+  `[VF] soul: <your name> empress devour, <n> kept`; a soft bell's logged as `healChime`, `yours`,
+  with nothing pressed. The ball stays, and the prompt over the crosshair reads `E DISMISS` alone.
+  `for _ = 1, 3 do kit() task.wait(1) end` at once prints about 100, 125 and 150 as the health.
+  `press(8192)` while the ball's there: nothing, no `devour takes` line, and the ball stays its 3 s.
+  About 2 s after the bell the Output has `[VF] soul: <your name> overheal kept (empress)`, and no
+  `overheal over` follows: 15 s on, `kit()` still reads `150`. **Send:** the lines.
+- **EM6 Dismiss, free.** `down(4294901761)` again, then at once `press(16384)`: the Output has
+  `[VF] soul: <your name> dismiss takes <n> (there)`, a fizzle's logged, and the Vandal goes and the
+  screen darkens as in section 77. `kit()` straight after reads `E2/2` still, with `dismiss` and
+  `frenzy`. 1.5 s on the Vandal's back. Press F2 to close the Sound Lab. **Send:** the lines.
+
+Then two players: stop the game and start a Local Server with 2 players, as in section 9, and pick
+REYNA in window 1. Everyone on the course is everyone else's enemy. Run section 77's script and this
+section's in window 1. Player 2 stands about 5 m to one side of player 1, where each sees the other.
+
+- **EM7 Glowing, then gone.** In window 1, `empress()`. In window 2, player 1 glows faintly violet
+  from 1 s after the press, a glow walls hide, and
+  `print(game.Players.Player1:GetAttribute("VFEmpress"))` prints `true`. In window 1,
+  `down(4294901761)`, then at once `press(16384)`: in window 2 player 1 isn't there at all through
+  the Dismiss, no body, no gun and no name over them, for 1.5 s, then back, glowing still. **Send:**
+  what window 2 saw of player 1 in the frenzy and in the Dismiss, and a screenshot of each.
+- **EM8 A death ends it.** In window 2, run this: it aims at player 1's head and fires for a second.
+
+```lua
+me = game.Players.LocalPlayer
+me:SetAttribute("VFTestAimEntity", 4294967295)
+me:SetAttribute("VFTestAimRegion", "head")
+me:SetAttribute("VFTestButtons", 128)
+task.wait(1)
+me:SetAttribute("VFTestButtons", nil)
+me:SetAttribute("VFTestAimEntity", nil)
+```
+
+Player 1 drops, the glow gone: window 1's `kit()` reads `X0/7` with no `frenzy`, and `nil`, and
+window 2's `VFEmpress` for player 1 is `nil`. Once player 1's back on the course, 1.5 s later
+window 1's `kit()` reads `X7/7` again. **Send:** the lines.
+
+Then three players: stop the game, start a Local Server with 3 players and press P in window 1
+(Skirmish). Players 1 and 3 share a side, as in F1, and a bot plays on player 2's. As round 1's buy
+phase starts, agent select comes up by itself: pick REYNA and LOCK IN in window 1, and LOCK IN in
+windows 2 and 3. Run section 77's script and this section's in window 1.
+
+- **EM9 Her side, and a new round.** In the buy phase, `set("VFTestGive", "ultimate")` in window 1:
+  `kit()` reads `X7/7`. Once the round's live, players 2 and 3 stand where each sees player 1, and
+  window 1 runs `empress()`: both see player 1 glow. Player 1 downs the bot on player 2's side: the
+  server's Output has `earns` and `empress devour` lines for it. At once `press(16384)` in window 1:
+  through the Dismiss window 3 sees player 1 dark and see-through, as in section 77, and window 2
+  doesn't see them at all. Then player 1 downs player 2: as round 2 starts, window 1's `kit()` reads
+  `X0/7` with no `frenzy`, and `nil`, the glow gone. **Send:** the lines, and what windows 2 and 3
+  saw of the Dismiss.
+
+Then the bots: stop the game and start a Local Server with 1 player. In the server's command bar,
+set `VFArenaMode` to `teamdeathmatch` and `VFArenaOn` to true, and once the pre-game's over, run
+section 69's script and section 70's there.
+
+- **EM10 Bots playing her.** Let it play for 4 minutes, staying back to watch. Each side leaves one
+  agent out, so there's usually a bot on Reyna on each side; once one has its points, it casts
+  Empress with an enemy seen near, and section 70's script prints its `empress empress`. Through its
+  frenzy it glows violet, its `VFEmpress` in `ReplicatedStorage.VFBots` true, and the server's
+  Output has `[VF] soul: BOT <name> empress devour, <n> kept` after its kills, with no
+  `devour takes` from it until it dies. In the spike rounds it casts `push:empress` going in, and
+  `stall:empress` holding a way in. **Send:** the script's empress lines, and that bot's soul lines.
+- **EM11 The feel (Bradley).** Play her with Empress on the course and against bots: whether the
+  activation's too long, whether the faster gun shows in a fight, whether the glow and the edges are
+  too much or too little, and whether an unseen Dismiss is too strong. **Send:** what to change.
 
 ## Results
 
@@ -7609,6 +7770,17 @@ LR7 window 2's lines: ___
 LR8 the lines: ___
 LR9 the leer lines: ___; a VFLastLeered naming someone: ___
 LR10 what to change: ___
+EM1 the lines: ___; her card: ___
+EM2 the lines: ___
+EM3 the lines: ___; a screenshot of the frenzy: ___; one of the eye in hand: ___
+EM4 the lines: ___
+EM5 the lines: ___
+EM6 the lines: ___
+EM7 what window 2 saw in the frenzy: ___; in the Dismiss: ___
+EM8 the lines: ___
+EM9 the lines: ___; what window 2 saw of the Dismiss: ___; window 3: ___
+EM10 the empress lines: ___; the soul lines: ___
+EM11 what to change: ___
 Didn't look right (IDs and what you saw):
 ```
 
@@ -8049,12 +8221,12 @@ Didn't look right (IDs and what you saw):
 | 72 | Leaving it for another mode, with nothing of it left | TR10 |
 | 72 | On a live server: a new server for each player who picks it | TR11 |
 | 72 | The rifle step's ring over both 30 m targets, wherever the strafing one has got to | TR5 |
-| 73 | Her card, the bar and the kit, Empress not yet (Leer since system 74) | RY1 |
+| 73 | Her card, the bar and the kit (Leer since system 74, Empress since system 75) | RY1 |
 | 73 | An orb for her kill where it fell, drawn only for her, brighter in reach, gone after 3 s | RY2, RY3 |
 | 73 | Devour taking the orb in reach, 50 over 2 s up to 150, and the overheal gone 10 s after | RY4 |
 | 73 | Dismiss taking it: 12 m/s, no firing, the screen darkened, the gun back as it ends | RY5 |
 | 73 | Nothing hurting her through it, and others seeing her dark and see-through | RY6 |
-| 73 | Basic Training with her kit: Empress counted, Leer cast (system 74), the hint on Soul Orbs | RY7 |
+| 73 | Basic Training with her kit: Leer (system 74) and Empress (system 75) cast, the hint on Soul Orbs | RY7 |
 | 73 | Bots playing her: orbs for their side's kills on enemies they hurt, Devour when hurt, no Dismiss | RY8 |
 | 73 | Her reach, the heal, the speed and the darkening, as they feel | RY9 |
 | 74 | Leer on her card, and the eye in hand | LR1, LR2 |
@@ -8065,3 +8237,13 @@ Didn't look right (IDs and what you saw):
 | 74 | Bots casting it | LR9 |
 | 74 | The fixes: Dismiss's edge, her gun in Dismiss, the draw, the prompt, and the training ring | RY2, RY5, RY6, TR3, TR4, TR5 |
 | 74 | The cone, the linger and the eye's health, as they feel | LR10 |
+| 75 | Empress on her card, and its points full on the course | EM1 |
+| 75 | The cast: the activation with the gun away, then the frenzy | EM3 |
+| 75 | Rounds 15% faster, and draws and reloads 25% faster | EM2, EM4 |
+| 75 | An orb in the frenzy healing her at once, the orb kept, and the overheal staying | EM5, EM9 |
+| 75 | Dismiss in it free, and unseen by her enemies, but seen by her side | EM6, EM7, EM9 |
+| 75 | Her death and a new round ending it | EM8, EM9 |
+| 75 | The glow, the edges, the HUD and the sound | EM3, EM7 |
+| 75 | Bots casting it | EM10 |
+| 75 | The fixes: the eye in hand's pupil, and the bars keeping up with the quicker hands | EM3, EM4 |
+| 75 | The activation, the glow and an unseen Dismiss, as they feel | EM11 |
